@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as logger from '../utils/logger.js';
-import { ProductDelivery } from '../tools/types.js';
+import { ProductDelivery, PaymentsListResponse, PaymentsPaginatedResponse, Payment } from '../tools/types.js';
 
 export class ApiClient {
   private client: AxiosInstance;
@@ -77,6 +77,83 @@ export class ApiClient {
     try {
       logger.info('HTTP', `Deleting product: ${id}`);
       await this.client.delete(`/api/product-delivery/${id}`);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async listPayments(businessId: string): Promise<Payment[]> {
+    try {
+      logger.info('HTTP', `Listing payments for business: ${businessId}`);
+      const response = await this.client.get<PaymentsListResponse>(`/api/get-clients/business/${businessId}/payments`);
+      return response.data.payments;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getPaymentsPaginated(
+    businessId: string,
+    options?: {
+      pageSize?: number;
+      dateFrom?: string;
+      dateTo?: string;
+      lastCreatedAt?: string;
+      searchTerm?: string;
+      countOnly?: boolean;
+    }
+  ): Promise<PaymentsPaginatedResponse | { total: number }> {
+    try {
+      const params = new URLSearchParams();
+      if (options?.pageSize) params.append('pageSize', options.pageSize.toString());
+      if (options?.dateFrom) params.append('dateFrom', options.dateFrom);
+      if (options?.dateTo) params.append('dateTo', options.dateTo);
+      if (options?.lastCreatedAt) params.append('lastCreatedAt', options.lastCreatedAt);
+      if (options?.searchTerm) params.append('searchTerm', options.searchTerm);
+      if (options?.countOnly) params.append('countOnly', 'true');
+
+      const queryString = params.toString();
+      const url = `/api/get-clients/business/${businessId}/payments/paginated${queryString ? `?${queryString}` : ''}`;
+      
+      logger.info('HTTP', `Getting paginated payments for business: ${businessId}`, { options });
+      const response = await this.client.get<PaymentsPaginatedResponse | { total: number }>(url);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getPayment(businessId: string, paymentId: string): Promise<Payment> {
+    try {
+      logger.info('HTTP', `Getting payment: ${paymentId} for business: ${businessId}`);
+      // Fetch all payments and filter client-side to avoid Firestore index requirements
+      // The searchTerm parameter uses Filter.or() which requires multiple composite indexes
+      const response = await this.client.get<PaymentsListResponse>(
+        `/api/get-clients/business/${businessId}/payments`
+      );
+      
+      if (!response.data.payments || response.data.payments.length === 0) {
+        throw new Error('No payments found for this business');
+      }
+      
+      // Filter client-side by paymentId
+      const payment = response.data.payments.find(p => p.id === paymentId);
+      
+      if (!payment) {
+        throw new Error(`Payment ${paymentId} not found`);
+      }
+      
+      return payment;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getMyBusinessId(): Promise<string> {
+    try {
+      logger.info('HTTP', 'Getting authenticated user business ID');
+      const response = await this.client.get<{ businessId: string; uid: string; email?: string; authMethod: string }>('/api/me');
+      return response.data.businessId;
     } catch (error) {
       throw error;
     }

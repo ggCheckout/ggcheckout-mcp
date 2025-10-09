@@ -5,6 +5,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ApiClient } from './api/client.js';
 import { registerProductTools } from './tools/products.js';
+import { registerPaymentTools } from './tools/payments.js';
 import * as logger from './utils/logger.js';
 
 dotenv.config();
@@ -38,8 +39,9 @@ const server = new McpServer({
 });
 
 registerProductTools(server, apiClient);
+registerPaymentTools(server, apiClient);
 
-logger.info('STARTUP', 'Registered 5 tools: list_products, get_product, create_product, update_product, delete_product');
+logger.info('STARTUP', 'Registered 9 tools: list_products, get_product, create_product, update_product, delete_product, get_my_business_id, list_payments, get_payments_paginated, get_payment');
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

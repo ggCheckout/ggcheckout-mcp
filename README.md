@@ -73,7 +73,9 @@ export GGCHECKOUT_API_KEY="ggck_live_your_api_key_here"
 
 ## Available Tools
 
-### 1. `list_products`
+### Product Tools
+
+#### 1. `list_products`
 
 List all your products/deliveries.
 
@@ -95,7 +97,7 @@ List all your products/deliveries.
 }
 ```
 
-### 2. `get_product`
+#### 2. `get_product`
 
 Get details of a specific product.
 
@@ -104,7 +106,7 @@ Get details of a specific product.
 
 **Example prompt:** "Get details of product abc123"
 
-### 3. `create_product`
+#### 3. `create_product`
 
 Create a new product/delivery.
 
@@ -132,7 +134,7 @@ Create a new product/delivery.
 }
 ```
 
-### 4. `update_product`
+#### 4. `update_product`
 
 Update an existing product. Only provide fields you want to change.
 
@@ -147,7 +149,7 @@ Update an existing product. Only provide fields you want to change.
 
 **Example prompt:** "Update product abc123 price to R$79.90"
 
-### 5. `delete_product`
+#### 5. `delete_product`
 
 Delete a product by ID.
 
@@ -155,6 +157,120 @@ Delete a product by ID.
 - `productId` (string): Product ID
 
 **Example prompt:** "Delete product abc123"
+
+### User Tools
+
+#### 6. `get_my_business_id`
+
+Get the business ID of the authenticated user. This tool automatically retrieves your businessId from the API key authentication, making it easy to use other tools without manually specifying the businessId.
+
+**Parameters:** None
+
+**Example prompt:** "What is my business ID?"
+
+**Response:**
+```json
+{
+  "businessId": "CKdAlYZpHhSKrFnA6ljGewe16Go1"
+}
+```
+
+**Pro Tip:** Once you have your businessId, you can use it in natural language queries like:
+- "Show me all payments for business CKdAlYZpHhSKrFnA6ljGewe16Go1"
+- Or simply: "Get my business ID, then show me all payments"
+
+### Payment Tools
+
+#### 7. `list_payments`
+
+List all payments for a specific business.
+
+**Parameters:**
+- `businessId` (string): Business ID to list payments for
+
+**Example prompt:** "Show me all payments for business xyz789"
+
+**Response:**
+```json
+{
+  "payments": [
+    {
+      "id": "txn_123456",
+      "businessId": "xyz789",
+      "email": "customer@example.com",
+      "value": 99.90,
+      "productId": "prod_abc",
+      "titleOffer": "React Course",
+      "status": "paid",
+      "createdAt": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+#### 8. `get_payments_paginated`
+
+Get paginated payments with advanced filtering options.
+
+**Important:** Status filtering is done **client-side** after fetching data from the API. This follows the same pattern as the frontend application to avoid requiring Firestore composite indexes.
+
+**Parameters:**
+- `businessId` (string): Business ID
+- `pageSize` (number, optional): Items per page (default: 10)
+- `dateFrom` (string, optional): Filter from date (ISO format)
+- `dateTo` (string, optional): Filter until date (ISO format)
+- `lastCreatedAt` (string, optional): Pagination cursor
+- `status` (string, optional): Filter by status ("pending", "paid", "error", "all") - **filtered client-side**
+- `searchTerm` (string, optional): Search by payment ID, email, phone, or title
+- `countOnly` (boolean, optional): Return only total count
+
+**Example prompts:**
+- "Get the first 20 payments for business xyz789"
+- "Show me all paid payments from last month for business xyz789"
+- "Search for payments with email john@example.com in business xyz789"
+- "How many pending payments does business xyz789 have?"
+
+**Response:**
+```json
+{
+  "payments": [...],
+  "total": 150,
+  "lastCreatedAt": "2024-01-15T10:30:00Z"
+}
+```
+
+#### 9. `get_payment`
+
+Get details of a specific payment by ID.
+
+**Note:** This tool fetches all payments from the business and filters client-side to find the specific payment. This approach avoids Firestore composite index requirements that would be needed for direct search queries.
+
+**Parameters:**
+- `businessId` (string): Business ID
+- `paymentId` (string): Payment ID (transaction ID)
+
+**Example prompt:** "Get payment cmgjucuk201ztcgsya2w9bo53 from my business"
+
+**Response:**
+```json
+{
+  "payment": {
+    "id": "txn_123456",
+    "businessId": "xyz789",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "phone": "+5511999999999",
+    "cpf": "12345678900",
+    "value": 99.90,
+    "productId": "prod_abc",
+    "titleOffer": "React Course",
+    "status": "paid",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "finalValueInCents": 9990,
+    "couponsCodesApplied": ["SAVE20"]
+  }
+}
+```
 
 ## Price Formats
 
