@@ -99,6 +99,7 @@ export class ApiClient {
       dateFrom?: string;
       dateTo?: string;
       lastCreatedAt?: string;
+      status?: string;
       searchTerm?: string;
       countOnly?: boolean;
     }
@@ -109,6 +110,9 @@ export class ApiClient {
       if (options?.dateFrom) params.append('dateFrom', options.dateFrom);
       if (options?.dateTo) params.append('dateTo', options.dateTo);
       if (options?.lastCreatedAt) params.append('lastCreatedAt', options.lastCreatedAt);
+      if (options?.status && options.status !== 'all') {
+        params.append('status', options.status);
+      }
       if (options?.searchTerm) params.append('searchTerm', options.searchTerm);
       if (options?.countOnly) params.append('countOnly', 'true');
 
@@ -126,17 +130,15 @@ export class ApiClient {
   async getPayment(businessId: string, paymentId: string): Promise<Payment> {
     try {
       logger.info('HTTP', `Getting payment: ${paymentId} for business: ${businessId}`);
-      // Fetch all payments and filter client-side to avoid Firestore index requirements
-      // The searchTerm parameter uses Filter.or() which requires multiple composite indexes
-      const response = await this.client.get<PaymentsListResponse>(
-        `/api/get-clients/business/${businessId}/payments`
+      const response = await this.client.get<PaymentsPaginatedResponse>(
+        `/api/get-clients/business/${businessId}/payments/paginated?pageSize=1000`
       );
       
       if (!response.data.payments || response.data.payments.length === 0) {
         throw new Error('No payments found for this business');
       }
       
-      // Filter client-side by paymentId
+      
       const payment = response.data.payments.find(p => p.id === paymentId);
       
       if (!payment) {

@@ -70,55 +70,46 @@ export function registerPaymentTools(server: McpServer, apiClient: ApiClient) {
   server.registerTool(
     'get_payments_paginated',
     {
-      description: 'Get paginated payments for a business with optional filters. Note: Status filtering is done client-side after fetching data.',
+      description: 'Get paginated payments for a business with optional filters. Requires Firestore indexes for status filtering.',
       inputSchema: {
         businessId: z.string().describe('Business ID'),
         pageSize: z.number().optional().describe('Number of items per page (default: 10)'),
         dateFrom: z.string().optional().describe('Filter payments from this date (ISO format)'),
         dateTo: z.string().optional().describe('Filter payments until this date (ISO format)'),
         lastCreatedAt: z.string().optional().describe('Last createdAt value for pagination cursor'),
-        status: z.string().optional().describe('Filter by payment status (e.g., "pending", "paid", "error"). This is filtered client-side.'),
+        status: z.string().optional().describe('Filter by payment status (e.g., "pending", "paid", "error", "all"). Requires Firestore indexes.'),
         searchTerm: z.string().optional().describe('Search by payment ID, email, phone, or title offer'),
         countOnly: z.boolean().optional().describe('Return only the total count, not the data')
       }
     },
     async (args: any) => {
-      const { businessId, status: statusFilter, ...options } = args;
+      const { businessId, ...options } = args;
       const start = Date.now();
       try {
-        logger.info('TOOL', `get_payments_paginated: Starting for business ${businessId}`, { options, statusFilter });
+        logger.info('TOOL', `get_payments_paginated: Starting for business ${businessId}`, { options });
         
-       
+        
         const result = await apiClient.getPaymentsPaginated(businessId, options);
-        
-        // Client-side filtering by status if requested
-        let output: any;
-        if ('payments' in result && statusFilter && statusFilter !== 'all') {
-          const filteredPayments = result.payments.filter(
-            (payment) => payment.status === statusFilter
-          );
-          output = {
-            payments: filteredPayments,
-            total: filteredPayments.length,
-            lastCreatedAt: result.lastCreatedAt,
-            note: 'Status filtering applied client-side'
-          };
-        } else {
-          output = result;
-        }
         
         const duration = Date.now() - start;
         logger.info('TOOL', `get_payments_paginated: Success (${duration}ms)`);
         
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(output, null, 2) }],
-          structuredContent: output
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          structuredContent: result
         };
       } catch (error: any) {
         const duration = Date.now() - start;
         logger.error('TOOL', `get_payments_paginated: Failed (${duration}ms)`, error.message);
+        
+        
+        let errorMessage = error.message;
+        if (error.message.includes('index') || error.message.includes('FAILED_PRECONDITION')) {
+          errorMessage = `${error.message}\n\nThis query requires Firestore composite indexes. Please run:\nnpm run setup:indexes\n\nOr follow: docs/setup-firestore-indexes.md`;
+        }
+        
         return {
-          content: [{ type: 'text' as const, text: `Error: ${error.message}` }],
+          content: [{ type: 'text' as const, text: `Error: ${errorMessage}` }],
           isError: true
         };
       }
