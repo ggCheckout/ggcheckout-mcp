@@ -10,14 +10,14 @@ import * as logger from './utils/logger.js';
 dotenv.config();
 
 const API_KEY = process.env.GGCHECKOUT_API_KEY;
-const API_URL = process.env.GGCHECKOUT_API_URL;
+const API_URL = process.env.GGCHECKOUT_API_URL || 'https://www.ggcheckout.com';
 
-if (!API_KEY || !API_URL) {
-  console.error('[MCP] Error: Missing required environment variables');
-  console.error('[MCP] Please set GGCHECKOUT_API_KEY and GGCHECKOUT_API_URL');
+if (!API_KEY) {
+  console.error('[MCP] Error: Missing required environment variable');
+  console.error('[MCP] Please set GGCHECKOUT_API_KEY');
   console.error('[MCP] Example:');
   console.error('[MCP]   GGCHECKOUT_API_KEY=ggck_live_your_key_here');
-  console.error('[MCP]   GGCHECKOUT_API_URL=https://app.ggcheckout.com');
+  console.error('[MCP] Get your API key at: https://www.ggcheckout.com/');
   process.exit(1);
 }
 
@@ -34,7 +34,7 @@ const apiClient = new ApiClient(API_URL, API_KEY);
 
 const server = new McpServer({
   name: 'ggcheckout-mcp',
-  version: '0.1.0'
+  version: '0.1.0',
 });
 
 registerProductTools(server, apiClient);

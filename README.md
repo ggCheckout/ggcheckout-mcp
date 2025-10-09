@@ -30,10 +30,11 @@ npm install -g @ggcheckout/mcp
 
 ## Getting Your API Key
 
-1. Log in to your GG Checkout dashboard
-2. Navigate to **Settings** → **API Key**
-3. Click **Generate API Key**
-4. **Important:** Copy and save your API key immediately - it won't be shown again!
+1. Visit [https://www.ggcheckout.com/](https://www.ggcheckout.com/)
+2. Log in to your GG Checkout dashboard
+3. Navigate to **Settings** → **API Key**
+4. Click **Generate API Key**
+5. **Important:** Copy and save your API key immediately - it won't be shown again!
 
 Your API key will look like: `ggck_live_abc123...`
 
@@ -53,21 +54,21 @@ Add to your Claude Desktop configuration file:
       "command": "npx",
       "args": ["@ggcheckout/mcp"],
       "env": {
-        "GGCHECKOUT_API_KEY": "ggck_live_your_api_key_here",
-        "GGCHECKOUT_API_URL": "https://app.ggcheckout.com"
+        "GGCHECKOUT_API_KEY": "ggck_live_your_api_key_here"
       }
     }
   }
 }
 ```
 
+> **Note:** The API URL is hardcoded to `https://www.ggcheckout.com/` for production use.
+
 ### For Other MCP Clients
 
-Set these environment variables:
+Set the API key environment variable:
 
 ```bash
 export GGCHECKOUT_API_KEY="ggck_live_your_api_key_here"
-export GGCHECKOUT_API_URL="https://app.ggcheckout.com"
 ```
 
 ## Available Tools
@@ -190,6 +191,35 @@ Internally, all prices are stored in cents.
 ### Rate Limiting
 
 If you're making too many requests, you may be rate limited. Wait a few moments and try again.
+
+## Local Development
+
+For local development and testing against your localhost backend:
+
+1. Clone the repository
+2. Copy `.env.local` to `.env`
+3. Edit `src/index.ts` and uncomment the localhost line:
+
+```typescript
+// Change this:
+const API_URL = 'https://www.ggcheckout.com';
+
+// To this:
+const API_URL = process.env.GGCHECKOUT_API_URL || 'http://localhost:3000';
+```
+
+4. Set your `.env` file:
+```bash
+GGCHECKOUT_API_KEY=ggck_live_your_api_key_here
+GGCHECKOUT_API_URL=http://localhost:3000
+```
+
+5. Build and run:
+```bash
+npm install
+npm run build
+node dist/index.js
+```
 
 ## Security Best Practices
 
