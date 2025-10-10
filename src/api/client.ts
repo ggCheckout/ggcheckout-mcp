@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as logger from '../utils/logger.js';
-import { ProductDelivery, PaymentsListResponse, PaymentsPaginatedResponse, Payment, Checkout, CreateCheckoutInput, UpdateCheckoutInput } from '../tools/types.js';
+import { ProductDelivery, PaymentsListResponse, PaymentsPaginatedResponse, Payment, Checkout, CreateCheckoutInput, UpdateCheckoutInput, Webhook, CreateWebhookInput, UpdateWebhookInput, WebhooksListResponse } from '../tools/types.js';
 
 export class ApiClient {
   private client: AxiosInstance;
@@ -226,6 +226,64 @@ export class ApiClient {
       await this.client.delete(`/api/checkouts/${id}`, {
         data: { uuidOwnwer: checkout.uuidOwnwer }
       });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async listWebhooks(): Promise<Webhook[]> {
+    try {
+      logger.info('HTTP', 'Listing webhooks');
+      const response = await this.client.get<WebhooksListResponse>('/api/clients-webhook');
+      return response.data.webhooks;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getWebhook(id: string): Promise<Webhook> {
+    try {
+      logger.info('HTTP', `Getting webhook: ${id}`);
+      // Backend doesn't have a GET by ID endpoint, so we list and filter
+      const webhooks = await this.listWebhooks();
+      const webhook = webhooks.find(w => w.id === id);
+      if (!webhook) {
+        throw new Error(`Webhook ${id} not found`);
+      }
+      return webhook;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createWebhook(payload: CreateWebhookInput): Promise<Webhook> {
+    try {
+      logger.info('HTTP', 'Creating webhook', { name: payload.name });
+      // Add businessId if not provided
+      if (!payload.businessId) {
+        payload.businessId = await this.getMyBusinessId();
+      }
+      const response = await this.client.post<Webhook>('/api/clients-webhook', payload);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateWebhook(id: string, payload: UpdateWebhookInput): Promise<Webhook> {
+    try {
+      logger.info('HTTP', `Updating webhook: ${id}`);
+      const response = await this.client.put<Webhook>(`/api/clients-webhook?id=${id}`, payload);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteWebhook(id: string): Promise<void> {
+    try {
+      logger.info('HTTP', `Deleting webhook: ${id}`);
+      await this.client.delete(`/api/clients-webhook?id=${id}`);
     } catch (error) {
       throw error;
     }

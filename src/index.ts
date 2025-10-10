@@ -7,6 +7,7 @@ import { ApiClient } from './api/client.js';
 import { registerProductTools } from './tools/products.js';
 import { registerPaymentTools } from './tools/payments.js';
 import { registerCheckoutTools } from './tools/checkouts.js';
+import { registerWebhookTools } from './tools/webhooks.js';
 import * as logger from './utils/logger.js';
 
 dotenv.config();
@@ -42,8 +43,9 @@ const server = new McpServer({
 registerProductTools(server, apiClient);
 registerPaymentTools(server, apiClient);
 registerCheckoutTools(server, apiClient);
+registerWebhookTools(server, apiClient);
 
-logger.info('STARTUP', 'Registered 14 tools: list_products, get_product, create_product, update_product, delete_product, get_my_business_id, list_payments, get_payments_paginated, get_payment, list_checkouts, get_checkout, create_checkout, update_checkout, delete_checkout');
+logger.info('STARTUP', 'Registered 19 tools: list_products, get_product, create_product, update_product, delete_product, get_my_business_id, list_payments, get_payments_paginated, get_payment, list_checkouts, get_checkout, create_checkout, update_checkout, delete_checkout, list_webhooks, get_webhook, create_webhook, update_webhook, delete_webhook');
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

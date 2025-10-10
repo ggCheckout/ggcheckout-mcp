@@ -411,6 +411,142 @@ Delete a checkout page by ID.
 }
 ```
 
+### Webhook Tools
+
+#### 15. `list_webhooks`
+
+List all webhooks for the authenticated user.
+
+**Parameters:** None (automatically uses authenticated user)
+
+**Example prompt:** "Show me all my webhooks" or "List my webhooks"
+
+**Response:**
+```json
+{
+  "webhooks": [
+    {
+      "id": "webhook_abc123",
+      "businessId": "xyz789",
+      "name": "Payment Notifications",
+      "url": "https://myapp.com/webhook",
+      "events": ["payment.paid", "payment.refunded"],
+      "secret": "whsec_...",
+      "productsId": [],
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+#### 16. `get_webhook`
+
+Get details of a specific webhook by ID.
+
+**Parameters:**
+- `webhookId` (string): Webhook ID
+
+**Example prompt:** "Get webhook details for webhook_abc123"
+
+**Response:**
+```json
+{
+  "webhook": {
+    "id": "webhook_abc123",
+    "businessId": "xyz789",
+    "name": "Payment Notifications",
+    "url": "https://myapp.com/webhook",
+    "events": ["payment.paid"],
+    "secret": "whsec_...",
+    "productsId": ["prod_123"],
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+#### 17. `create_webhook`
+
+Create a new webhook for payment notifications.
+
+**Required Parameters:**
+- `name` (string): Webhook name/description
+- `url` (string): Webhook URL endpoint to receive notifications
+- `events` (array): Events to trigger this webhook
+
+**Optional Parameters:**
+- `secret` (string): Secret key for webhook signature verification
+- `productsId` (array): Product IDs to filter notifications (leave empty for all products)
+
+**Available Events:**
+- `payment.created` - New payment initiated
+- `payment.paid` - Payment successfully completed
+- `payment.pending` - Payment pending confirmation
+- `payment.refunded` - Payment refunded
+- `payment.failed` - Payment failed
+
+**Example prompt:** "Create a webhook for payment notifications at https://myapp.com/webhook"
+
+**Response:**
+```json
+{
+  "success": true,
+  "webhook": {
+    "id": "webhook_new123",
+    "businessId": "xyz789",
+    "name": "Payment Notifications",
+    "url": "https://myapp.com/webhook",
+    "events": ["payment.paid", "payment.refunded"],
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+#### 18. `update_webhook`
+
+Update an existing webhook. Only provide fields you want to update.
+
+**Parameters:**
+- `webhookId` (string): Webhook ID
+- `name` (string, optional): New webhook name
+- `url` (string, optional): New webhook URL
+- `events` (array, optional): New events list
+- `secret` (string, optional): New secret key
+- `productsId` (array, optional): New product IDs filter
+
+**Example prompt:** "Update webhook webhook_abc123 to listen for payment.created events"
+
+**Response:**
+```json
+{
+  "success": true,
+  "webhook": {
+    "id": "webhook_abc123",
+    "events": ["payment.created", "payment.paid"],
+    "updatedAt": "2024-01-15T11:00:00Z"
+  }
+}
+```
+
+#### 19. `delete_webhook`
+
+Delete a webhook by ID.
+
+**Parameters:**
+- `webhookId` (string): Webhook ID
+
+**Example prompt:** "Delete webhook webhook_abc123"
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Webhook webhook_abc123 deleted successfully"
+}
+```
+
 ## Price Formats
 
 The server accepts prices in two formats:
