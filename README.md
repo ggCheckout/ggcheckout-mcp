@@ -19,13 +19,13 @@ The GG Checkout MCP server enables AI agents (like Claude Desktop) to interact w
 No installation required! Just configure your MCP client with:
 
 ```bash
-npx @ggcheckout/mcp
+npx ggcheckout-mcp
 ```
 
 ### Option 2: Global Install
 
 ```bash
-npm install -g @ggcheckout/mcp
+npm install -g ggcheckout-mcp
 ```
 
 ## Getting Your API Key
@@ -52,7 +52,7 @@ Add to your Claude Desktop configuration file:
   "mcpServers": {
     "ggcheckout": {
       "command": "npx",
-      "args": ["@ggcheckout/mcp"],
+      "args": ["ggcheckout-mcp"],
       "env": {
         "GGCHECKOUT_API_KEY": "ggck_live_your_api_key_here"
       }
@@ -82,6 +82,7 @@ List all your products/deliveries.
 **Example prompt:** "Show me all my products"
 
 **Response:**
+
 ```json
 {
   "products": [
@@ -102,6 +103,7 @@ List all your products/deliveries.
 Get details of a specific product.
 
 **Parameters:**
+
 - `productId` (string): Product ID
 
 **Example prompt:** "Get details of product abc123"
@@ -111,6 +113,7 @@ Get details of a specific product.
 Create a new product/delivery.
 
 **Parameters:**
+
 - `title` (string): Product title
 - `url` (string): Product URL
 - `imageUrl` (string, optional): Product image URL
@@ -119,10 +122,12 @@ Create a new product/delivery.
 - `price` (number|string): Price in cents (1990) or Brazilian format ("19,90")
 
 **Example prompts:**
+
 - "Create a product called 'React Course' priced at R$99.00"
 - "Add a new product: title 'Node.js Guide', price 4990 cents, url https://example.com"
 
 **Example:**
+
 ```json
 {
   "title": "React Course",
@@ -139,6 +144,7 @@ Create a new product/delivery.
 Update an existing product. Only provide fields you want to change.
 
 **Parameters:**
+
 - `productId` (string): Product ID
 - `title` (string, optional): New title
 - `url` (string, optional): New URL
@@ -154,6 +160,7 @@ Update an existing product. Only provide fields you want to change.
 Delete a product by ID.
 
 **Parameters:**
+
 - `productId` (string): Product ID
 
 **Example prompt:** "Delete product abc123"
@@ -169,6 +176,7 @@ Get the business ID of the authenticated user. This tool automatically retrieves
 **Example prompt:** "What is my business ID?"
 
 **Response:**
+
 ```json
 {
   "businessId": "CKdAlYZpHhSKrFnA6ljGewe16Go1"
@@ -176,6 +184,7 @@ Get the business ID of the authenticated user. This tool automatically retrieves
 ```
 
 **Pro Tip:** Once you have your businessId, you can use it in natural language queries like:
+
 - "Show me all payments for business CKdAlYZpHhSKrFnA6ljGewe16Go1"
 - Or simply: "Get my business ID, then show me all payments"
 
@@ -186,11 +195,13 @@ Get the business ID of the authenticated user. This tool automatically retrieves
 List all payments for a specific business.
 
 **Parameters:**
+
 - `businessId` (string): Business ID to list payments for
 
 **Example prompt:** "Show me all payments for business xyz789"
 
 **Response:**
+
 ```json
 {
   "payments": [
@@ -198,7 +209,7 @@ List all payments for a specific business.
       "id": "txn_123456",
       "businessId": "xyz789",
       "email": "customer@example.com",
-      "value": 99.90,
+      "value": 99.9,
       "productId": "prod_abc",
       "titleOffer": "React Course",
       "status": "paid",
@@ -215,6 +226,7 @@ Get paginated payments with advanced filtering options.
 **Important:** Status filtering is done **client-side** after fetching data from the API. This follows the same pattern as the frontend application to avoid requiring Firestore composite indexes.
 
 **Parameters:**
+
 - `businessId` (string): Business ID
 - `pageSize` (number, optional): Items per page (default: 10)
 - `dateFrom` (string, optional): Filter from date (ISO format)
@@ -225,12 +237,14 @@ Get paginated payments with advanced filtering options.
 - `countOnly` (boolean, optional): Return only total count
 
 **Example prompts:**
+
 - "Get the first 20 payments for business xyz789"
 - "Show me all paid payments from last month for business xyz789"
 - "Search for payments with email john@example.com in business xyz789"
 - "How many pending payments does business xyz789 have?"
 
 **Response:**
+
 ```json
 {
   "payments": [...],
@@ -246,12 +260,14 @@ Get details of a specific payment by ID.
 **Note:** This tool fetches all payments from the business and filters client-side to find the specific payment. This approach avoids Firestore composite index requirements that would be needed for direct search queries.
 
 **Parameters:**
+
 - `businessId` (string): Business ID
 - `paymentId` (string): Payment ID (transaction ID)
 
 **Example prompt:** "Get payment cmgjucuk201ztcgsya2w9bo53 from my business"
 
 **Response:**
+
 ```json
 {
   "payment": {
@@ -261,7 +277,7 @@ Get details of a specific payment by ID.
     "email": "john@example.com",
     "phone": "+5511999999999",
     "cpf": "12345678900",
-    "value": 99.90,
+    "value": 99.9,
     "productId": "prod_abc",
     "titleOffer": "React Course",
     "status": "paid",
@@ -283,6 +299,7 @@ List all checkout pages for the authenticated user.
 **Example prompt:** "Show me all my checkouts" or "List my checkout pages"
 
 **Response:**
+
 ```json
 {
   "checkouts": [
@@ -290,7 +307,7 @@ List all checkout pages for the authenticated user.
       "uid": "checkout123",
       "id": "my-product-checkout",
       "title": "React Course Checkout",
-      "price": 99.90,
+      "price": 99.9,
       "published": true,
       "url": "https://checkout.ggcheckout.com/my-product-checkout"
     }
@@ -303,15 +320,18 @@ List all checkout pages for the authenticated user.
 Get details of a specific checkout page.
 
 **Parameters:**
+
 - `checkoutId` (string): Checkout document ID (uid) - **Note: Use the `uid` returned from `create_checkout`, not the custom `id` field**
 
 **Example prompt:** "Get checkout details for checkout123"
 
-**Important:** 
+**Important:**
+
 - `uid` = Firestore document ID (use this for get/update/delete operations)
 - `id` = Custom checkout slug/identifier (user-friendly name)
 
 **Response:**
+
 ```json
 {
   "checkout": {
@@ -332,6 +352,7 @@ Get details of a specific checkout page.
 Create a new checkout page.
 
 **Required Parameters:**
+
 - `title` (string): Checkout page title
 - `id` (string): Unique checkout slug/identifier (user-friendly name, e.g., "my-product-checkout")
 - `price` (number): Price in Brazilian Reais (e.g., 99.90)
@@ -339,6 +360,7 @@ Create a new checkout page.
 - `checkout` (object): Checkout page configuration
 
 **Optional Parameters:**
+
 - `url` (string): Checkout URL
 - `bannerUrl` (string): Banner image URL
 - `image` (string): Product image URL
@@ -353,6 +375,7 @@ Create a new checkout page.
 **Example prompt:** "Create a checkout page for my React Course priced at R$99.90"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -361,7 +384,7 @@ Create a new checkout page.
     "uid": "AbC123XyZ456",
     "id": "my-product-checkout",
     "title": "React Course Checkout",
-    "price": 99.90,
+    "price": 99.9,
     "fields": {
       "haveName": false,
       "havePhone": false,
@@ -378,18 +401,20 @@ Create a new checkout page.
 Update an existing checkout page. Only provide fields you want to change.
 
 **Parameters:**
+
 - `checkoutId` (string): Checkout document ID (uid) - **Use the `uid` from create_checkout response**
 - All other parameters are optional (same as create_checkout)
 
 **Example prompt:** "Update checkout AbC123XyZ456 price to R$79.90"
 
 **Response:**
+
 ```json
 {
   "success": true,
   "checkout": {
     "uid": "checkout123",
-    "price": 79.90
+    "price": 79.9
   }
 }
 ```
@@ -399,11 +424,13 @@ Update an existing checkout page. Only provide fields you want to change.
 Delete a checkout page by ID.
 
 **Parameters:**
+
 - `checkoutId` (string): Checkout document ID (uid) - **Use the `uid` from create_checkout response**
 
 **Example prompt:** "Delete checkout AbC123XyZ456"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -422,6 +449,7 @@ List all webhooks for the authenticated user.
 **Example prompt:** "Show me all my webhooks" or "List my webhooks"
 
 **Response:**
+
 ```json
 {
   "webhooks": [
@@ -445,11 +473,13 @@ List all webhooks for the authenticated user.
 Get details of a specific webhook by ID.
 
 **Parameters:**
+
 - `webhookId` (string): Webhook ID
 
 **Example prompt:** "Get webhook details for webhook_abc123"
 
 **Response:**
+
 ```json
 {
   "webhook": {
@@ -471,15 +501,18 @@ Get details of a specific webhook by ID.
 Create a new webhook for payment notifications.
 
 **Required Parameters:**
+
 - `name` (string): Webhook name/description
 - `url` (string): Webhook URL endpoint to receive notifications
 - `events` (array): Events to trigger this webhook
 
 **Optional Parameters:**
+
 - `secret` (string): Secret key for webhook signature verification
 - `productsId` (array): Product IDs to filter notifications (leave empty for all products)
 
 **Available Events:**
+
 - `payment.created` - New payment initiated
 - `payment.paid` - Payment successfully completed
 - `payment.pending` - Payment pending confirmation
@@ -489,6 +522,7 @@ Create a new webhook for payment notifications.
 **Example prompt:** "Create a webhook for payment notifications at https://myapp.com/webhook"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -509,6 +543,7 @@ Create a new webhook for payment notifications.
 Update an existing webhook. Only provide fields you want to update.
 
 **Parameters:**
+
 - `webhookId` (string): Webhook ID
 - `name` (string, optional): New webhook name
 - `url` (string, optional): New webhook URL
@@ -519,6 +554,7 @@ Update an existing webhook. Only provide fields you want to update.
 **Example prompt:** "Update webhook webhook_abc123 to listen for payment.created events"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -535,11 +571,13 @@ Update an existing webhook. Only provide fields you want to update.
 Delete a webhook by ID.
 
 **Parameters:**
+
 - `webhookId` (string): Webhook ID
 
 **Example prompt:** "Delete webhook webhook_abc123"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -593,19 +631,21 @@ For local development and testing against your localhost backend:
 
 ```typescript
 // Change this:
-const API_URL = 'https://www.ggcheckout.com';
+const API_URL = "https://www.ggcheckout.com";
 
 // To this:
-const API_URL = process.env.GGCHECKOUT_API_URL || 'http://localhost:3000';
+const API_URL = process.env.GGCHECKOUT_API_URL || "http://localhost:3000";
 ```
 
 4. Set your `.env` file:
+
 ```bash
 GGCHECKOUT_API_KEY=ggck_live_your_api_key_here
 GGCHECKOUT_API_URL=http://localhost:3000
 ```
 
 5. Build and run:
+
 ```bash
 npm install
 npm run build

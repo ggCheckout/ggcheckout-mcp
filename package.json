@@ -1,11 +1,11 @@
 {
-  "name": "@ggcheckout/mcp",
+  "name": "ggcheckout-mcp",
   "version": "0.1.0",
   "description": "MCP server for GG Checkout - Manage your products via AI agents",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "ggcheckout-mcp": "./dist/index.js"
+    "ggcheckout-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
