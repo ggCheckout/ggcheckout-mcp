@@ -19,7 +19,7 @@
     "type": "git",
     "url": "git+https://github.com/gui-drumond/ggcheckout-mcp.git"
   },
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc && gulp build:icons",
     "dev": "tsc --watch",
@@ -39,6 +39,9 @@
     "nodes": [
       "dist/nodes/GGCheckout/GGCheckout.node.js"
     ]
+  },
+  "dependencies": {
+    "ggcheckout-mcp": "file:../mcp"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

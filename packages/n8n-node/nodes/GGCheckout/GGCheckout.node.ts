@@ -6,7 +6,11 @@ import {
   NodeOperationError,
 } from "n8n-workflow";
 
-import axios from "axios";
+// Import the MCP functions directly
+import { spawn } from "child_process";
+import { promisify } from "util";
+
+const exec = promisify(require("child_process").exec);
 
 export class GGCheckout implements INodeType {
   description: INodeTypeDescription = {
@@ -16,7 +20,7 @@ export class GGCheckout implements INodeType {
     group: ["transform"],
     version: 1,
     subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-    description: "Interact with GG Checkout API",
+    description: "Interact with GG Checkout API via MCP",
     defaults: {
       name: "GG Checkout",
     },
@@ -28,13 +32,6 @@ export class GGCheckout implements INodeType {
         required: true,
       },
     ],
-    requestDefaults: {
-      baseURL: "={{$credentials.apiUrl}}",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    },
     properties: [
       {
         displayName: "Resource",
@@ -494,28 +491,16 @@ export class GGCheckout implements INodeType {
       try {
         const resource = this.getNodeParameter("resource", i) as string;
         const operation = this.getNodeParameter("operation", i) as string;
+        const credentials = await this.getCredentials("ggcheckoutApi");
+        const apiKey = credentials?.apiKey as string;
 
-        let responseData: any;
-
-        switch (resource) {
-          case "product":
-            responseData = await this.executeProductOperation(operation, i);
-            break;
-          case "payment":
-            responseData = await this.executePaymentOperation(operation, i);
-            break;
-          case "checkout":
-            responseData = await this.executeCheckoutOperation(operation, i);
-            break;
-          case "webhook":
-            responseData = await this.executeWebhookOperation(operation, i);
-            break;
-          default:
-            throw new NodeOperationError(
-              this.getNode(),
-              `Unknown resource: ${resource}`
-            );
-        }
+        // Execute MCP command
+        const responseData = await this.executeMCPCommand(
+          resource,
+          operation,
+          i,
+          apiKey
+        );
 
         returnData.push({
           json: responseData,
@@ -534,340 +519,69 @@ export class GGCheckout implements INodeType {
     return [returnData];
   }
 
-  private async executeProductOperation(
+  private async executeMCPCommand(
+    resource: string,
     operation: string,
-    itemIndex: number
-  ): Promise<any> {
-    const credentials = await this.getCredentials("ggcheckoutApi");
-    const baseURL = credentials?.apiUrl as string;
-    const apiKey = credentials?.apiKey as string;
-
-    switch (operation) {
-      case "listProducts":
-        return await this.makeRequest(
-          "GET",
-          `${baseURL}/api/v1/products`,
-          {},
-          apiKey
-        );
-
-      case "getProduct":
-        const productId = this.getNodeParameter(
-          "productId",
-          itemIndex
-        ) as string;
-        return await this.makeRequest(
-          "GET",
-          `${baseURL}/api/v1/products/${productId}`,
-          {},
-          apiKey
-        );
-
-      case "createProduct":
-        const createData = {
-          title: this.getNodeParameter("title", itemIndex) as string,
-          url: this.getNodeParameter("url", itemIndex) as string,
-          description: this.getNodeParameter(
-            "description",
-            itemIndex
-          ) as string,
-          price: this.getNodeParameter("price", itemIndex) as number,
-          discount: this.getNodeParameter("discount", itemIndex) as string,
-          imageUrl: this.getNodeParameter("imageUrl", itemIndex) as string,
-        };
-        return await this.makeRequest(
-          "POST",
-          `${baseURL}/api/v1/products`,
-          createData,
-          apiKey
-        );
-
-      case "updateProduct":
-        const updateProductId = this.getNodeParameter(
-          "productId",
-          itemIndex
-        ) as string;
-        const updateData = {
-          title: this.getNodeParameter("title", itemIndex) as string,
-          url: this.getNodeParameter("url", itemIndex) as string,
-          description: this.getNodeParameter(
-            "description",
-            itemIndex
-          ) as string,
-          price: this.getNodeParameter("price", itemIndex) as number,
-          discount: this.getNodeParameter("discount", itemIndex) as string,
-          imageUrl: this.getNodeParameter("imageUrl", itemIndex) as string,
-        };
-        return await this.makeRequest(
-          "PUT",
-          `${baseURL}/api/v1/products/${updateProductId}`,
-          updateData,
-          apiKey
-        );
-
-      case "deleteProduct":
-        const deleteProductId = this.getNodeParameter(
-          "productId",
-          itemIndex
-        ) as string;
-        return await this.makeRequest(
-          "DELETE",
-          `${baseURL}/api/v1/products/${deleteProductId}`,
-          {},
-          apiKey
-        );
-
-      default:
-        throw new NodeOperationError(
-          this.getNode(),
-          `Unknown product operation: ${operation}`
-        );
-    }
-  }
-
-  private async executePaymentOperation(
-    operation: string,
-    itemIndex: number
-  ): Promise<any> {
-    const credentials = await this.getCredentials("ggcheckoutApi");
-    const baseURL = credentials?.apiUrl as string;
-    const apiKey = credentials?.apiKey as string;
-
-    switch (operation) {
-      case "listPayments":
-        const listBusinessId = this.getNodeParameter(
-          "businessId",
-          itemIndex
-        ) as string;
-        return await this.makeRequest(
-          "GET",
-          `${baseURL}/api/v1/payments?businessId=${listBusinessId}`,
-          {},
-          apiKey
-        );
-
-      case "getPayment":
-        const getBusinessId = this.getNodeParameter(
-          "businessId",
-          itemIndex
-        ) as string;
-        const paymentId = this.getNodeParameter(
-          "paymentId",
-          itemIndex
-        ) as string;
-        return await this.makeRequest(
-          "GET",
-          `${baseURL}/api/v1/payments/${paymentId}?businessId=${getBusinessId}`,
-          {},
-          apiKey
-        );
-
-      case "getPaginatedPayments":
-        const paginatedBusinessId = this.getNodeParameter(
-          "businessId",
-          itemIndex
-        ) as string;
-        // Add pagination parameters as needed
-        return await this.makeRequest(
-          "GET",
-          `${baseURL}/api/v1/payments/paginated?businessId=${paginatedBusinessId}`,
-          {},
-          apiKey
-        );
-
-      default:
-        throw new NodeOperationError(
-          this.getNode(),
-          `Unknown payment operation: ${operation}`
-        );
-    }
-  }
-
-  private async executeCheckoutOperation(
-    operation: string,
-    itemIndex: number
-  ): Promise<any> {
-    const credentials = await this.getCredentials("ggcheckoutApi");
-    const baseURL = credentials?.apiUrl as string;
-    const apiKey = credentials?.apiKey as string;
-
-    switch (operation) {
-      case "listCheckouts":
-        return await this.makeRequest(
-          "GET",
-          `${baseURL}/api/v1/checkouts`,
-          {},
-          apiKey
-        );
-
-      case "getCheckout":
-        const getCheckoutId = this.getNodeParameter(
-          "checkoutId",
-          itemIndex
-        ) as string;
-        return await this.makeRequest(
-          "GET",
-          `${baseURL}/api/v1/checkouts/${getCheckoutId}`,
-          {},
-          apiKey
-        );
-
-      case "createCheckout":
-        const createData = {
-          title: this.getNodeParameter("checkoutTitle", itemIndex) as string,
-          id: this.getNodeParameter("checkoutSlug", itemIndex) as string,
-          price: this.getNodeParameter("checkoutPrice", itemIndex) as number,
-          // Add other required fields as needed
-        };
-        return await this.makeRequest(
-          "POST",
-          `${baseURL}/api/v1/checkouts`,
-          createData,
-          apiKey
-        );
-
-      case "updateCheckout":
-        const updateCheckoutId = this.getNodeParameter(
-          "checkoutId",
-          itemIndex
-        ) as string;
-        const updateData = {
-          title: this.getNodeParameter("checkoutTitle", itemIndex) as string,
-          price: this.getNodeParameter("checkoutPrice", itemIndex) as number,
-        };
-        return await this.makeRequest(
-          "PUT",
-          `${baseURL}/api/v1/checkouts/${updateCheckoutId}`,
-          updateData,
-          apiKey
-        );
-
-      case "deleteCheckout":
-        const deleteCheckoutId = this.getNodeParameter(
-          "checkoutId",
-          itemIndex
-        ) as string;
-        return await this.makeRequest(
-          "DELETE",
-          `${baseURL}/api/v1/checkouts/${deleteCheckoutId}`,
-          {},
-          apiKey
-        );
-
-      default:
-        throw new NodeOperationError(
-          this.getNode(),
-          `Unknown checkout operation: ${operation}`
-        );
-    }
-  }
-
-  private async executeWebhookOperation(
-    operation: string,
-    itemIndex: number
-  ): Promise<any> {
-    const credentials = await this.getCredentials("ggcheckoutApi");
-    const baseURL = credentials?.apiUrl as string;
-    const apiKey = credentials?.apiKey as string;
-
-    switch (operation) {
-      case "listWebhooks":
-        return await this.makeRequest(
-          "GET",
-          `${baseURL}/api/v1/webhooks`,
-          {},
-          apiKey
-        );
-
-      case "getWebhook":
-        const getWebhookId = this.getNodeParameter(
-          "webhookId",
-          itemIndex
-        ) as string;
-        return await this.makeRequest(
-          "GET",
-          `${baseURL}/api/v1/webhooks/${getWebhookId}`,
-          {},
-          apiKey
-        );
-
-      case "createWebhook":
-        const createData = {
-          name: this.getNodeParameter("webhookName", itemIndex) as string,
-          url: this.getNodeParameter("webhookUrl", itemIndex) as string,
-          events: this.getNodeParameter("events", itemIndex) as string[],
-        };
-        return await this.makeRequest(
-          "POST",
-          `${baseURL}/api/v1/webhooks`,
-          createData,
-          apiKey
-        );
-
-      case "updateWebhook":
-        const updateWebhookId = this.getNodeParameter(
-          "webhookId",
-          itemIndex
-        ) as string;
-        const updateData = {
-          name: this.getNodeParameter("webhookName", itemIndex) as string,
-          url: this.getNodeParameter("webhookUrl", itemIndex) as string,
-          events: this.getNodeParameter("events", itemIndex) as string[],
-        };
-        return await this.makeRequest(
-          "PUT",
-          `${baseURL}/api/v1/webhooks/${updateWebhookId}`,
-          updateData,
-          apiKey
-        );
-
-      case "deleteWebhook":
-        const deleteWebhookId = this.getNodeParameter(
-          "webhookId",
-          itemIndex
-        ) as string;
-        return await this.makeRequest(
-          "DELETE",
-          `${baseURL}/api/v1/webhooks/${deleteWebhookId}`,
-          {},
-          apiKey
-        );
-
-      default:
-        throw new NodeOperationError(
-          this.getNode(),
-          `Unknown webhook operation: ${operation}`
-        );
-    }
-  }
-
-  private async makeRequest(
-    method: string,
-    url: string,
-    data: any,
+    itemIndex: number,
     apiKey: string
   ): Promise<any> {
-    const config = {
-      method,
-      url,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      data: method !== "GET" ? data : undefined,
-    };
+    // Set environment variable for MCP
+    process.env.GGCHECKOUT_API_KEY = apiKey;
+
+    // Build MCP command based on resource and operation
+    let mcpCommand = "";
+
+    switch (resource) {
+      case "product":
+        switch (operation) {
+          case "listProducts":
+            mcpCommand = "list_products";
+            break;
+          case "getProduct":
+            const productId = this.getNodeParameter(
+              "productId",
+              itemIndex
+            ) as string;
+            mcpCommand = `get_product --productId ${productId}`;
+            break;
+          case "createProduct":
+            const title = this.getNodeParameter("title", itemIndex) as string;
+            const url = this.getNodeParameter("url", itemIndex) as string;
+            const description = this.getNodeParameter(
+              "description",
+              itemIndex
+            ) as string;
+            const price = this.getNodeParameter("price", itemIndex) as number;
+            const discount = this.getNodeParameter(
+              "discount",
+              itemIndex
+            ) as string;
+            const imageUrl = this.getNodeParameter(
+              "imageUrl",
+              itemIndex
+            ) as string;
+            mcpCommand = `create_product --title "${title}" --url "${url}" --description "${description}" --price ${price} --discount "${discount}" --imageUrl "${imageUrl}"`;
+            break;
+          // Add other product operations...
+        }
+        break;
+      // Add other resources...
+    }
 
     try {
-      const response = await axios(config);
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new NodeOperationError(
-          this.getNode(),
-          `API Error: ${error.response?.data?.message || error.message}`
-        );
+      // Execute MCP command
+      const { stdout, stderr } = await exec(`npx ggcheckout-mcp ${mcpCommand}`);
+
+      if (stderr) {
+        throw new Error(stderr);
       }
-      throw error;
+
+      return JSON.parse(stdout);
+    } catch (error) {
+      throw new NodeOperationError(
+        this.getNode(),
+        `MCP Error: ${(error as Error).message}`
+      );
     }
   }
 }

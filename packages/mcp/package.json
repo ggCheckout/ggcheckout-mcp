@@ -1,0 +1,57 @@
+{
+  "name": "ggcheckout-mcp",
+  "version": "0.1.1",
+  "description": "MCP server for GG Checkout - Manage your products via AI agents",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "ggcheckout-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ggcheckout",
+    "ai",
+    "automation",
+    "api",
+    "claude",
+    "anthropic",
+    "checkout",
+    "payments",
+    "ecommerce"
+  ],
+  "author": "GG Checkout Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gui-drumond/ggcheckout-mcp.git"
+  },
+  "homepage": "https://github.com/gui-drumond/ggcheckout-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/gui-drumond/ggcheckout-mcp/issues"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "axios": "^1.12.2",
+    "dotenv": "^17.2.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
