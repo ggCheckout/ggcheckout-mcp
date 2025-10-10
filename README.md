@@ -272,6 +272,145 @@ Get details of a specific payment by ID.
 }
 ```
 
+### Checkout Tools
+
+#### 10. `list_checkouts`
+
+List all checkout pages for the authenticated user.
+
+**Parameters:** None (automatically uses authenticated user)
+
+**Example prompt:** "Show me all my checkouts" or "List my checkout pages"
+
+**Response:**
+```json
+{
+  "checkouts": [
+    {
+      "uid": "checkout123",
+      "id": "my-product-checkout",
+      "title": "React Course Checkout",
+      "price": 99.90,
+      "published": true,
+      "url": "https://checkout.ggcheckout.com/my-product-checkout"
+    }
+  ]
+}
+```
+
+#### 11. `get_checkout`
+
+Get details of a specific checkout page.
+
+**Parameters:**
+- `checkoutId` (string): Checkout document ID (uid) - **Note: Use the `uid` returned from `create_checkout`, not the custom `id` field**
+
+**Example prompt:** "Get checkout details for checkout123"
+
+**Important:** 
+- `uid` = Firestore document ID (use this for get/update/delete operations)
+- `id` = Custom checkout slug/identifier (user-friendly name)
+
+**Response:**
+```json
+{
+  "checkout": {
+    "uid": "checkout123",
+    "id": "my-product-checkout",
+    "title": "React Course Checkout",
+    "price": 99.90,
+    "published": true,
+    "paymentMethods": {...},
+    "checkout": {...},
+    "orderBumps": []
+  }
+}
+```
+
+#### 12. `create_checkout`
+
+Create a new checkout page.
+
+**Required Parameters:**
+- `title` (string): Checkout page title
+- `id` (string): Unique checkout slug/identifier (user-friendly name, e.g., "my-product-checkout")
+- `price` (number): Price in Brazilian Reais (e.g., 99.90)
+- `paymentMethods` (object): Payment methods configuration
+- `checkout` (object): Checkout page configuration
+
+**Optional Parameters:**
+- `url` (string): Checkout URL
+- `bannerUrl` (string): Banner image URL
+- `image` (string): Product image URL
+- `sellerName` (string): Seller name
+- `orderBumps` (array): Order bumps (upsells)
+- `fields` (object): Custom form fields (`{haveName: boolean, havePhone: boolean, haveCpf: boolean}`)
+- `socialCard` (array): Social card configuration
+- `published` (boolean): Published status (default: true)
+- `metricToken` (string): Metrics token
+- `emailProviderToken` (string): Email provider token
+
+**Example prompt:** "Create a checkout page for my React Course priced at R$99.90"
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Produto criado com sucesso.",
+  "checkout": {
+    "uid": "AbC123XyZ456",
+    "id": "my-product-checkout",
+    "title": "React Course Checkout",
+    "price": 99.90,
+    "fields": {
+      "haveName": false,
+      "havePhone": false,
+      "haveCpf": false
+    }
+  }
+}
+```
+
+**Important:** Save the `uid` from the response - you'll need it for get/update/delete operations!
+
+#### 13. `update_checkout`
+
+Update an existing checkout page. Only provide fields you want to change.
+
+**Parameters:**
+- `checkoutId` (string): Checkout document ID (uid) - **Use the `uid` from create_checkout response**
+- All other parameters are optional (same as create_checkout)
+
+**Example prompt:** "Update checkout AbC123XyZ456 price to R$79.90"
+
+**Response:**
+```json
+{
+  "success": true,
+  "checkout": {
+    "uid": "checkout123",
+    "price": 79.90
+  }
+}
+```
+
+#### 14. `delete_checkout`
+
+Delete a checkout page by ID.
+
+**Parameters:**
+- `checkoutId` (string): Checkout document ID (uid) - **Use the `uid` from create_checkout response**
+
+**Example prompt:** "Delete checkout AbC123XyZ456"
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Checkout checkout123 deleted successfully"
+}
+```
+
 ## Price Formats
 
 The server accepts prices in two formats:

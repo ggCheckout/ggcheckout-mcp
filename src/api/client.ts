@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as logger from '../utils/logger.js';
-import { ProductDelivery, PaymentsListResponse, PaymentsPaginatedResponse, Payment } from '../tools/types.js';
+import { ProductDelivery, PaymentsListResponse, PaymentsPaginatedResponse, Payment, Checkout, CreateCheckoutInput, UpdateCheckoutInput } from '../tools/types.js';
 
 export class ApiClient {
   private client: AxiosInstance;
@@ -156,6 +156,76 @@ export class ApiClient {
       logger.info('HTTP', 'Getting authenticated user business ID');
       const response = await this.client.get<{ businessId: string; uid: string; email?: string; authMethod: string }>('/api/me');
       return response.data.businessId;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async listCheckouts(uuidOwnwer: string): Promise<Checkout[]> {
+    try {
+      logger.info('HTTP', `Listing checkouts for owner: ${uuidOwnwer}`);
+      const response = await this.client.get<Checkout[]>(`/api/checkouts?uuidOwnwer=${uuidOwnwer}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getCheckout(id: string): Promise<Checkout> {
+    try {
+      logger.info('HTTP', `Getting checkout: ${id}`);
+      const response = await this.client.get<Checkout>(`/api/checkouts/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createCheckout(payload: CreateCheckoutInput): Promise<Checkout> {
+    try {
+      logger.info('HTTP', 'Creating checkout', { title: payload.title });
+      const response = await this.client.post<any>('/api/checkouts', payload);
+      // Backend now returns { success: true, message: string, checkout: {...} }
+      return response.data.checkout;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateCheckout(id: string, payload: UpdateCheckoutInput): Promise<Checkout> {
+    try {
+      logger.info('HTTP', `Updating checkout: ${id}`);
+      // First, get current checkout to merge with updates
+      const currentCheckout = await this.getCheckout(id);
+      // Backend requires all mandatory fields even for updates
+      const fullPayload = {
+        title: currentCheckout.title,
+        uuidOwnwer: currentCheckout.uuidOwnwer,
+        id: currentCheckout.id,
+        price: currentCheckout.price,
+        paymentMethods: currentCheckout.paymentMethods,
+        checkout: currentCheckout.checkout,
+        orderBumps: currentCheckout.orderBumps || [],
+        published: currentCheckout.published ?? true,
+        createBy: currentCheckout.createBy || 'system',
+        ...payload, // Override with user updates
+      };
+      const response = await this.client.patch<any>(`/api/checkouts/${id}`, fullPayload);
+      return response.data.productData || { ...fullPayload, uid: id };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteCheckout(id: string): Promise<void> {
+    try {
+      logger.info('HTTP', `Deleting checkout: ${id}`);
+      // Get checkout first to get uuidOwnwer
+      const checkout = await this.getCheckout(id);
+      // Backend DELETE requires uuidOwnwer in body
+      await this.client.delete(`/api/checkouts/${id}`, {
+        data: { uuidOwnwer: checkout.uuidOwnwer }
+      });
     } catch (error) {
       throw error;
     }
