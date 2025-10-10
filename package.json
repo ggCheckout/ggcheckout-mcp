@@ -19,10 +19,23 @@
     "ggcheckout",
     "ai",
     "automation",
-    "api"
+    "api",
+    "claude",
+    "anthropic",
+    "checkout",
+    "payments",
+    "ecommerce"
   ],
   "author": "GG Checkout Team",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ggcheckout/mcp.git"
+  },
+  "homepage": "https://www.ggcheckout.com",
+  "bugs": {
+    "url": "https://github.com/ggcheckout/mcp/issues"
+  },
   "files": [
     "dist",
     "README.md"
