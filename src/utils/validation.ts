@@ -2,10 +2,11 @@ import { z } from 'zod';
 
 export function parsePriceToCents(input: number | string): number {
   if (typeof input === 'number') {
-    if (!Number.isInteger(input) || input < 0) {
-      throw new Error('Price must be a non-negative integer in cents');
+    if (input < 0) {
+      throw new Error('Price must be a non-negative number');
     }
-    return input;
+    // Convert number to cents (assuming input is in Brazilian Reais)
+    return Math.round(input * 100);
   }
 
   if (typeof input === 'string') {

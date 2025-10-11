@@ -69,14 +69,14 @@ export function registerProductTools(server: McpServer, apiClient: ApiClient) {
   server.registerTool(
     'create_product',
     {
-      description: 'Create a new product/delivery. Price should be in cents (e.g., 1990 for R$19.90) or Brazilian format string (e.g., "19,90")',
+      description: 'Create a new product/delivery. Price should be a number in Brazilian Reais (e.g., 19.90 for R$19.90) or Brazilian format string (e.g., "19,90")',
       inputSchema: {
         title: z.string().describe('Product title'),
         url: z.string().describe('Product URL'),
         imageUrl: z.string().optional().describe('Product image URL (optional)'),
         description: z.string().describe('Product description'),
         discount: z.string().describe('Discount information (e.g., "30%")'),
-        price: z.union([z.number(), z.string()]).describe('Price in cents (number) or Brazilian format (string)')
+        price: z.union([z.number(), z.string()]).describe('Price in Brazilian Reais (number) or Brazilian format (string)')
       }
     },
     async (args: any) => {
@@ -116,7 +116,7 @@ export function registerProductTools(server: McpServer, apiClient: ApiClient) {
         imageUrl: z.string().optional().describe('Product image URL'),
         description: z.string().optional().describe('Product description'),
         discount: z.string().optional().describe('Discount information'),
-        price: z.union([z.number(), z.string()]).optional().describe('Price in cents (number) or Brazilian format (string)')
+        price: z.union([z.number(), z.string()]).optional().describe('Price in Brazilian Reais (number) or Brazilian format (string)')
       }
     },
     async (args: any) => {
