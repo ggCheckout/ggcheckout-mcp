@@ -6,11 +6,7 @@ import {
   NodeOperationError,
 } from "n8n-workflow";
 
-// Import the MCP functions directly
-import { spawn } from "child_process";
-import { promisify } from "util";
-
-const exec = promisify(require("child_process").exec);
+import axios from "axios";
 
 export class GGCheckout implements INodeType {
   description: INodeTypeDescription = {
@@ -20,7 +16,7 @@ export class GGCheckout implements INodeType {
     group: ["transform"],
     version: 1,
     subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-    description: "Interact with GG Checkout API via MCP",
+    description: "Interact with GG Checkout API",
     defaults: {
       name: "GG Checkout",
     },
@@ -32,6 +28,13 @@ export class GGCheckout implements INodeType {
         required: true,
       },
     ],
+    requestDefaults: {
+      baseURL: "={{$credentials.apiUrl}}",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    },
     properties: [
       {
         displayName: "Resource",
@@ -492,15 +495,316 @@ export class GGCheckout implements INodeType {
         const resource = this.getNodeParameter("resource", i) as string;
         const operation = this.getNodeParameter("operation", i) as string;
         const credentials = await this.getCredentials("ggcheckoutApi");
+        const baseURL = credentials?.apiUrl as string;
         const apiKey = credentials?.apiKey as string;
 
-        // Execute MCP command
-        const responseData = await this.executeMCPCommand(
-          resource,
-          operation,
-          i,
-          apiKey
-        );
+        let responseData: any;
+
+        // Handle different resources and operations
+        switch (resource) {
+          case "product":
+            switch (operation) {
+              case "listProducts":
+                const listResponse = await axios.get(
+                  `${baseURL}/api/v1/products`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = listResponse.data;
+                break;
+              case "getProduct":
+                const productId = this.getNodeParameter(
+                  "productId",
+                  i
+                ) as string;
+                const getResponse = await axios.get(
+                  `${baseURL}/api/v1/products/${productId}`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = getResponse.data;
+                break;
+              case "createProduct":
+                const createData = {
+                  title: this.getNodeParameter("title", i) as string,
+                  url: this.getNodeParameter("url", i) as string,
+                  description: this.getNodeParameter(
+                    "description",
+                    i
+                  ) as string,
+                  price: this.getNodeParameter("price", i) as number,
+                  discount: this.getNodeParameter("discount", i) as string,
+                  imageUrl: this.getNodeParameter("imageUrl", i) as string,
+                };
+                const createResponse = await axios.post(
+                  `${baseURL}/api/v1/products`,
+                  createData,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = createResponse.data;
+                break;
+              case "updateProduct":
+                const updateProductId = this.getNodeParameter(
+                  "productId",
+                  i
+                ) as string;
+                const updateData = {
+                  title: this.getNodeParameter("title", i) as string,
+                  url: this.getNodeParameter("url", i) as string,
+                  description: this.getNodeParameter(
+                    "description",
+                    i
+                  ) as string,
+                  price: this.getNodeParameter("price", i) as number,
+                  discount: this.getNodeParameter("discount", i) as string,
+                  imageUrl: this.getNodeParameter("imageUrl", i) as string,
+                };
+                const updateResponse = await axios.put(
+                  `${baseURL}/api/v1/products/${updateProductId}`,
+                  updateData,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = updateResponse.data;
+                break;
+              case "deleteProduct":
+                const deleteProductId = this.getNodeParameter(
+                  "productId",
+                  i
+                ) as string;
+                const deleteResponse = await axios.delete(
+                  `${baseURL}/api/v1/products/${deleteProductId}`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = deleteResponse.data;
+                break;
+              default:
+                throw new NodeOperationError(
+                  this.getNode(),
+                  `Unknown product operation: ${operation}`
+                );
+            }
+            break;
+          case "payment":
+            switch (operation) {
+              case "listPayments":
+                const listBusinessId = this.getNodeParameter(
+                  "businessId",
+                  i
+                ) as string;
+                const listPaymentsResponse = await axios.get(
+                  `${baseURL}/api/v1/payments?businessId=${listBusinessId}`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = listPaymentsResponse.data;
+                break;
+              case "getPayment":
+                const getBusinessId = this.getNodeParameter(
+                  "businessId",
+                  i
+                ) as string;
+                const paymentId = this.getNodeParameter(
+                  "paymentId",
+                  i
+                ) as string;
+                const getPaymentResponse = await axios.get(
+                  `${baseURL}/api/v1/payments/${paymentId}?businessId=${getBusinessId}`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = getPaymentResponse.data;
+                break;
+              case "getPaginatedPayments":
+                const paginatedBusinessId = this.getNodeParameter(
+                  "businessId",
+                  i
+                ) as string;
+                const paginatedPaymentsResponse = await axios.get(
+                  `${baseURL}/api/v1/payments/paginated?businessId=${paginatedBusinessId}`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = paginatedPaymentsResponse.data;
+                break;
+              default:
+                throw new NodeOperationError(
+                  this.getNode(),
+                  `Unknown payment operation: ${operation}`
+                );
+            }
+            break;
+          case "checkout":
+            switch (operation) {
+              case "listCheckouts":
+                const listCheckoutsResponse = await axios.get(
+                  `${baseURL}/api/v1/checkouts`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = listCheckoutsResponse.data;
+                break;
+              case "getCheckout":
+                const getCheckoutId = this.getNodeParameter(
+                  "checkoutId",
+                  i
+                ) as string;
+                const getCheckoutResponse = await axios.get(
+                  `${baseURL}/api/v1/checkouts/${getCheckoutId}`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = getCheckoutResponse.data;
+                break;
+              case "createCheckout":
+                const createData = {
+                  title: this.getNodeParameter("checkoutTitle", i) as string,
+                  id: this.getNodeParameter("checkoutSlug", i) as string,
+                  price: this.getNodeParameter("checkoutPrice", i) as number,
+                };
+                const createCheckoutResponse = await axios.post(
+                  `${baseURL}/api/v1/checkouts`,
+                  createData,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = createCheckoutResponse.data;
+                break;
+              case "updateCheckout":
+                const updateCheckoutId = this.getNodeParameter(
+                  "checkoutId",
+                  i
+                ) as string;
+                const updateData = {
+                  title: this.getNodeParameter("checkoutTitle", i) as string,
+                  price: this.getNodeParameter("checkoutPrice", i) as number,
+                };
+                const updateCheckoutResponse = await axios.put(
+                  `${baseURL}/api/v1/checkouts/${updateCheckoutId}`,
+                  updateData,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = updateCheckoutResponse.data;
+                break;
+              case "deleteCheckout":
+                const deleteCheckoutId = this.getNodeParameter(
+                  "checkoutId",
+                  i
+                ) as string;
+                const deleteCheckoutResponse = await axios.delete(
+                  `${baseURL}/api/v1/checkouts/${deleteCheckoutId}`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = deleteCheckoutResponse.data;
+                break;
+              default:
+                throw new NodeOperationError(
+                  this.getNode(),
+                  `Unknown checkout operation: ${operation}`
+                );
+            }
+            break;
+          case "webhook":
+            switch (operation) {
+              case "listWebhooks":
+                const listWebhooksResponse = await axios.get(
+                  `${baseURL}/api/v1/webhooks`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = listWebhooksResponse.data;
+                break;
+              case "getWebhook":
+                const getWebhookId = this.getNodeParameter(
+                  "webhookId",
+                  i
+                ) as string;
+                const getWebhookResponse = await axios.get(
+                  `${baseURL}/api/v1/webhooks/${getWebhookId}`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = getWebhookResponse.data;
+                break;
+              case "createWebhook":
+                const createData = {
+                  name: this.getNodeParameter("webhookName", i) as string,
+                  url: this.getNodeParameter("webhookUrl", i) as string,
+                  events: this.getNodeParameter("events", i) as string[],
+                };
+                const createWebhookResponse = await axios.post(
+                  `${baseURL}/api/v1/webhooks`,
+                  createData,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = createWebhookResponse.data;
+                break;
+              case "updateWebhook":
+                const updateWebhookId = this.getNodeParameter(
+                  "webhookId",
+                  i
+                ) as string;
+                const updateData = {
+                  name: this.getNodeParameter("webhookName", i) as string,
+                  url: this.getNodeParameter("webhookUrl", i) as string,
+                  events: this.getNodeParameter("events", i) as string[],
+                };
+                const updateWebhookResponse = await axios.put(
+                  `${baseURL}/api/v1/webhooks/${updateWebhookId}`,
+                  updateData,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = updateWebhookResponse.data;
+                break;
+              case "deleteWebhook":
+                const deleteWebhookId = this.getNodeParameter(
+                  "webhookId",
+                  i
+                ) as string;
+                const deleteWebhookResponse = await axios.delete(
+                  `${baseURL}/api/v1/webhooks/${deleteWebhookId}`,
+                  {
+                    headers: { Authorization: `Bearer ${apiKey}` },
+                  }
+                );
+                responseData = deleteWebhookResponse.data;
+                break;
+              default:
+                throw new NodeOperationError(
+                  this.getNode(),
+                  `Unknown webhook operation: ${operation}`
+                );
+            }
+            break;
+          default:
+            throw new NodeOperationError(
+              this.getNode(),
+              `Unknown resource: ${resource}`
+            );
+        }
 
         returnData.push({
           json: responseData,
@@ -517,71 +821,5 @@ export class GGCheckout implements INodeType {
     }
 
     return [returnData];
-  }
-
-  private async executeMCPCommand(
-    resource: string,
-    operation: string,
-    itemIndex: number,
-    apiKey: string
-  ): Promise<any> {
-    // Set environment variable for MCP
-    process.env.GGCHECKOUT_API_KEY = apiKey;
-
-    // Build MCP command based on resource and operation
-    let mcpCommand = "";
-
-    switch (resource) {
-      case "product":
-        switch (operation) {
-          case "listProducts":
-            mcpCommand = "list_products";
-            break;
-          case "getProduct":
-            const productId = this.getNodeParameter(
-              "productId",
-              itemIndex
-            ) as string;
-            mcpCommand = `get_product --productId ${productId}`;
-            break;
-          case "createProduct":
-            const title = this.getNodeParameter("title", itemIndex) as string;
-            const url = this.getNodeParameter("url", itemIndex) as string;
-            const description = this.getNodeParameter(
-              "description",
-              itemIndex
-            ) as string;
-            const price = this.getNodeParameter("price", itemIndex) as number;
-            const discount = this.getNodeParameter(
-              "discount",
-              itemIndex
-            ) as string;
-            const imageUrl = this.getNodeParameter(
-              "imageUrl",
-              itemIndex
-            ) as string;
-            mcpCommand = `create_product --title "${title}" --url "${url}" --description "${description}" --price ${price} --discount "${discount}" --imageUrl "${imageUrl}"`;
-            break;
-          // Add other product operations...
-        }
-        break;
-      // Add other resources...
-    }
-
-    try {
-      // Execute MCP command
-      const { stdout, stderr } = await exec(`npx ggcheckout-mcp ${mcpCommand}`);
-
-      if (stderr) {
-        throw new Error(stderr);
-      }
-
-      return JSON.parse(stdout);
-    } catch (error) {
-      throw new NodeOperationError(
-        this.getNode(),
-        `MCP Error: ${(error as Error).message}`
-      );
-    }
   }
 }
