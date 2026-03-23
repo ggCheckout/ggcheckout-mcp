@@ -15,6 +15,7 @@ import { WebhookApiAdapter } from './adapters/outbound/webhook.api.js';
 import { StoreApiAdapter } from './adapters/outbound/store.api.js';
 import { FunnelApiAdapter } from './adapters/outbound/funnel.api.js';
 import { MembersAreaApiAdapter } from './adapters/outbound/members-area.api.js';
+import { DiscountApiAdapter } from './adapters/outbound/discount.api.js';
 
 // Services
 import { ProductService } from './core/services/product.service.js';
@@ -24,6 +25,7 @@ import { WebhookService } from './core/services/webhook.service.js';
 import { StoreService } from './core/services/store.service.js';
 import { FunnelService } from './core/services/funnel.service.js';
 import { MembersAreaService } from './core/services/members-area.service.js';
+import { DiscountService } from './core/services/discount.service.js';
 
 // Inbound adapters (MCP tools)
 import { registerProductTools } from './adapters/inbound/tools/product.tools.js';
@@ -33,6 +35,7 @@ import { registerWebhookTools } from './adapters/inbound/tools/webhook.tools.js'
 import { registerStoreTools } from './adapters/inbound/tools/store.tools.js';
 import { registerFunnelTools } from './adapters/inbound/tools/funnel.tools.js';
 import { registerMembersAreaTools } from './adapters/inbound/tools/members-area.tools.js';
+import { registerDiscountTools } from './adapters/inbound/tools/discount.tools.js';
 
 dotenv.config();
 
@@ -71,6 +74,7 @@ const webhookAdapter = new WebhookApiAdapter(httpClient);
 const storeAdapter = new StoreApiAdapter(httpClient);
 const funnelAdapter = new FunnelApiAdapter(httpClient);
 const membersAreaAdapter = new MembersAreaApiAdapter(httpClient);
+const discountAdapter = new DiscountApiAdapter(httpClient, authAdapter);
 
 // Services (use cases)
 const productService = new ProductService(productAdapter);
@@ -80,6 +84,7 @@ const webhookService = new WebhookService(webhookAdapter, authAdapter);
 const storeService = new StoreService(storeAdapter);
 const funnelService = new FunnelService(funnelAdapter);
 const membersAreaService = new MembersAreaService(membersAreaAdapter, authAdapter);
+const discountService = new DiscountService(discountAdapter);
 
 // MCP Server
 const server = new McpServer({
@@ -95,6 +100,7 @@ registerWebhookTools(server, webhookService);
 registerStoreTools(server, storeService);
 registerFunnelTools(server, funnelService);
 registerMembersAreaTools(server, membersAreaService);
+registerDiscountTools(server, discountService);
 
 logger.info('STARTUP', 'All tools registered');
 
