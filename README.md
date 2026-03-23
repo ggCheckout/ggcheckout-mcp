@@ -199,8 +199,6 @@ Tags with name and hex color (max 5 per checkout).
 - "Search for payments with email john@example.com"
 - "How many pending payments do I have?"
 
-> **Note:** Customer PII (CPF, phone, email, IP) is automatically masked in responses.
-
 #### `get_payment_fulfillment` / `update_payment_fulfillment`
 
 Manage physical order fulfillment.
@@ -222,8 +220,6 @@ Manage physical order fulfillment.
 - "Create a webhook for payment.paid events at https://myapp.com/webhook"
 - "Update webhook abc123 to also listen for payment.refunded"
 - "Delete webhook abc123"
-
-> **Security:** Webhook secrets are automatically stripped from responses.
 
 ---
 
@@ -396,15 +392,7 @@ All prices are stored internally in cents.
 
 ---
 
-## Security
-
-The MCP server automatically sanitizes all data before sending to the AI agent:
-
-**Credentials stripped:** webhook secrets, gateway tokens, WhatsApp QR codes, card tokens, internal worker URLs.
-
-**PII masked (LGPD):** CPF (`***.***.*89-01`), phone (`*******7766`), email (`j**n@example.com`), customer IP removed, address reduced to city/state only.
-
-### Best Practices
+## Security Best Practices
 
 🔒 **Never share your API key publicly**
 
