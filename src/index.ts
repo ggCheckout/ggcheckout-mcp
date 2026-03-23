@@ -3,12 +3,27 @@
 import dotenv from 'dotenv';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { ApiClient } from './api/client.js';
-import { registerProductTools } from './tools/products.js';
-import { registerPaymentTools } from './tools/payments.js';
-import { registerCheckoutTools } from './tools/checkouts.js';
-import { registerWebhookTools } from './tools/webhooks.js';
-import * as logger from './utils/logger.js';
+import * as logger from './shared/logger.js';
+
+// Outbound adapters
+import { HttpClient } from './adapters/outbound/http-client.js';
+import { AuthApiAdapter } from './adapters/outbound/auth.api.js';
+import { ProductApiAdapter } from './adapters/outbound/product.api.js';
+import { PaymentApiAdapter } from './adapters/outbound/payment.api.js';
+import { CheckoutApiAdapter } from './adapters/outbound/checkout.api.js';
+import { WebhookApiAdapter } from './adapters/outbound/webhook.api.js';
+
+// Services
+import { ProductService } from './core/services/product.service.js';
+import { PaymentService } from './core/services/payment.service.js';
+import { CheckoutService } from './core/services/checkout.service.js';
+import { WebhookService } from './core/services/webhook.service.js';
+
+// Inbound adapters (MCP tools)
+import { registerProductTools } from './adapters/inbound/tools/product.tools.js';
+import { registerPaymentTools } from './adapters/inbound/tools/payment.tools.js';
+import { registerCheckoutTools } from './adapters/inbound/tools/checkout.tools.js';
+import { registerWebhookTools } from './adapters/inbound/tools/webhook.tools.js';
 
 dotenv.config();
 
@@ -33,20 +48,39 @@ if (!API_KEY.startsWith('ggck_live_')) {
 logger.info('STARTUP', 'Initializing GG Checkout MCP Server');
 logger.info('STARTUP', `API URL: ${API_URL}`);
 
-const apiClient = new ApiClient(API_URL, API_KEY);
+// --- Composition Root ---
 
+// Infrastructure
+const httpClient = new HttpClient(API_URL, API_KEY);
+
+// Outbound adapters (driven)
+const authAdapter = new AuthApiAdapter(httpClient);
+const productAdapter = new ProductApiAdapter(httpClient);
+const paymentAdapter = new PaymentApiAdapter(httpClient);
+const checkoutAdapter = new CheckoutApiAdapter(httpClient);
+const webhookAdapter = new WebhookApiAdapter(httpClient);
+
+// Services (use cases)
+const productService = new ProductService(productAdapter);
+const paymentService = new PaymentService(paymentAdapter, authAdapter);
+const checkoutService = new CheckoutService(checkoutAdapter, authAdapter);
+const webhookService = new WebhookService(webhookAdapter, authAdapter);
+
+// MCP Server
 const server = new McpServer({
   name: 'ggcheckout-mcp',
-  version: '0.1.0',
+  version: '0.1.1',
 });
 
-registerProductTools(server, apiClient);
-registerPaymentTools(server, apiClient);
-registerCheckoutTools(server, apiClient);
-registerWebhookTools(server, apiClient);
+// Inbound adapters (driving)
+registerProductTools(server, productService);
+registerPaymentTools(server, paymentService);
+registerCheckoutTools(server, checkoutService);
+registerWebhookTools(server, webhookService);
 
-logger.info('STARTUP', 'Registered 19 tools: list_products, get_product, create_product, update_product, delete_product, get_my_business_id, list_payments, get_payments_paginated, get_payment, list_checkouts, get_checkout, create_checkout, update_checkout, delete_checkout, list_webhooks, get_webhook, create_webhook, update_webhook, delete_webhook');
+logger.info('STARTUP', 'All tools registered');
 
+// Transport
 const transport = new StdioServerTransport();
 await server.connect(transport);
 
