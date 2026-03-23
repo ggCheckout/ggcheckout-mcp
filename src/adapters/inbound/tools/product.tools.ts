@@ -31,22 +31,25 @@ export function registerProductTools(server: McpServer, service: ProductService)
     'create_product',
     {
       description:
-        'Create a new product/delivery. Price should be a number in Brazilian Reais (e.g., 19.90 for R$19.90) or Brazilian format string (e.g., "19,90")',
+        'Create a new product/delivery. Requires at least a URL or deliverableUrl for digital delivery. Price in Brazilian Reais (e.g., 19.90 for R$19.90).',
       inputSchema: {
         title: z.string().describe('Product title'),
         description: z.string().describe('Product description'),
         price: z
           .union([z.number(), z.string()])
           .describe('Price in Brazilian Reais (number) or Brazilian format (string)'),
+        discount: z.number().describe('Discount percentage (use 0 for no discount)'),
+        url: z.string().describe('Product delivery URL (required for digital products)'),
         currency: z.enum(['BRL', 'USD']).optional().describe('Currency (default: BRL)'),
-        url: z.string().optional().describe('Product URL'),
         imageUrl: z.string().optional().describe('Product image URL'),
-        discount: z.number().optional().describe('Discount percentage'),
+        deliverableUrl: z.string().optional().describe('Alternative: direct file URL for delivery'),
         deliveryMethod: z
           .enum(['url', 'whatsapp', 'both'])
           .optional()
-          .describe('Delivery method'),
+          .describe('Delivery method (default: url)'),
         isPhysicalProduct: z.boolean().optional().describe('Whether this is a physical product'),
+        stockEnabled: z.boolean().optional().describe('Enable stock control'),
+        stockQuantity: z.number().optional().describe('Stock quantity (if stockEnabled)'),
       },
     },
     createToolHandler('create_product', async (args) => {

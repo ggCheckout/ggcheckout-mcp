@@ -5,5 +5,5 @@ export interface ProfilePort {
   listSupportEmails(userId: string): Promise<SupportEmail[]>;
   addSupportEmail(userId: string, name: string, email: string): Promise<SupportEmail>;
   deleteSupportEmail(userId: string, emailId: string): Promise<void>;
-  getKycStatus(): Promise<KycStatus>;
+  getKycStatus(businessId: string): Promise<KycStatus>;
 }

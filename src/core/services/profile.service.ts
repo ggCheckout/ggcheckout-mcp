@@ -8,5 +8,5 @@ export class ProfileService {
   async listSupportEmails() { const uid = await this.authPort.getMyBusinessId(); return this.port.listSupportEmails(uid); }
   async addSupportEmail(name: string, email: string) { const uid = await this.authPort.getMyBusinessId(); return this.port.addSupportEmail(uid, name, email); }
   async deleteSupportEmail(emailId: string) { const uid = await this.authPort.getMyBusinessId(); return this.port.deleteSupportEmail(uid, emailId); }
-  async getKycStatus() { return this.port.getKycStatus(); }
+  async getKycStatus() { const uid = await this.authPort.getMyBusinessId(); return this.port.getKycStatus(uid); }
 }

@@ -47,10 +47,10 @@ describe('ProfileApiAdapter', () => {
     expect(http.delete).toHaveBeenCalledWith('/api/user/support-emails?userId=uid-1&emailId=se1');
   });
 
-  it('getKycStatus GETs /api/kyc/status', async () => {
+  it('getKycStatus GETs /api/kyc/status with businessId', async () => {
     vi.mocked(http.get).mockResolvedValue({ success: true, kycStatus: 'approved', approved: true });
-    const result = await adapter.getKycStatus();
-    expect(http.get).toHaveBeenCalledWith('/api/kyc/status');
+    const result = await adapter.getKycStatus('biz-1');
+    expect(http.get).toHaveBeenCalledWith('/api/kyc/status?businessId=biz-1');
     expect(result.approved).toBe(true);
   });
 });

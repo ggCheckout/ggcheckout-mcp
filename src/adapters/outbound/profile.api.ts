@@ -17,5 +17,5 @@ export class ProfileApiAdapter implements ProfilePort {
   async deleteSupportEmail(userId: string, emailId: string) {
     await this.http.delete(`/api/user/support-emails?userId=${userId}&emailId=${emailId}`);
   }
-  async getKycStatus() { return this.http.get<KycStatus>('/api/kyc/status'); }
+  async getKycStatus(businessId: string) { return this.http.get<KycStatus>(`/api/kyc/status?businessId=${businessId}`); }
 }
