@@ -18,6 +18,14 @@ import { MembersAreaApiAdapter } from './adapters/outbound/members-area.api.js';
 import { DiscountApiAdapter } from './adapters/outbound/discount.api.js';
 import { WhatsAppApiAdapter } from './adapters/outbound/whatsapp.api.js';
 import { BillingApiAdapter } from './adapters/outbound/billing.api.js';
+import { ShippingApiAdapter } from './adapters/outbound/shipping.api.js';
+import { GatewayApiAdapter } from './adapters/outbound/gateway.api.js';
+import { DiscordApiAdapter } from './adapters/outbound/discord.api.js';
+import { DashboardApiAdapter } from './adapters/outbound/dashboard.api.js';
+import { CustomDomainApiAdapter } from './adapters/outbound/custom-domain.api.js';
+import { RewardsApiAdapter } from './adapters/outbound/rewards.api.js';
+import { ProfileApiAdapter } from './adapters/outbound/profile.api.js';
+import { PushApiAdapter } from './adapters/outbound/push.api.js';
 
 // Services
 import { ProductService } from './core/services/product.service.js';
@@ -30,6 +38,14 @@ import { MembersAreaService } from './core/services/members-area.service.js';
 import { DiscountService } from './core/services/discount.service.js';
 import { WhatsAppService } from './core/services/whatsapp.service.js';
 import { BillingService } from './core/services/billing.service.js';
+import { ShippingService } from './core/services/shipping.service.js';
+import { GatewayService } from './core/services/gateway.service.js';
+import { DiscordService } from './core/services/discord.service.js';
+import { DashboardService } from './core/services/dashboard.service.js';
+import { CustomDomainService } from './core/services/custom-domain.service.js';
+import { RewardsService } from './core/services/rewards.service.js';
+import { ProfileService } from './core/services/profile.service.js';
+import { PushService } from './core/services/push.service.js';
 
 // Inbound adapters (MCP tools)
 import { registerProductTools } from './adapters/inbound/tools/product.tools.js';
@@ -42,6 +58,14 @@ import { registerMembersAreaTools } from './adapters/inbound/tools/members-area.
 import { registerDiscountTools } from './adapters/inbound/tools/discount.tools.js';
 import { registerWhatsAppTools } from './adapters/inbound/tools/whatsapp.tools.js';
 import { registerBillingTools } from './adapters/inbound/tools/billing.tools.js';
+import { registerShippingTools } from './adapters/inbound/tools/shipping.tools.js';
+import { registerGatewayTools } from './adapters/inbound/tools/gateway.tools.js';
+import { registerDiscordTools } from './adapters/inbound/tools/discord.tools.js';
+import { registerDashboardTools } from './adapters/inbound/tools/dashboard.tools.js';
+import { registerCustomDomainTools } from './adapters/inbound/tools/custom-domain.tools.js';
+import { registerRewardsTools } from './adapters/inbound/tools/rewards.tools.js';
+import { registerProfileTools } from './adapters/inbound/tools/profile.tools.js';
+import { registerPushTools } from './adapters/inbound/tools/push.tools.js';
 
 dotenv.config();
 
@@ -83,6 +107,14 @@ const membersAreaAdapter = new MembersAreaApiAdapter(httpClient);
 const discountAdapter = new DiscountApiAdapter(httpClient, authAdapter);
 const whatsappAdapter = new WhatsAppApiAdapter(httpClient);
 const billingAdapter = new BillingApiAdapter(httpClient);
+const shippingAdapter = new ShippingApiAdapter(httpClient);
+const gatewayAdapter = new GatewayApiAdapter(httpClient, authAdapter);
+const discordAdapter = new DiscordApiAdapter(httpClient);
+const dashboardAdapter = new DashboardApiAdapter(httpClient);
+const customDomainAdapter = new CustomDomainApiAdapter(httpClient);
+const rewardsAdapter = new RewardsApiAdapter(httpClient);
+const profileAdapter = new ProfileApiAdapter(httpClient);
+const pushAdapter = new PushApiAdapter(httpClient);
 
 // Services (use cases)
 const productService = new ProductService(productAdapter);
@@ -95,6 +127,14 @@ const membersAreaService = new MembersAreaService(membersAreaAdapter, authAdapte
 const discountService = new DiscountService(discountAdapter);
 const whatsappService = new WhatsAppService(whatsappAdapter);
 const billingService = new BillingService(billingAdapter);
+const shippingService = new ShippingService(shippingAdapter);
+const gatewayService = new GatewayService(gatewayAdapter);
+const discordService = new DiscordService(discordAdapter);
+const dashboardService = new DashboardService(dashboardAdapter);
+const customDomainService = new CustomDomainService(customDomainAdapter);
+const rewardsService = new RewardsService(rewardsAdapter);
+const profileService = new ProfileService(profileAdapter, authAdapter);
+const pushService = new PushService(pushAdapter, authAdapter);
 
 // MCP Server
 const server = new McpServer({
@@ -113,6 +153,14 @@ registerMembersAreaTools(server, membersAreaService);
 registerDiscountTools(server, discountService);
 registerWhatsAppTools(server, whatsappService);
 registerBillingTools(server, billingService);
+registerShippingTools(server, shippingService);
+registerGatewayTools(server, gatewayService);
+registerDiscordTools(server, discordService);
+registerDashboardTools(server, dashboardService);
+registerCustomDomainTools(server, customDomainService);
+registerRewardsTools(server, rewardsService);
+registerProfileTools(server, profileService);
+registerPushTools(server, pushService);
 
 logger.info('STARTUP', 'All tools registered');
 
