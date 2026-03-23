@@ -1,28 +1,25 @@
 # GG Checkout MCP Server
 
-> Model Context Protocol server for managing GG Checkout products via AI agents
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 141 tools across 18 domains.
 
 ## Overview
 
-The GG Checkout MCP server enables AI agents (like Claude Desktop) to interact with your GG Checkout products directly. Create, read, update, and delete products using natural language through your favorite AI assistant.
+The GG Checkout MCP server enables AI agents (Claude Code, Cursor, Claude Desktop) to manage the entire GG Checkout platform through natural language: products, checkouts, payments, members area, funnels, WhatsApp, billing, and more.
 
 ## Prerequisites
 
 - Node.js >= 18.0.0
-- A GG Checkout account
-- An active API Key from GG Checkout
+- A GG Checkout account with an active API Key
 
 ## Installation
 
-### Option 1: NPX (Recommended)
-
-No installation required! Just configure your MCP client with:
+### NPX (Recommended)
 
 ```bash
 npx ggcheckout-mcp
 ```
 
-### Option 2: Global Install
+### Global Install
 
 ```bash
 npm install -g ggcheckout-mcp
@@ -30,22 +27,13 @@ npm install -g ggcheckout-mcp
 
 ## Getting Your API Key
 
-1. Visit [https://www.ggcheckout.com/](https://www.ggcheckout.com/)
-2. Log in to your GG Checkout dashboard
-3. Navigate to **Settings** → **API Key**
-4. Click **Generate API Key**
-5. **Important:** Copy and save your API key immediately - it won't be shown again!
-
-Your API key will look like: `ggck_live_abc123...`
+1. Visit [ggcheckout.com](https://www.ggcheckout.com/)
+2. Go to **Settings** → **MCP / API Key**
+3. Generate your API Key (format: `ggck_live_...`)
 
 ## Configuration
 
-### For Claude Desktop
-
-Add to your Claude Desktop configuration file:
-
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+### Claude Code
 
 ```json
 {
@@ -54,619 +42,358 @@ Add to your Claude Desktop configuration file:
       "command": "npx",
       "args": ["ggcheckout-mcp"],
       "env": {
-        "GGCHECKOUT_API_KEY": "ggck_live_your_api_key_here"
+        "GGCHECKOUT_API_KEY": "ggck_live_your_key_here"
       }
     }
   }
 }
 ```
 
-> **Note:** The API URL is hardcoded to `https://www.ggcheckout.com/` for production use.
+### Claude Desktop
 
-### For Other MCP Clients
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Set the API key environment variable:
+Same format as above.
+
+### Cursor / Other Clients
 
 ```bash
-export GGCHECKOUT_API_KEY="ggck_live_your_api_key_here"
+export GGCHECKOUT_API_KEY="ggck_live_your_key_here"
 ```
 
-## Available Tools
+### Custom API URL
 
-### Product Tools
-
-#### 1. `list_products`
-
-List all your products/deliveries.
-
-**Example prompt:** "Show me all my products"
-
-**Response:**
-
-```json
-{
-  "products": [
-    {
-      "uid": "abc123",
-      "title": "React Course",
-      "url": "https://example.com/react-course",
-      "description": "Complete React course",
-      "discount": "30%",
-      "price": 9900
-    }
-  ]
-}
+```bash
+export GGCHECKOUT_API_URL="https://your-staging.example.com"
 ```
 
-#### 2. `get_product`
-
-Get details of a specific product.
-
-**Parameters:**
-
-- `productId` (string): Product ID
-
-**Example prompt:** "Get details of product abc123"
-
-#### 3. `create_product`
-
-Create a new product/delivery.
-
-**Parameters:**
-
-- `title` (string): Product title
-- `url` (string): Product URL
-- `imageUrl` (string, optional): Product image URL
-- `description` (string): Product description
-- `discount` (string): Discount info (e.g., "30%")
-- `price` (number|string): Price in cents (1990) or Brazilian format ("19,90")
-
-**Example prompts:**
-
-- "Create a product called 'React Course' priced at R$99.00"
-- "Add a new product: title 'Node.js Guide', price 4990 cents, url https://example.com"
-
-**Example:**
-
-```json
-{
-  "title": "React Course",
-  "url": "https://example.com/react-course",
-  "imageUrl": "https://example.com/cover.png",
-  "description": "Lifetime access",
-  "discount": "30%",
-  "price": 9900
-}
-```
-
-#### 4. `update_product`
-
-Update an existing product. Only provide fields you want to change.
-
-**Parameters:**
-
-- `productId` (string): Product ID
-- `title` (string, optional): New title
-- `url` (string, optional): New URL
-- `imageUrl` (string, optional): New image URL
-- `description` (string, optional): New description
-- `discount` (string, optional): New discount
-- `price` (number|string, optional): New price
-
-**Example prompt:** "Update product abc123 price to R$79.90"
-
-#### 5. `delete_product`
-
-Delete a product by ID.
-
-**Parameters:**
-
-- `productId` (string): Product ID
-
-**Example prompt:** "Delete product abc123"
-
-### User Tools
-
-#### 6. `get_my_business_id`
-
-Get the business ID of the authenticated user. This tool automatically retrieves your businessId from the API key authentication, making it easy to use other tools without manually specifying the businessId.
-
-**Parameters:** None
-
-**Example prompt:** "What is my business ID?"
-
-**Response:**
-
-```json
-{
-  "businessId": "CKdAlYZpHhSKrFnA6ljGewe16Go1"
-}
-```
-
-**Pro Tip:** Once you have your businessId, you can use it in natural language queries like:
-
-- "Show me all payments for business CKdAlYZpHhSKrFnA6ljGewe16Go1"
-- Or simply: "Get my business ID, then show me all payments"
-
-### Payment Tools
-
-#### 7. `list_payments`
-
-List all payments for a specific business.
-
-**Parameters:**
-
-- `businessId` (string): Business ID to list payments for
-
-**Example prompt:** "Show me all payments for business xyz789"
-
-**Response:**
-
-```json
-{
-  "payments": [
-    {
-      "id": "txn_123456",
-      "businessId": "xyz789",
-      "email": "customer@example.com",
-      "value": 99.9,
-      "productId": "prod_abc",
-      "titleOffer": "React Course",
-      "status": "paid",
-      "createdAt": "2024-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
-#### 8. `get_payments_paginated`
-
-Get paginated payments with advanced filtering options.
-
-**Important:** Status filtering is done **client-side** after fetching data from the API. This follows the same pattern as the frontend application to avoid requiring Firestore composite indexes.
-
-**Parameters:**
-
-- `businessId` (string): Business ID
-- `pageSize` (number, optional): Items per page (default: 10)
-- `dateFrom` (string, optional): Filter from date (ISO format)
-- `dateTo` (string, optional): Filter until date (ISO format)
-- `lastCreatedAt` (string, optional): Pagination cursor
-- `status` (string, optional): Filter by status ("pending", "paid", "error", "all") - **filtered client-side**
-- `searchTerm` (string, optional): Search by payment ID, email, phone, or title
-- `countOnly` (boolean, optional): Return only total count
-
-**Example prompts:**
-
-- "Get the first 20 payments for business xyz789"
-- "Show me all paid payments from last month for business xyz789"
-- "Search for payments with email john@example.com in business xyz789"
-- "How many pending payments does business xyz789 have?"
-
-**Response:**
-
-```json
-{
-  "payments": [...],
-  "total": 150,
-  "lastCreatedAt": "2024-01-15T10:30:00Z"
-}
-```
-
-#### 9. `get_payment`
-
-Get details of a specific payment by ID.
-
-**Note:** This tool fetches all payments from the business and filters client-side to find the specific payment. This approach avoids Firestore composite index requirements that would be needed for direct search queries.
-
-**Parameters:**
-
-- `businessId` (string): Business ID
-- `paymentId` (string): Payment ID (transaction ID)
-
-**Example prompt:** "Get payment cmgjucuk201ztcgsya2w9bo53 from my business"
-
-**Response:**
-
-```json
-{
-  "payment": {
-    "id": "txn_123456",
-    "businessId": "xyz789",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "phone": "+5511999999999",
-    "cpf": "12345678900",
-    "value": 99.9,
-    "productId": "prod_abc",
-    "titleOffer": "React Course",
-    "status": "paid",
-    "createdAt": "2024-01-15T10:30:00Z",
-    "finalValueInCents": 9990,
-    "couponsCodesApplied": ["SAVE20"]
-  }
-}
-```
-
-### Checkout Tools
-
-#### 10. `list_checkouts`
-
-List all checkout pages for the authenticated user.
-
-**Parameters:** None (automatically uses authenticated user)
-
-**Example prompt:** "Show me all my checkouts" or "List my checkout pages"
-
-**Response:**
-
-```json
-{
-  "checkouts": [
-    {
-      "uid": "checkout123",
-      "id": "my-product-checkout",
-      "title": "React Course Checkout",
-      "price": 99.9,
-      "published": true,
-      "url": "https://checkout.ggcheckout.com/my-product-checkout"
-    }
-  ]
-}
-```
-
-#### 11. `get_checkout`
-
-Get details of a specific checkout page.
-
-**Parameters:**
-
-- `checkoutId` (string): Checkout document ID (uid) - **Note: Use the `uid` returned from `create_checkout`, not the custom `id` field**
-
-**Example prompt:** "Get checkout details for checkout123"
-
-**Important:**
-
-- `uid` = Firestore document ID (use this for get/update/delete operations)
-- `id` = Custom checkout slug/identifier (user-friendly name)
-
-**Response:**
-
-```json
-{
-  "checkout": {
-    "uid": "checkout123",
-    "id": "my-product-checkout",
-    "title": "React Course Checkout",
-    "price": 99.90,
-    "published": true,
-    "paymentMethods": {...},
-    "checkout": {...},
-    "orderBumps": []
-  }
-}
-```
-
-#### 12. `create_checkout`
-
-Create a new checkout page.
-
-**Required Parameters:**
-
-- `title` (string): Checkout page title
-- `id` (string): Unique checkout slug/identifier (user-friendly name, e.g., "my-product-checkout")
-- `price` (number): Price in Brazilian Reais (e.g., 99.90)
-- `paymentMethods` (object): Payment methods configuration
-- `checkout` (object): Checkout page configuration
-
-**Optional Parameters:**
-
-- `url` (string): Checkout URL
-- `bannerUrl` (string): Banner image URL
-- `image` (string): Product image URL
-- `sellerName` (string): Seller name
-- `orderBumps` (array): Order bumps (upsells)
-- `fields` (object): Custom form fields (`{haveName: boolean, havePhone: boolean, haveCpf: boolean}`)
-- `socialCard` (array): Social card configuration
-- `published` (boolean): Published status (default: true)
-- `metricToken` (string): Metrics token
-- `emailProviderToken` (string): Email provider token
-
-**Example prompt:** "Create a checkout page for my React Course priced at R$99.90"
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Produto criado com sucesso.",
-  "checkout": {
-    "uid": "AbC123XyZ456",
-    "id": "my-product-checkout",
-    "title": "React Course Checkout",
-    "price": 99.9,
-    "fields": {
-      "haveName": false,
-      "havePhone": false,
-      "haveCpf": false
-    }
-  }
-}
-```
-
-**Important:** Save the `uid` from the response - you'll need it for get/update/delete operations!
-
-#### 13. `update_checkout`
-
-Update an existing checkout page. Only provide fields you want to change.
-
-**Parameters:**
-
-- `checkoutId` (string): Checkout document ID (uid) - **Use the `uid` from create_checkout response**
-- All other parameters are optional (same as create_checkout)
-
-**Example prompt:** "Update checkout AbC123XyZ456 price to R$79.90"
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "checkout": {
-    "uid": "checkout123",
-    "price": 79.9
-  }
-}
-```
-
-#### 14. `delete_checkout`
-
-Delete a checkout page by ID.
-
-**Parameters:**
-
-- `checkoutId` (string): Checkout document ID (uid) - **Use the `uid` from create_checkout response**
-
-**Example prompt:** "Delete checkout AbC123XyZ456"
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Checkout checkout123 deleted successfully"
-}
-```
-
-### Webhook Tools
-
-#### 15. `list_webhooks`
-
-List all webhooks for the authenticated user.
-
-**Parameters:** None (automatically uses authenticated user)
-
-**Example prompt:** "Show me all my webhooks" or "List my webhooks"
-
-**Response:**
-
-```json
-{
-  "webhooks": [
-    {
-      "id": "webhook_abc123",
-      "businessId": "xyz789",
-      "name": "Payment Notifications",
-      "url": "https://myapp.com/webhook",
-      "events": ["payment.paid", "payment.refunded"],
-      "secret": "whsec_...",
-      "productsId": [],
-      "createdAt": "2024-01-15T10:30:00Z",
-      "updatedAt": "2024-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
-#### 16. `get_webhook`
-
-Get details of a specific webhook by ID.
-
-**Parameters:**
-
-- `webhookId` (string): Webhook ID
-
-**Example prompt:** "Get webhook details for webhook_abc123"
-
-**Response:**
-
-```json
-{
-  "webhook": {
-    "id": "webhook_abc123",
-    "businessId": "xyz789",
-    "name": "Payment Notifications",
-    "url": "https://myapp.com/webhook",
-    "events": ["payment.paid"],
-    "secret": "whsec_...",
-    "productsId": ["prod_123"],
-    "createdAt": "2024-01-15T10:30:00Z",
-    "updatedAt": "2024-01-15T10:30:00Z"
-  }
-}
-```
-
-#### 17. `create_webhook`
-
-Create a new webhook for payment notifications.
-
-**Required Parameters:**
-
-- `name` (string): Webhook name/description
-- `url` (string): Webhook URL endpoint to receive notifications
-- `events` (array): Events to trigger this webhook
-
-**Optional Parameters:**
-
-- `secret` (string): Secret key for webhook signature verification
-- `productsId` (array): Product IDs to filter notifications (leave empty for all products)
-
-**Available Events:**
-
-- `payment.created` - New payment initiated
-- `payment.paid` - Payment successfully completed
-- `payment.pending` - Payment pending confirmation
-- `payment.refunded` - Payment refunded
-- `payment.failed` - Payment failed
-
-**Example prompt:** "Create a webhook for payment notifications at https://myapp.com/webhook"
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "webhook": {
-    "id": "webhook_new123",
-    "businessId": "xyz789",
-    "name": "Payment Notifications",
-    "url": "https://myapp.com/webhook",
-    "events": ["payment.paid", "payment.refunded"],
-    "createdAt": "2024-01-15T10:30:00Z",
-    "updatedAt": "2024-01-15T10:30:00Z"
-  }
-}
-```
-
-#### 18. `update_webhook`
-
-Update an existing webhook. Only provide fields you want to update.
-
-**Parameters:**
-
-- `webhookId` (string): Webhook ID
-- `name` (string, optional): New webhook name
-- `url` (string, optional): New webhook URL
-- `events` (array, optional): New events list
-- `secret` (string, optional): New secret key
-- `productsId` (array, optional): New product IDs filter
-
-**Example prompt:** "Update webhook webhook_abc123 to listen for payment.created events"
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "webhook": {
-    "id": "webhook_abc123",
-    "events": ["payment.created", "payment.paid"],
-    "updatedAt": "2024-01-15T11:00:00Z"
-  }
-}
-```
-
-#### 19. `delete_webhook`
-
-Delete a webhook by ID.
-
-**Parameters:**
-
-- `webhookId` (string): Webhook ID
-
-**Example prompt:** "Delete webhook webhook_abc123"
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Webhook webhook_abc123 deleted successfully"
-}
-```
+---
+
+## Available Tools (141)
+
+### Products (16 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_products` | List all products |
+| `get_product` | Get product details |
+| `create_product` | Create product (requires title, description, price, discount, url) |
+| `update_product` | Update product (partial fields) |
+| `delete_product` | Delete product |
+| `upload_deliverable` | Upload deliverable file via URL |
+| `delete_deliverable` | Remove deliverable |
+| `list_upsells` | List product upsells |
+| `create_upsell` | Create upsell (requires upsellProductId, upsellId) |
+| `delete_upsell` | Remove upsell |
+| `reorder_upsells` | Reorder upsells |
+| `list_downsells` | List downsells |
+| `create_downsell` | Create downsell (requires downsellProductId, downsellId) |
+| `delete_downsell` | Remove downsell |
+| `reorder_downsells` | Reorder downsells |
+| `manage_tags` | Manage product tags `{ name, color }[]` |
+
+### Checkouts (6 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_checkouts` | List seller checkouts |
+| `get_checkout` | Get checkout details |
+| `create_checkout` | Create checkout page |
+| `update_checkout` | Update checkout (auto-merges with current data) |
+| `delete_checkout` | Delete checkout |
+| `manage_checkout_tags` | Manage tags `{ name, color }[]` (max 5, hex color) |
+
+### Payments (7 tools)
+
+| Tool | Description |
+|------|-------------|
+| `get_my_business_id` | Get authenticated seller's business ID |
+| `list_payments` | List payments |
+| `get_payments_paginated` | Paginated payments with filters |
+| `get_payment` | Get payment details |
+| `get_payment_fulfillment` | Fulfillment status (physical orders) |
+| `update_payment_fulfillment` | Update fulfillment (shipped, tracking, etc.) |
+| `check_payment_status` | Check status at payment gateway |
+
+### Webhooks (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_webhooks` | List webhooks |
+| `get_webhook` | Get webhook details |
+| `create_webhook` | Create webhook |
+| `update_webhook` | Update webhook |
+| `delete_webhook` | Delete webhook |
+
+### Store (9 tools)
+
+| Tool | Description |
+|------|-------------|
+| `get_store_config` | Store configuration (theme, payment methods) |
+| `get_store_public` | Full public store data (store + categories + products) |
+| `list_store_products` | Catalog with pagination, search, sorting |
+| `get_store_product` | Product details (variants, stock) |
+| `list_categories` | Store categories |
+| `list_custom_fields` | Custom checkout fields |
+| `get_store_order` | Order details |
+| `list_feedbacks` | Reviews with stats |
+| `validate_coupon` | Validate coupon code |
+
+### Funnels / Quiz (9 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_funnels` | List funnels |
+| `get_funnel` | Full details (steps, flow, design, settings) |
+| `create_funnel` | Create funnel |
+| `update_funnel` | Update funnel |
+| `delete_funnel` | Delete funnel (soft delete) |
+| `duplicate_funnel` | Duplicate funnel |
+| `list_funnel_leads` | Leads with pagination and status filter |
+| `get_funnel_lead_analytics` | Analytics (per-step drop-off, conversion) |
+| `get_funnel_lead_stats` | Stats (visitors, leads, qualified, completed) |
+
+### Members Area (21 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_members_areas` | List members areas |
+| `get_members_area` | Area details |
+| `create_members_area` | Create area linked to product |
+| `update_members_area` | Update customization |
+| `duplicate_members_area` | Duplicate entire area |
+| `list_modules` | List modules |
+| `create_module` | Create module |
+| `reorder_modules` | Reorder modules |
+| `list_sections` | List sections |
+| `create_section` | Create section |
+| `reorder_sections` | Reorder sections |
+| `list_lessons` | List lessons |
+| `create_lesson` | Create lesson (video, text, pdf, quiz, file) |
+| `reorder_lessons` | Reorder lessons |
+| `list_classes` | List classes |
+| `create_class` | Create class |
+| `list_students` | List students |
+| `get_student` | Student details |
+| `add_student` | Add student (creates account + welcome email) |
+| `update_student` | Update student |
+| `import_students` | Bulk import students (max 100) |
+
+### Discounts / Coupons (6 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_discounts` | List discounts |
+| `get_discount` | Discount details |
+| `create_discount` | Create discount (percentage, fixed, free_shipping, buy_x_get_y) |
+| `update_discount` | Update discount |
+| `delete_discount` | Delete discount |
+| `validate_discount_code` | Validate coupon against order |
+
+### WhatsApp (15 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_whatsapp_sessions` | List sessions |
+| `get_whatsapp_session` | Session status |
+| `create_whatsapp_session` | Create session |
+| `delete_whatsapp_session` | Delete session |
+| `get_pairing_code` | Get pairing code (no QR needed) |
+| `list_whatsapp_templates` | List message templates |
+| `create_whatsapp_template` | Create template by event type |
+| `update_whatsapp_template` | Update template |
+| `toggle_whatsapp_template` | Enable/disable template |
+| `delete_whatsapp_template` | Delete template |
+| `get_delivery_status` | Delivery status by payment |
+| `resend_delivery` | Resend delivery |
+| `send_whatsapp_message` | Send direct message |
+
+### Billing (10 tools)
+
+| Tool | Description |
+|------|-------------|
+| `get_billing_balance` | Balance, credit, usage %, next charge |
+| `get_billing_status` | Status (active, pending_card, grace_period, blocked) |
+| `get_billing_history` | Charge history |
+| `list_invoices` | Invoices |
+| `get_invoice` | Invoice details |
+| `pay_invoice` | Pay invoice (pix, card, credits) |
+| `list_credits` | Credits |
+| `add_credit` | Add credit via PIX |
+| `get_card_status` | Saved card status |
+| `remove_card` | Remove card |
+
+### Shipping / MelhorEnvio (7 tools)
+
+| Tool | Description |
+|------|-------------|
+| `calculate_shipping` | Calculate shipping (postal code + dimensions) |
+| `verify_shipping` | Verify shipping status |
+| `create_shipping_cart` | Create MelhorEnvio cart |
+| `cancel_shipping_cart` | Cancel cart |
+| `checkout_shipping` | Pay for label |
+| `generate_shipping_label` | Generate label |
+| `print_shipping_label` | Get print URL |
+
+### Gateway Tokens (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_tokens` | List gateway tokens |
+| `insert_token` | Add gateway token |
+| `delete_token` | Remove gateway token |
+
+Supports 26+ gateways: pushinpay, mercadopago, stripe, efibank, amplopay, infinitepay, abacatepay, and more.
+
+### Discord (7 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_discord_connections` | List connections |
+| `create_discord_connection` | Connect server |
+| `update_discord_connection` | Update settings (channels, roles, language) |
+| `delete_discord_connection` | Disconnect server |
+| `get_guild_channels` | List server channels |
+| `get_guild_roles` | List server roles |
+| `create_private_channel` | Create private sales channel |
+
+### Dashboard (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `get_dashboard_stats` | Stats (sales, revenue, average ticket) |
+| `get_dashboard_charts` | Chart data (time series) |
+| `invalidate_dashboard_cache` | Force cache refresh |
+
+### Custom Domains (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_custom_domains` | List domains |
+| `add_custom_domain` | Add domain (max 5) |
+| `get_custom_domain` | Details + DNS status |
+| `delete_custom_domain` | Remove domain |
+| `verify_custom_domain` | Verify DNS |
+
+### Rewards / Goals (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_rewards` | Current progress |
+| `calculate_rewards` | Recalculate progress |
+| `redeem_reward` | Redeem reward |
+
+### Profile / Auth (6 tools)
+
+| Tool | Description |
+|------|-------------|
+| `get_profile` | Profile data |
+| `update_profile` | Update profile |
+| `list_support_emails` | List support emails |
+| `add_support_email` | Add email (sends verification) |
+| `delete_support_email` | Remove email |
+| `get_kyc_status` | KYC verification status |
+
+### Push Notifications (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_push_devices` | List devices |
+| `register_push_token` | Register FCM token |
+| `remove_push_device` | Remove device |
+
+---
 
 ## Price Formats
 
-The server accepts prices in two formats:
+Prices are accepted in two formats:
 
-1. **Cents (recommended):** `1990` = R$19.90
-2. **Brazilian format:** `"19,90"` or `"1.990,00"`
+- **Reais (recommended):** `19.90` = R$19.90 → stored as `1990` cents
+- **Brazilian format:** `"19,90"` or `"1.990,00"`
 
-Internally, all prices are stored in cents.
+All prices are stored internally in cents.
 
-## Troubleshooting
+---
 
-### Error: 401 Unauthorized
+## Security
 
-- Check that your API key is correct
-- Ensure the key starts with `ggck_live_`
-- Verify the key hasn't been revoked in your dashboard
+The MCP server automatically sanitizes all data before sending to the AI agent:
 
-### Error: 403 Forbidden
+**Credentials stripped:** webhook secrets, gateway tokens, WhatsApp QR codes, card tokens, internal worker URLs.
 
-- You're trying to access a resource that doesn't belong to you
-- API keys are scoped to the user who created them
+**PII masked (LGPD):** CPF (`***.***.*89-01`), phone (`*******7766`), email (`j**n@example.com`), customer IP removed, address reduced to city/state only.
 
-### Error: 404 Not Found
+### Best Practices
 
-- The product ID doesn't exist
-- Check the product ID is correct
+- Never share your API key publicly
+- Always use environment variables
+- Revoke compromised keys immediately
+- Generate new keys periodically
+- Don't hardcode keys in your code
+- Don't commit keys to version control
 
-### Error: Invalid price format
+---
 
-- Use cents (number) or Brazilian format (string)
-- Examples: `1990` or `"19,90"`
+## Rate Limits
 
-### Rate Limiting
+| Limit | Value |
+|-------|-------|
+| Per hour | 1,000 requests |
+| Per minute | 30 requests |
 
-If you're making too many requests, you may be rate limited. Wait a few moments and try again.
+---
 
 ## Local Development
 
-For local development and testing against your localhost backend:
-
-1. Clone the repository
-2. Copy `.env.local` to `.env`
-3. Edit `src/index.ts` and uncomment the localhost line:
-
-```typescript
-// Change this:
-const API_URL = "https://www.ggcheckout.com";
-
-// To this:
-const API_URL = process.env.GGCHECKOUT_API_URL || "http://localhost:3000";
-```
-
-4. Set your `.env` file:
-
 ```bash
-GGCHECKOUT_API_KEY=ggck_live_your_api_key_here
-GGCHECKOUT_API_URL=http://localhost:3000
-```
-
-5. Build and run:
-
-```bash
+git clone https://github.com/gui-drumond/ggcheckout-mcp.git
+cd ggcheckout-mcp
 npm install
-npm run build
-node dist/index.js
 ```
 
-## Security Best Practices
+### .env
 
-🔒 **Never share your API key publicly**
+```bash
+GGCHECKOUT_API_KEY=ggck_live_your_key_here
+GGCHECKOUT_API_URL=http://localhost:3000  # optional, defaults to https://www.ggcheckout.com
+```
 
-✅ Always use environment variables  
-✅ Revoke compromised keys immediately  
-✅ Generate new keys periodically  
-❌ Don't hardcode keys in your code  
-❌ Don't commit keys to version control
+### Commands
+
+```bash
+npm run dev          # Development with hot reload
+npm run build        # TypeScript build
+npm start            # Run compiled build
+npm test             # Unit tests (173 tests)
+npm run test:e2e     # E2E against staging (requires .env)
+```
+
+### MCP Inspector (Interactive UI)
+
+```bash
+GGCHECKOUT_API_KEY=ggck_live_... npx @modelcontextprotocol/inspector -- npx tsx src/index.ts
+```
+
+Opens a browser UI to test any tool interactively.
+
+---
+
+## Troubleshooting
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| 401 Unauthorized | Invalid or expired API key | Check your key in the dashboard |
+| 403 Forbidden | Resource belongs to another seller | API keys are scoped per user |
+| 404 Not Found | ID doesn't exist | Verify the ID |
+| 429 Too Many Requests | Rate limit exceeded | Wait 1-2 minutes |
+| Invalid price format | Wrong price format | Use `19.90` or `"19,90"` |
+
+---
 
 ## Support
 
-- 📧 Email: support@ggcheckout.com
-- 📖 Docs: https://docs.ggcheckout.com
-- 🐛 Issues: https://github.com/ggcheckout/mcp/issues
+- Issues: https://github.com/gui-drumond/ggcheckout-mcp/issues
 
 ## License
 
