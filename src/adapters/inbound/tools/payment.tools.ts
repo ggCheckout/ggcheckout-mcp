@@ -82,8 +82,8 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
       },
     },
     createToolHandler('get_payment_fulfillment', async ({ businessId, paymentId }) => {
-      const fulfillment = await service.getFulfillment(businessId, paymentId);
-      return { fulfillment };
+      const result = await service.getFulfillment(businessId, paymentId);
+      return result;
     }),
   );
 
@@ -95,22 +95,26 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
         businessId: z.string().describe('Business ID'),
         paymentId: z.string().describe('Payment ID'),
         status: z
-          .string()
-          .optional()
-          .describe('Fulfillment status (pending, separating, ready, shipped, in_transit, out_for_delivery, delivered, failed_attempt, returned, cancelled)'),
+          .enum([
+            'pending', 'separating', 'ready', 'shipped', 'in_transit',
+            'out_for_delivery', 'delivered', 'failed_attempt', 'returned', 'cancelled',
+          ])
+          .describe('Fulfillment status'),
+        note: z.string().optional().describe('Optional note about the status change'),
         tracking: z
           .object({
-            code: z.string().optional().describe('Tracking code'),
+            code: z.string().describe('Tracking code'),
             url: z.string().optional().describe('Tracking URL'),
-            carrier: z.string().optional().describe('Carrier name'),
+            carrier: z.string().describe('Carrier name'),
           })
           .optional()
           .describe('Tracking information'),
+        separatedItems: z.array(z.string()).optional().describe('List of separated item IDs'),
       },
     },
     createToolHandler('update_payment_fulfillment', async ({ businessId, paymentId, ...data }) => {
-      const fulfillment = await service.updateFulfillment(businessId, paymentId, data);
-      return { success: true, fulfillment };
+      const result = await service.updateFulfillment(businessId, paymentId, data);
+      return result;
     }),
   );
 
@@ -123,8 +127,8 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
       },
     },
     createToolHandler('check_payment_status', async ({ paymentId }) => {
-      const status = await service.checkStatus(paymentId);
-      return { status };
+      const result = await service.checkStatus(paymentId);
+      return result;
     }),
   );
 }

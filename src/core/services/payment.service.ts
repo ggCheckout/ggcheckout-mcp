@@ -1,6 +1,14 @@
 import type { AuthPort } from '../ports/auth.port.js';
 import type { PaymentPort } from '../ports/payment.port.js';
-import type { Payment, PaymentsPaginatedResponse, PaginationOptions, FulfillmentData, PaymentStatusCheck } from '../types/payment.js';
+import type {
+  Payment,
+  PaymentsPaginatedResponse,
+  PaginationOptions,
+  FulfillmentResponse,
+  FulfillmentData,
+  UpdateFulfillmentInput,
+  PaymentStatusCheckResponse,
+} from '../types/payment.js';
 
 export class PaymentService {
   constructor(
@@ -27,15 +35,19 @@ export class PaymentService {
     return this.paymentPort.getById(businessId, paymentId);
   }
 
-  async getFulfillment(businessId: string, paymentId: string): Promise<FulfillmentData> {
+  async getFulfillment(businessId: string, paymentId: string): Promise<FulfillmentResponse> {
     return this.paymentPort.getFulfillment(businessId, paymentId);
   }
 
-  async updateFulfillment(businessId: string, paymentId: string, data: Partial<FulfillmentData>): Promise<FulfillmentData> {
+  async updateFulfillment(
+    businessId: string,
+    paymentId: string,
+    data: UpdateFulfillmentInput,
+  ): Promise<{ success: boolean; fulfillment: FulfillmentData }> {
     return this.paymentPort.updateFulfillment(businessId, paymentId, data);
   }
 
-  async checkStatus(paymentId: string): Promise<PaymentStatusCheck> {
+  async checkStatus(paymentId: string): Promise<PaymentStatusCheckResponse> {
     return this.paymentPort.checkStatus(paymentId);
   }
 }

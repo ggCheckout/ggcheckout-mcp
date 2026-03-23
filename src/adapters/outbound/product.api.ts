@@ -1,6 +1,7 @@
 import type { ProductPort } from '../../core/ports/product.port.js';
 import type {
   Product,
+  ProductTag,
   DeliverableConfig,
   UploadDeliverableInput,
   Upsell,
@@ -21,14 +22,12 @@ export class ProductApiAdapter implements ProductPort {
     return this.http.get<Product>(`/api/product-delivery/${id}`);
   }
 
-  async create(payload: any): Promise<Product> {
-    const data = await this.http.post<{ documentId: string }>('/api/product-delivery', payload);
-    return { ...payload, uid: data.documentId };
+  async create(payload: any): Promise<{ success: boolean; productId: string }> {
+    return this.http.post<{ success: boolean; productId: string }>('/api/product-delivery', payload);
   }
 
-  async update(id: string, payload: any): Promise<Product> {
+  async update(id: string, payload: any): Promise<void> {
     await this.http.patch(`/api/product-delivery/${id}`, { ...payload, id });
-    return { ...payload, uid: id };
   }
 
   async delete(id: string): Promise<void> {
@@ -47,24 +46,34 @@ export class ProductApiAdapter implements ProductPort {
     return this.http.get<Upsell[]>(`/api/product-delivery/${productId}/upsells/list`);
   }
 
-  async createUpsell(productId: string, input: CreateUpsellInput): Promise<Upsell> {
-    return this.http.post<Upsell>(`/api/product-delivery/${productId}/upsells`, input);
+  async createUpsell(productId: string, upsellId: string, input: CreateUpsellInput): Promise<Upsell> {
+    const data = await this.http.post<{ success: boolean; upsell: Upsell }>(
+      `/api/product-delivery/${productId}/upsells/${upsellId}`,
+      { upsell: input },
+    );
+    return data.upsell;
   }
 
   async deleteUpsell(productId: string, upsellId: string): Promise<void> {
     await this.http.delete(`/api/product-delivery/${productId}/upsells/${upsellId}`);
   }
 
-  async reorderUpsells(productId: string, order: string[]): Promise<void> {
-    await this.http.post(`/api/product-delivery/${productId}/upsells/reorder`, { order });
+  async reorderUpsells(productId: string, upsells: Upsell[]): Promise<void> {
+    await this.http.patch(`/api/product-delivery/${productId}/upsells`, { upsells });
   }
 
-  async listDownsells(productId: string): Promise<DownsellSequenceItem[]> {
-    return this.http.get<DownsellSequenceItem[]>(`/api/product-delivery/${productId}/downsells/list`);
+  async listDownsells(productId: string): Promise<{ downsells: DownsellSequenceItem[]; count: number }> {
+    return this.http.get<{ success: boolean; downsells: DownsellSequenceItem[]; count: number }>(
+      `/api/product-delivery/${productId}/downsells/list`,
+    );
   }
 
-  async createDownsell(productId: string, input: CreateDownsellInput): Promise<DownsellSequenceItem> {
-    return this.http.post<DownsellSequenceItem>(`/api/product-delivery/${productId}/downsells`, input);
+  async createDownsell(productId: string, downsellId: string, input: CreateDownsellInput): Promise<DownsellSequenceItem> {
+    const data = await this.http.post<{ success: boolean; downsell: DownsellSequenceItem }>(
+      `/api/product-delivery/${productId}/downsells/${downsellId}`,
+      { downsell: input },
+    );
+    return data.downsell;
   }
 
   async deleteDownsell(productId: string, downsellId: string): Promise<void> {
@@ -75,7 +84,10 @@ export class ProductApiAdapter implements ProductPort {
     await this.http.post(`/api/product-delivery/${productId}/downsells/reorder`, { order });
   }
 
-  async manageTags(productId: string, tags: string[]): Promise<void> {
-    await this.http.patch(`/api/product-delivery/${productId}/tags`, { tags });
+  async manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }> {
+    return this.http.patch<{ message: string; tags: ProductTag[] }>(
+      `/api/product-delivery/${productId}/tags`,
+      { tags },
+    );
   }
 }

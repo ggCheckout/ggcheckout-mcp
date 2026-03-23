@@ -4,8 +4,10 @@ import type {
   PaymentsListResponse,
   PaymentsPaginatedResponse,
   PaginationOptions,
+  FulfillmentResponse,
   FulfillmentData,
-  PaymentStatusCheck,
+  UpdateFulfillmentInput,
+  PaymentStatusCheckResponse,
 } from '../../core/types/payment.js';
 import { NotFoundError } from '../../shared/errors.js';
 import type { HttpClient } from './http-client.js';
@@ -56,20 +58,24 @@ export class PaymentApiAdapter implements PaymentPort {
     return payment;
   }
 
-  async getFulfillment(businessId: string, paymentId: string): Promise<FulfillmentData> {
-    return this.http.get<FulfillmentData>(
+  async getFulfillment(businessId: string, paymentId: string): Promise<FulfillmentResponse> {
+    return this.http.get<FulfillmentResponse>(
       `/api/get-clients/business/${businessId}/payments/${paymentId}/fulfillment`,
     );
   }
 
-  async updateFulfillment(businessId: string, paymentId: string, data: Partial<FulfillmentData>): Promise<FulfillmentData> {
-    return this.http.patch<FulfillmentData>(
+  async updateFulfillment(
+    businessId: string,
+    paymentId: string,
+    data: UpdateFulfillmentInput,
+  ): Promise<{ success: boolean; fulfillment: FulfillmentData }> {
+    return this.http.patch<{ success: boolean; fulfillment: FulfillmentData }>(
       `/api/get-clients/business/${businessId}/payments/${paymentId}/fulfillment`,
       data,
     );
   }
 
-  async checkStatus(paymentId: string): Promise<PaymentStatusCheck> {
-    return this.http.post<PaymentStatusCheck>(`/api/payments/check-payment/${paymentId}`);
+  async checkStatus(paymentId: string): Promise<PaymentStatusCheckResponse> {
+    return this.http.get<PaymentStatusCheckResponse>(`/api/payments/check-payment/${paymentId}`);
   }
 }

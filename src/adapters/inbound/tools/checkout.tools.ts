@@ -108,15 +108,22 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
   server.registerTool(
     'manage_checkout_tags',
     {
-      description: 'Set tags for a checkout (replaces existing tags)',
+      description: 'Set tags for a checkout (replaces existing tags, max 5). Each tag has a name and hex color.',
       inputSchema: {
         checkoutId: z.string().describe('Checkout ID (uid)'),
-        tags: z.array(z.string()).describe('List of tags to set on the checkout'),
+        tags: z
+          .array(
+            z.object({
+              name: z.string().describe('Tag name'),
+              color: z.string().describe('Tag color in hex format (e.g., "#8b5cf6")'),
+            }),
+          )
+          .describe('List of tags to set on the checkout (max 5)'),
       },
     },
     createToolHandler('manage_checkout_tags', async ({ checkoutId, tags }) => {
-      await service.manageTags(checkoutId, tags);
-      return { success: true, message: `Tags updated for checkout ${checkoutId}` };
+      const result = await service.manageTags(checkoutId, tags);
+      return { success: true, tags: result.tags };
     }),
   );
 }

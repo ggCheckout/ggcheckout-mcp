@@ -34,18 +34,24 @@ export function registerProductTools(server: McpServer, service: ProductService)
         'Create a new product/delivery. Price should be a number in Brazilian Reais (e.g., 19.90 for R$19.90) or Brazilian format string (e.g., "19,90")',
       inputSchema: {
         title: z.string().describe('Product title'),
-        url: z.string().describe('Product URL'),
-        imageUrl: z.string().optional().describe('Product image URL (optional)'),
         description: z.string().describe('Product description'),
-        discount: z.string().describe('Discount information (e.g., "30%")'),
         price: z
           .union([z.number(), z.string()])
           .describe('Price in Brazilian Reais (number) or Brazilian format (string)'),
+        currency: z.enum(['BRL', 'USD']).optional().describe('Currency (default: BRL)'),
+        url: z.string().optional().describe('Product URL'),
+        imageUrl: z.string().optional().describe('Product image URL'),
+        discount: z.number().optional().describe('Discount percentage'),
+        deliveryMethod: z
+          .enum(['url', 'whatsapp', 'both'])
+          .optional()
+          .describe('Delivery method'),
+        isPhysicalProduct: z.boolean().optional().describe('Whether this is a physical product'),
       },
     },
     createToolHandler('create_product', async (args) => {
-      const product = await service.create(args);
-      return { success: true, product };
+      const result = await service.create(args);
+      return { success: true, productId: result.productId };
     }),
   );
 
@@ -56,19 +62,25 @@ export function registerProductTools(server: McpServer, service: ProductService)
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
         title: z.string().optional().describe('Product title'),
-        url: z.string().optional().describe('Product URL'),
-        imageUrl: z.string().optional().describe('Product image URL'),
         description: z.string().optional().describe('Product description'),
-        discount: z.string().optional().describe('Discount information'),
         price: z
           .union([z.number(), z.string()])
           .optional()
           .describe('Price in Brazilian Reais (number) or Brazilian format (string)'),
+        currency: z.enum(['BRL', 'USD']).optional().describe('Currency'),
+        url: z.string().optional().describe('Product URL'),
+        imageUrl: z.string().optional().describe('Product image URL'),
+        discount: z.number().optional().describe('Discount percentage'),
+        deliveryMethod: z
+          .enum(['url', 'whatsapp', 'both'])
+          .optional()
+          .describe('Delivery method'),
+        isPhysicalProduct: z.boolean().optional().describe('Whether this is a physical product'),
       },
     },
     createToolHandler('update_product', async ({ productId, ...input }) => {
-      const product = await service.update(productId, input);
-      return { success: true, product };
+      await service.update(productId, input);
+      return { success: true, message: `Product ${productId} updated successfully` };
     }),
   );
 
@@ -140,30 +152,27 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'create_upsell',
     {
-      description: 'Create an upsell for a product',
+      description: 'Create an upsell for a product. Requires upsellProductId (the product being offered as upsell) and a unique upsellId.',
       inputSchema: {
-        productId: z.string().describe('Product ID (uid)'),
+        productId: z.string().describe('Product ID (uid) the upsell belongs to'),
+        upsellId: z.string().describe('Unique ID for this upsell'),
+        upsellProductId: z.string().describe('Product ID being offered as upsell'),
         title: z.string().describe('Upsell title'),
         description: z.string().optional().describe('Upsell description'),
-        price: z.number().describe('Upsell price in cents'),
+        price: z.number().optional().describe('Upsell price in cents'),
         originalPrice: z.number().optional().describe('Original price in cents (for showing discount)'),
-        discount: z.number().optional().describe('Discount percentage'),
+        discount: z.string().optional().describe('Discount label (e.g., "30% OFF")'),
         imageUrl: z.string().optional().describe('Upsell image URL'),
-        mediaType: z.string().optional().describe('Media type (image or video)'),
-        video: z.string().optional().describe('Video URL'),
-        paymentMethods: z
-          .object({})
-          .passthrough()
-          .optional()
-          .describe('Accepted payment methods (e.g., { credit_card: true, pix: true })'),
-        deliveryMethod: z.string().optional().describe('Delivery method'),
+        mediaType: z.enum(['image', 'video']).optional().describe('Media type'),
+        deliveryMethod: z.enum(['url', 'file', 'whatsapp']).optional().describe('Delivery method'),
         timerEnabled: z.boolean().optional().describe('Enable countdown timer'),
         timerMinutes: z.number().optional().describe('Timer duration in minutes'),
-        downsell: z.object({}).passthrough().optional().describe('Downsell configuration'),
+        status: z.enum(['active', 'inactive']).optional().describe('Upsell status (default: active)'),
       },
     },
-    createToolHandler('create_upsell', async ({ productId, ...input }) => {
-      const upsell = await service.createUpsell(productId, input);
+    createToolHandler('create_upsell', async (args) => {
+      const { productId, upsellId, ...input } = args;
+      const upsell = await service.createUpsell(productId, upsellId, input);
       return { success: true, upsell };
     }),
   );
@@ -186,14 +195,14 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'reorder_upsells',
     {
-      description: 'Reorder upsells for a product',
+      description: 'Reorder upsells for a product by sending the full upsells array in desired order',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        order: z.array(z.string()).describe('Ordered list of upsell IDs'),
+        upsells: z.array(z.object({}).passthrough()).describe('Full upsells array in desired order'),
       },
     },
-    createToolHandler('reorder_upsells', async ({ productId, order }) => {
-      await service.reorderUpsells(productId, order);
+    createToolHandler('reorder_upsells', async ({ productId, upsells }) => {
+      await service.reorderUpsells(productId, upsells);
       return { success: true, message: 'Upsells reordered' };
     }),
   );
@@ -209,32 +218,35 @@ export function registerProductTools(server: McpServer, service: ProductService)
       },
     },
     createToolHandler('list_downsells', async ({ productId }) => {
-      const downsells = await service.listDownsells(productId);
-      return { downsells };
+      const result = await service.listDownsells(productId);
+      return { downsells: result.downsells, count: result.count };
     }),
   );
 
   server.registerTool(
     'create_downsell',
     {
-      description: 'Create a downsell for a product',
+      description: 'Create a downsell for a product. Requires downsellProductId and a unique downsellId.',
       inputSchema: {
-        productId: z.string().describe('Product ID (uid)'),
+        productId: z.string().describe('Product ID (uid) the downsell belongs to'),
+        downsellId: z.string().describe('Unique ID for this downsell'),
+        downsellProductId: z.string().describe('Product ID being offered as downsell'),
         title: z.string().describe('Downsell title'),
         description: z.string().optional().describe('Downsell description'),
         headline: z.string().optional().describe('Downsell headline'),
         price: z.number().describe('Downsell price in cents'),
         originalPrice: z.number().optional().describe('Original price in cents'),
-        discount: z.number().optional().describe('Discount percentage'),
+        discount: z.string().optional().describe('Discount label'),
         timerEnabled: z.boolean().optional().describe('Enable countdown timer'),
         timerMinutes: z.number().optional().describe('Timer duration in minutes'),
-        mediaType: z.string().optional().describe('Media type'),
-        customImage: z.string().optional().describe('Custom image URL'),
-        video: z.string().optional().describe('Video URL'),
+        mediaType: z.enum(['image', 'video']).optional().describe('Media type'),
+        status: z.enum(['active', 'inactive']).optional().describe('Downsell status'),
+        chainBehavior: z.enum(['continue', 'stop']).optional().describe('Chain behavior after this downsell'),
       },
     },
-    createToolHandler('create_downsell', async ({ productId, ...input }) => {
-      const downsell = await service.createDownsell(productId, input);
+    createToolHandler('create_downsell', async (args) => {
+      const { productId, downsellId, ...input } = args;
+      const downsell = await service.createDownsell(productId, downsellId, input);
       return { success: true, downsell };
     }),
   );
@@ -274,15 +286,22 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'manage_tags',
     {
-      description: 'Set tags for a product (replaces existing tags)',
+      description: 'Set tags for a product (replaces existing tags). Each tag has a name and color.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        tags: z.array(z.string()).describe('List of tags to set on the product'),
+        tags: z
+          .array(
+            z.object({
+              name: z.string().describe('Tag name'),
+              color: z.string().describe('Tag color (hex code, e.g., "#FF5733")'),
+            }),
+          )
+          .describe('List of tags to set on the product'),
       },
     },
     createToolHandler('manage_tags', async ({ productId, tags }) => {
-      await service.manageTags(productId, tags);
-      return { success: true, message: `Tags updated for product ${productId}` };
+      const result = await service.manageTags(productId, tags);
+      return { success: true, tags: result.tags };
     }),
   );
 }

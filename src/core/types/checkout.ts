@@ -1,3 +1,8 @@
+export interface CheckoutTag {
+  name: string;
+  color: string;
+}
+
 export interface Checkout {
   [key: string]: unknown;
   uid?: string;
@@ -18,6 +23,7 @@ export interface Checkout {
   price: number;
   image?: string;
   createBy?: string;
+  tags?: CheckoutTag[];
   createdAt?: string;
   updatedAt?: string;
 }

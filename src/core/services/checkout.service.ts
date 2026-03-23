@@ -1,6 +1,6 @@
 import type { AuthPort } from '../ports/auth.port.js';
 import type { CheckoutPort } from '../ports/checkout.port.js';
-import type { Checkout, CreateCheckoutInput, UpdateCheckoutInput } from '../types/checkout.js';
+import type { Checkout, CheckoutTag, CreateCheckoutInput, UpdateCheckoutInput } from '../types/checkout.js';
 
 export class CheckoutService {
   constructor(
@@ -44,7 +44,7 @@ export class CheckoutService {
     return this.checkoutPort.delete(id, checkout.uuidOwnwer);
   }
 
-  async manageTags(id: string, tags: string[]): Promise<void> {
+  async manageTags(id: string, tags: CheckoutTag[]): Promise<{ tags: CheckoutTag[] }> {
     return this.checkoutPort.manageTags(id, tags);
   }
 }

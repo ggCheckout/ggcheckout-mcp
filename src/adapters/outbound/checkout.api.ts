@@ -1,5 +1,5 @@
 import type { CheckoutPort } from '../../core/ports/checkout.port.js';
-import type { Checkout, CreateCheckoutInput } from '../../core/types/checkout.js';
+import type { Checkout, CheckoutTag, CreateCheckoutInput } from '../../core/types/checkout.js';
 import type { HttpClient } from './http-client.js';
 
 export class CheckoutApiAdapter implements CheckoutPort {
@@ -27,7 +27,10 @@ export class CheckoutApiAdapter implements CheckoutPort {
     await this.http.delete(`/api/checkouts/${id}`, { uuidOwnwer });
   }
 
-  async manageTags(id: string, tags: string[]): Promise<void> {
-    await this.http.patch(`/api/checkouts/${id}/tags`, { tags });
+  async manageTags(id: string, tags: CheckoutTag[]): Promise<{ tags: CheckoutTag[] }> {
+    return this.http.patch<{ message: string; tags: CheckoutTag[] }>(
+      `/api/checkouts/${id}/tags`,
+      { tags },
+    );
   }
 }
