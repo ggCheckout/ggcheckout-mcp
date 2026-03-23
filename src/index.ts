@@ -16,6 +16,7 @@ import { StoreApiAdapter } from './adapters/outbound/store.api.js';
 import { FunnelApiAdapter } from './adapters/outbound/funnel.api.js';
 import { MembersAreaApiAdapter } from './adapters/outbound/members-area.api.js';
 import { DiscountApiAdapter } from './adapters/outbound/discount.api.js';
+import { WhatsAppApiAdapter } from './adapters/outbound/whatsapp.api.js';
 
 // Services
 import { ProductService } from './core/services/product.service.js';
@@ -26,6 +27,7 @@ import { StoreService } from './core/services/store.service.js';
 import { FunnelService } from './core/services/funnel.service.js';
 import { MembersAreaService } from './core/services/members-area.service.js';
 import { DiscountService } from './core/services/discount.service.js';
+import { WhatsAppService } from './core/services/whatsapp.service.js';
 
 // Inbound adapters (MCP tools)
 import { registerProductTools } from './adapters/inbound/tools/product.tools.js';
@@ -36,6 +38,7 @@ import { registerStoreTools } from './adapters/inbound/tools/store.tools.js';
 import { registerFunnelTools } from './adapters/inbound/tools/funnel.tools.js';
 import { registerMembersAreaTools } from './adapters/inbound/tools/members-area.tools.js';
 import { registerDiscountTools } from './adapters/inbound/tools/discount.tools.js';
+import { registerWhatsAppTools } from './adapters/inbound/tools/whatsapp.tools.js';
 
 dotenv.config();
 
@@ -75,6 +78,7 @@ const storeAdapter = new StoreApiAdapter(httpClient);
 const funnelAdapter = new FunnelApiAdapter(httpClient);
 const membersAreaAdapter = new MembersAreaApiAdapter(httpClient);
 const discountAdapter = new DiscountApiAdapter(httpClient, authAdapter);
+const whatsappAdapter = new WhatsAppApiAdapter(httpClient);
 
 // Services (use cases)
 const productService = new ProductService(productAdapter);
@@ -85,6 +89,7 @@ const storeService = new StoreService(storeAdapter);
 const funnelService = new FunnelService(funnelAdapter);
 const membersAreaService = new MembersAreaService(membersAreaAdapter, authAdapter);
 const discountService = new DiscountService(discountAdapter);
+const whatsappService = new WhatsAppService(whatsappAdapter);
 
 // MCP Server
 const server = new McpServer({
@@ -101,6 +106,7 @@ registerStoreTools(server, storeService);
 registerFunnelTools(server, funnelService);
 registerMembersAreaTools(server, membersAreaService);
 registerDiscountTools(server, discountService);
+registerWhatsAppTools(server, whatsappService);
 
 logger.info('STARTUP', 'All tools registered');
 
