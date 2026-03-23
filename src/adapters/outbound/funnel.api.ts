@@ -7,6 +7,7 @@ import type {
   FunnelLeadStats,
   FunnelAnalytics,
 } from '../../core/types/funnel.js';
+import { sanitizeFunnel, sanitizeLead } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
 export class FunnelApiAdapter implements FunnelPort {
@@ -14,22 +15,22 @@ export class FunnelApiAdapter implements FunnelPort {
 
   async list(): Promise<Funnel[]> {
     const data = await this.http.get<{ funnels: Funnel[] }>('/api/funnels');
-    return data.funnels;
+    return data.funnels.map(sanitizeFunnel);
   }
 
   async getById(funnelId: string): Promise<Funnel> {
     const data = await this.http.get<{ funnel: Funnel }>(`/api/funnels/${funnelId}`);
-    return data.funnel;
+    return sanitizeFunnel(data.funnel);
   }
 
   async create(input: CreateFunnelInput): Promise<Funnel> {
     const data = await this.http.post<{ funnel: Funnel }>('/api/funnels', input);
-    return data.funnel;
+    return sanitizeFunnel(data.funnel);
   }
 
   async update(funnelId: string, input: UpdateFunnelInput): Promise<Funnel> {
     const data = await this.http.put<{ funnel: Funnel }>(`/api/funnels/${funnelId}`, input);
-    return data.funnel;
+    return sanitizeFunnel(data.funnel);
   }
 
   async delete(funnelId: string): Promise<void> {
@@ -38,7 +39,7 @@ export class FunnelApiAdapter implements FunnelPort {
 
   async duplicate(funnelId: string): Promise<Funnel> {
     const data = await this.http.post<{ funnel: Funnel }>(`/api/funnels/${funnelId}/duplicate`);
-    return data.funnel;
+    return sanitizeFunnel(data.funnel);
   }
 
   async listLeads(funnelId: string, options?: { status?: string; limit?: number; offset?: number }) {
@@ -50,13 +51,14 @@ export class FunnelApiAdapter implements FunnelPort {
     const queryString = params.toString();
     const url = `/api/funnels/${funnelId}/leads${queryString ? `?${queryString}` : ''}`;
 
-    return this.http.get<{
+    const data = await this.http.get<{
       leads: FunnelLead[];
       count: number;
       total: number;
       limit: number;
       offset: number;
     }>(url);
+    return { ...data, leads: data.leads.map(sanitizeLead) };
   }
 
   async getLeadAnalytics(funnelId: string): Promise<FunnelAnalytics> {

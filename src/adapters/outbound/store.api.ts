@@ -12,6 +12,7 @@ import type {
   FeedbacksStats,
   CouponValidationResult,
 } from '../../core/types/store.js';
+import { sanitizeStoreConfig, sanitizeCustomer, sanitizeFeedback } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
 export class StoreApiAdapter implements StorePort {
@@ -19,7 +20,7 @@ export class StoreApiAdapter implements StorePort {
 
   async getConfig(storeId: string): Promise<StoreConfig> {
     const data = await this.http.get<{ config: StoreConfig }>(`/api/store/config?storeId=${storeId}`);
-    return data.config;
+    return sanitizeStoreConfig(data.config);
   }
 
   async getPublic(storeId: string): Promise<{ store: Store; categories: StoreCategory[]; products: StoreProduct[] }> {
@@ -75,7 +76,7 @@ export class StoreApiAdapter implements StorePort {
     const data = await this.http.get<{ order: StoreOrder }>(
       `/api/store/orders/${orderId}?storeId=${storeId}`,
     );
-    return data.order;
+    return { ...data.order, customer: sanitizeCustomer(data.order.customer) };
   }
 
   async listFeedbacks(storeId: string, options?: {
@@ -92,9 +93,10 @@ export class StoreApiAdapter implements StorePort {
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.includeStats) params.append('includeStats', 'true');
 
-    return this.http.get<{ feedbacks: StoreFeedback[]; pagination: FeedbacksPagination; stats?: FeedbacksStats }>(
+    const data = await this.http.get<{ feedbacks: StoreFeedback[]; pagination: FeedbacksPagination; stats?: FeedbacksStats }>(
       `/api/store/feedbacks?${params.toString()}`,
     );
+    return { ...data, feedbacks: data.feedbacks.map(sanitizeFeedback) };
   }
 
   async validateCoupon(storeId: string, code: string, orderValue: number): Promise<CouponValidationResult> {

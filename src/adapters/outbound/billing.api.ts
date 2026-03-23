@@ -3,6 +3,7 @@ import type {
   BalanceResponse, BillingStatusResponse, BillingHistoryEntry,
   SellerInvoice, BillingCredit, BillingCard,
 } from '../../core/types/billing.js';
+import { sanitizeBillingCard } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
 export class BillingApiAdapter implements BillingPort {
@@ -57,7 +58,8 @@ export class BillingApiAdapter implements BillingPort {
   }
 
   async getCardStatus() {
-    return this.http.get<{ hasCard: boolean; card?: BillingCard; isExpiringSoon: boolean }>('/api/billing/card/status');
+    const data = await this.http.get<{ hasCard: boolean; card?: BillingCard; isExpiringSoon: boolean }>('/api/billing/card/status');
+    return sanitizeBillingCard(data);
   }
 
   async removeCard(): Promise<void> {

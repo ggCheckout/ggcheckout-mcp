@@ -3,21 +3,25 @@ import type {
   WhatsAppSession, WhatsAppMessageTemplate, WhatsAppDelivery,
   WhatsAppDeliverySummary, CreateTemplateInput, SendMessageInput,
 } from '../../core/types/whatsapp.js';
+import { sanitizeWhatsappSession, sanitizeWhatsappDelivery } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
 export class WhatsAppApiAdapter implements WhatsAppPort {
   constructor(private readonly http: HttpClient) {}
 
   async listSessions(): Promise<WhatsAppSession[]> {
-    return this.http.get<WhatsAppSession[]>('/api/whatsapp/sessions');
+    const sessions = await this.http.get<WhatsAppSession[]>('/api/whatsapp/sessions');
+    return sessions.map(sanitizeWhatsappSession);
   }
 
   async getSession(sessionId: string): Promise<WhatsAppSession> {
-    return this.http.get<WhatsAppSession>(`/api/whatsapp/sessions/${sessionId}`);
+    const session = await this.http.get<WhatsAppSession>(`/api/whatsapp/sessions/${sessionId}`);
+    return sanitizeWhatsappSession(session);
   }
 
   async createSession(sessionName: string): Promise<WhatsAppSession> {
-    return this.http.post<WhatsAppSession>('/api/whatsapp/sessions', { sessionName });
+    const session = await this.http.post<WhatsAppSession>('/api/whatsapp/sessions', { sessionName });
+    return sanitizeWhatsappSession(session);
   }
 
   async deleteSession(sessionId: string): Promise<void> {
@@ -52,9 +56,10 @@ export class WhatsAppApiAdapter implements WhatsAppPort {
   }
 
   async getDeliveryStatus(paymentId: string) {
-    return this.http.get<{ deliveries: WhatsAppDelivery[]; summary: WhatsAppDeliverySummary }>(
+    const data = await this.http.get<{ deliveries: WhatsAppDelivery[]; summary: WhatsAppDeliverySummary }>(
       `/api/whatsapp/deliveries/${paymentId}`,
     );
+    return { ...data, deliveries: data.deliveries.map(sanitizeWhatsappDelivery) };
   }
 
   async resendDelivery(paymentId: string) {

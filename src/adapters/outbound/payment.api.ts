@@ -10,6 +10,7 @@ import type {
   PaymentStatusCheckResponse,
 } from '../../core/types/payment.js';
 import { NotFoundError } from '../../shared/errors.js';
+import { sanitizePayment } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
 export class PaymentApiAdapter implements PaymentPort {
@@ -19,7 +20,7 @@ export class PaymentApiAdapter implements PaymentPort {
     const data = await this.http.get<PaymentsListResponse>(
       `/api/get-clients/business/${businessId}/payments`,
     );
-    return data.payments;
+    return data.payments.map(sanitizePayment);
   }
 
   async getPaginated(
@@ -38,7 +39,11 @@ export class PaymentApiAdapter implements PaymentPort {
     const queryString = params.toString();
     const url = `/api/get-clients/business/${businessId}/payments/paginated${queryString ? `?${queryString}` : ''}`;
 
-    return this.http.get<PaymentsPaginatedResponse | { total: number }>(url);
+    const result = await this.http.get<PaymentsPaginatedResponse | { total: number }>(url);
+    if ('payments' in result) {
+      return { ...result, payments: result.payments.map(sanitizePayment) };
+    }
+    return result;
   }
 
   async getById(businessId: string, paymentId: string): Promise<Payment> {
@@ -55,7 +60,7 @@ export class PaymentApiAdapter implements PaymentPort {
       throw new NotFoundError('Payment', paymentId);
     }
 
-    return payment;
+    return sanitizePayment(payment);
   }
 
   async getFulfillment(businessId: string, paymentId: string): Promise<FulfillmentResponse> {

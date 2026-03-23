@@ -5,6 +5,7 @@ import type {
   CreateLessonInput, CreateClassInput, AddStudentInput,
   UpdateStudentInput, ImportStudentsInput, ImportStudentsResult,
 } from '../../core/types/members-area.js';
+import { sanitizeStudent } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
 export class MembersAreaApiAdapter implements MembersAreaPort {
@@ -111,12 +112,12 @@ export class MembersAreaApiAdapter implements MembersAreaPort {
   // Students
   async listStudents(areaId: string): Promise<Student[]> {
     const data = await this.http.get<{ success: boolean; data: Student[] }>(`/api/members-area/${areaId}/students`);
-    return data.data;
+    return data.data.map(sanitizeStudent);
   }
 
   async getStudent(areaId: string, studentId: string): Promise<Student> {
     const data = await this.http.get<{ success: boolean; data: Student }>(`/api/members-area/${areaId}/students/${studentId}`);
-    return data.data;
+    return sanitizeStudent(data.data);
   }
 
   async addStudent(areaId: string, input: AddStudentInput) {
