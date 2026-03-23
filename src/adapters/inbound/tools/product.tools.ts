@@ -85,4 +85,204 @@ export function registerProductTools(server: McpServer, service: ProductService)
       return { success: true, message: `Product ${productId} deleted successfully` };
     }),
   );
+
+  server.registerTool(
+    'upload_deliverable',
+    {
+      description:
+        'Upload a deliverable file to a product. Provide the file URL, name, and optionally the MIME type.',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+        fileUrl: z.string().url().describe('Public URL of the file to attach as deliverable'),
+        fileName: z.string().describe('File name (e.g., "ebook.pdf")'),
+        fileType: z
+          .string()
+          .optional()
+          .describe('MIME type of the file (e.g., "application/pdf"). Auto-detected if omitted.'),
+      },
+    },
+    createToolHandler('upload_deliverable', async ({ productId, ...input }) => {
+      const deliverable = await service.uploadDeliverable(productId, input);
+      return { success: true, deliverable };
+    }),
+  );
+
+  server.registerTool(
+    'delete_deliverable',
+    {
+      description: 'Remove the deliverable file from a product',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+      },
+    },
+    createToolHandler('delete_deliverable', async ({ productId }) => {
+      await service.deleteDeliverable(productId);
+      return { success: true, message: `Deliverable removed from product ${productId}` };
+    }),
+  );
+
+  // --- Upsells ---
+
+  server.registerTool(
+    'list_upsells',
+    {
+      description: 'List all upsells for a product',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+      },
+    },
+    createToolHandler('list_upsells', async ({ productId }) => {
+      const upsells = await service.listUpsells(productId);
+      return { upsells };
+    }),
+  );
+
+  server.registerTool(
+    'create_upsell',
+    {
+      description: 'Create an upsell for a product',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+        title: z.string().describe('Upsell title'),
+        description: z.string().optional().describe('Upsell description'),
+        price: z.number().describe('Upsell price in cents'),
+        originalPrice: z.number().optional().describe('Original price in cents (for showing discount)'),
+        discount: z.number().optional().describe('Discount percentage'),
+        imageUrl: z.string().optional().describe('Upsell image URL'),
+        mediaType: z.string().optional().describe('Media type (image or video)'),
+        video: z.string().optional().describe('Video URL'),
+        paymentMethods: z
+          .object({})
+          .passthrough()
+          .optional()
+          .describe('Accepted payment methods (e.g., { credit_card: true, pix: true })'),
+        deliveryMethod: z.string().optional().describe('Delivery method'),
+        timerEnabled: z.boolean().optional().describe('Enable countdown timer'),
+        timerMinutes: z.number().optional().describe('Timer duration in minutes'),
+        downsell: z.object({}).passthrough().optional().describe('Downsell configuration'),
+      },
+    },
+    createToolHandler('create_upsell', async ({ productId, ...input }) => {
+      const upsell = await service.createUpsell(productId, input);
+      return { success: true, upsell };
+    }),
+  );
+
+  server.registerTool(
+    'delete_upsell',
+    {
+      description: 'Delete an upsell from a product',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+        upsellId: z.string().describe('Upsell ID'),
+      },
+    },
+    createToolHandler('delete_upsell', async ({ productId, upsellId }) => {
+      await service.deleteUpsell(productId, upsellId);
+      return { success: true, message: `Upsell ${upsellId} deleted` };
+    }),
+  );
+
+  server.registerTool(
+    'reorder_upsells',
+    {
+      description: 'Reorder upsells for a product',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+        order: z.array(z.string()).describe('Ordered list of upsell IDs'),
+      },
+    },
+    createToolHandler('reorder_upsells', async ({ productId, order }) => {
+      await service.reorderUpsells(productId, order);
+      return { success: true, message: 'Upsells reordered' };
+    }),
+  );
+
+  // --- Downsells ---
+
+  server.registerTool(
+    'list_downsells',
+    {
+      description: 'List all downsells for a product',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+      },
+    },
+    createToolHandler('list_downsells', async ({ productId }) => {
+      const downsells = await service.listDownsells(productId);
+      return { downsells };
+    }),
+  );
+
+  server.registerTool(
+    'create_downsell',
+    {
+      description: 'Create a downsell for a product',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+        title: z.string().describe('Downsell title'),
+        description: z.string().optional().describe('Downsell description'),
+        headline: z.string().optional().describe('Downsell headline'),
+        price: z.number().describe('Downsell price in cents'),
+        originalPrice: z.number().optional().describe('Original price in cents'),
+        discount: z.number().optional().describe('Discount percentage'),
+        timerEnabled: z.boolean().optional().describe('Enable countdown timer'),
+        timerMinutes: z.number().optional().describe('Timer duration in minutes'),
+        mediaType: z.string().optional().describe('Media type'),
+        customImage: z.string().optional().describe('Custom image URL'),
+        video: z.string().optional().describe('Video URL'),
+      },
+    },
+    createToolHandler('create_downsell', async ({ productId, ...input }) => {
+      const downsell = await service.createDownsell(productId, input);
+      return { success: true, downsell };
+    }),
+  );
+
+  server.registerTool(
+    'delete_downsell',
+    {
+      description: 'Delete a downsell from a product',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+        downsellId: z.string().describe('Downsell ID'),
+      },
+    },
+    createToolHandler('delete_downsell', async ({ productId, downsellId }) => {
+      await service.deleteDownsell(productId, downsellId);
+      return { success: true, message: `Downsell ${downsellId} deleted` };
+    }),
+  );
+
+  server.registerTool(
+    'reorder_downsells',
+    {
+      description: 'Reorder downsells for a product',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+        order: z.array(z.string()).describe('Ordered list of downsell IDs'),
+      },
+    },
+    createToolHandler('reorder_downsells', async ({ productId, order }) => {
+      await service.reorderDownsells(productId, order);
+      return { success: true, message: 'Downsells reordered' };
+    }),
+  );
+
+  // --- Tags ---
+
+  server.registerTool(
+    'manage_tags',
+    {
+      description: 'Set tags for a product (replaces existing tags)',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+        tags: z.array(z.string()).describe('List of tags to set on the product'),
+      },
+    },
+    createToolHandler('manage_tags', async ({ productId, tags }) => {
+      await service.manageTags(productId, tags);
+      return { success: true, message: `Tags updated for product ${productId}` };
+    }),
+  );
 }

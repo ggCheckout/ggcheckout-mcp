@@ -1,5 +1,13 @@
 import type { ProductPort } from '../ports/product.port.js';
-import type { Product } from '../types/product.js';
+import type {
+  Product,
+  DeliverableConfig,
+  UploadDeliverableInput,
+  Upsell,
+  CreateUpsellInput,
+  DownsellSequenceItem,
+  CreateDownsellInput,
+} from '../types/product.js';
 import { validateCreateProductInput, validateUpdateProductInput } from '../../shared/validation.js';
 
 export class ProductService {
@@ -25,5 +33,49 @@ export class ProductService {
 
   async delete(id: string): Promise<void> {
     return this.productPort.delete(id);
+  }
+
+  async uploadDeliverable(productId: string, input: UploadDeliverableInput): Promise<DeliverableConfig> {
+    return this.productPort.uploadDeliverable(productId, input);
+  }
+
+  async deleteDeliverable(productId: string): Promise<void> {
+    return this.productPort.deleteDeliverable(productId);
+  }
+
+  async listUpsells(productId: string): Promise<Upsell[]> {
+    return this.productPort.listUpsells(productId);
+  }
+
+  async createUpsell(productId: string, input: CreateUpsellInput): Promise<Upsell> {
+    return this.productPort.createUpsell(productId, input);
+  }
+
+  async deleteUpsell(productId: string, upsellId: string): Promise<void> {
+    return this.productPort.deleteUpsell(productId, upsellId);
+  }
+
+  async reorderUpsells(productId: string, order: string[]): Promise<void> {
+    return this.productPort.reorderUpsells(productId, order);
+  }
+
+  async listDownsells(productId: string): Promise<DownsellSequenceItem[]> {
+    return this.productPort.listDownsells(productId);
+  }
+
+  async createDownsell(productId: string, input: CreateDownsellInput): Promise<DownsellSequenceItem> {
+    return this.productPort.createDownsell(productId, input);
+  }
+
+  async deleteDownsell(productId: string, downsellId: string): Promise<void> {
+    return this.productPort.deleteDownsell(productId, downsellId);
+  }
+
+  async reorderDownsells(productId: string, order: string[]): Promise<void> {
+    return this.productPort.reorderDownsells(productId, order);
+  }
+
+  async manageTags(productId: string, tags: string[]): Promise<void> {
+    return this.productPort.manageTags(productId, tags);
   }
 }
