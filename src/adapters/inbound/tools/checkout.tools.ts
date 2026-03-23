@@ -104,4 +104,19 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
       return { success: true, message: `Checkout ${checkoutId} deleted successfully` };
     }),
   );
+
+  server.registerTool(
+    'manage_checkout_tags',
+    {
+      description: 'Set tags for a checkout (replaces existing tags)',
+      inputSchema: {
+        checkoutId: z.string().describe('Checkout ID (uid)'),
+        tags: z.array(z.string()).describe('List of tags to set on the checkout'),
+      },
+    },
+    createToolHandler('manage_checkout_tags', async ({ checkoutId, tags }) => {
+      await service.manageTags(checkoutId, tags);
+      return { success: true, message: `Tags updated for checkout ${checkoutId}` };
+    }),
+  );
 }

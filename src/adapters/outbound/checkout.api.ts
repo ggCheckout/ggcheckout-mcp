@@ -26,4 +26,8 @@ export class CheckoutApiAdapter implements CheckoutPort {
   async delete(id: string, uuidOwnwer: string): Promise<void> {
     await this.http.delete(`/api/checkouts/${id}`, { uuidOwnwer });
   }
+
+  async manageTags(id: string, tags: string[]): Promise<void> {
+    await this.http.patch(`/api/checkouts/${id}/tags`, { tags });
+  }
 }

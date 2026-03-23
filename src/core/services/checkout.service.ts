@@ -43,4 +43,8 @@ export class CheckoutService {
     const checkout = await this.checkoutPort.getById(id);
     return this.checkoutPort.delete(id, checkout.uuidOwnwer);
   }
+
+  async manageTags(id: string, tags: string[]): Promise<void> {
+    return this.checkoutPort.manageTags(id, tags);
+  }
 }
