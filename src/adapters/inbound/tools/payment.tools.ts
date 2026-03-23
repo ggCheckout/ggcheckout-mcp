@@ -71,4 +71,60 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
       return { payment };
     }),
   );
+
+  server.registerTool(
+    'get_payment_fulfillment',
+    {
+      description: 'Get fulfillment status for a physical order payment (tracking, status, package info)',
+      inputSchema: {
+        businessId: z.string().describe('Business ID'),
+        paymentId: z.string().describe('Payment ID'),
+      },
+    },
+    createToolHandler('get_payment_fulfillment', async ({ businessId, paymentId }) => {
+      const fulfillment = await service.getFulfillment(businessId, paymentId);
+      return { fulfillment };
+    }),
+  );
+
+  server.registerTool(
+    'update_payment_fulfillment',
+    {
+      description: 'Update fulfillment status for a physical order (e.g., mark as shipped, add tracking)',
+      inputSchema: {
+        businessId: z.string().describe('Business ID'),
+        paymentId: z.string().describe('Payment ID'),
+        status: z
+          .string()
+          .optional()
+          .describe('Fulfillment status (pending, separating, ready, shipped, in_transit, out_for_delivery, delivered, failed_attempt, returned, cancelled)'),
+        tracking: z
+          .object({
+            code: z.string().optional().describe('Tracking code'),
+            url: z.string().optional().describe('Tracking URL'),
+            carrier: z.string().optional().describe('Carrier name'),
+          })
+          .optional()
+          .describe('Tracking information'),
+      },
+    },
+    createToolHandler('update_payment_fulfillment', async ({ businessId, paymentId, ...data }) => {
+      const fulfillment = await service.updateFulfillment(businessId, paymentId, data);
+      return { success: true, fulfillment };
+    }),
+  );
+
+  server.registerTool(
+    'check_payment_status',
+    {
+      description: 'Check the current payment status directly from the payment gateway',
+      inputSchema: {
+        paymentId: z.string().describe('Payment ID'),
+      },
+    },
+    createToolHandler('check_payment_status', async ({ paymentId }) => {
+      const status = await service.checkStatus(paymentId);
+      return { status };
+    }),
+  );
 }

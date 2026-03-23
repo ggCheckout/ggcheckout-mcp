@@ -1,5 +1,12 @@
 import type { PaymentPort } from '../../core/ports/payment.port.js';
-import type { Payment, PaymentsListResponse, PaymentsPaginatedResponse, PaginationOptions } from '../../core/types/payment.js';
+import type {
+  Payment,
+  PaymentsListResponse,
+  PaymentsPaginatedResponse,
+  PaginationOptions,
+  FulfillmentData,
+  PaymentStatusCheck,
+} from '../../core/types/payment.js';
 import { NotFoundError } from '../../shared/errors.js';
 import type { HttpClient } from './http-client.js';
 
@@ -47,5 +54,22 @@ export class PaymentApiAdapter implements PaymentPort {
     }
 
     return payment;
+  }
+
+  async getFulfillment(businessId: string, paymentId: string): Promise<FulfillmentData> {
+    return this.http.get<FulfillmentData>(
+      `/api/get-clients/business/${businessId}/payments/${paymentId}/fulfillment`,
+    );
+  }
+
+  async updateFulfillment(businessId: string, paymentId: string, data: Partial<FulfillmentData>): Promise<FulfillmentData> {
+    return this.http.patch<FulfillmentData>(
+      `/api/get-clients/business/${businessId}/payments/${paymentId}/fulfillment`,
+      data,
+    );
+  }
+
+  async checkStatus(paymentId: string): Promise<PaymentStatusCheck> {
+    return this.http.post<PaymentStatusCheck>(`/api/payments/check-payment/${paymentId}`);
   }
 }

@@ -42,3 +42,27 @@ export interface PaginationOptions {
   searchTerm?: string;
   countOnly?: boolean;
 }
+
+export interface FulfillmentData {
+  [key: string]: unknown;
+  status?: string;
+  separatedItems?: any[];
+  statusHistory?: any[];
+  tracking?: {
+    code?: string;
+    url?: string;
+    carrier?: string;
+  };
+  packageDimensions?: {
+    weight?: number;
+    width?: number;
+    height?: number;
+    length?: number;
+  };
+}
+
+export interface PaymentStatusCheck {
+  [key: string]: unknown;
+  status: string;
+  gatewayStatus?: string;
+}
