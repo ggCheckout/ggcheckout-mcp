@@ -13,6 +13,7 @@ import { PaymentApiAdapter } from './adapters/outbound/payment.api.js';
 import { CheckoutApiAdapter } from './adapters/outbound/checkout.api.js';
 import { WebhookApiAdapter } from './adapters/outbound/webhook.api.js';
 import { StoreApiAdapter } from './adapters/outbound/store.api.js';
+import { FunnelApiAdapter } from './adapters/outbound/funnel.api.js';
 
 // Services
 import { ProductService } from './core/services/product.service.js';
@@ -20,6 +21,7 @@ import { PaymentService } from './core/services/payment.service.js';
 import { CheckoutService } from './core/services/checkout.service.js';
 import { WebhookService } from './core/services/webhook.service.js';
 import { StoreService } from './core/services/store.service.js';
+import { FunnelService } from './core/services/funnel.service.js';
 
 // Inbound adapters (MCP tools)
 import { registerProductTools } from './adapters/inbound/tools/product.tools.js';
@@ -27,6 +29,7 @@ import { registerPaymentTools } from './adapters/inbound/tools/payment.tools.js'
 import { registerCheckoutTools } from './adapters/inbound/tools/checkout.tools.js';
 import { registerWebhookTools } from './adapters/inbound/tools/webhook.tools.js';
 import { registerStoreTools } from './adapters/inbound/tools/store.tools.js';
+import { registerFunnelTools } from './adapters/inbound/tools/funnel.tools.js';
 
 dotenv.config();
 
@@ -63,6 +66,7 @@ const paymentAdapter = new PaymentApiAdapter(httpClient);
 const checkoutAdapter = new CheckoutApiAdapter(httpClient);
 const webhookAdapter = new WebhookApiAdapter(httpClient);
 const storeAdapter = new StoreApiAdapter(httpClient);
+const funnelAdapter = new FunnelApiAdapter(httpClient);
 
 // Services (use cases)
 const productService = new ProductService(productAdapter);
@@ -70,6 +74,7 @@ const paymentService = new PaymentService(paymentAdapter, authAdapter);
 const checkoutService = new CheckoutService(checkoutAdapter, authAdapter);
 const webhookService = new WebhookService(webhookAdapter, authAdapter);
 const storeService = new StoreService(storeAdapter);
+const funnelService = new FunnelService(funnelAdapter);
 
 // MCP Server
 const server = new McpServer({
@@ -83,6 +88,7 @@ registerPaymentTools(server, paymentService);
 registerCheckoutTools(server, checkoutService);
 registerWebhookTools(server, webhookService);
 registerStoreTools(server, storeService);
+registerFunnelTools(server, funnelService);
 
 logger.info('STARTUP', 'All tools registered');
 
