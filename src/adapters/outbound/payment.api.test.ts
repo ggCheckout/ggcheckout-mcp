@@ -40,23 +40,18 @@ describe('PaymentApiAdapter', () => {
     expect(url).not.toContain('status');
   });
 
-  it('getById fetches 1000 and filters client-side', async () => {
+  it('getById fetches single payment via dedicated endpoint', async () => {
     const mockPayment = { id: 'pay-1', email: 'test@test.com' };
-    vi.mocked(http.get).mockResolvedValue({ payments: [mockPayment, { id: 'pay-2' }] });
+    vi.mocked(http.get).mockResolvedValue(mockPayment);
 
     const result = await adapter.getById('biz-1', 'pay-1');
-    expect(http.get).toHaveBeenCalledWith('/api/get-clients/business/biz-1/payments/paginated?pageSize=1000');
+    expect(http.get).toHaveBeenCalledWith('/api/get-clients/business/biz-1/payments/pay-1');
     expect(result.id).toBe('pay-1');
   });
 
-  it('getById throws NotFoundError when payment not in list', async () => {
-    vi.mocked(http.get).mockResolvedValue({ payments: [{ id: 'pay-other' }] });
+  it('getById throws NotFoundError when payment is null', async () => {
+    vi.mocked(http.get).mockResolvedValue(null);
     await expect(adapter.getById('biz-1', 'pay-missing')).rejects.toThrow(NotFoundError);
-  });
-
-  it('getById throws NotFoundError on empty payments', async () => {
-    vi.mocked(http.get).mockResolvedValue({ payments: [] });
-    await expect(adapter.getById('biz-1', 'pay-1')).rejects.toThrow(NotFoundError);
   });
 
   it('getFulfillment GETs correct nested URL', async () => {

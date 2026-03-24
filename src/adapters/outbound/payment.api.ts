@@ -47,15 +47,10 @@ export class PaymentApiAdapter implements PaymentPort {
   }
 
   async getById(businessId: string, paymentId: string): Promise<Payment> {
-    const data = await this.http.get<PaymentsPaginatedResponse>(
-      `/api/get-clients/business/${businessId}/payments/paginated?pageSize=1000`,
+    const payment = await this.http.get<Payment>(
+      `/api/get-clients/business/${businessId}/payments/${paymentId}`,
     );
 
-    if (!data.payments || data.payments.length === 0) {
-      throw new NotFoundError('Payment', paymentId);
-    }
-
-    const payment = data.payments.find((p) => p.id === paymentId);
     if (!payment) {
       throw new NotFoundError('Payment', paymentId);
     }
