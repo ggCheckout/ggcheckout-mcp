@@ -4,6 +4,7 @@ import type {
   DeliverableConfig,
   UploadDeliverableInput,
   Upsell,
+  ReorderUpsellItem,
   CreateUpsellInput,
   DownsellSequenceItem,
   CreateDownsellInput,
@@ -20,7 +21,7 @@ export interface ProductPort {
   listUpsells(productId: string): Promise<Upsell[]>;
   createUpsell(productId: string, upsellId: string, input: CreateUpsellInput): Promise<Upsell>;
   deleteUpsell(productId: string, upsellId: string): Promise<void>;
-  reorderUpsells(productId: string, upsells: Upsell[]): Promise<void>;
+  reorderUpsells(productId: string, upsells: ReorderUpsellItem[]): Promise<void>;
   listDownsells(productId: string): Promise<{ downsells: DownsellSequenceItem[]; count: number }>;
   createDownsell(productId: string, downsellId: string, input: CreateDownsellInput): Promise<DownsellSequenceItem>;
   deleteDownsell(productId: string, downsellId: string): Promise<void>;

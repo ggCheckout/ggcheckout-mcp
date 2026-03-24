@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ProductService } from '../../../core/services/product.service.js';
+import type { ReorderUpsellItem } from '../../../core/types/product.js';
 import { createToolHandler } from '../tool-handler.js';
 
 export function registerProductTools(server: McpServer, service: ProductService) {
@@ -33,23 +34,23 @@ export function registerProductTools(server: McpServer, service: ProductService)
       description:
         'Create a new product/delivery. Requires at least a URL or deliverableUrl for digital delivery. Price in Brazilian Reais (e.g., 19.90 for R$19.90).',
       inputSchema: {
-        title: z.string().describe('Product title'),
-        description: z.string().describe('Product description'),
+        title: z.string().max(200).describe('Product title'),
+        description: z.string().max(5000).describe('Product description'),
         price: z
           .union([z.number(), z.string()])
           .describe('Price in Brazilian Reais (number) or Brazilian format (string)'),
-        discount: z.number().describe('Discount percentage (use 0 for no discount)'),
-        url: z.string().describe('Product delivery URL (required for digital products)'),
+        discount: z.number().min(0).max(100).describe('Discount percentage (use 0 for no discount)'),
+        url: z.string().url().describe('Product delivery URL (required for digital products)'),
         currency: z.enum(['BRL', 'USD']).optional().describe('Currency (default: BRL)'),
-        imageUrl: z.string().optional().describe('Product image URL'),
-        deliverableUrl: z.string().optional().describe('Alternative: direct file URL for delivery'),
+        imageUrl: z.string().url().optional().describe('Product image URL'),
+        deliverableUrl: z.string().url().optional().describe('Alternative: direct file URL for delivery'),
         deliveryMethod: z
           .enum(['url', 'whatsapp', 'both'])
           .optional()
           .describe('Delivery method (default: url)'),
         isPhysicalProduct: z.boolean().optional().describe('Whether this is a physical product'),
         stockEnabled: z.boolean().optional().describe('Enable stock control'),
-        stockQuantity: z.number().optional().describe('Stock quantity (if stockEnabled)'),
+        stockQuantity: z.number().min(0).max(100000).optional().describe('Stock quantity (if stockEnabled)'),
       },
     },
     createToolHandler('create_product', async (args) => {
@@ -64,16 +65,16 @@ export function registerProductTools(server: McpServer, service: ProductService)
       description: 'Update an existing product/delivery. Only provide fields you want to update.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        title: z.string().optional().describe('Product title'),
-        description: z.string().optional().describe('Product description'),
+        title: z.string().max(200).optional().describe('Product title'),
+        description: z.string().max(5000).optional().describe('Product description'),
         price: z
           .union([z.number(), z.string()])
           .optional()
           .describe('Price in Brazilian Reais (number) or Brazilian format (string)'),
         currency: z.enum(['BRL', 'USD']).optional().describe('Currency'),
-        url: z.string().optional().describe('Product URL'),
-        imageUrl: z.string().optional().describe('Product image URL'),
-        discount: z.number().optional().describe('Discount percentage'),
+        url: z.string().url().optional().describe('Product URL'),
+        imageUrl: z.string().url().optional().describe('Product image URL'),
+        discount: z.number().min(0).max(100).optional().describe('Discount percentage'),
         deliveryMethod: z
           .enum(['url', 'whatsapp', 'both'])
           .optional()
@@ -109,7 +110,7 @@ export function registerProductTools(server: McpServer, service: ProductService)
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
         fileUrl: z.string().url().describe('Public URL of the file to attach as deliverable'),
-        fileName: z.string().describe('File name (e.g., "ebook.pdf")'),
+        fileName: z.string().max(200).describe('File name (e.g., "ebook.pdf")'),
         fileType: z
           .string()
           .optional()
@@ -160,16 +161,16 @@ export function registerProductTools(server: McpServer, service: ProductService)
         productId: z.string().describe('Product ID (uid) the upsell belongs to'),
         upsellId: z.string().describe('Unique ID for this upsell'),
         upsellProductId: z.string().describe('Product ID being offered as upsell'),
-        title: z.string().describe('Upsell title'),
-        description: z.string().optional().describe('Upsell description'),
-        price: z.number().optional().describe('Upsell price in cents'),
-        originalPrice: z.number().optional().describe('Original price in cents (for showing discount)'),
-        discount: z.string().optional().describe('Discount label (e.g., "30% OFF")'),
-        imageUrl: z.string().optional().describe('Upsell image URL'),
+        title: z.string().max(200).describe('Upsell title'),
+        description: z.string().max(5000).optional().describe('Upsell description'),
+        price: z.number().min(0).optional().describe('Upsell price in cents'),
+        originalPrice: z.number().min(0).optional().describe('Original price in cents (for showing discount)'),
+        discount: z.string().max(50).optional().describe('Discount label (e.g., "30% OFF")'),
+        imageUrl: z.string().url().optional().describe('Upsell image URL'),
         mediaType: z.enum(['image', 'video']).optional().describe('Media type'),
         deliveryMethod: z.enum(['url', 'file', 'whatsapp']).optional().describe('Delivery method'),
         timerEnabled: z.boolean().optional().describe('Enable countdown timer'),
-        timerMinutes: z.number().optional().describe('Timer duration in minutes'),
+        timerMinutes: z.number().min(0).max(525600).optional().describe('Timer duration in minutes'),
         status: z.enum(['active', 'inactive']).optional().describe('Upsell status (default: active)'),
       },
     },
@@ -201,11 +202,18 @@ export function registerProductTools(server: McpServer, service: ProductService)
       description: 'Reorder upsells for a product by sending the full upsells array in desired order',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        upsells: z.array(z.object({}).passthrough()).describe('Full upsells array in desired order'),
+        upsells: z.array(z.object({
+          uid: z.string().describe('Upsell UID'),
+          id: z.string().describe('Upsell ID'),
+          order: z.number().min(0).max(1000).optional().describe('New order position'),
+          upsellProductId: z.string(),
+          title: z.string(),
+          status: z.enum(['active', 'inactive']),
+        }).passthrough()).max(50).describe('Full upsells array in desired order'),
       },
     },
     createToolHandler('reorder_upsells', async ({ productId, upsells }) => {
-      await service.reorderUpsells(productId, upsells);
+      await service.reorderUpsells(productId, upsells as ReorderUpsellItem[]);
       return { success: true, message: 'Upsells reordered' };
     }),
   );
@@ -234,14 +242,14 @@ export function registerProductTools(server: McpServer, service: ProductService)
         productId: z.string().describe('Product ID (uid) the downsell belongs to'),
         downsellId: z.string().describe('Unique ID for this downsell'),
         downsellProductId: z.string().describe('Product ID being offered as downsell'),
-        title: z.string().describe('Downsell title'),
-        description: z.string().optional().describe('Downsell description'),
-        headline: z.string().optional().describe('Downsell headline'),
-        price: z.number().describe('Downsell price in cents'),
-        originalPrice: z.number().optional().describe('Original price in cents'),
-        discount: z.string().optional().describe('Discount label'),
+        title: z.string().max(200).describe('Downsell title'),
+        description: z.string().max(5000).optional().describe('Downsell description'),
+        headline: z.string().max(200).optional().describe('Downsell headline'),
+        price: z.number().min(0).describe('Downsell price in cents'),
+        originalPrice: z.number().min(0).optional().describe('Original price in cents'),
+        discount: z.string().max(50).optional().describe('Discount label'),
         timerEnabled: z.boolean().optional().describe('Enable countdown timer'),
-        timerMinutes: z.number().optional().describe('Timer duration in minutes'),
+        timerMinutes: z.number().min(0).max(525600).optional().describe('Timer duration in minutes'),
         mediaType: z.enum(['image', 'video']).optional().describe('Media type'),
         status: z.enum(['active', 'inactive']).optional().describe('Downsell status'),
         chainBehavior: z.enum(['continue', 'stop']).optional().describe('Chain behavior after this downsell'),
@@ -275,7 +283,7 @@ export function registerProductTools(server: McpServer, service: ProductService)
       description: 'Reorder downsells for a product',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        order: z.array(z.string()).describe('Ordered list of downsell IDs'),
+        order: z.array(z.string()).max(100).describe('Ordered list of downsell IDs'),
       },
     },
     createToolHandler('reorder_downsells', async ({ productId, order }) => {
@@ -295,10 +303,11 @@ export function registerProductTools(server: McpServer, service: ProductService)
         tags: z
           .array(
             z.object({
-              name: z.string().describe('Tag name'),
-              color: z.string().describe('Tag color (hex code, e.g., "#FF5733")'),
+              name: z.string().max(200).describe('Tag name'),
+              color: z.string().max(20).describe('Tag color (hex code, e.g., "#FF5733")'),
             }),
           )
+          .max(100)
           .describe('List of tags to set on the product'),
       },
     },

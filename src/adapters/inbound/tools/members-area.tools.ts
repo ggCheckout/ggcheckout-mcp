@@ -37,8 +37,53 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
     description: 'Update members area customization or internal shop settings',
     inputSchema: {
       areaId: z.string().describe('Members area ID'),
-      customization: z.object({}).passthrough().optional().describe('Customization settings (branding, theme, player, etc.)'),
-      internalShop: z.object({}).passthrough().optional().describe('Internal shop config'),
+      customization: z.object({
+        branding: z.object({
+          logoUrl: z.string().optional(), logoPosition: z.string().optional(), logoSize: z.string().optional(),
+          favicon: z.string().optional(), siteName: z.string().max(200).optional(), tagline: z.string().max(500).optional(),
+          sidebarLogoUrl: z.string().optional(), sidebarText: z.string().max(200).optional(),
+          sidebarDisplayMode: z.string().optional(),
+          heroBannerUrl: z.string().optional(), heroText: z.string().max(500).optional(), heroDisplayMode: z.string().optional(),
+        }).optional(),
+        theme: z.object({
+          preset: z.enum(['dark-purple', 'modern-dark', 'clean-light', 'vibrant-gradient', 'ocean-blue', 'forest-green', 'dark-red', 'dark-orange', 'custom']).optional(),
+          colors: z.record(z.string(), z.string()).optional(),
+          typography: z.record(z.string(), z.unknown()).optional(),
+          layout: z.record(z.string(), z.unknown()).optional(),
+        }).optional(),
+        player: z.object({
+          video: z.object({
+            primaryColor: z.string().optional(), progressColor: z.string().optional(),
+            controlsPosition: z.string().optional(), autoplay: z.boolean().optional(),
+            showPlaybackSpeed: z.boolean().optional(), showQuality: z.boolean().optional(),
+            showTheaterMode: z.boolean().optional(), showPictureInPicture: z.boolean().optional(),
+            watermark: z.record(z.string(), z.unknown()).optional(),
+          }).optional(),
+          sidebar: z.record(z.string(), z.unknown()).optional(),
+        }).optional(),
+        components: z.record(z.string(), z.unknown()).optional().describe('Component customizations (moduleCard, heroBanner, etc.)'),
+        navigation: z.record(z.string(), z.unknown()).optional().describe('Navigation menu and breadcrumb settings'),
+        pages: z.record(z.string(), z.unknown()).optional().describe('Page layout settings (dashboard, course, watch)'),
+        seo: z.object({
+          metaTitle: z.string().max(200).optional(), metaDescription: z.string().max(500).optional(),
+          ogImage: z.string().optional(), twitterCard: z.string().optional(),
+        }).optional(),
+        advanced: z.object({
+          customCss: z.string().max(50000).optional(), customScripts: z.string().max(10000).optional(),
+          analytics: z.record(z.string(), z.unknown()).optional(),
+        }).optional(),
+      }).optional().describe('Customization settings (branding, theme, player, SEO, etc.)'),
+      internalShop: z.object({
+        enabled: z.boolean(),
+        selectedProducts: z.array(z.string()).max(100),
+        productLinks: z.record(z.string(), z.string()).optional(),
+        productOriginalPrices: z.record(z.string(), z.number()).optional(),
+        productButtonTexts: z.record(z.string(), z.string()).optional(),
+        bannerUrl: z.string().optional(),
+        buttonText: z.string().max(100).optional(),
+        carouselTitle: z.string().max(200).optional(),
+        displayMode: z.enum(['button', 'carousel']).optional(),
+      }).optional().describe('Internal shop config'),
     },
   }, createToolHandler('update_members_area', async ({ areaId, ...payload }) => {
     await service.update(areaId, payload);
@@ -152,7 +197,34 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
       type: z.enum(['video', 'text', 'pdf', 'quiz', 'file']).describe('Lesson type'),
       duration: z.number().optional().describe('Duration in seconds'),
       videoUrl: z.string().optional().describe('Video URL (for video lessons)'),
-      content: z.object({}).passthrough().optional().describe('Lesson content (varies by type)'),
+      content: z.object({
+        videoUrl: z.string().optional().describe('Video URL (for video lessons)'),
+        videoProvider: z.enum(['youtube', 'vimeo', 'bunny', 'cloudflare', 's3']).optional(),
+        videoSourceType: z.string().optional(),
+        videoId: z.string().optional(),
+        videoDuration: z.number().optional(),
+        videoThumbnail: z.string().optional(),
+        videoQualities: z.array(z.string()).optional(),
+        textHtml: z.string().max(500000).optional().describe('HTML content (for text lessons)'),
+        textMarkdown: z.string().max(500000).optional().describe('Markdown content (for text lessons)'),
+        estimatedReadTime: z.number().optional(),
+        fileUrl: z.string().optional().describe('File URL (for file/pdf lessons)'),
+        fileName: z.string().max(500).optional(),
+        fileSize: z.number().optional(),
+        fileType: z.string().max(100).optional(),
+        questions: z.array(z.object({
+          id: z.string(),
+          text: z.string().max(2000),
+          options: z.array(z.object({
+            id: z.string(),
+            text: z.string().max(1000),
+            isCorrect: z.boolean().optional(),
+          })).max(20).optional(),
+          type: z.string().optional(),
+        })).max(100).optional().describe('Quiz questions (for quiz lessons)'),
+        minScore: z.number().optional(),
+        allowRetry: z.boolean().optional(),
+      }).optional().describe('Lesson content (fields depend on lesson type: video, text, file, quiz)'),
     },
   }, createToolHandler('create_lesson', async ({ areaId, moduleId, sectionId, ...input }) => {
     const result = await service.createLesson(areaId, moduleId, sectionId, input);

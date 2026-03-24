@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { FunnelService } from '../../../core/services/funnel.service.js';
+import type { UpdateFunnelInput } from '../../../core/types/funnel.js';
 import { createToolHandler } from '../tool-handler.js';
 
 export function registerFunnelTools(server: McpServer, service: FunnelService) {
@@ -51,15 +52,87 @@ export function registerFunnelTools(server: McpServer, service: FunnelService) {
         title: z.string().min(1).max(50).optional().describe('Funnel title'),
         slug: z.string().max(100).optional().describe('URL slug'),
         published: z.boolean().optional().describe('Publish or unpublish the funnel'),
-        steps: z.array(z.object({}).passthrough()).optional().describe('Funnel steps array'),
-        flow: z.object({}).passthrough().optional().describe('Flow configuration with edges'),
-        design: z.object({}).passthrough().optional().describe('Design configuration'),
-        settings: z.object({}).passthrough().optional().describe('Settings (SEO, pixels, scripts, webhook)'),
-        scoring: z.object({}).passthrough().optional().describe('Scoring configuration (enabled, ranges)'),
+        steps: z.array(z.object({
+          id: z.string(),
+          title: z.string(),
+          order: z.number(),
+          components: z.array(z.object({
+            id: z.string(),
+            type: z.enum([
+              'alert', 'arguments', 'audio', 'button', 'card', 'carousel', 'cartesian',
+              'compare', 'confetti', 'countdown', 'coupon', 'divider', 'email', 'faq',
+              'form', 'gate', 'guarantee', 'headline', 'hero', 'iframe', 'image', 'input',
+              'list', 'loading', 'logo', 'marquee', 'menu', 'pix', 'price', 'progress',
+              'question', 'result', 'reviews', 'stats', 'terms', 'text', 'video', 'whatsapp',
+            ]).describe('Component type'),
+            order: z.number(),
+            props: z.record(z.string(), z.unknown()).describe('Component properties'),
+          })),
+          position: z.object({ x: z.number(), y: z.number() }),
+        })).max(100).optional().describe('Funnel steps array'),
+        flow: z.object({
+          edges: z.array(z.object({
+            id: z.string(),
+            source: z.string(),
+            target: z.string(),
+            sourceHandle: z.string().optional(),
+            label: z.string().optional(),
+            condition: z.object({
+              questionId: z.string(),
+              operator: z.enum(['equals', 'contains', 'gt', 'lt', 'score_range']),
+              value: z.string(),
+            }).optional(),
+            isFallback: z.boolean().optional(),
+          })).max(500),
+        }).optional().describe('Flow configuration with edges'),
+        design: z.object({
+          general: z.object({
+            maxWidth: z.number(), spacing: z.number(), borderRadius: z.number(), showProgress: z.boolean().optional(),
+          }).optional(),
+          header: z.object({
+            logoUrl: z.string(), bgColor: z.string(), showHeader: z.boolean(),
+          }).optional(),
+          colors: z.object({
+            primary: z.string(), secondary: z.string(), background: z.string(), text: z.string(),
+            input: z.record(z.string(), z.string()).optional(),
+            button: z.record(z.string(), z.record(z.string(), z.string())).optional(),
+            hover: z.record(z.string(), z.string()).optional(),
+            checkbox: z.record(z.string(), z.string()).optional(),
+          }).optional(),
+          typography: z.object({
+            headingFont: z.string(), bodyFont: z.string(), headingWeight: z.number(), bodyWeight: z.number(),
+          }).optional(),
+          animation: z.object({
+            type: z.enum(['none', 'fade', 'slide', 'scale']),
+            speed: z.number(),
+            direction: z.enum(['up', 'down', 'left', 'right']),
+          }).optional(),
+        }).optional().describe('Design configuration'),
+        settings: z.object({
+          customDomain: z.string().optional(),
+          seo: z.object({
+            title: z.string(), description: z.string(), ogImage: z.string(), favicon: z.string(),
+          }).optional(),
+          pixels: z.object({
+            facebookId: z.string().optional(), tiktokId: z.string().optional(), googleId: z.string().optional(),
+          }).optional(),
+          scripts: z.object({
+            head: z.string().max(10000).optional(),
+            body: z.string().max(10000).optional(),
+            footer: z.string().max(10000).optional(),
+          }).optional(),
+          webhookUrl: z.string().url().optional(),
+        }).optional().describe('Settings (SEO, pixels, scripts, webhook)'),
+        scoring: z.object({
+          enabled: z.boolean(),
+          ranges: z.array(z.object({
+            id: z.string(), label: z.string(), minScore: z.number(), maxScore: z.number(),
+          })).max(50),
+        }).optional().describe('Scoring configuration (enabled, ranges)'),
       },
     },
     createToolHandler('update_funnel', async ({ funnelId, ...input }) => {
-      const funnel = await service.update(funnelId, input);
+      const funnel = await service.update(funnelId, input as UpdateFunnelInput);
       return { success: true, funnel };
     }),
   );

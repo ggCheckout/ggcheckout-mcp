@@ -5,6 +5,7 @@ import type {
   DeliverableConfig,
   UploadDeliverableInput,
   Upsell,
+  ReorderUpsellItem,
   CreateUpsellInput,
   DownsellSequenceItem,
   CreateDownsellInput,
@@ -58,7 +59,7 @@ export class ProductApiAdapter implements ProductPort {
     await this.http.delete(`/api/product-delivery/${productId}/upsells/${upsellId}`);
   }
 
-  async reorderUpsells(productId: string, upsells: Upsell[]): Promise<void> {
+  async reorderUpsells(productId: string, upsells: ReorderUpsellItem[]): Promise<void> {
     await this.http.patch(`/api/product-delivery/${productId}/upsells`, { upsells });
   }
 

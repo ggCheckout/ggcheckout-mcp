@@ -228,6 +228,15 @@ export interface DownsellSequenceItem {
   updatedAt: string;
 }
 
+export interface ReorderUpsellItem {
+  uid: string;
+  id: string;
+  order?: number;
+  upsellProductId: string;
+  title: string;
+  status: UpsellStatus;
+}
+
 export interface CreateDownsellInput {
   downsellProductId: string;
   title: string;

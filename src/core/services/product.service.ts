@@ -5,6 +5,7 @@ import type {
   DeliverableConfig,
   UploadDeliverableInput,
   Upsell,
+  ReorderUpsellItem,
   CreateUpsellInput,
   DownsellSequenceItem,
   CreateDownsellInput,
@@ -56,7 +57,7 @@ export class ProductService {
     return this.productPort.deleteUpsell(productId, upsellId);
   }
 
-  async reorderUpsells(productId: string, upsells: Upsell[]): Promise<void> {
+  async reorderUpsells(productId: string, upsells: ReorderUpsellItem[]): Promise<void> {
     return this.productPort.reorderUpsells(productId, upsells);
   }
 
