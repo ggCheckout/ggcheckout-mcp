@@ -47,10 +47,11 @@ export class PaymentApiAdapter implements PaymentPort {
   }
 
   async getById(businessId: string, paymentId: string): Promise<Payment> {
-    const payment = await this.http.get<Payment>(
+    const data = await this.http.get<PaymentsListResponse>(
       `/api/get-clients/business/${businessId}/payments/${paymentId}`,
     );
 
+    const payment = data.payments?.[0];
     if (!payment) {
       throw new NotFoundError('Payment', paymentId);
     }

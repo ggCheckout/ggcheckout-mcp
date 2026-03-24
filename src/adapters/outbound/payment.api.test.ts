@@ -42,15 +42,15 @@ describe('PaymentApiAdapter', () => {
 
   it('getById fetches single payment via dedicated endpoint', async () => {
     const mockPayment = { id: 'pay-1', email: 'test@test.com' };
-    vi.mocked(http.get).mockResolvedValue(mockPayment);
+    vi.mocked(http.get).mockResolvedValue({ payments: [mockPayment] });
 
     const result = await adapter.getById('biz-1', 'pay-1');
     expect(http.get).toHaveBeenCalledWith('/api/get-clients/business/biz-1/payments/pay-1');
     expect(result.id).toBe('pay-1');
   });
 
-  it('getById throws NotFoundError when payment is null', async () => {
-    vi.mocked(http.get).mockResolvedValue(null);
+  it('getById throws NotFoundError when payments array is empty', async () => {
+    vi.mocked(http.get).mockResolvedValue({ payments: [] });
     await expect(adapter.getById('biz-1', 'pay-missing')).rejects.toThrow(NotFoundError);
   });
 
