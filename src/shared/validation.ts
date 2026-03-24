@@ -10,8 +10,22 @@ export function parsePriceToCents(input: number | string): number {
   }
 
   if (typeof input === 'string') {
-    const clean = input.replace(/\./g, '').replace(',', '.');
-    const value = Number.parseFloat(clean);
+    const trimmed = input.trim();
+    if (trimmed === '') {
+      throw new ValidationError('Invalid price format');
+    }
+
+    let value: number;
+
+    // Brazilian format: "1.990,50" or "19,90" (comma as decimal separator)
+    if (trimmed.includes(',')) {
+      const clean = trimmed.replace(/\./g, '').replace(',', '.');
+      value = Number.parseFloat(clean);
+    } else {
+      // US/numeric format: "19.90" or "1990"
+      value = Number.parseFloat(trimmed);
+    }
+
     if (Number.isNaN(value) || value < 0) {
       throw new ValidationError('Invalid price format');
     }
@@ -31,7 +45,14 @@ const createProductSchema = z.object({
   discount: z.number().optional(),
   deliveryMethod: z.enum(['url', 'whatsapp', 'both']).optional(),
   isPhysicalProduct: z.boolean().optional(),
-}).passthrough();
+  stockEnabled: z.boolean().optional(),
+  unlimitedStock: z.boolean().optional(),
+  stockQuantity: z.number().min(0).optional(),
+  membersAreaEnabled: z.boolean().optional(),
+  deliverableType: z.enum(['url', 'file', 'text']).optional(),
+  deliverableUrl: z.string().url().optional(),
+  skipDeliveryEmail: z.boolean().optional(),
+});
 
 const updateProductSchema = z.object({
   title: z.string().min(1).optional(),
@@ -40,10 +61,17 @@ const updateProductSchema = z.object({
   currency: z.enum(['BRL', 'USD']).optional(),
   url: z.string().url().optional(),
   imageUrl: z.string().url().or(z.literal('')).optional(),
-  discount: z.number().optional(),
+  discount: z.number().min(0).max(100).optional(),
   deliveryMethod: z.enum(['url', 'whatsapp', 'both']).optional(),
   isPhysicalProduct: z.boolean().optional(),
-}).passthrough();
+  stockEnabled: z.boolean().optional(),
+  unlimitedStock: z.boolean().optional(),
+  stockQuantity: z.number().min(0).optional(),
+  membersAreaEnabled: z.boolean().optional(),
+  deliverableType: z.enum(['url', 'file', 'text']).optional(),
+  deliverableUrl: z.string().url().optional(),
+  skipDeliveryEmail: z.boolean().optional(),
+});
 
 export function validateCreateProductInput(input: any) {
   const validated = createProductSchema.parse(input);

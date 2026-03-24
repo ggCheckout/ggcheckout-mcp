@@ -31,6 +31,23 @@ describe('parsePriceToCents', () => {
     expect(parsePriceToCents('1.990,50')).toBe(199050);
   });
 
+  it('converts US format string "19.90" correctly (not 1990)', () => {
+    expect(parsePriceToCents('19.90')).toBe(1990);
+  });
+
+  it('converts US format string "1990" as integer', () => {
+    expect(parsePriceToCents('1990')).toBe(199000);
+  });
+
+  it('trims whitespace from string input', () => {
+    expect(parsePriceToCents('  29.90  ')).toBe(2990);
+  });
+
+  it('throws ValidationError for empty string', () => {
+    expect(() => parsePriceToCents('')).toThrow(ValidationError);
+    expect(() => parsePriceToCents('   ')).toThrow(ValidationError);
+  });
+
   it('throws ValidationError for negative number', () => {
     expect(() => parsePriceToCents(-5)).toThrow(ValidationError);
     expect(() => parsePriceToCents(-5)).toThrow('non-negative');
