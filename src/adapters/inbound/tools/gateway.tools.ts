@@ -14,7 +14,7 @@ export function registerGatewayTools(server: McpServer, service: GatewayService)
     inputSchema: {
       token: z.string().describe('Gateway token/credential'),
       type: z.string().describe('Gateway type (e.g., pushinpay, mercadopago, stripe, efibank)'),
-      title: z.string().describe('Token display name'),
+      title: z.string().max(200).describe('Token display name'),
       target: z.string().describe('Target identifier'),
       status: z.string().describe('Token status'),
       tokenId: z.string().optional().describe('Token ID (for updates)'),

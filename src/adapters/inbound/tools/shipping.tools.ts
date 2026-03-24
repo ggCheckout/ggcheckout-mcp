@@ -12,8 +12,8 @@ export function registerShippingTools(server: McpServer, service: ShippingServic
       tokenId: z.string().optional().describe('MelhorEnvio token ID'),
       businessId: z.string().optional().describe('Business ID'),
       products: z.array(z.object({
-        weight: z.number(), width: z.number(), height: z.number(), length: z.number(), quantity: z.number().optional(),
-      })).optional().describe('Product dimensions array'),
+        weight: z.number().min(0), width: z.number().min(0), height: z.number().min(0), length: z.number().min(0), quantity: z.number().min(0).max(100000).optional(),
+      })).max(100).optional().describe('Product dimensions array'),
     },
   }, createToolHandler('calculate_shipping', async (args) => service.calculate(args)));
 
@@ -31,10 +31,10 @@ export function registerShippingTools(server: McpServer, service: ShippingServic
       paymentId: z.string().describe('Payment ID'),
       businessId: z.string().describe('Business ID'),
       serviceId: z.number().describe('MelhorEnvio service ID'),
-      productName: z.string().describe('Product name'),
-      productValue: z.number().describe('Product value in cents'),
+      productName: z.string().max(200).describe('Product name'),
+      productValue: z.number().min(0).describe('Product value in cents'),
       packageDimensions: z.object({
-        weight: z.number(), width: z.number(), height: z.number(), length: z.number(),
+        weight: z.number().min(0), width: z.number().min(0), height: z.number().min(0), length: z.number().min(0),
       }).describe('Package dimensions'),
     },
   }, createToolHandler('create_shipping_cart', async (args) => service.createCart(args)));

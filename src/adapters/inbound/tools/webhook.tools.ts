@@ -32,19 +32,22 @@ export function registerWebhookTools(server: McpServer, service: WebhookService)
     {
       description: 'Create a new webhook for payment notifications',
       inputSchema: {
-        name: z.string().describe('Webhook name/description'),
+        name: z.string().max(200).describe('Webhook name/description'),
         url: z.string().url().describe('Webhook URL endpoint to receive notifications'),
         events: z
           .array(z.string())
+          .max(100)
           .describe(
             'Events to trigger this webhook (e.g., ["payment.created", "payment.paid", "payment.refunded"])',
           ),
         secret: z
           .string()
+          .max(200)
           .optional()
           .describe('Secret key for webhook signature verification (optional)'),
         productsId: z
           .array(z.string())
+          .max(100)
           .optional()
           .describe('Product IDs to filter notifications (optional - leave empty for all products)'),
       },
@@ -61,11 +64,11 @@ export function registerWebhookTools(server: McpServer, service: WebhookService)
       description: 'Update an existing webhook. Only provide fields you want to update.',
       inputSchema: {
         webhookId: z.string().describe('Webhook ID'),
-        name: z.string().optional().describe('New webhook name/description'),
+        name: z.string().max(200).optional().describe('New webhook name/description'),
         url: z.string().url().optional().describe('New webhook URL'),
-        events: z.array(z.string()).optional().describe('New events list'),
-        secret: z.string().optional().describe('New secret key'),
-        productsId: z.array(z.string()).optional().describe('New product IDs filter'),
+        events: z.array(z.string()).max(100).optional().describe('New events list'),
+        secret: z.string().max(200).optional().describe('New secret key'),
+        productsId: z.array(z.string()).max(100).optional().describe('New product IDs filter'),
       },
     },
     createToolHandler('update_webhook', async ({ webhookId, ...input }) => {

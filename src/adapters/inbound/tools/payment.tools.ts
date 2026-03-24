@@ -34,7 +34,7 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
         'Get paginated payments for a business with optional filters. Requires Firestore indexes for status filtering.',
       inputSchema: {
         businessId: z.string().describe('Business ID'),
-        pageSize: z.number().optional().describe('Number of items per page (default: 10)'),
+        pageSize: z.number().min(1).max(1000).optional().describe('Number of items per page (default: 10)'),
         dateFrom: z.string().optional().describe('Filter payments from this date (ISO format)'),
         dateTo: z.string().optional().describe('Filter payments until this date (ISO format)'),
         lastCreatedAt: z
@@ -47,6 +47,7 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
           .describe('Filter by payment status (e.g., "pending", "paid", "error", "all")'),
         searchTerm: z
           .string()
+          .max(200)
           .optional()
           .describe('Search by payment ID, email, phone, or title offer'),
         countOnly: z.boolean().optional().describe('Return only the total count, not the data'),
@@ -100,16 +101,16 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
             'out_for_delivery', 'delivered', 'failed_attempt', 'returned', 'cancelled',
           ])
           .describe('Fulfillment status'),
-        note: z.string().optional().describe('Optional note about the status change'),
+        note: z.string().max(10000).optional().describe('Optional note about the status change'),
         tracking: z
           .object({
-            code: z.string().describe('Tracking code'),
-            url: z.string().optional().describe('Tracking URL'),
-            carrier: z.string().describe('Carrier name'),
+            code: z.string().max(200).describe('Tracking code'),
+            url: z.string().url().optional().describe('Tracking URL'),
+            carrier: z.string().max(200).describe('Carrier name'),
           })
           .optional()
           .describe('Tracking information'),
-        separatedItems: z.array(z.string()).optional().describe('List of separated item IDs'),
+        separatedItems: z.array(z.string()).max(100).optional().describe('List of separated item IDs'),
       },
     },
     createToolHandler('update_payment_fulfillment', async ({ businessId, paymentId, ...data }) => {

@@ -9,7 +9,7 @@ export function registerCustomDomainTools(server: McpServer, service: CustomDoma
 
   server.registerTool('add_custom_domain', {
     description: 'Add a custom domain (max 5 per account)',
-    inputSchema: { domain: z.string().describe('Domain name (e.g., "checkout.example.com")') },
+    inputSchema: { domain: z.string().max(200).describe('Domain name (e.g., "checkout.example.com")') },
   }, createToolHandler('add_custom_domain', async ({ domain }) => {
     const result = await service.add(domain);
     return { success: true, domain: result };

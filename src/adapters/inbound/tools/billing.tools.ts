@@ -15,8 +15,8 @@ export function registerBillingTools(server: McpServer, service: BillingService)
   server.registerTool('get_billing_history', {
     description: 'Get billing history (charges, credits, payments)',
     inputSchema: {
-      limit: z.number().optional().describe('Max entries to return (default: 50)'),
-      type: z.string().optional().describe('Filter by history entry type'),
+      limit: z.number().min(1).max(1000).optional().describe('Max entries to return (default: 50)'),
+      type: z.string().max(200).optional().describe('Filter by history entry type'),
     },
   }, createToolHandler('get_billing_history', async (args) => service.getHistory(args)));
 
@@ -24,7 +24,7 @@ export function registerBillingTools(server: McpServer, service: BillingService)
     description: 'List seller invoices with optional status filter',
     inputSchema: {
       status: z.enum(['pending', 'processing', 'paid', 'failed', 'overdue']).optional().describe('Filter by invoice status'),
-      limit: z.number().optional().describe('Max invoices to return (default: 50)'),
+      limit: z.number().min(1).max(1000).optional().describe('Max invoices to return (default: 50)'),
     },
   }, createToolHandler('list_invoices', async (args) => service.listInvoices(args)));
 
@@ -48,14 +48,14 @@ export function registerBillingTools(server: McpServer, service: BillingService)
     description: 'List billing credits',
     inputSchema: {
       status: z.enum(['pending', 'confirmed', 'used', 'expired']).optional().describe('Filter by credit status'),
-      limit: z.number().optional().describe('Max credits to return (default: 20)'),
+      limit: z.number().min(1).max(1000).optional().describe('Max credits to return (default: 20)'),
     },
   }, createToolHandler('list_credits', async (args) => service.listCredits(args)));
 
   server.registerTool('add_credit', {
     description: 'Add billing credit via PIX. Returns QR code for payment.',
     inputSchema: {
-      amountCents: z.number().describe('Credit amount in cents'),
+      amountCents: z.number().min(0).describe('Credit amount in cents'),
     },
   }, createToolHandler('add_credit', async ({ amountCents }) => service.addCredit(amountCents)));
 

@@ -14,11 +14,11 @@ export function registerDiscordTools(server: McpServer, service: DiscordService)
     description: 'Connect a Discord server (requires prior OAuth flow)',
     inputSchema: {
       guildId: z.string().describe('Discord server ID'),
-      guildName: z.string().describe('Server name'),
-      guildIcon: z.string().nullable().describe('Server icon URL'),
+      guildName: z.string().max(200).describe('Server name'),
+      guildIcon: z.string().url().nullable().describe('Server icon URL'),
       discordUserId: z.string().describe('Discord user ID'),
-      discordUsername: z.string().describe('Discord username'),
-      discordAvatar: z.string().nullable().describe('User avatar URL'),
+      discordUsername: z.string().max(200).describe('Discord username'),
+      discordAvatar: z.string().url().nullable().describe('User avatar URL'),
     },
   }, createToolHandler('create_discord_connection', async (args) => {
     const connection = await service.createConnection(args);
@@ -34,8 +34,8 @@ export function registerDiscordTools(server: McpServer, service: DiscordService)
         salesChannelName: z.string().nullable().optional(),
         categoryId: z.string().nullable().optional(),
         logChannelId: z.string().nullable().optional(),
-        rolesOnPurchase: z.array(z.string()).nullable().optional(),
-        rolesOnPurchaseNames: z.array(z.string()).nullable().optional(),
+        rolesOnPurchase: z.array(z.string()).max(100).nullable().optional(),
+        rolesOnPurchaseNames: z.array(z.string()).max(100).nullable().optional(),
         language: z.enum(['pt', 'en', 'es']).nullable().optional(),
       }).describe('Settings to update'),
     },

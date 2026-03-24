@@ -13,10 +13,10 @@ export function registerProfileTools(server: McpServer, service: ProfileService)
   server.registerTool('update_profile', {
     description: 'Update seller profile (name, phone)',
     inputSchema: {
-      name: z.string().optional().describe('Full name'),
-      displayName: z.string().optional().describe('Display name'),
-      phone: z.string().optional().describe('Phone number (local, without country code)'),
-      phoneCountryCode: z.string().optional().describe('Phone country code (e.g., "55")'),
+      name: z.string().max(200).optional().describe('Full name'),
+      displayName: z.string().max(200).optional().describe('Display name'),
+      phone: z.string().max(20).optional().describe('Phone number (local, without country code)'),
+      phoneCountryCode: z.string().max(5).optional().describe('Phone country code (e.g., "55")'),
     },
   }, createToolHandler('update_profile', async (args) => service.updateProfile(args)));
 
@@ -29,7 +29,7 @@ export function registerProfileTools(server: McpServer, service: ProfileService)
   server.registerTool('add_support_email', {
     description: 'Add a support email (sends verification)',
     inputSchema: {
-      name: z.string().describe('Display name for the email'),
+      name: z.string().max(200).describe('Display name for the email'),
       email: z.string().describe('Email address'),
     },
   }, createToolHandler('add_support_email', async ({ name, email }) => {
