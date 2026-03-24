@@ -9,7 +9,8 @@ export function maskCpf(cpf: string | null | undefined): string | null {
   if (!cpf) return null;
   const digits = cpf.replace(/\D/g, '');
   if (digits.length < 4) return '***';
-  return `***.***.*${digits.slice(-3, -2)}${digits.slice(-2)}-${digits.slice(-2)}`;
+  // Show only last 2 digits of CPF: ***.***.**X-YZ → ***.***.***-YZ
+  return `***.***.***-${digits.slice(-2)}`;
 }
 
 export function maskPhone(phone: string | null | undefined): string | null {

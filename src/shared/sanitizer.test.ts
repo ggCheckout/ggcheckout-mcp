@@ -9,9 +9,14 @@ import {
 } from './sanitizer.js';
 
 describe('maskCpf', () => {
-  it('masks CPF keeping last 2 digits visible', () => {
-    expect(maskCpf('123.456.789-01')).toContain('01');
-    expect(maskCpf('123.456.789-01')).toContain('***');
+  it('masks CPF keeping only last 2 digits visible', () => {
+    expect(maskCpf('123.456.789-01')).toBe('***.***.***-01');
+  });
+  it('masks CPF without formatting', () => {
+    expect(maskCpf('12345678901')).toBe('***.***.***-01');
+  });
+  it('returns *** for very short input', () => {
+    expect(maskCpf('12')).toBe('***');
   });
   it('returns null for null/undefined', () => {
     expect(maskCpf(null)).toBeNull();
