@@ -67,7 +67,14 @@ import { registerRewardsTools } from './adapters/inbound/tools/rewards.tools.js'
 import { registerProfileTools } from './adapters/inbound/tools/profile.tools.js';
 import { registerPushTools } from './adapters/inbound/tools/push.tools.js';
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
 dotenv.config();
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
 
 const API_KEY = process.env.GGCHECKOUT_API_KEY;
 const API_URL = process.env.GGCHECKOUT_API_URL || 'https://www.ggcheckout.com';
@@ -139,7 +146,7 @@ const pushService = new PushService(pushAdapter, authAdapter);
 // MCP Server
 const server = new McpServer({
   name: 'ggcheckout-mcp',
-  version: '0.1.1',
+  version: pkg.version,
 });
 
 // Inbound adapters (driving)
@@ -170,14 +177,22 @@ await server.connect(transport);
 
 logger.info('STARTUP', 'Server started successfully');
 
-process.on('SIGINT', async () => {
-  logger.info('SHUTDOWN', 'Received SIGINT, shutting down gracefully');
-  await server.close();
-  process.exit(0);
-});
+async function shutdown(signal: string) {
+  logger.info('SHUTDOWN', `Received ${signal}, shutting down gracefully`);
+  const forceTimeout = setTimeout(() => {
+    logger.error('SHUTDOWN', 'Graceful shutdown timed out after 10s, forcing exit');
+    process.exit(1);
+  }, 10000);
+  forceTimeout.unref();
 
-process.on('SIGTERM', async () => {
-  logger.info('SHUTDOWN', 'Received SIGTERM, shutting down gracefully');
-  await server.close();
-  process.exit(0);
-});
+  try {
+    await server.close();
+    process.exit(0);
+  } catch (err: any) {
+    logger.error('SHUTDOWN', 'Error during shutdown', err.message);
+    process.exit(1);
+  }
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
