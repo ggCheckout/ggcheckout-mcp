@@ -3,8 +3,9 @@ export class AppError extends Error {
     message: string,
     public readonly code: string,
     public readonly statusCode?: number,
+    cause?: Error,
   ) {
-    super(message);
+    super(message, { cause });
     this.name = 'AppError';
   }
 }
@@ -24,22 +25,22 @@ export class ValidationError extends AppError {
 }
 
 export class AuthenticationError extends AppError {
-  constructor(message = 'Authentication failed') {
-    super(message, 'AUTH_ERROR', 401);
+  constructor(message = 'Authentication failed', cause?: Error) {
+    super(message, 'AUTH_ERROR', 401, cause);
     this.name = 'AuthenticationError';
   }
 }
 
 export class RateLimitError extends AppError {
-  constructor(message = 'Rate limit exceeded') {
-    super(message, 'RATE_LIMIT', 429);
+  constructor(message = 'Rate limit exceeded', cause?: Error) {
+    super(message, 'RATE_LIMIT', 429, cause);
     this.name = 'RateLimitError';
   }
 }
 
 export class ApiError extends AppError {
-  constructor(statusCode: number, message: string) {
-    super(`API Error (${statusCode}): ${message}`, 'API_ERROR', statusCode);
+  constructor(statusCode: number, message: string, cause?: Error) {
+    super(`API Error (${statusCode}): ${message}`, 'API_ERROR', statusCode, cause);
     this.name = 'ApiError';
   }
 }

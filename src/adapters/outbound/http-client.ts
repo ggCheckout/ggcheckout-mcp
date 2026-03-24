@@ -21,11 +21,18 @@ export class HttpClient {
       (response) => response,
       (error: AxiosError) => {
         const status = error.response?.status;
-        const message = (error.response?.data as any)?.error || error.message;
+        const apiMessage = (error.response?.data as any)?.error
+          || (error.response?.data as any)?.message;
 
-        if (status === 401) throw new AuthenticationError(message);
-        if (status === 429) throw new RateLimitError(message);
-        throw new ApiError(status || 500, message);
+        // Use API error message when available; fallback to generic message
+        // to avoid leaking internal details (URLs, headers, stack traces)
+        const safeMessage = typeof apiMessage === 'string'
+          ? apiMessage
+          : `Request failed with status ${status || 'unknown'}`;
+
+        if (status === 401) throw new AuthenticationError(safeMessage, error);
+        if (status === 429) throw new RateLimitError(safeMessage, error);
+        throw new ApiError(status || 500, safeMessage, error);
       },
     );
   }

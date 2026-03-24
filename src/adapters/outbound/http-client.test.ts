@@ -84,6 +84,41 @@ describe('HttpClient', () => {
     expect(() => errorHandler(axiosError)).toThrow(ApiError);
   });
 
+  it('uses safe fallback message when API returns no error string', () => {
+    new HttpClient('https://api.test.com', 'key');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+
+    const axiosError = {
+      response: { status: 503, data: null },
+      message: 'connect ECONNREFUSED 127.0.0.1:3000 - internal stack trace here',
+    };
+
+    try {
+      errorHandler(axiosError);
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(ApiError);
+      expect(e.message).not.toContain('ECONNREFUSED');
+      expect(e.message).toContain('503');
+    }
+  });
+
+  it('reads message field as fallback when error field is missing', () => {
+    new HttpClient('https://api.test.com', 'key');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+
+    const axiosError = {
+      response: { status: 400, data: { message: 'Invalid input' } },
+      message: 'Request failed',
+    };
+
+    try {
+      errorHandler(axiosError);
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(ApiError);
+      expect(e.message).toContain('Invalid input');
+    }
+  });
+
   it('get() calls axios.get and returns data', async () => {
     const client = new HttpClient('https://api.test.com', 'key');
     mockAxiosInstance.get.mockResolvedValue({ data: { products: [] } });
