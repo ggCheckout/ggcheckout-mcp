@@ -26,6 +26,7 @@ import { CustomDomainApiAdapter } from './adapters/outbound/custom-domain.api.js
 import { RewardsApiAdapter } from './adapters/outbound/rewards.api.js';
 import { ProfileApiAdapter } from './adapters/outbound/profile.api.js';
 import { PushApiAdapter } from './adapters/outbound/push.api.js';
+import { TelegramApiAdapter } from './adapters/outbound/telegram.api.js';
 
 // Services
 import { ProductService } from './core/services/product.service.js';
@@ -46,6 +47,7 @@ import { CustomDomainService } from './core/services/custom-domain.service.js';
 import { RewardsService } from './core/services/rewards.service.js';
 import { ProfileService } from './core/services/profile.service.js';
 import { PushService } from './core/services/push.service.js';
+import { TelegramService } from './core/services/telegram.service.js';
 
 // Inbound adapters (MCP tools)
 import { registerProductTools } from './adapters/inbound/tools/product.tools.js';
@@ -66,6 +68,7 @@ import { registerCustomDomainTools } from './adapters/inbound/tools/custom-domai
 import { registerRewardsTools } from './adapters/inbound/tools/rewards.tools.js';
 import { registerProfileTools } from './adapters/inbound/tools/profile.tools.js';
 import { registerPushTools } from './adapters/inbound/tools/push.tools.js';
+import { registerTelegramTools } from './adapters/inbound/tools/telegram.tools.js';
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -122,6 +125,7 @@ const customDomainAdapter = new CustomDomainApiAdapter(httpClient);
 const rewardsAdapter = new RewardsApiAdapter(httpClient);
 const profileAdapter = new ProfileApiAdapter(httpClient);
 const pushAdapter = new PushApiAdapter(httpClient);
+const telegramAdapter = new TelegramApiAdapter(httpClient);
 
 // Services (use cases)
 const productService = new ProductService(productAdapter);
@@ -142,6 +146,7 @@ const customDomainService = new CustomDomainService(customDomainAdapter);
 const rewardsService = new RewardsService(rewardsAdapter);
 const profileService = new ProfileService(profileAdapter, authAdapter);
 const pushService = new PushService(pushAdapter, authAdapter);
+const telegramService = new TelegramService(telegramAdapter);
 
 // MCP Server
 const server = new McpServer({
@@ -168,6 +173,7 @@ registerCustomDomainTools(server, customDomainService);
 registerRewardsTools(server, rewardsService);
 registerProfileTools(server, profileService);
 registerPushTools(server, pushService);
+registerTelegramTools(server, telegramService);
 
 logger.info('STARTUP', 'All tools registered');
 

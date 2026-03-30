@@ -195,3 +195,21 @@ export function sanitizePushDevice<T extends Record<string, any>>(device: T): T 
     ipAddress: undefined,
   };
 }
+
+export function sanitizeTelegramBot<T extends Record<string, any>>(bot: T): T {
+  if (!bot) return bot;
+  return {
+    ...bot,
+    token: undefined,
+  };
+}
+
+export function sanitizeTelegramLead<T extends Record<string, any>>(lead: T): T {
+  if (!lead) return lead;
+  return {
+    ...lead,
+    email: maskEmail(lead.email),
+    phone: maskPhone(lead.phone),
+    telegramUserId: lead.telegramUserId ? '***' + String(lead.telegramUserId).slice(-4) : undefined,
+  };
+}
