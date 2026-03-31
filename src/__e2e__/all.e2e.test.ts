@@ -13,6 +13,8 @@ import { services, adapters, delay } from './setup.js';
 import { HttpClient } from '../adapters/outbound/http-client.js';
 import { AuthApiAdapter } from '../adapters/outbound/auth.api.js';
 
+const API_URL = process.env.GGCHECKOUT_API_URL || 'https://www.ggcheckout.com';
+
 const DELAY = 3000;
 
 describe('E2E: ggcheckout-mcp', () => {
@@ -27,7 +29,7 @@ describe('E2E: ggcheckout-mcp', () => {
 
     it('invalid API key returns error', async () => {
       await delay(DELAY);
-      const badHttp = new HttpClient('https://www.ggcheckout.com', 'ggck_live_invalid_key_000000000000000000000000000000000000000000000000');
+      const badHttp = new HttpClient(API_URL, 'ggck_live_invalid_key_000000000000000000000000000000000000000000000000');
       const badAuth = new AuthApiAdapter(badHttp);
       await expect(badAuth.getMyBusinessId()).rejects.toThrow();
     });
@@ -78,6 +80,8 @@ describe('E2E: ggcheckout-mcp', () => {
         title: 'E2E Test Product',
         description: 'Created by automated E2E test - safe to delete',
         price: 19.90,
+        discount: 0,
+        url: 'https://example.com/delivery',
       });
       expect(result.productId).toBeDefined();
       productId = result.productId;
