@@ -1,5 +1,5 @@
 import type { GatewayPort } from '../../core/ports/gateway.port.js';
-import type { GatewayToken, InsertTokenInput } from '../../core/types/gateway.js';
+import type { GatewayToken, InsertTokenInput, GatewayFallbackStats } from '../../core/types/gateway.js';
 import type { HttpClient } from './http-client.js';
 import type { AuthPort } from '../../core/ports/auth.port.js';
 import { sanitizeGatewayToken } from '../../shared/sanitizer.js';
@@ -21,5 +21,8 @@ export class GatewayApiAdapter implements GatewayPort {
   async deleteToken(tokenId: string, target: string, token: string, type: string) {
     const userId = await this.authPort.getMyBusinessId();
     await this.http.post('/api/delete-token', { userId, tokenId, target, token, type, product: '', status: 'active' });
+  }
+  async getFallbackStats(): Promise<GatewayFallbackStats> {
+    return this.http.get<GatewayFallbackStats>('/api/user/gateway-stats');
   }
 }

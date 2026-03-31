@@ -50,4 +50,17 @@ describe('GatewayApiAdapter', () => {
       target: 'stripe',
     }));
   });
+
+  it('getFallbackStats GETs /api/user/gateway-stats', async () => {
+    const mockStats = {
+      stats: {
+        amplopay: { success: 100, errors: 5, total: 105, reliability: 95.2 },
+      },
+      cachedAt: 1711900000000,
+    };
+    vi.mocked(http.get).mockResolvedValue(mockStats);
+    const result = await adapter.getFallbackStats();
+    expect(http.get).toHaveBeenCalledWith('/api/user/gateway-stats');
+    expect(result).toEqual(mockStats);
+  });
 });
