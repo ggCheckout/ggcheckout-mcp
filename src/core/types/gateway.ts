@@ -19,3 +19,15 @@ export interface InsertTokenInput {
   tokenId?: string;
   trackingMode?: 'pixel' | 'events_api' | 'both';
 }
+
+export interface GatewayStatEntry {
+  success: number;
+  errors: number;
+  total: number;
+  reliability: number;
+}
+
+export interface GatewayFallbackStats {
+  stats: Record<string, GatewayStatEntry>;
+  cachedAt: number | null;
+}
