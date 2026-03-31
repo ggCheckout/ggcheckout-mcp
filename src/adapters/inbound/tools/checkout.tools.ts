@@ -8,9 +8,26 @@ const paymentMethodConfigSchema = z.object({
   type: z.string(),
 }).nullable().optional();
 
+const pixGatewayEntrySchema = z.object({
+  tokenId: z.string().describe('Gateway token ID'),
+  type: z.string().describe('Gateway type (e.g., amplopay, efibank, mercadopago)'),
+});
+
+const pixFallbackSchema = z.union([
+  z.object({
+    token: z.string(),
+    type: z.string(),
+  }),
+  z.object({
+    gateways: z.array(pixGatewayEntrySchema).min(1).max(5)
+      .describe('Ordered list of PIX gateways for fallback chain (max 5). First gateway has highest priority.'),
+  }),
+]).nullable().optional()
+  .describe('PIX config: legacy single gateway {token, type} or fallback chain {gateways: [{tokenId, type}]}');
+
 const paymentMethodsSchema = z.object({
   credit_card: paymentMethodConfigSchema,
-  pix: paymentMethodConfigSchema,
+  pix: pixFallbackSchema,
   bank_slip: paymentMethodConfigSchema,
   installments: z.number().min(1).max(24).optional(),
   showInstallmentsOnPrice: z.boolean().optional(),

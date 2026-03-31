@@ -8,9 +8,18 @@ export interface CheckoutPaymentMethodConfig {
   type: string;
 }
 
+export interface CheckoutPixGatewayEntry {
+  tokenId: string;
+  type: string;
+}
+
+export interface CheckoutPixGatewaysConfig {
+  gateways: CheckoutPixGatewayEntry[];
+}
+
 export interface CheckoutPaymentMethods {
   credit_card?: CheckoutPaymentMethodConfig | null;
-  pix?: CheckoutPaymentMethodConfig | null;
+  pix?: CheckoutPaymentMethodConfig | CheckoutPixGatewaysConfig | null;
   bank_slip?: CheckoutPaymentMethodConfig | null;
   installments?: number;
   showInstallmentsOnPrice?: boolean;
