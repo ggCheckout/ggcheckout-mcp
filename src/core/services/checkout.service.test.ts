@@ -71,6 +71,45 @@ describe('CheckoutService', () => {
     );
   });
 
+  it('update preserves PIX fallback gateways format', async () => {
+    const currentCheckout = {
+      id: 'ck-1',
+      uid: 'uid-1',
+      title: 'Original',
+      uuidOwnwer: 'owner-1',
+      price: 5000,
+      paymentMethods: {
+        pix: {
+          gateways: [
+            { tokenId: 'tok-1', type: 'amplopay' },
+            { tokenId: 'tok-2', type: 'efibank' },
+          ],
+        },
+      },
+      checkout: { theme: 'dark' },
+      orderBumps: [],
+      published: true,
+      createBy: 'user',
+    };
+    vi.mocked(mockCheckoutPort.getById).mockResolvedValue(currentCheckout as any);
+    vi.mocked(mockCheckoutPort.update).mockResolvedValue(currentCheckout as any);
+
+    const newPixConfig = {
+      gateways: [
+        { tokenId: 'tok-3', type: 'mercadopago' },
+        { tokenId: 'tok-1', type: 'amplopay' },
+      ],
+    };
+    await service.update('ck-1', { paymentMethods: { pix: newPixConfig } });
+
+    expect(mockCheckoutPort.update).toHaveBeenCalledWith(
+      'ck-1',
+      expect.objectContaining({
+        paymentMethods: { pix: newPixConfig },
+      }),
+    );
+  });
+
   it('delete fetches checkout first to get uuidOwnwer, then calls port.delete with both', async () => {
     vi.mocked(mockCheckoutPort.getById).mockResolvedValue({
       id: 'ck-1',
