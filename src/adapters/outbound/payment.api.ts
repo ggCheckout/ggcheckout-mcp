@@ -77,6 +77,6 @@ export class PaymentApiAdapter implements PaymentPort {
   }
 
   async checkStatus(paymentId: string): Promise<PaymentStatusCheckResponse> {
-    return this.http.get<PaymentStatusCheckResponse>(`/api/payments/check-payment/${paymentId}`);
+    return this.http.post<PaymentStatusCheckResponse>(`/api/payments/check-payment/${paymentId}`, {});
   }
 }

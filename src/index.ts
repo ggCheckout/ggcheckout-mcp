@@ -107,7 +107,7 @@ const httpClient = new HttpClient(API_URL, API_KEY);
 
 // Outbound adapters (driven)
 const authAdapter = new AuthApiAdapter(httpClient);
-const productAdapter = new ProductApiAdapter(httpClient);
+const productAdapter = new ProductApiAdapter(httpClient, authAdapter);
 const paymentAdapter = new PaymentApiAdapter(httpClient);
 const checkoutAdapter = new CheckoutApiAdapter(httpClient);
 const webhookAdapter = new WebhookApiAdapter(httpClient);

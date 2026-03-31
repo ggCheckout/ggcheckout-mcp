@@ -69,10 +69,10 @@ describe('PaymentApiAdapter', () => {
     );
   });
 
-  it('checkStatus GETs /api/payments/check-payment/{id}', async () => {
-    vi.mocked(http.get).mockResolvedValue({ data: { status: 'paid' } });
+  it('checkStatus POSTs to /api/payments/check-payment/{id}', async () => {
+    vi.mocked(http.post).mockResolvedValue({ data: { status: 'paid' } });
     const result = await adapter.checkStatus('pay-1');
-    expect(http.get).toHaveBeenCalledWith('/api/payments/check-payment/pay-1');
+    expect(http.post).toHaveBeenCalledWith('/api/payments/check-payment/pay-1', {});
     expect(result.data.status).toBe('paid');
   });
 });

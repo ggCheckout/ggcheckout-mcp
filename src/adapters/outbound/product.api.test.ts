@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProductApiAdapter } from './product.api.js';
 import type { HttpClient } from './http-client.js';
+import type { AuthPort } from '../../core/ports/auth.port.js';
 
 function createMockHttp(): HttpClient {
   return {
@@ -15,10 +16,12 @@ function createMockHttp(): HttpClient {
 describe('ProductApiAdapter', () => {
   let adapter: ProductApiAdapter;
   let http: ReturnType<typeof createMockHttp>;
+  let authPort: AuthPort;
 
   beforeEach(() => {
     http = createMockHttp();
-    adapter = new ProductApiAdapter(http);
+    authPort = { getMyBusinessId: vi.fn().mockResolvedValue('user-1') };
+    adapter = new ProductApiAdapter(http, authPort);
   });
 
   it('list calls GET /api/product-delivery', async () => {
@@ -40,10 +43,11 @@ describe('ProductApiAdapter', () => {
     expect(result).toEqual({ success: true, productId: 'new-id' });
   });
 
-  it('update calls PATCH with id in payload', async () => {
+  it('update calls PATCH with id and uuidOwner in payload', async () => {
     vi.mocked(http.patch).mockResolvedValue({});
     await adapter.update('p1', { title: 'Updated' });
-    expect(http.patch).toHaveBeenCalledWith('/api/product-delivery/p1', { title: 'Updated', id: 'p1' });
+    expect(authPort.getMyBusinessId).toHaveBeenCalled();
+    expect(http.patch).toHaveBeenCalledWith('/api/product-delivery/p1', { title: 'Updated', id: 'p1', uuidOwner: 'user-1' });
   });
 
   it('createUpsell POSTs to /upsells/{upsellId} with { upsell: input } body', async () => {

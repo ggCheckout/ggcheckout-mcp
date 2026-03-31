@@ -11,9 +11,10 @@ import type {
   CreateDownsellInput,
 } from '../../core/types/product.js';
 import type { HttpClient } from './http-client.js';
+import type { AuthPort } from '../../core/ports/auth.port.js';
 
 export class ProductApiAdapter implements ProductPort {
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly http: HttpClient, private readonly authPort: AuthPort) {}
 
   async list(): Promise<Product[]> {
     return this.http.get<Product[]>('/api/product-delivery');
@@ -28,7 +29,8 @@ export class ProductApiAdapter implements ProductPort {
   }
 
   async update(id: string, payload: any): Promise<void> {
-    await this.http.patch(`/api/product-delivery/${id}`, { ...payload, id });
+    const uuidOwner = await this.authPort.getMyBusinessId();
+    await this.http.patch(`/api/product-delivery/${id}`, { ...payload, id, uuidOwner });
   }
 
   async delete(id: string): Promise<void> {
@@ -82,7 +84,7 @@ export class ProductApiAdapter implements ProductPort {
   }
 
   async reorderDownsells(productId: string, order: string[]): Promise<void> {
-    await this.http.post(`/api/product-delivery/${productId}/downsells/reorder`, { order });
+    await this.http.post(`/api/product-delivery/${productId}/downsells/reorder`, { downsellIds: order });
   }
 
   async manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }> {

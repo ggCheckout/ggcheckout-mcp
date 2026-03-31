@@ -39,7 +39,7 @@ const authAdapter = new AuthApiAdapter(httpClient);
 
 export const adapters = {
   auth: authAdapter,
-  product: new ProductApiAdapter(httpClient),
+  product: new ProductApiAdapter(httpClient, authAdapter),
   payment: new PaymentApiAdapter(httpClient),
   checkout: new CheckoutApiAdapter(httpClient),
   webhook: new WebhookApiAdapter(httpClient),
