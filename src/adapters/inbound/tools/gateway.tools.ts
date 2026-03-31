@@ -36,4 +36,10 @@ export function registerGatewayTools(server: McpServer, service: GatewayService)
     await service.deleteToken(tokenId, target, token, type);
     return { success: true, message: 'Token deleted' };
   }));
+
+  server.tool(
+    'get_gateway_fallback_stats',
+    'Get PIX gateway fallback reliability statistics. Shows success/error counts and reliability percentage per gateway, based on the last 24 hours of transactions.',
+    createToolHandler('get_gateway_fallback_stats', async () => service.getFallbackStats()),
+  );
 }
