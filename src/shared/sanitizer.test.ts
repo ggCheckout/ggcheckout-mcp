@@ -5,7 +5,7 @@ import {
   sanitizeWhatsappSession, sanitizeLead, sanitizeFunnel,
   sanitizeBillingCard, sanitizeStoreConfig, sanitizeCustomer,
   sanitizeFeedback, sanitizeStudent, sanitizePushDevice,
-  sanitizeWhatsappDelivery,
+  sanitizeWhatsappDelivery, sanitizeStorePaymentMethods,
 } from './sanitizer.js';
 
 describe('maskCpf', () => {
@@ -205,5 +205,32 @@ describe('sanitizePushDevice', () => {
     expect(result.token).toBe('fcm_..3456');
     expect(result.ipAddress).toBeUndefined();
     expect(result.displayName).toBe('Chrome');
+  });
+});
+
+describe('sanitizeStorePaymentMethods', () => {
+  it('strips token from legacy PIX config', () => {
+    const methods = {
+      pix: { token: 'secret-token', type: 'amplopay', enabled: true },
+      credit_card: { token: 'cc-secret', type: 'stripe', enabled: true },
+    };
+    const result = sanitizeStorePaymentMethods(methods);
+    expect(result.pix.token).toBeUndefined();
+    expect(result.pix.type).toBe('amplopay');
+    expect(result.credit_card.token).toBeUndefined();
+  });
+
+  it('preserves gateways array in new PIX fallback format', () => {
+    const methods = {
+      pix: { enabled: true, gateways: ['amplopay', 'efibank', 'mercadopago'] },
+    };
+    const result = sanitizeStorePaymentMethods(methods);
+    expect(result.pix.gateways).toEqual(['amplopay', 'efibank', 'mercadopago']);
+    expect(result.pix.enabled).toBe(true);
+  });
+
+  it('handles null/undefined methods gracefully', () => {
+    expect(sanitizeStorePaymentMethods(null)).toBeNull();
+    expect(sanitizeStorePaymentMethods(undefined)).toBeUndefined();
   });
 });
