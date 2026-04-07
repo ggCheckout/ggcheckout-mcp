@@ -1,6 +1,6 @@
 {
   "name": "ggcheckout-mcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "MCP server for GG Checkout - Manage your products via AI agents",
   "main": "dist/index.js",
   "type": "module",
@@ -11,7 +11,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "keywords": [
     "mcp",
@@ -41,15 +44,16 @@
     "README.md"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.20.0",
-    "axios": "^1.12.2",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "axios": "^1.14.0",
     "dotenv": "^17.2.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^24.7.1",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.1"
   },
   "engines": {
     "node": ">=18.0.0"
