@@ -71,7 +71,7 @@ export GGCHECKOUT_API_URL="https://your-staging.example.com"
 
 ---
 
-## Available Tools (141)
+## Available Tools (142)
 
 ### Products (16 tools)
 
