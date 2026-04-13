@@ -31,7 +31,13 @@ export class HttpClient {
           : `Request failed with status ${status || 'unknown'}`;
 
         if (status === 401) throw new AuthenticationError(safeMessage, error);
-        if (status === 429) throw new RateLimitError(safeMessage, error);
+        if (status === 429) {
+          const retryAfter = (error.response?.headers as any)?.['retry-after'];
+          const retrySeconds = retryAfter && /^\d+$/.test(String(retryAfter)) ? retryAfter : null;
+          const retryMsg = retrySeconds ? ` Retry after ${retrySeconds} seconds.` : '';
+          const base = safeMessage.endsWith('.') ? safeMessage.slice(0, -1) : safeMessage;
+          throw new RateLimitError(`${base}.${retryMsg}`, error);
+        }
         throw new ApiError(status || 500, safeMessage, error);
       },
     );

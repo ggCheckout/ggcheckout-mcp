@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 141 tools across 18 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 142 tools across 18 domains.
 
 ## Overview
 
@@ -71,7 +71,7 @@ export GGCHECKOUT_API_URL="https://your-staging.example.com"
 
 ---
 
-## Available Tools (141)
+## Available Tools (142)
 
 ### Products (16 tools)
 
@@ -213,13 +213,60 @@ Manage physical order fulfillment.
 
 ---
 
-### Webhooks (5 tools)
+### Webhooks (6 tools)
 
 **Example prompts:**
 - "Show me all my webhooks"
 - "Create a webhook for payment.paid events at https://myapp.com/webhook"
 - "Update webhook abc123 to also listen for payment.refunded"
 - "Delete webhook abc123"
+- "Send a test payment.paid event to webhook abc123"
+- "Test my webhook abc123 with a refunded event overriding the payment ID to pay_xyz"
+
+#### Webhook Event Payloads
+
+All events share the same top-level shape. Key fields:
+
+| Field | Type | Notes |
+|---|---|---|
+| `event` | string | Event type (see below) |
+| `payment.id` | string | Payment identifier |
+| `payment.status` | string | `pending`, `paid`, `refunded`, `expired`, `chargeback` |
+| `payment.method` | string | `pix`, `pix.paid`, `card`, `card.paid` |
+| `payment.amount` | number | Amount in **cents** (e.g. `9900` = R$99,00) |
+| `payment.customer.name` | string | Buyer name |
+| `payment.customer.email` | string | Buyer email |
+| `payment.customer.document` | string | CPF |
+| `payment.customer.phone` | string | Phone (E.164, e.g. `5511999999999`) |
+| `payment.createdAt` | string | ISO 8601 |
+| `payment.paidAt` | string \| undefined | Present on `payment.paid`, `payment.refunded`, `payment.chargeback` |
+| `payment.refundedAt` | string \| undefined | Present on `payment.refunded` |
+| `payment.expiredAt` | string \| undefined | Present on `payment.expired` |
+| `product.id` | string | Product identifier |
+| `product.title` | string | Product name |
+
+**Supported events:**
+
+```json
+{ "event": "payment.created",    "payment": { "status": "pending",    "method": "pix" }, ... }
+{ "event": "payment.paid",       "payment": { "status": "paid",       "method": "pix.paid", "paidAt": "..." }, ... }
+{ "event": "payment.refunded",   "payment": { "status": "refunded",   "method": "pix.paid", "paidAt": "...", "refundedAt": "..." }, ... }
+{ "event": "payment.expired",    "payment": { "status": "expired",    "method": "pix", "expiredAt": "..." }, ... }
+{ "event": "payment.chargeback", "payment": { "status": "chargeback", "method": "card.paid", "paidAt": "..." }, ... }
+```
+
+**Signature verification** (when a `secret` is set):
+
+```
+X-Webhook-Signature: sha256=<HMAC-SHA256(secret, raw_body)>
+X-GGCheckout-Event: payment.paid
+```
+
+```ts
+import { createHmac } from 'crypto';
+const sig = createHmac('sha256', secret).update(rawBody).digest('hex');
+const isValid = sig === incomingHeader.replace('sha256=', '');
+```
 
 ---
 
