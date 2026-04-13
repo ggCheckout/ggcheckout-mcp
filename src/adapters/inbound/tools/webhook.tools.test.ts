@@ -76,8 +76,8 @@ describe('test_webhook tool', () => {
     await testWebhookHandler({ webhookId: 'wh2', event: 'payment.paid' });
 
     const callArgs = vi.mocked(axios.post).mock.calls[0];
-    const headers = callArgs[2].headers;
-    expect(headers['X-Webhook-Signature']).toMatch(/^sha256=[a-f0-9]{64}$/);
+    const headers = callArgs?.[2]?.headers as Record<string, string> | undefined;
+    expect(headers?.['X-Webhook-Signature']).toMatch(/^sha256=[a-f0-9]{64}$/);
   });
 
   it('applies overrides to the generated payload', async () => {
