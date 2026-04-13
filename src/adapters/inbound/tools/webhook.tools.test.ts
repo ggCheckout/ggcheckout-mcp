@@ -35,6 +35,9 @@ describe('test_webhook tool', () => {
     const registeredTools = (server as any)._registeredTools ?? (server as any).tools ?? {};
     const tool = registeredTools['test_webhook'];
     testWebhookHandler = tool?.callback ?? tool?.handler ?? tool;
+    if (typeof testWebhookHandler !== 'function') {
+      throw new Error('Could not locate test_webhook handler on McpServer internals');
+    }
   });
 
   it('POSTs correct payload to webhook URL for payment.paid event', async () => {
@@ -52,7 +55,7 @@ describe('test_webhook tool', () => {
 
     expect(axios.post).toHaveBeenCalledWith(
       'https://myapp.com/webhook',
-      expect.objectContaining({ event: 'payment.paid' }),
+      expect.stringContaining('"event":"payment.paid"'),
       expect.objectContaining({ headers: expect.objectContaining({ 'Content-Type': 'application/json' }) }),
     );
     expect(parsed.status).toBe(200);
@@ -94,7 +97,7 @@ describe('test_webhook tool', () => {
     });
 
     const callArgs = vi.mocked(axios.post).mock.calls[0];
-    const sentBody = callArgs[1];
+    const sentBody = JSON.parse(callArgs[1] as string);
     expect(sentBody.payment.id).toBe('pay_custom_001');
     expect(sentBody.payment.status).toBe('paid'); // other fields preserved
   });
