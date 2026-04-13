@@ -72,6 +72,44 @@ describe('HttpClient', () => {
     expect(() => errorHandler(axiosError)).toThrow(RateLimitError);
   });
 
+  it('includes Retry-After seconds in RateLimitError message when header is present', () => {
+    new HttpClient('https://api.test.com', 'key');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+
+    const axiosError = {
+      response: {
+        status: 429,
+        data: { error: 'Too many requests' },
+        headers: { 'retry-after': '45' },
+      },
+      message: 'Request failed',
+    };
+
+    try {
+      errorHandler(axiosError);
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(RateLimitError);
+      expect(e.message).toContain('Retry after 45 seconds');
+    }
+  });
+
+  it('omits retry seconds from RateLimitError message when header is absent', () => {
+    new HttpClient('https://api.test.com', 'key');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+
+    const axiosError = {
+      response: { status: 429, data: { error: 'Too many requests' }, headers: {} },
+      message: 'Request failed',
+    };
+
+    try {
+      errorHandler(axiosError);
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(RateLimitError);
+      expect(e.message).not.toContain('Retry after');
+    }
+  });
+
   it('maps other errors to ApiError', () => {
     new HttpClient('https://api.test.com', 'key');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
