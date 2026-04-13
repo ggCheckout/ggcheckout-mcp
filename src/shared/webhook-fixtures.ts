@@ -8,7 +8,7 @@ export const WEBHOOK_EVENTS = [
 
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 
-interface WebhookPayload {
+export type WebhookPayload = {
   event: WebhookEvent;
   payment: {
     id: string;
