@@ -73,6 +73,7 @@ describe('HttpClient', () => {
   });
 
   it('includes Retry-After seconds in RateLimitError message when header is present', () => {
+    expect.assertions(2);
     new HttpClient('https://api.test.com', 'key');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
@@ -94,6 +95,7 @@ describe('HttpClient', () => {
   });
 
   it('omits retry seconds from RateLimitError message when header is absent', () => {
+    expect.assertions(2);
     new HttpClient('https://api.test.com', 'key');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
