@@ -110,7 +110,10 @@ describe('test_webhook tool', () => {
       url: 'https://myapp.com/webhook',
       events: ['payment.paid'],
     });
-    vi.mocked(axios.post).mockResolvedValue({ status: 500, data: 'Internal Server Error' });
+    const httpError = Object.assign(new Error('Request failed with status code 500'), {
+      response: { status: 500, data: 'Internal Server Error' },
+    });
+    vi.mocked(axios.post).mockRejectedValue(httpError);
 
     const result = await testWebhookHandler({ webhookId: 'wh4', event: 'payment.paid' });
     const parsed = JSON.parse(result.content[0].text);

@@ -136,7 +136,7 @@ export function registerWebhookTools(server: McpServer, service: WebhookService)
         }
 
         try {
-          const response = await axios.post(webhook.url, body, { headers });
+          const response = await axios.post(webhook.url, body, { headers, timeout: 10_000 });
           return { status: response.status, responseBody: response.data, sentPayload: payload };
         } catch (err: any) {
           const isNetworkError = err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ETIMEDOUT' || !err.response;
