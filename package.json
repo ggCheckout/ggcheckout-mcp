@@ -1,6 +1,6 @@
 {
   "name": "ggcheckout-mcp",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "MCP server for GG Checkout - Manage your products via AI agents",
   "main": "dist/index.js",
   "type": "module",

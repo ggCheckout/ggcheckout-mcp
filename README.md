@@ -458,7 +458,55 @@ All prices are stored internally in cents.
 | Per hour | 1,000 requests |
 | Per minute | 30 requests |
 
-If you're rate limited, wait 1-2 minutes and try again.
+Rate limits are enforced **before** any operation is executed — a blocked request never reaches the database or business logic.
+
+When a request is rate limited, the API returns HTTP 429 with a `Retry-After` header and a structured JSON body:
+
+**Header:**
+```
+Retry-After: 23
+```
+
+**Body:**
+```json
+{
+  "error": "rate_limit_exceeded",
+  "limit_type": "apikey_strict",
+  "limit": 30,
+  "window": "1m",
+  "retry_after": 23
+}
+```
+
+| `limit_type` | Limit | Window | What to do |
+|---|---|---|---|
+| `apikey_strict` | 30 | 1m | Wait `retry_after` seconds, then resume |
+| `apikey` | 1,000 | 1h | Migration too large for one session — split into batches across hours |
+| `product_upload_strict` | 15 | 1m | Slow down file uploads |
+| `product_upload` | 35 | 1h | Max 35 file uploads per hour |
+
+Always use the `retry_after` value from the body (or the `Retry-After` header) instead of guessing.
+
+### Bulk operations and migrations
+
+If you need to create or update many resources in sequence (e.g. importing products, cloning checkouts), follow these guidelines to avoid hitting the limits:
+
+- **Space requests by at least 2 seconds** to stay safely under the 30 req/min limit
+- **Cap sustained throughput at ~900 req/hour** to leave headroom below the 1,000/hour ceiling
+- **On a 429 response**, stop immediately, read the `Retry-After` header, wait that many seconds, then resume — do not retry without waiting
+- **Never loop without a delay** — tight loops will exhaust the per-minute quota in under 30 seconds and trigger a full minute of blocking
+
+**Recommended pacing for bulk jobs:**
+
+```
+for each item:
+  call tool()
+  if response is 429:
+    wait Retry-After seconds
+    retry once
+  else:
+    wait 2 seconds before next call
+```
 
 ---
 
@@ -517,8 +565,10 @@ Opens a browser UI to test any tool interactively.
 
 ### Error: 429 Too Many Requests
 
-- Rate limit exceeded (30 req/min or 1000 req/hour)
-- Wait 1-2 minutes and try again
+- Rate limit exceeded (30 req/min or 1,000 req/hour)
+- Read the `Retry-After` response header — it tells you exactly how many seconds to wait
+- For bulk operations, space calls by at least 2 seconds to avoid hitting the limit in the first place
+- See the [Rate Limits](#rate-limits) section for bulk operation guidelines
 
 ### Error: Invalid price format
 
