@@ -41,7 +41,7 @@ npm install -g ggcheckout-mcp
   "mcpServers": {
     "ggcheckout": {
       "command": "npx",
-      "args": ["ggcheckout-mcp"],
+      "args": ["-y", "ggcheckout-mcp"],
       "env": {
         "GGCHECKOUT_API_KEY": "ggck_live_your_key_here"
       }
@@ -522,7 +522,7 @@ npm install
 
 ```bash
 GGCHECKOUT_API_KEY=ggck_live_your_key_here
-GGCHECKOUT_API_URL=http://localhost:3000  # optional, defaults to https://www.ggcheckout.com
+GGCHECKOUT_API_URL=http://localhost:3000  # optional, defaults to https://ggcheckout.app
 ```
 
 ### Commands

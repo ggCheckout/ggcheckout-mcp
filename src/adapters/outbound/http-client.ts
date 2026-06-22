@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as logger from '../../shared/logger.js';
-import { ApiError, AuthenticationError, RateLimitError } from '../../shared/errors.js';
+import { ApiError, AuthenticationError, NetworkError, RateLimitError } from '../../shared/errors.js';
 
 export class HttpClient {
   private client: AxiosInstance;
@@ -20,6 +20,20 @@ export class HttpClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {
+        // No response means the request never reached the API (DNS failure,
+        // connection refused, wrong base URL, or timeout). Surface a clear,
+        // actionable message instead of failing silently / opaquely.
+        if (!error.response) {
+          const reason = error.code === 'ECONNABORTED'
+            ? 'request timed out'
+            : `could not reach the API (${error.code || error.message})`;
+          throw new NetworkError(
+            `Cannot connect to GG Checkout API at ${baseURL}: ${reason}. `
+            + 'Check your network and the GGCHECKOUT_API_URL setting.',
+            error,
+          );
+        }
+
         const status = error.response?.status;
         const apiMessage = (error.response?.data as any)?.error
           || (error.response?.data as any)?.message;

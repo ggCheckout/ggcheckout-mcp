@@ -13,7 +13,7 @@ import { services, adapters, delay } from './setup.js';
 import { HttpClient } from '../adapters/outbound/http-client.js';
 import { AuthApiAdapter } from '../adapters/outbound/auth.api.js';
 
-const API_URL = process.env.GGCHECKOUT_API_URL || 'https://www.ggcheckout.com';
+const API_URL = process.env.GGCHECKOUT_API_URL || 'https://ggcheckout.app';
 
 const DELAY = 3000;
 

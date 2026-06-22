@@ -28,7 +28,7 @@ dotenv.config();
 export const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const API_KEY = process.env.GGCHECKOUT_API_KEY;
-const API_URL = process.env.GGCHECKOUT_API_URL || 'https://www.ggcheckout.com';
+const API_URL = process.env.GGCHECKOUT_API_URL || 'https://ggcheckout.app';
 
 if (!API_KEY || !API_KEY.startsWith('ggck_live_')) {
   throw new Error('E2E tests require GGCHECKOUT_API_KEY in .env');
