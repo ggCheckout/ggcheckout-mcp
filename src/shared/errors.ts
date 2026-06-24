@@ -38,6 +38,13 @@ export class RateLimitError extends AppError {
   }
 }
 
+export class NetworkError extends AppError {
+  constructor(message: string, cause?: Error) {
+    super(message, 'NETWORK_ERROR', 503, cause);
+    this.name = 'NetworkError';
+  }
+}
+
 export class ApiError extends AppError {
   constructor(statusCode: number, message: string, cause?: Error) {
     super(`API Error (${statusCode}): ${message}`, 'API_ERROR', statusCode, cause);

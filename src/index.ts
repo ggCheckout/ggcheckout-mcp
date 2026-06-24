@@ -80,7 +80,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
 
 const API_KEY = process.env.GGCHECKOUT_API_KEY;
-const API_URL = process.env.GGCHECKOUT_API_URL || 'https://www.ggcheckout.com';
+const API_URL = process.env.GGCHECKOUT_API_URL || 'https://ggcheckout.app';
 
 if (!API_KEY) {
   console.error('[MCP] Error: Missing required environment variable');
