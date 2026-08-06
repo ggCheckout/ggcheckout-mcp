@@ -2,11 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CheckoutService } from './checkout.service.js';
 import type { CheckoutPort } from '../ports/checkout.port.js';
 import type { AuthPort } from '../ports/auth.port.js';
+import type { ProductPort } from '../ports/product.port.js';
+import { ApiError, AuthenticationError, RateLimitError, ValidationError } from '../../shared/errors.js';
 
 describe('CheckoutService', () => {
   let service: CheckoutService;
   let mockCheckoutPort: CheckoutPort;
   let mockAuthPort: AuthPort;
+  let mockProductPort: ProductPort;
 
   beforeEach(() => {
     mockCheckoutPort = {
@@ -20,7 +23,10 @@ describe('CheckoutService', () => {
     mockAuthPort = {
       getMyBusinessId: vi.fn().mockResolvedValue('business-123'),
     };
-    service = new CheckoutService(mockCheckoutPort, mockAuthPort);
+    mockProductPort = {
+      getById: vi.fn().mockResolvedValue({ uid: 'prod-1', title: 'Product' }),
+    } as unknown as ProductPort;
+    service = new CheckoutService(mockCheckoutPort, mockAuthPort, mockProductPort);
   });
 
   it('list fetches businessId from authPort then calls checkoutPort.list', async () => {
@@ -31,14 +37,48 @@ describe('CheckoutService', () => {
     expect(mockCheckoutPort.list).toHaveBeenCalledWith('business-123');
   });
 
-  it('create injects uuidOwnwer from authPort', async () => {
-    vi.mocked(mockCheckoutPort.create).mockResolvedValue({ id: 'ck-1', title: 'Test', uuidOwnwer: 'business-123', price: 1000 } as any);
+  it('create injects uuidOwner from authPort and forwards the productId', async () => {
+    vi.mocked(mockCheckoutPort.create).mockResolvedValue({ id: 'prod-1', title: 'Test', uuidOwner: 'business-123', price: 1000 } as any);
 
-    await service.create({ title: 'Test', id: 'slug', checkout: {}, paymentMethods: {}, price: 1000 });
+    await service.create({ title: 'Test', productId: 'prod-1', checkout: {}, paymentMethods: {}, price: 1000 });
 
     expect(mockCheckoutPort.create).toHaveBeenCalledWith(
-      expect.objectContaining({ uuidOwnwer: 'business-123', title: 'Test' }),
+      expect.objectContaining({ uuidOwner: 'business-123', productId: 'prod-1', title: 'Test' }),
     );
+    // Never the historical typo, which the API rejects with 403.
+    expect(vi.mocked(mockCheckoutPort.create).mock.calls[0][0]).not.toHaveProperty('uuidOwnwer');
+  });
+
+  it('create validates the owning product before posting', async () => {
+    vi.mocked(mockProductPort.getById).mockRejectedValue(new ApiError(403, 'Não autorizado'));
+
+    await expect(
+      service.create({ title: 'Test', productId: 'ghost', checkout: {}, paymentMethods: {}, price: 1000 }),
+    ).rejects.toThrow(ValidationError);
+
+    expect(mockProductPort.getById).toHaveBeenCalledWith('ghost');
+    expect(mockCheckoutPort.create).not.toHaveBeenCalled();
+  });
+
+  it('create rewrites the product 403 into an actionable message', async () => {
+    vi.mocked(mockProductPort.getById).mockRejectedValue(new ApiError(403, 'Não autorizado'));
+
+    await expect(
+      service.create({ title: 'Test', productId: 'ghost', checkout: {}, paymentMethods: {}, price: 1000 }),
+    ).rejects.toThrow(/Product ghost not found or not yours.*create_product/s);
+  });
+
+  it.each([
+    ['authentication', new AuthenticationError('Invalid API key')],
+    ['rate limit', new RateLimitError('Too many requests')],
+  ])('create surfaces %s errors untouched instead of blaming the productId', async (_label, thrown) => {
+    vi.mocked(mockProductPort.getById).mockRejectedValue(thrown);
+
+    await expect(
+      service.create({ title: 'Test', productId: 'prod-1', checkout: {}, paymentMethods: {}, price: 1000 }),
+    ).rejects.toBe(thrown);
+
+    expect(mockCheckoutPort.create).not.toHaveBeenCalled();
   });
 
   it('update merges current checkout with partial input', async () => {
@@ -46,7 +86,7 @@ describe('CheckoutService', () => {
       id: 'ck-1',
       uid: 'uid-1',
       title: 'Original',
-      uuidOwnwer: 'owner-1',
+      uuidOwner: 'owner-1',
       price: 5000,
       paymentMethods: { pix: true },
       checkout: { theme: 'dark' },
@@ -64,7 +104,7 @@ describe('CheckoutService', () => {
       'ck-1',
       expect.objectContaining({
         title: 'Updated Title',
-        uuidOwnwer: 'owner-1',
+        uuidOwner: 'owner-1',
         price: 5000,
         paymentMethods: { pix: true },
       }),
@@ -76,7 +116,7 @@ describe('CheckoutService', () => {
       id: 'ck-1',
       uid: 'uid-1',
       title: 'Original',
-      uuidOwnwer: 'owner-1',
+      uuidOwner: 'owner-1',
       price: 5000,
       paymentMethods: {
         pix: {
@@ -110,11 +150,11 @@ describe('CheckoutService', () => {
     );
   });
 
-  it('delete fetches checkout first to get uuidOwnwer, then calls port.delete with both', async () => {
+  it('delete fetches checkout first to get uuidOwner, then calls port.delete with both', async () => {
     vi.mocked(mockCheckoutPort.getById).mockResolvedValue({
       id: 'ck-1',
       title: 'Test',
-      uuidOwnwer: 'owner-abc',
+      uuidOwner: 'owner-abc',
       price: 1000,
     } as any);
     vi.mocked(mockCheckoutPort.delete).mockResolvedValue(undefined);

@@ -43,10 +43,16 @@ export interface CheckoutFields {
 
 export interface Checkout {
   [key: string]: unknown;
+  /**
+   * The checkout's own Firestore document id. This is what `get_checkout`,
+   * `update_checkout` and `delete_checkout` take. Only the collection routes
+   * project it, so it is undefined on by-id responses.
+   */
   uid?: string;
+  /** Foreign key to the owning `productDelivery` uid — NOT a slug, NOT this checkout's id. */
   id: string;
   title: string;
-  uuidOwnwer: string;
+  uuidOwner: string;
   sellerName?: string | null;
   socialCard?: CheckoutSocialCard[];
   fields?: CheckoutFields;
@@ -68,8 +74,9 @@ export interface Checkout {
 
 export interface CreateCheckoutInput {
   title: string;
-  id: string;
-  uuidOwnwer?: string;
+  /** Uid of the product that owns this checkout. Serialized as `id` in the API body. */
+  productId: string;
+  uuidOwner?: string;
   sellerName?: string | null;
   socialCard?: CheckoutSocialCard[];
   fields?: CheckoutFields;

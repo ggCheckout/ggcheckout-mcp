@@ -157,11 +157,20 @@ Set tags on a product. Tags have a name and a hex color.
 
 **Example prompt:** "Get details of checkout abc123"
 
-> **Note:** Use the `uid` (Firestore document ID), not the custom `id` slug.
+> **Note:** A checkout has two identifiers. Its own is `uid` (Firestore document
+> ID) — that is what `get_checkout`, `update_checkout` and `delete_checkout`
+> take. Its `id` field is a foreign key pointing at the product that owns it.
 
 #### `create_checkout`
 
-**Required:** `title`, `id` (slug), `price`, `paymentMethods`, `checkout` (config)
+Creates an offer for a product that already exists.
+
+**Required:** `title`, `productId`, `price`, `paymentMethods`, `checkout` (config)
+
+`productId` must be the uid returned by `create_product` (or a `uid` from
+`list_products`) — not a slug. A checkout created against a product that doesn't
+exist is an orphan the dashboard cannot open, so this is validated before the
+checkout is created.
 
 **Example prompt:** "Create a checkout page for my React Course priced at R$99.90"
 
@@ -561,7 +570,9 @@ Opens a browser UI to test any tool interactively.
 ### Error: 404 Not Found
 
 - The resource ID doesn't exist
-- For checkouts, use the `uid` (Firestore document ID), not the custom `id` slug
+- For checkouts, use the `uid` (Firestore document ID) returned by `list_checkouts`
+- Note that `create_checkout` takes a different identifier: `productId`, the uid
+  of the product being sold
 
 ### Error: 429 Too Many Requests
 

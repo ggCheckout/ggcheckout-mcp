@@ -181,7 +181,7 @@ describe('HttpClient', () => {
     const client = new HttpClient('https://api.test.com', 'key');
     mockAxiosInstance.delete.mockResolvedValue({ data: { success: true } });
 
-    await client.delete('/api/checkouts/123', { uuidOwnwer: 'owner-1' });
-    expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/api/checkouts/123', { data: { uuidOwnwer: 'owner-1' } });
+    await client.delete('/api/checkouts/123', { uuidOwner: 'owner-1' });
+    expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/api/checkouts/123', { data: { uuidOwner: 'owner-1' } });
   });
 });

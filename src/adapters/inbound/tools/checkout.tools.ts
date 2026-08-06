@@ -79,10 +79,14 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
   server.registerTool(
     'create_checkout',
     {
-      description: 'Create a new checkout page',
+      description: 'Create a new checkout page (an offer for an existing product)',
       inputSchema: {
         title: z.string().max(200).describe('Checkout page title'),
-        id: z.string().max(100).describe('Unique checkout ID (slug)'),
+        productId: z.string().min(1).max(100).describe(
+          'Uid of the product this checkout sells — the `productId` returned by create_product, '
+          + 'or a `uid` from list_products. NOT a slug and NOT a name you invent: an invented '
+          + 'value creates an orphan checkout the seller cannot open in the dashboard.',
+        ),
         price: z.number().min(0).describe('Price in Brazilian Reais (e.g., 99.90)'),
         paymentMethods: paymentMethodsSchema.describe('Payment methods configuration (credit_card, pix, bank_slip)'),
         checkout: z.record(z.string(), z.unknown()).describe('Checkout page styling/configuration'),

@@ -5,8 +5,8 @@ import type { HttpClient } from './http-client.js';
 export class CheckoutApiAdapter implements CheckoutPort {
   constructor(private readonly http: HttpClient) {}
 
-  async list(uuidOwnwer: string): Promise<Checkout[]> {
-    return this.http.get<Checkout[]>(`/api/checkouts?uuidOwnwer=${uuidOwnwer}`);
+  async list(uuidOwner: string): Promise<Checkout[]> {
+    return this.http.get<Checkout[]>(`/api/checkouts?uuidOwner=${uuidOwner}`);
   }
 
   async getById(id: string): Promise<Checkout> {
@@ -14,7 +14,11 @@ export class CheckoutApiAdapter implements CheckoutPort {
   }
 
   async create(payload: CreateCheckoutInput): Promise<Checkout> {
-    const data = await this.http.post<{ checkout: Checkout }>('/api/checkouts', payload);
+    const { productId, ...rest } = payload;
+    // The API calls this field `id`, but it holds the productDelivery uid that
+    // owns the checkout — not an identifier of the checkout itself.
+    const body = { ...rest, id: productId };
+    const data = await this.http.post<{ checkout: Checkout }>('/api/checkouts', body);
     return data.checkout;
   }
 
@@ -23,8 +27,8 @@ export class CheckoutApiAdapter implements CheckoutPort {
     return data.productData || { ...payload, uid: id };
   }
 
-  async delete(id: string, uuidOwnwer: string): Promise<void> {
-    await this.http.delete(`/api/checkouts/${id}`, { uuidOwnwer });
+  async delete(id: string, uuidOwner: string): Promise<void> {
+    await this.http.delete(`/api/checkouts/${id}`, { uuidOwner });
   }
 
   async manageTags(id: string, tags: CheckoutTag[]): Promise<{ tags: CheckoutTag[] }> {

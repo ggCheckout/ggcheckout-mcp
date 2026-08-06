@@ -15,16 +15,28 @@ describe('CheckoutApiAdapter', () => {
     adapter = new CheckoutApiAdapter(http);
   });
 
-  it('list passes uuidOwnwer as query param', async () => {
+  it('list passes uuidOwner as query param', async () => {
     vi.mocked(http.get).mockResolvedValue([]);
     await adapter.list('owner-1');
-    expect(http.get).toHaveBeenCalledWith('/api/checkouts?uuidOwnwer=owner-1');
+    expect(http.get).toHaveBeenCalledWith('/api/checkouts?uuidOwner=owner-1');
   });
 
   it('create extracts checkout from response wrapper', async () => {
     vi.mocked(http.post).mockResolvedValue({ checkout: { uid: 'ck-1', title: 'Test' } });
-    const result = await adapter.create({ title: 'Test', id: 'slug', checkout: {}, paymentMethods: {}, price: 1000 });
+    const result = await adapter.create({ title: 'Test', productId: 'prod-1', checkout: {}, paymentMethods: {}, price: 1000 });
     expect(result).toEqual({ uid: 'ck-1', title: 'Test' });
+  });
+
+  it('create sends productId as the API `id` field and drops the domain name', async () => {
+    vi.mocked(http.post).mockResolvedValue({ checkout: { uid: 'ck-1' } });
+    await adapter.create({
+      title: 'Test', productId: 'prod-1', uuidOwner: 'owner-1', checkout: {}, paymentMethods: {}, price: 1000,
+    });
+
+    const [url, body] = vi.mocked(http.post).mock.calls[0];
+    expect(url).toBe('/api/checkouts');
+    expect(body).toMatchObject({ id: 'prod-1', uuidOwner: 'owner-1', title: 'Test' });
+    expect(body).not.toHaveProperty('productId');
   });
 
   it('update returns productData from response or fallback', async () => {
@@ -39,10 +51,10 @@ describe('CheckoutApiAdapter', () => {
     expect(result).toEqual({ title: 'Updated', uid: 'ck-1' });
   });
 
-  it('delete sends uuidOwnwer in body of DELETE request', async () => {
+  it('delete sends uuidOwner in body of DELETE request', async () => {
     vi.mocked(http.delete).mockResolvedValue({});
     await adapter.delete('ck-1', 'owner-abc');
-    expect(http.delete).toHaveBeenCalledWith('/api/checkouts/ck-1', { uuidOwnwer: 'owner-abc' });
+    expect(http.delete).toHaveBeenCalledWith('/api/checkouts/ck-1', { uuidOwner: 'owner-abc' });
   });
 
   it('manageTags PATCHes /tags with { name, color }[] and returns result', async () => {
