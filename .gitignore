@@ -5,3 +5,9 @@ dist/
 .env.*
 !.env.example
 .DS_Store
+
+# Claude Code — local-only + worktree fora do repo (ver commit)
+.claude/settings.local.json
+CLAUDE.local.md
+**/.claude/worktrees/
+
