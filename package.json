@@ -41,7 +41,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",

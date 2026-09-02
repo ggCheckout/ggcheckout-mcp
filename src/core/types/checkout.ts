@@ -36,6 +36,7 @@ export interface CheckoutSocialCard {
 }
 
 export interface CheckoutFields {
+  haveEmail?: boolean;
   havePhone?: boolean;
   haveName?: boolean;
   haveCpf?: boolean;
@@ -44,13 +45,17 @@ export interface CheckoutFields {
 export interface Checkout {
   [key: string]: unknown;
   /**
-   * The checkout's own Firestore document id. This is what `get_checkout`,
-   * `update_checkout` and `delete_checkout` take. Only the collection routes
-   * project it, so it is undefined on by-id responses.
+   * The checkout's own Firestore document id, present on every response. This is
+   * what `get_checkout`, `update_checkout` and `delete_checkout` take.
    */
   uid?: string;
-  /** Foreign key to the owning `productDelivery` uid — NOT a slug, NOT this checkout's id. */
-  id: string;
+  /**
+   * Uid of the `productDelivery` this checkout sells. The API names this field
+   * `id`, which collides with the checkout's own identifier; the adapter renames
+   * it in both directions so the domain has one name for it. Absent on a checkout
+   * whose product pointer was never set — the API omits the key entirely.
+   */
+  productId?: string;
   title: string;
   uuidOwner: string;
   sellerName?: string | null;
@@ -58,6 +63,8 @@ export interface Checkout {
   fields?: CheckoutFields;
   bannerUrl?: string;
   url?: string;
+  currency?: string;
+  internationalizeCheckout?: boolean;
   published?: boolean;
   orderBumps?: string[];
   checkout?: Record<string, unknown>;
@@ -83,6 +90,7 @@ export interface CreateCheckoutInput {
   bannerUrl?: string;
   url?: string;
   published?: boolean;
+  /** Uids of the products offered as bumps. Serialized into JSON snapshots by the service. */
   orderBumps?: string[];
   checkout: Record<string, unknown>;
   metricToken?: string | null;
@@ -107,4 +115,29 @@ export interface UpdateCheckoutInput {
   paymentMethods?: CheckoutPaymentMethods;
   price?: number;
   image?: string;
+}
+
+/**
+ * The full body `PATCH /api/checkouts/{id}` expects.
+ *
+ * The API destructures with defaults rather than merging, so every key listed here
+ * is RESET when it is absent from the body — `url` to `''`, `fields` to the default
+ * form shape, `sellerName` to `null`, `currency` to `'BRL'`. A partial PATCH is a
+ * silent wipe, which is why the service rebuilds the whole document.
+ */
+export interface UpdateCheckoutPayload {
+  title: string;
+  uuidOwner: string;
+  productId: string;
+  price: number;
+  paymentMethods?: CheckoutPaymentMethods;
+  checkout?: Record<string, unknown>;
+  orderBumps: string[];
+  published: boolean;
+  createBy: string;
+  url?: string;
+  fields?: CheckoutFields;
+  sellerName?: string | null;
+  currency?: string;
+  internationalizeCheckout?: boolean;
 }

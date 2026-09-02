@@ -36,6 +36,11 @@ npm install -g ggcheckout-mcp
 
 ### Claude Code
 
+> **Upgrading?** `npx -y` picks up new majors automatically. See
+> [CHANGELOG.md](./CHANGELOG.md) before upgrading — 0.3.0 renames the
+> `create_checkout` input `id` to `productId`. Pin a version
+> (`ggcheckout-mcp@0.2.4`) if you are not ready.
+
 ```json
 {
   "mcpServers": {
@@ -157,9 +162,11 @@ Set tags on a product. Tags have a name and a hex color.
 
 **Example prompt:** "Get details of checkout abc123"
 
-> **Note:** A checkout has two identifiers. Its own is `uid` (Firestore document
-> ID) — that is what `get_checkout`, `update_checkout` and `delete_checkout`
-> take. Its `id` field is a foreign key pointing at the product that owns it.
+> **Note:** A checkout has two identifiers, and every response carries both. Its
+> own is `uid` (Firestore document ID) — that is what `get_checkout`,
+> `update_checkout`, `delete_checkout` and `manage_checkout_tags` take. The other
+> is `productId`, a foreign key pointing at the product this checkout sells; the
+> API names that field `id`, and the server renames it on the way in and out.
 
 #### `create_checkout`
 
@@ -172,11 +179,19 @@ Creates an offer for a product that already exists.
 exist is an orphan the dashboard cannot open, so this is validated before the
 checkout is created.
 
+`price` is in Reais (`99.90`) and is converted to the cents the API stores.
+`orderBumps` takes product uids; each one is resolved and snapshotted into the
+shape the checkout page reads, so a uid that does not exist fails the call
+instead of silently vanishing from the page.
+
 **Example prompt:** "Create a checkout page for my React Course priced at R$99.90"
 
 #### `update_checkout`
 
-Auto-merges with current data — only provide fields you want to change.
+Auto-merges with current data — only provide fields you want to change. The API
+resets any field missing from the body rather than merging, so the whole document
+is re-sent on your behalf; edits made outside the MCP between the read and the
+write are the one thing this cannot preserve.
 
 **Example prompt:** "Update checkout abc123 price to R$79.90 and unpublish it"
 
@@ -573,6 +588,8 @@ Opens a browser UI to test any tool interactively.
 - For checkouts, use the `uid` (Firestore document ID) returned by `list_checkouts`
 - Note that `create_checkout` takes a different identifier: `productId`, the uid
   of the product being sold
+- `Product <id> not found` from `create_checkout` means the product is missing or
+  belongs to another seller — the API answers 403 for both, so they look alike
 
 ### Error: 429 Too Many Requests
 

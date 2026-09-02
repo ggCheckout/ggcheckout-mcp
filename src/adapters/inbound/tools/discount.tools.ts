@@ -87,7 +87,7 @@ export function registerDiscountTools(server: McpServer, service: DiscountServic
   server.registerTool('validate_discount_code', {
     description: 'Validate a coupon code against an order. Returns discount value and final price.',
     inputSchema: {
-      checkoutId: z.string().describe('Checkout ID'),
+      checkoutId: z.string().describe('Checkout ID (uid) — the id of the checkout itself, not the productId it sells'),
       orderValue: z.number().min(0).describe('Order value in cents'),
       items: z.array(z.object({
         productId: z.string().describe('Product ID'),

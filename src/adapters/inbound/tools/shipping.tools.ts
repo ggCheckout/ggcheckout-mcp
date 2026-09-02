@@ -8,7 +8,7 @@ export function registerShippingTools(server: McpServer, service: ShippingServic
     description: 'Calculate shipping options for a destination postal code using MelhorEnvio',
     inputSchema: {
       toPostalCode: z.string().describe('Destination postal code (CEP)'),
-      checkoutId: z.string().optional().describe('Checkout ID (uses checkout product dimensions)'),
+      checkoutId: z.string().optional().describe('Checkout ID (uid) — the id of the checkout itself, not the productId it sells; uses checkout product dimensions'),
       tokenId: z.string().optional().describe('MelhorEnvio token ID'),
       businessId: z.string().optional().describe('Business ID'),
       products: z.array(z.object({

@@ -82,19 +82,19 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
       description: 'Create a new checkout page (an offer for an existing product)',
       inputSchema: {
         title: z.string().max(200).describe('Checkout page title'),
-        productId: z.string().min(1).max(100).describe(
+        productId: z.string().min(1).max(100).regex(/^[A-Za-z0-9_-]+$/, 'productId must be a product uid').describe(
           'Uid of the product this checkout sells — the `productId` returned by create_product, '
           + 'or a `uid` from list_products. NOT a slug and NOT a name you invent: an invented '
           + 'value creates an orphan checkout the seller cannot open in the dashboard.',
         ),
-        price: z.number().min(0).describe('Price in Brazilian Reais (e.g., 99.90)'),
+        price: z.number().min(0).describe('Price in Brazilian Reais (e.g., 99.90) — converted to cents before it is sent'),
         paymentMethods: paymentMethodsSchema.describe('Payment methods configuration (credit_card, pix, bank_slip)'),
         checkout: z.record(z.string(), z.unknown()).describe('Checkout page styling/configuration'),
         url: z.string().url().optional().describe('Checkout URL (optional)'),
         bannerUrl: z.string().url().optional().describe('Banner image URL (optional)'),
         image: z.string().url().optional().describe('Product image URL (optional)'),
         sellerName: z.string().max(200).optional().describe('Seller name (optional)'),
-        orderBumps: z.array(z.string()).max(20).optional().describe('Order bump product IDs (optional)'),
+        orderBumps: z.array(z.string()).max(20).optional().describe('Uids of products offered as order bumps, resolved and snapshotted server-side (optional)'),
         fields: fieldsSchema.optional().describe('Custom form fields config (havePhone, haveName, haveCpf)'),
         socialCard: socialCardSchema.optional().describe('Social proof cards (optional)'),
         published: z.boolean().optional().describe('Published status (default: true)'),
@@ -115,14 +115,14 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
       inputSchema: {
         checkoutId: z.string().describe('Checkout ID (uid)'),
         title: z.string().max(200).optional().describe('Checkout page title'),
-        price: z.number().min(0).optional().describe('Price in Brazilian Reais'),
+        price: z.number().min(0).optional().describe('Price in Brazilian Reais — converted to cents before it is sent'),
         paymentMethods: paymentMethodsSchema.optional().describe('Payment methods configuration'),
         checkout: z.record(z.string(), z.unknown()).optional().describe('Checkout page styling/configuration'),
         url: z.string().url().optional().describe('Checkout URL'),
         bannerUrl: z.string().url().optional().describe('Banner image URL'),
         image: z.string().url().optional().describe('Product image URL'),
         sellerName: z.string().max(200).optional().describe('Seller name'),
-        orderBumps: z.array(z.string()).max(20).optional().describe('Order bump product IDs'),
+        orderBumps: z.array(z.string()).max(20).optional().describe('Uids of products offered as order bumps, resolved and snapshotted server-side'),
         fields: fieldsSchema.optional().describe('Custom form fields config'),
         socialCard: socialCardSchema.optional().describe('Social proof cards'),
         published: z.boolean().optional().describe('Published status'),

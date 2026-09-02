@@ -21,7 +21,7 @@ export class ProductApiAdapter implements ProductPort {
   }
 
   async getById(id: string): Promise<Product> {
-    return this.http.get<Product>(`/api/product-delivery/${id}`);
+    return this.http.get<Product>(`/api/product-delivery/${encodeURIComponent(id)}`);
   }
 
   async create(payload: any): Promise<{ success: boolean; productId: string }> {
@@ -30,11 +30,11 @@ export class ProductApiAdapter implements ProductPort {
 
   async update(id: string, payload: any): Promise<void> {
     const uuidOwner = await this.authPort.getMyBusinessId();
-    await this.http.patch(`/api/product-delivery/${id}`, { ...payload, id, uuidOwner });
+    await this.http.patch(`/api/product-delivery/${encodeURIComponent(id)}`, { ...payload, id, uuidOwner });
   }
 
   async delete(id: string): Promise<void> {
-    await this.http.delete(`/api/product-delivery/${id}`);
+    await this.http.delete(`/api/product-delivery/${encodeURIComponent(id)}`);
   }
 
   async uploadDeliverable(productId: string, input: UploadDeliverableInput): Promise<DeliverableConfig> {

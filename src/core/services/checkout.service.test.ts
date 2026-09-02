@@ -3,7 +3,16 @@ import { CheckoutService } from './checkout.service.js';
 import type { CheckoutPort } from '../ports/checkout.port.js';
 import type { AuthPort } from '../ports/auth.port.js';
 import type { ProductPort } from '../ports/product.port.js';
-import { ApiError, AuthenticationError, RateLimitError, ValidationError } from '../../shared/errors.js';
+import {
+  ApiError,
+  AuthenticationError,
+  NetworkError,
+  NotFoundError,
+  RateLimitError,
+  ValidationError,
+} from '../../shared/errors.js';
+
+const baseInput = { title: 'Test', productId: 'prod-1', checkout: {}, paymentMethods: {}, price: 10 };
 
 describe('CheckoutService', () => {
   let service: CheckoutService;
@@ -13,24 +22,25 @@ describe('CheckoutService', () => {
 
   beforeEach(() => {
     mockCheckoutPort = {
-      list: vi.fn(),
+      list: vi.fn().mockResolvedValue([]),
       getById: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
+      create: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      delete: vi.fn().mockResolvedValue(undefined),
       manageTags: vi.fn(),
     };
     mockAuthPort = {
       getMyBusinessId: vi.fn().mockResolvedValue('business-123'),
     };
     mockProductPort = {
-      getById: vi.fn().mockResolvedValue({ uid: 'prod-1', title: 'Product' }),
+      getById: vi.fn().mockResolvedValue({
+        uid: 'prod-1', title: 'Product', description: 'Desc', price: 4990, imageUrl: 'https://img/1.png',
+      }),
     } as unknown as ProductPort;
     service = new CheckoutService(mockCheckoutPort, mockAuthPort, mockProductPort);
   });
 
   it('list fetches businessId from authPort then calls checkoutPort.list', async () => {
-    vi.mocked(mockCheckoutPort.list).mockResolvedValue([]);
     await service.list();
 
     expect(mockAuthPort.getMyBusinessId).toHaveBeenCalled();
@@ -38,52 +48,67 @@ describe('CheckoutService', () => {
   });
 
   it('create injects uuidOwner from authPort and forwards the productId', async () => {
-    vi.mocked(mockCheckoutPort.create).mockResolvedValue({ id: 'prod-1', title: 'Test', uuidOwner: 'business-123', price: 1000 } as any);
-
-    await service.create({ title: 'Test', productId: 'prod-1', checkout: {}, paymentMethods: {}, price: 1000 });
+    await service.create(baseInput);
 
     expect(mockCheckoutPort.create).toHaveBeenCalledWith(
       expect.objectContaining({ uuidOwner: 'business-123', productId: 'prod-1', title: 'Test' }),
     );
-    // Never the historical typo, which the API rejects with 403.
-    expect(vi.mocked(mockCheckoutPort.create).mock.calls[0][0]).not.toHaveProperty('uuidOwnwer');
+  });
+
+  it('create converts the price from reais to the cents the API stores', async () => {
+    await service.create({ ...baseInput, price: 99.9 });
+
+    expect(mockCheckoutPort.create).toHaveBeenCalledWith(expect.objectContaining({ price: 9990 }));
+  });
+
+  it('create serializes order bumps into the JSON snapshots the checkout page parses', async () => {
+    await service.create({ ...baseInput, orderBumps: ['prod-1'] });
+
+    const payload = vi.mocked(mockCheckoutPort.create).mock.calls[0][0];
+    expect(JSON.parse(payload.orderBumps?.[0] as string)).toEqual({
+      uid: 'prod-1',
+      id: 'prod-1',
+      title: 'Product',
+      description: 'Desc',
+      price: 4990,
+      imageUrl: 'https://img/1.png',
+      currency: 'BRL',
+    });
   });
 
   it('create validates the owning product before posting', async () => {
-    vi.mocked(mockProductPort.getById).mockRejectedValue(new ApiError(403, 'Não autorizado'));
+    vi.mocked(mockProductPort.getById).mockRejectedValue(new ApiError(403, 'Nao autorizado'));
 
-    await expect(
-      service.create({ title: 'Test', productId: 'ghost', checkout: {}, paymentMethods: {}, price: 1000 }),
-    ).rejects.toThrow(ValidationError);
+    await expect(service.create({ ...baseInput, productId: 'ghost' })).rejects.toThrow(NotFoundError);
 
     expect(mockProductPort.getById).toHaveBeenCalledWith('ghost');
     expect(mockCheckoutPort.create).not.toHaveBeenCalled();
   });
 
   it('create rewrites the product 403 into an actionable message', async () => {
-    vi.mocked(mockProductPort.getById).mockRejectedValue(new ApiError(403, 'Não autorizado'));
+    vi.mocked(mockProductPort.getById).mockRejectedValue(new ApiError(403, 'Nao autorizado'));
 
     await expect(
-      service.create({ title: 'Test', productId: 'ghost', checkout: {}, paymentMethods: {}, price: 1000 }),
-    ).rejects.toThrow(/Product ghost not found or not yours.*create_product/s);
+      service.create({ ...baseInput, productId: 'ghost' }),
+    ).rejects.toThrow(/Product ghost not found.*create_product/s);
   });
 
   it.each([
     ['authentication', new AuthenticationError('Invalid API key')],
     ['rate limit', new RateLimitError('Too many requests')],
+    ['network', new NetworkError('Cannot connect to GG Checkout API')],
+    ['server', new ApiError(502, 'Bad gateway')],
   ])('create surfaces %s errors untouched instead of blaming the productId', async (_label, thrown) => {
     vi.mocked(mockProductPort.getById).mockRejectedValue(thrown);
 
-    await expect(
-      service.create({ title: 'Test', productId: 'prod-1', checkout: {}, paymentMethods: {}, price: 1000 }),
-    ).rejects.toBe(thrown);
+    await expect(service.create(baseInput)).rejects.toBe(thrown);
 
     expect(mockCheckoutPort.create).not.toHaveBeenCalled();
   });
 
-  it('update merges current checkout with partial input', async () => {
+  describe('update', () => {
     const currentCheckout = {
-      id: 'ck-1',
+      productId: 'prod-1',
       uid: 'uid-1',
       title: 'Original',
       uuidOwner: 'owner-1',
@@ -93,75 +118,81 @@ describe('CheckoutService', () => {
       orderBumps: [],
       published: true,
       createBy: 'user',
+      url: 'https://pay.example/offer',
+      fields: { haveEmail: true, haveCpf: true },
+      sellerName: 'Loja',
+      currency: 'USD',
+      internationalizeCheckout: true,
     };
-    vi.mocked(mockCheckoutPort.getById).mockResolvedValue(currentCheckout as any);
-    vi.mocked(mockCheckoutPort.update).mockResolvedValue(currentCheckout as any);
 
-    await service.update('ck-1', { title: 'Updated Title' });
+    beforeEach(() => {
+      vi.mocked(mockCheckoutPort.getById).mockResolvedValue(currentCheckout as any);
+      vi.mocked(mockCheckoutPort.update).mockResolvedValue(currentCheckout as any);
+    });
 
-    expect(mockCheckoutPort.getById).toHaveBeenCalledWith('ck-1');
-    expect(mockCheckoutPort.update).toHaveBeenCalledWith(
-      'ck-1',
-      expect.objectContaining({
-        title: 'Updated Title',
-        uuidOwner: 'owner-1',
-        price: 5000,
-        paymentMethods: { pix: true },
-      }),
-    );
+    it('merges current checkout with partial input', async () => {
+      await service.update('ck-1', { title: 'Updated Title' });
+
+      expect(mockCheckoutPort.getById).toHaveBeenCalledWith('ck-1');
+      expect(mockCheckoutPort.update).toHaveBeenCalledWith(
+        'ck-1',
+        expect.objectContaining({
+          title: 'Updated Title',
+          uuidOwner: 'owner-1',
+          price: 5000,
+          paymentMethods: { pix: true },
+        }),
+      );
+    });
+
+    it('resends every field the API resets when it is absent from the body', async () => {
+      await service.update('ck-1', { title: 'Updated Title' });
+
+      expect(mockCheckoutPort.update).toHaveBeenCalledWith(
+        'ck-1',
+        expect.objectContaining({
+          url: 'https://pay.example/offer',
+          fields: { haveEmail: true, haveCpf: true },
+          sellerName: 'Loja',
+          currency: 'USD',
+          internationalizeCheckout: true,
+        }),
+      );
+    });
+
+    it('converts an updated price from reais to cents', async () => {
+      await service.update('ck-1', { price: 12.5 });
+
+      expect(mockCheckoutPort.update).toHaveBeenCalledWith('ck-1', expect.objectContaining({ price: 1250 }));
+    });
+
+    it('refuses a checkout with no product pointer instead of letting the API 400', async () => {
+      vi.mocked(mockCheckoutPort.getById).mockResolvedValue({ ...currentCheckout, productId: undefined } as any);
+
+      await expect(service.update('ck-1', { title: 'X' })).rejects.toThrow(ValidationError);
+      expect(mockCheckoutPort.update).not.toHaveBeenCalled();
+    });
+
+    it('preserves PIX fallback gateways format', async () => {
+      const newPixConfig = {
+        gateways: [
+          { tokenId: 'tok-3', type: 'mercadopago' },
+          { tokenId: 'tok-1', type: 'amplopay' },
+        ],
+      };
+      await service.update('ck-1', { paymentMethods: { pix: newPixConfig } });
+
+      expect(mockCheckoutPort.update).toHaveBeenCalledWith(
+        'ck-1',
+        expect.objectContaining({ paymentMethods: { pix: newPixConfig } }),
+      );
+    });
   });
 
-  it('update preserves PIX fallback gateways format', async () => {
-    const currentCheckout = {
-      id: 'ck-1',
-      uid: 'uid-1',
-      title: 'Original',
-      uuidOwner: 'owner-1',
-      price: 5000,
-      paymentMethods: {
-        pix: {
-          gateways: [
-            { tokenId: 'tok-1', type: 'amplopay' },
-            { tokenId: 'tok-2', type: 'efibank' },
-          ],
-        },
-      },
-      checkout: { theme: 'dark' },
-      orderBumps: [],
-      published: true,
-      createBy: 'user',
-    };
-    vi.mocked(mockCheckoutPort.getById).mockResolvedValue(currentCheckout as any);
-    vi.mocked(mockCheckoutPort.update).mockResolvedValue(currentCheckout as any);
-
-    const newPixConfig = {
-      gateways: [
-        { tokenId: 'tok-3', type: 'mercadopago' },
-        { tokenId: 'tok-1', type: 'amplopay' },
-      ],
-    };
-    await service.update('ck-1', { paymentMethods: { pix: newPixConfig } });
-
-    expect(mockCheckoutPort.update).toHaveBeenCalledWith(
-      'ck-1',
-      expect.objectContaining({
-        paymentMethods: { pix: newPixConfig },
-      }),
-    );
-  });
-
-  it('delete fetches checkout first to get uuidOwner, then calls port.delete with both', async () => {
-    vi.mocked(mockCheckoutPort.getById).mockResolvedValue({
-      id: 'ck-1',
-      title: 'Test',
-      uuidOwner: 'owner-abc',
-      price: 1000,
-    } as any);
-    vi.mocked(mockCheckoutPort.delete).mockResolvedValue(undefined);
-
+  it('delete calls port.delete without a preliminary read', async () => {
     await service.delete('ck-1');
 
-    expect(mockCheckoutPort.getById).toHaveBeenCalledWith('ck-1');
-    expect(mockCheckoutPort.delete).toHaveBeenCalledWith('ck-1', 'owner-abc');
+    expect(mockCheckoutPort.getById).not.toHaveBeenCalled();
+    expect(mockCheckoutPort.delete).toHaveBeenCalledWith('ck-1');
   });
 });
