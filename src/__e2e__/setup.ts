@@ -54,7 +54,7 @@ export const adapters = {
 export const services = {
   product: new ProductService(adapters.product),
   payment: new PaymentService(adapters.payment, authAdapter),
-  checkout: new CheckoutService(adapters.checkout, authAdapter),
+  checkout: new CheckoutService(adapters.checkout, authAdapter, adapters.product),
   webhook: new WebhookService(adapters.webhook, authAdapter),
   store: new StoreService(adapters.store),
   funnel: new FunnelService(adapters.funnel),

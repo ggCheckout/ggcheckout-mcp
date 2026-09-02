@@ -130,7 +130,7 @@ const telegramAdapter = new TelegramApiAdapter(httpClient);
 // Services (use cases)
 const productService = new ProductService(productAdapter);
 const paymentService = new PaymentService(paymentAdapter, authAdapter);
-const checkoutService = new CheckoutService(checkoutAdapter, authAdapter);
+const checkoutService = new CheckoutService(checkoutAdapter, authAdapter, productAdapter);
 const webhookService = new WebhookService(webhookAdapter, authAdapter);
 const storeService = new StoreService(storeAdapter);
 const funnelService = new FunnelService(funnelAdapter);
