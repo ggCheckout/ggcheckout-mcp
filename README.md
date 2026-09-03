@@ -610,7 +610,7 @@ Opens a browser UI to test any tool interactively.
 
 ## Support
 
-- 📧 Email: support@ggcheckout.com
+- 📧 Email: suporte@ggcheckout.com
 - 📖 Docs: https://docs.ggcheckout.com
 - 🐛 Issues: https://github.com/gui-drumond/ggcheckout-mcp/issues
 
