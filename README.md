@@ -36,10 +36,13 @@ npm install -g ggcheckout-mcp
 
 ### Claude Code
 
-> **Upgrading?** `npx -y` picks up new majors automatically. See
-> [CHANGELOG.md](./CHANGELOG.md) before upgrading — 0.3.0 renames the
-> `create_checkout` input `id` to `productId`. Pin a version
-> (`ggcheckout-mcp@0.2.4`) if you are not ready.
+> **Upgrading?** The snippet below is unpinned: `npx -y ggcheckout-mcp` picks up
+> **every** new version on the next start — minor releases included, not just
+> majors. 0.3.0 carries two breaking changes: `create_checkout` takes
+> `productId` instead of `id`, and checkout reads (`list_checkouts`,
+> `get_checkout`, `update_checkout`) return that pointer as `productId` instead
+> of `id`. Read [CHANGELOG.md](./CHANGELOG.md) first, and pin
+> `ggcheckout-mcp@0.2.4` if this is not the moment.
 
 ```json
 {
