@@ -540,7 +540,7 @@ for each item:
 ## Local Development
 
 ```bash
-git clone https://github.com/gui-drumond/ggcheckout-mcp.git
+git clone https://github.com/ggCheckout/ggcheckout-mcp.git
 cd ggcheckout-mcp
 npm install
 ```
@@ -610,9 +610,9 @@ Opens a browser UI to test any tool interactively.
 
 ## Support
 
-- 📧 Email: support@ggcheckout.com
+- 📧 Email: suporte@ggcheckout.com
 - 📖 Docs: https://docs.ggcheckout.com
-- 🐛 Issues: https://github.com/gui-drumond/ggcheckout-mcp/issues
+- 🐛 Issues: https://github.com/ggCheckout/ggcheckout-mcp/issues
 
 ## License
 

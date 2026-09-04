@@ -33,11 +33,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gui-drumond/ggcheckout-mcp.git"
+    "url": "git+https://github.com/ggCheckout/ggcheckout-mcp.git"
   },
-  "homepage": "https://github.com/gui-drumond/ggcheckout-mcp#readme",
+  "homepage": "https://github.com/ggCheckout/ggcheckout-mcp#readme",
   "bugs": {
-    "url": "https://github.com/gui-drumond/ggcheckout-mcp/issues"
+    "url": "https://github.com/ggCheckout/ggcheckout-mcp/issues"
   },
   "files": [
     "dist",
