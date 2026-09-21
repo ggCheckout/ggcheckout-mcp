@@ -6,9 +6,9 @@ import type {
   UploadDeliverableInput,
   Upsell,
   ReorderUpsellItem,
-  CreateUpsellInput,
+  CreateUpsellPayload,
   DownsellSequenceItem,
-  CreateDownsellInput,
+  CreateDownsellPayload,
 } from '../../core/types/product.js';
 import type { HttpClient } from './http-client.js';
 import type { AuthPort } from '../../core/ports/auth.port.js';
@@ -46,10 +46,14 @@ export class ProductApiAdapter implements ProductPort {
   }
 
   async listUpsells(productId: string): Promise<Upsell[]> {
-    return this.http.get<Upsell[]>(`/api/product-delivery/${productId}/upsells/list`);
+    // The route answers `{ success, upsells, count }`; older deployments answered the bare array.
+    const data = await this.http.get<Upsell[] | { upsells?: Upsell[] }>(
+      `/api/product-delivery/${productId}/upsells/list`,
+    );
+    return Array.isArray(data) ? data : (data.upsells ?? []);
   }
 
-  async createUpsell(productId: string, upsellId: string, input: CreateUpsellInput): Promise<Upsell> {
+  async createUpsell(productId: string, upsellId: string, input: CreateUpsellPayload): Promise<Upsell> {
     const data = await this.http.post<{ success: boolean; upsell: Upsell }>(
       `/api/product-delivery/${productId}/upsells/${upsellId}`,
       { upsell: input },
@@ -71,7 +75,7 @@ export class ProductApiAdapter implements ProductPort {
     );
   }
 
-  async createDownsell(productId: string, downsellId: string, input: CreateDownsellInput): Promise<DownsellSequenceItem> {
+  async createDownsell(productId: string, downsellId: string, input: CreateDownsellPayload): Promise<DownsellSequenceItem> {
     const data = await this.http.post<{ success: boolean; downsell: DownsellSequenceItem }>(
       `/api/product-delivery/${productId}/downsells/${downsellId}`,
       { downsell: input },

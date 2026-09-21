@@ -50,6 +50,17 @@ describe('ProductApiAdapter', () => {
     expect(http.patch).toHaveBeenCalledWith('/api/product-delivery/p1', { title: 'Updated', id: 'p1', uuidOwner: 'user-1' });
   });
 
+  it('listUpsells unwraps the { success, upsells, count } envelope', async () => {
+    vi.mocked(http.get).mockResolvedValue({ success: true, upsells: [{ uid: 'u1' }], count: 1 });
+    expect(await adapter.listUpsells('p1')).toEqual([{ uid: 'u1' }]);
+    expect(http.get).toHaveBeenCalledWith('/api/product-delivery/p1/upsells/list');
+  });
+
+  it('listUpsells still accepts a bare array', async () => {
+    vi.mocked(http.get).mockResolvedValue([{ uid: 'u1' }]);
+    expect(await adapter.listUpsells('p1')).toEqual([{ uid: 'u1' }]);
+  });
+
   it('createUpsell POSTs to /upsells/{upsellId} with { upsell: input } body', async () => {
     vi.mocked(http.post).mockResolvedValue({ success: true, upsell: { uid: 'u1' } });
     const input = { upsellProductId: 'prod-2', title: 'Upsell Offer' };

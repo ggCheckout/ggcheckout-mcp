@@ -16,7 +16,8 @@ export class ProductService {
   constructor(private readonly productPort: ProductPort) {}
 
   async list(): Promise<Product[]> {
-    return this.productPort.list();
+    // delete_product is a soft delete: the API keeps listing the row with `deleted: true`.
+    return (await this.productPort.list()).filter((product) => product.deleted !== true);
   }
 
   async getById(id: string): Promise<Product> {
@@ -30,7 +31,11 @@ export class ProductService {
 
   async update(id: string, input: any): Promise<void> {
     const validated = validateUpdateProductInput(input);
-    return this.productPort.update(id, validated);
+    // The API validates the body as a whole product (a title-only PATCH is rejected for
+    // lacking url/deliverable/stockLines), so the stored document is re-sent with the edit
+    // on top. uid is the document key and updatedAt is stamped by the server.
+    const { uid: _uid, updatedAt: _updatedAt, ...current } = (await this.productPort.getById(id)) as any;
+    return this.productPort.update(id, { ...current, ...validated });
   }
 
   async delete(id: string): Promise<void> {
@@ -49,8 +54,20 @@ export class ProductService {
     return this.productPort.listUpsells(productId);
   }
 
+  /**
+   * Writes the offer in the shape the dashboard editor does. The Postgres-backed API requires
+   * `order` (it becomes `sortOrder`) and reads the offered products from `upsellProductIds`;
+   * without them the write is refused, or saved with no product to sell.
+   */
   async createUpsell(productId: string, upsellId: string, input: CreateUpsellInput): Promise<Upsell> {
-    return this.productPort.createUpsell(productId, upsellId, input);
+    const order = input.order ?? (await this.productPort.listUpsells(productId)).length + 1;
+    return this.productPort.createUpsell(productId, upsellId, {
+      ...input,
+      uid: upsellId,
+      id: upsellId,
+      upsellProductIds: [input.upsellProductId],
+      order,
+    });
   }
 
   async deleteUpsell(productId: string, upsellId: string): Promise<void> {
@@ -65,8 +82,16 @@ export class ProductService {
     return this.productPort.listDownsells(productId);
   }
 
+  /** Same editor shape as {@link createUpsell}: `order` is required, products go in `downsellProductIds`. */
   async createDownsell(productId: string, downsellId: string, input: CreateDownsellInput): Promise<DownsellSequenceItem> {
-    return this.productPort.createDownsell(productId, downsellId, input);
+    const order = input.order ?? (await this.productPort.listDownsells(productId)).downsells.length + 1;
+    return this.productPort.createDownsell(productId, downsellId, {
+      ...input,
+      uid: downsellId,
+      id: downsellId,
+      downsellProductIds: [input.downsellProductId],
+      order,
+    });
   }
 
   async deleteDownsell(productId: string, downsellId: string): Promise<void> {
