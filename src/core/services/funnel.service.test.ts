@@ -68,11 +68,15 @@ describe('FunnelService', () => {
   });
 
   it('replaces arrays and lets null clear a value', async () => {
-    await service.update('f-1', { settings: { webhookIds: ['w-2'], customDomainId: null } as any });
+    await service.update('f-1', {
+      settings: { webhookIds: ['w-2'], customDomainId: null, postPurchaseUrl: null, pixelTokenIds: { facebook_ads: null } },
+    });
 
     const sent = vi.mocked(mockPort.update).mock.calls[0][1];
     expect(sent.settings?.webhookIds).toEqual(['w-2']);
     expect(sent.settings).toHaveProperty('customDomainId', null);
+    expect(sent.settings).toHaveProperty('postPurchaseUrl', null);
+    expect(sent.settings?.pixelTokenIds).toEqual({ facebook_ads: null });
   });
 
   it('keeps steps as a whole replacement alongside a merged design', async () => {

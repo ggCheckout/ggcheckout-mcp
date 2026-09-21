@@ -60,7 +60,7 @@ export class ProductService {
    * without them the write is refused, or saved with no product to sell.
    */
   async createUpsell(productId: string, upsellId: string, input: CreateUpsellInput): Promise<Upsell> {
-    const order = input.order ?? (await this.productPort.listUpsells(productId)).length + 1;
+    const order = input.order ?? nextOrder(await this.productPort.listUpsells(productId));
     return this.productPort.createUpsell(productId, upsellId, {
       ...input,
       uid: upsellId,
@@ -84,7 +84,7 @@ export class ProductService {
 
   /** Same editor shape as {@link createUpsell}: `order` is required, products go in `downsellProductIds`. */
   async createDownsell(productId: string, downsellId: string, input: CreateDownsellInput): Promise<DownsellSequenceItem> {
-    const order = input.order ?? (await this.productPort.listDownsells(productId)).downsells.length + 1;
+    const order = input.order ?? nextOrder((await this.productPort.listDownsells(productId)).downsells);
     return this.productPort.createDownsell(productId, downsellId, {
       ...input,
       uid: downsellId,
@@ -105,4 +105,9 @@ export class ProductService {
   async manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }> {
     return this.productPort.manageTags(productId, tags);
   }
+}
+
+/** One past the highest stored position; the list length would reuse a slot left by a deletion. */
+function nextOrder(items: Array<{ order?: number }>): number {
+  return items.reduce((max, item) => Math.max(max, item.order ?? 0), items.length) + 1;
 }

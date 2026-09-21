@@ -148,8 +148,8 @@ export function registerFunnelTools(server: McpServer, service: FunnelService) {
             title: z.string(), description: z.string(), ogImage: z.string(), favicon: z.string(),
           }).partial().optional(),
           pixelTokenIds: z.object({
-            facebook_ads: z.string(), tiktok_ads: z.string(), google_ads: z.string(),
-          }).partial().optional().describe('Pixel token ids from list_tokens (type facebook_ads / tiktok_ads / google_ads), one per platform'),
+            facebook_ads: z.string().nullable(), tiktok_ads: z.string().nullable(), google_ads: z.string().nullable(),
+          }).partial().optional().describe('Pixel token ids from list_tokens (type facebook_ads / tiktok_ads / google_ads), one per platform; null removes that platform\'s pixel'),
           scripts: z.object({
             head: z.string().max(10000),
             body: z.string().max(10000),
@@ -157,7 +157,7 @@ export function registerFunnelTools(server: McpServer, service: FunnelService) {
           }).partial().optional(),
           webhookIds: z.array(z.string()).max(50).optional().describe('Ids from list_webhooks that receive quiz.completed (replaces the list)'),
           clarity: z.object({ projectId: z.string() }).partial().optional().describe('Microsoft Clarity project id for this funnel'),
-          postPurchaseUrl: z.string().url().optional().describe('Where the buyer goes after a confirmed payment'),
+          postPurchaseUrl: z.string().url().nullable().optional().describe('Where the buyer goes after a confirmed payment; null to remove'),
         }).optional().describe('Settings changes, merged into the stored settings'),
         scoring: z.object({
           enabled: z.boolean(),

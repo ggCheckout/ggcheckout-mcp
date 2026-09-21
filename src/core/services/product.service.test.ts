@@ -118,6 +118,15 @@ describe('ProductService', () => {
     });
   });
 
+  it('createUpsell goes past the highest order when a deletion left a gap', async () => {
+    vi.mocked(mockPort.listUpsells).mockResolvedValue([{ order: 1 }, { order: 3 }] as any);
+    vi.mocked(mockPort.createUpsell).mockResolvedValue({} as any);
+
+    await service.createUpsell('p-1', 'u-1', { upsellProductId: 'p-2', title: 'Oferta' });
+
+    expect(mockPort.createUpsell).toHaveBeenCalledWith('p-1', 'u-1', expect.objectContaining({ order: 4 }));
+  });
+
   it('createUpsell keeps an explicit order without listing', async () => {
     vi.mocked(mockPort.createUpsell).mockResolvedValue({} as any);
 

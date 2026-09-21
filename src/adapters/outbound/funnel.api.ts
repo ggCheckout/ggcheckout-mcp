@@ -31,14 +31,14 @@ export class FunnelApiAdapter implements FunnelPort {
   async listCheckouts(method?: 'pix' | 'credit_card'): Promise<FunnelCheckoutOptions> {
     const query = method ? `?${new URLSearchParams({ method })}` : '';
     const data = await this.http.get<FunnelCheckoutOptions>(`/api/funnels/checkouts${query}`);
-    // Gateways come back as {id, type, name}; a checkout's paymentMethods can still carry a legacy
-    // `{token, type}` gateway secret, so that is what gets stripped.
+    // A checkout's paymentMethods can still carry a legacy `{token, type}` gateway secret, so that
+    // is stripped. Gateways keep only {id, type, name}, so a new field never reaches the agent unseen.
     return {
-      ...data,
-      checkouts: data.checkouts.map((checkout) => ({
+      checkouts: (data.checkouts ?? []).map((checkout) => ({
         ...checkout,
         paymentMethods: sanitizeStorePaymentMethods(checkout.paymentMethods),
       })),
+      gateways: (data.gateways ?? []).map(({ id, type, name }) => ({ id, type, name })),
     };
   }
 

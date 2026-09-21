@@ -210,7 +210,7 @@ export class StoreApiAdapter implements StorePort {
     if (options?.limit) params.append('limit', options.limit.toString());
     const query = params.toString();
     const data = await this.http.get<StoreReviewList>(this.storePath(storeId, `/feedbacks${query ? `?${query}` : ''}`));
-    return { ...data, feedbacks: data.feedbacks.map(sanitizeFeedback) };
+    return { ...data, feedbacks: (data.feedbacks ?? []).map(sanitizeFeedback) };
   }
 
   async createStoreReview(storeId: string, input: StoreReviewInput): Promise<StoreFeedback> {

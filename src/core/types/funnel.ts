@@ -96,7 +96,7 @@ export type PixelPlatformId = 'facebook_ads' | 'tiktok_ads' | 'google_ads';
 
 export interface FunnelSettings {
   customDomain?: string;
-  customDomainId?: string;
+  customDomainId?: string | null;
   seo: {
     title: string;
     description: string;
@@ -104,7 +104,7 @@ export interface FunnelSettings {
     favicon: string;
   };
   /** Ids from list_tokens (one per platform); the page resolves them to pixel ids server-side. */
-  pixelTokenIds?: Partial<Record<PixelPlatformId, string>>;
+  pixelTokenIds?: Partial<Record<PixelPlatformId, string | null>>;
   scripts?: {
     head?: string;
     body?: string;
@@ -113,7 +113,7 @@ export interface FunnelSettings {
   /** Ids from list_webhooks; each receives quiz.completed. */
   webhookIds?: string[];
   clarity?: { projectId?: string };
-  postPurchaseUrl?: string;
+  postPurchaseUrl?: string | null;
 }
 
 /** A partial update: every nested object is merged into the stored one by the service. */
@@ -208,7 +208,7 @@ export interface FunnelCheckoutSummary {
 
 export interface FunnelCheckoutOptions {
   checkouts: FunnelCheckoutSummary[];
-  gateways: Array<Record<string, unknown>>;
+  gateways: Array<{ id: string; type: string; name: string }>;
 }
 
 export interface FunnelLeadStats {
