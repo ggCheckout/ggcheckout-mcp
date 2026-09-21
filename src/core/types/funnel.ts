@@ -2,9 +2,9 @@ export type ComponentType =
   | 'alert' | 'arguments' | 'audio' | 'button' | 'card' | 'carousel'
   | 'cartesian' | 'compare' | 'confetti' | 'countdown' | 'coupon' | 'divider'
   | 'email' | 'faq' | 'form' | 'gate' | 'guarantee' | 'headline' | 'hero'
-  | 'iframe' | 'image' | 'input' | 'list' | 'loading' | 'logo' | 'marquee'
+  | 'iframe' | 'image' | 'input' | 'level' | 'list' | 'loading' | 'logo' | 'marquee'
   | 'menu' | 'pix' | 'price' | 'progress' | 'question' | 'result' | 'reviews'
-  | 'stats' | 'terms' | 'text' | 'video' | 'whatsapp';
+  | 'social_proof' | 'stats' | 'terms' | 'text' | 'video' | 'whatsapp';
 
 export type LeadStatus = 'visitor' | 'lead' | 'qualified' | 'completed';
 
@@ -21,6 +21,23 @@ export interface FunnelStep {
   order: number;
   components: FunnelComponent[];
   position: { x: number; y: number };
+  loadingScreen?: Partial<FunnelLoadingScreen>;
+  showLogo?: boolean;
+  showProgress?: boolean;
+  allowBack?: boolean;
+  stickyButton?: boolean;
+  stickyButtonLabel?: string;
+}
+
+export interface FunnelLoadingScreen {
+  enabled: boolean;
+  duration: number;
+  color: string;
+  targetPercent: number;
+  showText: boolean;
+  text: string;
+  mediaType: 'none' | 'emoji' | 'image';
+  mediaValue: string;
 }
 
 export interface FlowEdgeCondition {
@@ -72,29 +89,39 @@ export interface FunnelDesign {
     speed: number;
     direction: 'up' | 'down' | 'left' | 'right';
   };
+  loadingScreen: FunnelLoadingScreen;
 }
+
+export type PixelPlatformId = 'facebook_ads' | 'tiktok_ads' | 'google_ads';
 
 export interface FunnelSettings {
   customDomain?: string;
+  customDomainId?: string;
   seo: {
     title: string;
     description: string;
     ogImage: string;
     favicon: string;
   };
-  pixels: {
-    facebookId?: string;
-    tiktokId?: string;
-    googleId?: string;
-  };
+  /** Ids from list_tokens (one per platform); the page resolves them to pixel ids server-side. */
+  pixelTokenIds?: Partial<Record<PixelPlatformId, string>>;
   scripts?: {
     head?: string;
     body?: string;
     footer?: string;
   };
-  webhookUrl?: string;
-  webhookSecret?: string;
+  /** Ids from list_webhooks; each receives quiz.completed. */
+  webhookIds?: string[];
+  clarity?: { projectId?: string };
+  postPurchaseUrl?: string;
 }
+
+/** A partial update: every nested object is merged into the stored one by the service. */
+export type DeepPartial<T> = T extends (infer U)[]
+  ? U[]
+  : T extends object
+    ? { [K in keyof T]?: DeepPartial<T[K]> }
+    : T;
 
 export interface ScoreRange {
   id: string;
@@ -163,9 +190,25 @@ export interface UpdateFunnelInput {
   published?: boolean;
   steps?: FunnelStep[];
   flow?: { edges: FlowEdge[] };
-  design?: FunnelDesign;
-  settings?: FunnelSettings;
+  design?: DeepPartial<FunnelDesign>;
+  settings?: DeepPartial<FunnelSettings>;
   scoring?: FunnelScoring;
+}
+
+export interface FunnelCheckoutSummary {
+  uid: string;
+  title: string;
+  price: number;
+  currency: string;
+  checkoutModel: string;
+  image: string;
+  orderBumps: Array<{ id: string; title: string; price: number; image: string }>;
+  paymentMethods: Record<string, unknown> | null;
+}
+
+export interface FunnelCheckoutOptions {
+  checkouts: FunnelCheckoutSummary[];
+  gateways: Array<Record<string, unknown>>;
 }
 
 export interface FunnelLeadStats {

@@ -6,8 +6,9 @@ import type {
   FunnelLead,
   FunnelLeadStats,
   FunnelAnalytics,
+  FunnelCheckoutOptions,
 } from '../../core/types/funnel.js';
-import { sanitizeFunnel, sanitizeLead } from '../../shared/sanitizer.js';
+import { sanitizeFunnel, sanitizeLead, sanitizeStorePaymentMethods } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
 export class FunnelApiAdapter implements FunnelPort {
@@ -19,8 +20,26 @@ export class FunnelApiAdapter implements FunnelPort {
   }
 
   async getById(funnelId: string): Promise<Funnel> {
-    const data = await this.http.get<{ funnel: Funnel }>(`/api/funnels/${funnelId}`);
-    return sanitizeFunnel(data.funnel);
+    return sanitizeFunnel(await this.getStored(funnelId));
+  }
+
+  async getStored(funnelId: string): Promise<Funnel> {
+    const data = await this.http.get<{ funnel: Funnel }>(`/api/funnels/${encodeURIComponent(funnelId)}`);
+    return data.funnel;
+  }
+
+  async listCheckouts(method?: 'pix' | 'credit_card'): Promise<FunnelCheckoutOptions> {
+    const query = method ? `?${new URLSearchParams({ method })}` : '';
+    const data = await this.http.get<FunnelCheckoutOptions>(`/api/funnels/checkouts${query}`);
+    // Gateways come back as {id, type, name}; a checkout's paymentMethods can still carry a legacy
+    // `{token, type}` gateway secret, so that is what gets stripped.
+    return {
+      ...data,
+      checkouts: data.checkouts.map((checkout) => ({
+        ...checkout,
+        paymentMethods: sanitizeStorePaymentMethods(checkout.paymentMethods),
+      })),
+    };
   }
 
   async create(input: CreateFunnelInput): Promise<Funnel> {
@@ -29,16 +48,16 @@ export class FunnelApiAdapter implements FunnelPort {
   }
 
   async update(funnelId: string, input: UpdateFunnelInput): Promise<Funnel> {
-    const data = await this.http.put<{ funnel: Funnel }>(`/api/funnels/${funnelId}`, input);
+    const data = await this.http.put<{ funnel: Funnel }>(`/api/funnels/${encodeURIComponent(funnelId)}`, input);
     return sanitizeFunnel(data.funnel);
   }
 
   async delete(funnelId: string): Promise<void> {
-    await this.http.delete(`/api/funnels/${funnelId}`);
+    await this.http.delete(`/api/funnels/${encodeURIComponent(funnelId)}`);
   }
 
   async duplicate(funnelId: string): Promise<Funnel> {
-    const data = await this.http.post<{ funnel: Funnel }>(`/api/funnels/${funnelId}/duplicate`);
+    const data = await this.http.post<{ funnel: Funnel }>(`/api/funnels/${encodeURIComponent(funnelId)}/duplicate`);
     return sanitizeFunnel(data.funnel);
   }
 
@@ -49,7 +68,7 @@ export class FunnelApiAdapter implements FunnelPort {
     if (options?.offset) params.append('offset', options.offset.toString());
 
     const queryString = params.toString();
-    const url = `/api/funnels/${funnelId}/leads${queryString ? `?${queryString}` : ''}`;
+    const url = `/api/funnels/${encodeURIComponent(funnelId)}/leads${queryString ? `?${queryString}` : ''}`;
 
     const data = await this.http.get<{
       leads: FunnelLead[];
@@ -62,11 +81,11 @@ export class FunnelApiAdapter implements FunnelPort {
   }
 
   async getLeadAnalytics(funnelId: string): Promise<FunnelAnalytics> {
-    return this.http.get<FunnelAnalytics>(`/api/funnels/${funnelId}/leads/analytics`);
+    return this.http.get<FunnelAnalytics>(`/api/funnels/${encodeURIComponent(funnelId)}/leads/analytics`);
   }
 
   async getLeadStats(funnelId: string): Promise<FunnelLeadStats> {
-    const data = await this.http.get<{ stats: FunnelLeadStats }>(`/api/funnels/${funnelId}/leads/stats`);
+    const data = await this.http.get<{ stats: FunnelLeadStats }>(`/api/funnels/${encodeURIComponent(funnelId)}/leads/stats`);
     return data.stats;
   }
 }

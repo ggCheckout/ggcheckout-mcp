@@ -6,7 +6,22 @@ import type {
   FunnelLead,
   FunnelLeadStats,
   FunnelAnalytics,
+  FunnelCheckoutOptions,
 } from '../types/funnel.js';
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Objects merge key by key; arrays, primitives and `null` replace; `undefined` leaves the key. */
+function mergeDeep<T>(base: T, patch: unknown): T {
+  if (!isPlainObject(base) || !isPlainObject(patch)) return (patch === undefined ? base : patch) as T;
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) result[key] = mergeDeep(result[key], value);
+  }
+  return result as T;
+}
 
 export class FunnelService {
   constructor(private readonly funnelPort: FunnelPort) {}
@@ -23,8 +38,28 @@ export class FunnelService {
     return this.funnelPort.create(input);
   }
 
+  /**
+   * The API replaces each top-level field whole, so `design: { colors }` would drop general,
+   * header, typography, animation and loadingScreen. `design` and `settings` are merged into the
+   * stored document first, the way the dashboard editor does before its PUT. `steps`, `flow` and
+   * `scoring` stay whole replacements: they are lists the caller sends complete.
+   */
   async update(funnelId: string, input: UpdateFunnelInput): Promise<Funnel> {
-    return this.funnelPort.update(funnelId, input);
+    if (input.design === undefined && input.settings === undefined) {
+      return this.funnelPort.update(funnelId, input);
+    }
+    // Unsanitized on purpose: merging from the sanitized read would write the hidden fields back
+    // as absent and erase them.
+    const stored = await this.funnelPort.getStored(funnelId);
+    return this.funnelPort.update(funnelId, {
+      ...input,
+      ...(input.design !== undefined ? { design: mergeDeep(stored.design, input.design) } : {}),
+      ...(input.settings !== undefined ? { settings: mergeDeep(stored.settings, input.settings) } : {}),
+    });
+  }
+
+  async listCheckouts(method?: 'pix' | 'credit_card'): Promise<FunnelCheckoutOptions> {
+    return this.funnelPort.listCheckouts(method);
   }
 
   async delete(funnelId: string): Promise<void> {
