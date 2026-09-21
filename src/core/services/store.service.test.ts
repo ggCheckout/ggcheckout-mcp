@@ -51,6 +51,23 @@ describe('StoreService.updateLayout', () => {
     expect(mockPort.saveLayoutDraft).not.toHaveBeenCalled();
   });
 
+  it('updateStoreReview refuses a partial content edit before calling the API', async () => {
+    mockPort.updateStoreReview = vi.fn();
+
+    await expect(service.updateStoreReview('s-1', 'f-1', { rating: 5 })).rejects.toThrow(/together/);
+    await expect(service.updateStoreReview('s-1', 'f-1', {})).rejects.toThrow(/approved/);
+    expect(mockPort.updateStoreReview).not.toHaveBeenCalled();
+
+    await service.updateStoreReview('s-1', 'f-1', { approved: true });
+    expect(mockPort.updateStoreReview).toHaveBeenCalledWith('s-1', 'f-1', { approved: true });
+  });
+
+  it('updateStore refuses an empty patch', async () => {
+    mockPort.updateStore = vi.fn();
+    await expect(service.updateStore('s-1', {})).rejects.toThrow(/at least one field/);
+    expect(mockPort.updateStore).not.toHaveBeenCalled();
+  });
+
   it('accepts a full first save of a new store', async () => {
     vi.mocked(mockPort.getLayout).mockResolvedValue({ layout: null, isNewStore: true });
 

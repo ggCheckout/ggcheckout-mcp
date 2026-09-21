@@ -270,3 +270,57 @@ export interface StoreLayoutUpdate {
   config?: Record<string, unknown>;
   pageSettings?: Record<string, unknown>;
 }
+
+// --- Store admin (seller routes under /api/stores/{storeId}) ---
+
+/** A partial store config. The API reads the stored document and merges this into it. */
+export type StoreConfigPatch = Record<string, unknown>;
+
+/** The owner's full store document, unpublished stores included; payment tokens are removed. */
+export type StoreAdminConfig = Record<string, unknown> & { id?: string; published?: boolean };
+
+export interface StoreAdminCategory {
+  id: string;
+  name: string;
+  description?: string;
+  image?: string;
+  imagePosition?: string;
+  productIds: string[];
+  order: number;
+  parentId: string | null;
+  deleted?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StoreCategoryInput {
+  name?: string;
+  description?: string;
+  image?: string;
+  imagePosition?: string;
+  productIds?: string[];
+  order?: number;
+  parentId?: string | null;
+}
+
+export interface StoreReviewInput {
+  productId: string;
+  rating: number;
+  comment: string;
+  customerName: string;
+  createdAt?: string;
+}
+
+export interface StoreReviewUpdate {
+  approved?: boolean;
+  customerName?: string;
+  rating?: number;
+  comment?: string;
+  createdAt?: string;
+}
+
+export interface StoreReviewList {
+  feedbacks: StoreFeedback[];
+  pagination: Record<string, number>;
+  counts: { all: number; pending: number; approved: number };
+}

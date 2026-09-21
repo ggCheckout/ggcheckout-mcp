@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 164 tools across 19 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 176 tools across 19 domains.
 
 ## Overview
 
@@ -79,7 +79,7 @@ export GGCHECKOUT_API_URL="https://your-staging.example.com"
 
 ---
 
-## Available Tools (164)
+## Available Tools (176)
 
 ### Products (16 tools)
 
@@ -297,9 +297,16 @@ const isValid = sig === incomingHeader.replace('sha256=', '');
 
 ---
 
-### Store (16 tools)
+### Store (28 tools)
 
 `list_stores` returns your stores' ids; every other store tool takes one.
+
+**Manage the store:** `create_store`, `get_store`, `update_store`, `delete_store`;
+categories with `list_store_categories`, `create_store_category`, `update_store_category`,
+`delete_store_category`; review moderation with `list_store_reviews`, `create_store_review`,
+`update_store_review`, `delete_store_review`. `update_store` merges objects into the stored
+config and replaces lists (`productOrder`, gateways, a category's `productIds`). Creating or
+publishing a store requires a seller with verified email and phone.
 
 **Store builder:** `get_store_layout`, `update_store_layout`, `publish_store_layout`,
 `list_store_layout_history`, `restore_store_layout_version`, `get_store_theme`.
@@ -311,10 +318,13 @@ stored ones; `blocks` replaces the whole list. Nothing is public until you publi
 stores, list approved reviews only, and may be cached for up to 7 days.
 `get_store_order` only returns pending orders with an API key.
 
-Creating a store, its settings, categories, product order and review moderation are not
-available: the dashboard does them without a public API route.
+Store integrations, store upsells/downsells, video, sales notifications and custom fields
+are dashboard-only.
 
 **Example prompts:**
+- "Create a store called 'Loja Teste', turn on PIX with my AmploPay gateway and publish it"
+- "Create a 'Cursos' category with products abc and def"
+- "Approve all pending reviews of my store"
 - "List my stores"
 - "Change the primary color of my store to #8b5cf6 and publish it"
 - "Undo the last store publish"

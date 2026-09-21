@@ -24,6 +24,12 @@ also against production.
 ### Added
 
 - `list_stores`, the only way to get the `storeId` every store tool takes.
+- Store management: `create_store`, `get_store`, `update_store`, `delete_store`, store
+  categories (`list_store_categories`, `create_store_category`, `update_store_category`,
+  `delete_store_category`) and review moderation (`list_store_reviews`,
+  `create_store_review`, `update_store_review`, `delete_store_review`). **These need the
+  `/api/stores/{storeId}` routes from saas-checkout** (branch
+  `feat/store-admin-api-routes`); against a deployment without them they answer 404/405.
 - Store builder: `get_store_layout`, `update_store_layout`, `publish_store_layout`,
   `list_store_layout_history`, `restore_store_layout_version`, `get_store_theme`.
 - `list_funnel_checkouts`: the checkouts and gateways a funnel `pix` component can use.

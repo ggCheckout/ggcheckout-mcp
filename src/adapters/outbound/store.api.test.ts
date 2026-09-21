@@ -80,6 +80,53 @@ describe('StoreApiAdapter', () => {
     expect(http.post).toHaveBeenNthCalledWith(2, '/api/store/layout/history', { storeId: 's1', version: 2 });
   });
 
+  it('createStore posts the title, or an empty body without one', async () => {
+    vi.mocked(http.post).mockResolvedValue({ storeId: 'new' });
+    expect(await adapter.createStore('Minha Loja')).toEqual({ storeId: 'new' });
+    await adapter.createStore();
+    expect(http.post).toHaveBeenNthCalledWith(1, '/api/stores', { title: 'Minha Loja' });
+    expect(http.post).toHaveBeenNthCalledWith(2, '/api/stores', {});
+  });
+
+  it('getStore and updateStore unwrap config and strip gateway tokens', async () => {
+    const config = { id: 's1', paymentMethods: { pix: { enabled: true, token: 'secret', gateways: ['g1'] } } };
+    vi.mocked(http.get).mockResolvedValue({ config });
+    vi.mocked(http.patch).mockResolvedValue({ config });
+
+    const read = await adapter.getStore('s/1');
+    const written = await adapter.updateStore('s1', { published: true });
+
+    expect(http.get).toHaveBeenCalledWith('/api/stores/s%2F1');
+    expect(http.patch).toHaveBeenCalledWith('/api/stores/s1', { published: true });
+    for (const result of [read, written]) {
+      expect((result.paymentMethods as any).pix).toEqual({ enabled: true, gateways: ['g1'] });
+    }
+  });
+
+  it('category routes nest under the store', async () => {
+    vi.mocked(http.get).mockResolvedValue({ categories: [{ id: 'c1' }] });
+    vi.mocked(http.patch).mockResolvedValue({ category: { id: 'c1', name: 'B' } });
+    vi.mocked(http.delete).mockResolvedValue({ deletedIds: ['c1', 'c2'] });
+
+    expect(await adapter.listStoreCategories('s1')).toEqual([{ id: 'c1' }]);
+    expect(await adapter.updateStoreCategory('s1', 'c1', { name: 'B' })).toEqual({ id: 'c1', name: 'B' });
+    expect(await adapter.deleteStoreCategory('s1', 'c1')).toEqual({ deletedIds: ['c1', 'c2'] });
+    expect(http.get).toHaveBeenCalledWith('/api/stores/s1/categories');
+    expect(http.patch).toHaveBeenCalledWith('/api/stores/s1/categories/c1', { name: 'B' });
+    expect(http.delete).toHaveBeenCalledWith('/api/stores/s1/categories/c1');
+  });
+
+  it('listStoreReviews passes filters and masks buyer emails', async () => {
+    vi.mocked(http.get).mockResolvedValue({
+      feedbacks: [{ id: 'f1', customerEmail: 'buyer@example.com' }],
+      pagination: {},
+      counts: { all: 1, pending: 1, approved: 0 },
+    });
+    const result = await adapter.listStoreReviews('s1', { status: 'pending', limit: 20 });
+    expect(http.get).toHaveBeenCalledWith('/api/stores/s1/feedbacks?status=pending&limit=20');
+    expect(result.feedbacks[0].customerEmail).not.toBe('buyer@example.com');
+  });
+
   it('listFeedbacks passes includeStats flag', async () => {
     vi.mocked(http.get).mockResolvedValue({ feedbacks: [], pagination: {} });
     await adapter.listFeedbacks('store-1', { includeStats: true, rating: 5 });

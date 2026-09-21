@@ -250,4 +250,266 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
       return service.getTheme(storeId);
     }),
   );
+
+  // --- Store admin (seller routes under /api/stores) ---
+
+  server.registerTool(
+    'create_store',
+    {
+      description:
+        'Create a store. It starts unpublished, with the default theme and no categories or gateways. Returns its storeId. '
+        + 'Requires a seller with verified email and phone. Then configure it with update_store (gateways in paymentMethods) and publish it.',
+      inputSchema: {
+        title: z.string().trim().min(1).max(120).optional().describe('Store title (default: "Nova Loja")'),
+      },
+    },
+    createToolHandler('create_store', async ({ title }) => {
+      const { storeId } = await service.createStore(title);
+      return { success: true, storeId };
+    }),
+  );
+
+  server.registerTool(
+    'get_store',
+    {
+      description: "Get the seller's full store configuration, unpublished stores included (payment tokens are never returned)",
+      inputSchema: {
+        storeId: storeIdSchema,
+      },
+    },
+    createToolHandler('get_store', async ({ storeId }) => {
+      const config = await service.getStore(storeId);
+      return { config };
+    }),
+  );
+
+  const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Use #RRGGBB');
+  const paymentMethod = z.object({
+    enabled: z.boolean(),
+    gateways: z.array(z.string()).max(20).describe('Gateway token ids from list_tokens (replaces the list)'),
+  }).partial();
+
+  server.registerTool(
+    'update_store',
+    {
+      description:
+        'Update store configuration. Send only what changes: objects are merged into the stored ones, lists (productOrder, gateways, productIds) '
+        + 'replace the stored list. `published: true` makes the store public (requires a verified seller). '
+        + 'Integrations, store upsells/downsells, video and sales notifications are dashboard-only.',
+      inputSchema: {
+        storeId: storeIdSchema,
+        template: z.string().min(1).max(64).optional(),
+        settings: z.object({ title: z.string().min(1).max(120), description: z.string().max(2000) }).partial().optional(),
+        theme: z.object({
+          primaryColor: hexColor,
+          secondaryColor: hexColor,
+          backgroundColor: hexColor,
+          logo: z.string().max(2048).describe('http(s) URL, or "" to remove'),
+          favicon: z.string().max(2048).describe('http(s) URL, or "" to remove'),
+        }).partial().optional(),
+        paymentMethods: z.object({ pix: paymentMethod, credit_card: paymentMethod }).partial().optional(),
+        socialLinks: z.object({
+          facebook: z.string().max(500), instagram: z.string().max(500), twitter: z.string().max(500),
+          youtube: z.string().max(500), discord: z.string().max(500), telegram: z.string().max(500),
+          whatsapp: z.string().max(500),
+        }).partial().optional(),
+        supportButton: z.object({
+          enabled: z.boolean(),
+          text: z.string().max(100),
+          url: z.string().max(2048).describe('http(s) URL, or ""'),
+          position: z.enum(['bottom-left', 'bottom-right', 'top-left', 'top-right']),
+        }).partial().optional(),
+        orderBump: z.object({
+          enabled: z.boolean(),
+          showFakeDiscount: z.boolean(),
+          fakeDiscountPercent: z.number().min(0).max(100),
+          globalBumpProductIds: z.array(z.string()).max(1000),
+          maxBumpsToShow: z.number().int().min(1).max(10),
+        }).partial().optional(),
+        storeOrderBumps: z.record(z.string(), z.array(z.string()).max(1000)).optional()
+          .describe('productId -> ids of the products offered as bump, in order'),
+        storeOriginalPrices: z.record(z.string(), z.number().int().min(0)).optional()
+          .describe('productId -> struck-through original price in CENTS'),
+        customerFields: z.object({
+          haveEmail: z.boolean(), haveName: z.boolean(), havePhone: z.boolean(), haveCpf: z.boolean(),
+          cpfPaymentMethods: z.array(z.enum(['pix', 'credit_card'])).max(2),
+          requireEmailConfirmation: z.boolean(), requirePhoneConfirmation: z.boolean(), phoneSingleField: z.boolean(),
+        }).partial().optional(),
+        customDomainId: z.string().nullable().optional().describe('Id from list_custom_domains; null for the default domain'),
+        productOrder: z.array(z.string()).max(1000).optional().describe('Product uids in storefront order (replaces the list)'),
+        showVerifiedBadge: z.boolean().optional(),
+        published: z.boolean().optional().describe('Make the store public or hide it'),
+      },
+    },
+    createToolHandler('update_store', async ({ storeId, ...patch }) => {
+      const config = await service.updateStore(storeId, patch);
+      return { success: true, config };
+    }),
+  );
+
+  server.registerTool(
+    'delete_store',
+    {
+      description: 'Delete a store (soft delete; the storefront stops answering)',
+      inputSchema: {
+        storeId: storeIdSchema,
+      },
+    },
+    createToolHandler('delete_store', async ({ storeId }) => {
+      await service.deleteStore(storeId);
+      return { success: true, message: `Store ${storeId} deleted` };
+    }),
+  );
+
+  // --- Store categories (owner view; list_categories is the public storefront view) ---
+
+  const categoryFields = {
+    description: z.string().max(1000).optional(),
+    image: z.string().max(2048).optional().describe('http(s) URL, or "" to remove'),
+    imagePosition: z.string().max(40).optional().describe('CSS object-position, e.g. "center" or "50% 30%"'),
+    productIds: z.array(z.string()).max(1000).optional()
+      .describe('Product uids in this category (replaces the list; unknown or deleted ids are dropped silently)'),
+    order: z.number().int().min(0).max(100000).optional().describe('Position among siblings (same parent)'),
+    parentId: z.string().nullable().optional().describe('Parent category id; null for top level (max depth 3)'),
+  };
+
+  server.registerTool(
+    'list_store_categories',
+    {
+      description: "List the store's categories as the owner sees them (works on unpublished stores), with productIds, order and parentId",
+      inputSchema: {
+        storeId: storeIdSchema,
+      },
+    },
+    createToolHandler('list_store_categories', async ({ storeId }) => {
+      const categories = await service.listStoreCategories(storeId);
+      return { categories };
+    }),
+  );
+
+  server.registerTool(
+    'create_store_category',
+    {
+      description: 'Create a store category and optionally put products in it. Check productIds in the response: unknown ids are dropped.',
+      inputSchema: {
+        storeId: storeIdSchema,
+        name: z.string().trim().min(1).max(100).describe('Category name'),
+        ...categoryFields,
+      },
+    },
+    createToolHandler('create_store_category', async ({ storeId, ...input }) => {
+      const category = await service.createStoreCategory(storeId, input);
+      return { success: true, category };
+    }),
+  );
+
+  server.registerTool(
+    'update_store_category',
+    {
+      description: 'Update a store category. Fields you omit are kept; productIds replaces the list.',
+      inputSchema: {
+        storeId: storeIdSchema,
+        categoryId: z.string().describe('Category id from list_store_categories'),
+        name: z.string().trim().min(1).max(100).optional(),
+        ...categoryFields,
+      },
+    },
+    createToolHandler('update_store_category', async ({ storeId, categoryId, ...input }) => {
+      const category = await service.updateStoreCategory(storeId, categoryId, input);
+      return { success: true, category };
+    }),
+  );
+
+  server.registerTool(
+    'delete_store_category',
+    {
+      description: 'Delete a store category AND all its subcategories. Products are not deleted.',
+      inputSchema: {
+        storeId: storeIdSchema,
+        categoryId: z.string().describe('Category id'),
+      },
+    },
+    createToolHandler('delete_store_category', async ({ storeId, categoryId }) => {
+      const { deletedIds } = await service.deleteStoreCategory(storeId, categoryId);
+      return { success: true, deletedIds };
+    }),
+  );
+
+  // --- Store reviews moderation (list_feedbacks is the public, approved-only view) ---
+
+  server.registerTool(
+    'list_store_reviews',
+    {
+      description: 'List store reviews for moderation, pending included, with counts per status',
+      inputSchema: {
+        storeId: storeIdSchema,
+        status: z.enum(['all', 'approved', 'pending']).optional().describe('Default: all'),
+        page: z.number().int().min(1).optional(),
+        limit: z.number().int().min(1).max(100).optional().describe('Default: 10'),
+      },
+    },
+    createToolHandler('list_store_reviews', async ({ storeId, ...options }) => {
+      return service.listStoreReviews(storeId, options);
+    }),
+  );
+
+  const reviewContent = {
+    rating: z.number().int().min(1).max(5),
+    comment: z.string().trim().min(10).max(1000),
+    customerName: z.string().trim().min(2).max(100),
+  };
+
+  server.registerTool(
+    'create_store_review',
+    {
+      description: 'Add a review written by the seller to a store product. It is published (approved) immediately.',
+      inputSchema: {
+        storeId: storeIdSchema,
+        productId: z.string().describe('Product uid'),
+        ...reviewContent,
+        createdAt: z.string().datetime({ offset: true }).optional().describe('Date shown on the review (ISO 8601; default now)'),
+      },
+    },
+    createToolHandler('create_store_review', async ({ storeId, ...input }) => {
+      const feedback = await service.createStoreReview(storeId, input);
+      return { success: true, feedback };
+    }),
+  );
+
+  server.registerTool(
+    'update_store_review',
+    {
+      description:
+        'Approve or hide a review (`approved`), and/or edit a review the SELLER wrote. To edit, send customerName, rating, comment and createdAt together; '
+        + "reviews written by real buyers can only be approved or hidden.",
+      inputSchema: {
+        storeId: storeIdSchema,
+        feedbackId: z.string().describe('Review id from list_store_reviews'),
+        approved: z.boolean().optional().describe('true shows it on the store, false hides it'),
+        rating: reviewContent.rating.optional(),
+        comment: reviewContent.comment.optional(),
+        customerName: reviewContent.customerName.optional(),
+        createdAt: z.string().datetime({ offset: true }).optional(),
+      },
+    },
+    createToolHandler('update_store_review', async ({ storeId, feedbackId, ...update }) => {
+      await service.updateStoreReview(storeId, feedbackId, update);
+      return { success: true, message: `Review ${feedbackId} updated` };
+    }),
+  );
+
+  server.registerTool(
+    'delete_store_review',
+    {
+      description: 'Permanently delete a store review',
+      inputSchema: {
+        storeId: storeIdSchema,
+        feedbackId: z.string().describe('Review id'),
+      },
+    },
+    createToolHandler('delete_store_review', async ({ storeId, feedbackId }) => {
+      await service.deleteStoreReview(storeId, feedbackId);
+      return { success: true, message: `Review ${feedbackId} deleted` };
+    }),
+  );
 }

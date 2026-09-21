@@ -13,6 +13,13 @@ import type {
   StoreSummary,
   StoreLayout,
   StoreLayoutDraft,
+  StoreConfigPatch,
+  StoreAdminConfig,
+  StoreAdminCategory,
+  StoreCategoryInput,
+  StoreReviewInput,
+  StoreReviewUpdate,
+  StoreReviewList,
 } from '../types/store.js';
 
 export interface StorePort {
@@ -45,4 +52,16 @@ export interface StorePort {
   listLayoutHistory(storeId: string): Promise<Array<{ version: number; publishedAt: unknown }>>;
   restoreLayoutVersion(storeId: string, version: number): Promise<StoreLayout>;
   getTheme(storeId: string): Promise<Record<string, unknown>>;
+  createStore(title?: string): Promise<{ storeId: string }>;
+  getStore(storeId: string): Promise<StoreAdminConfig>;
+  updateStore(storeId: string, patch: StoreConfigPatch): Promise<StoreAdminConfig>;
+  deleteStore(storeId: string): Promise<void>;
+  listStoreCategories(storeId: string): Promise<StoreAdminCategory[]>;
+  createStoreCategory(storeId: string, input: StoreCategoryInput): Promise<StoreAdminCategory>;
+  updateStoreCategory(storeId: string, categoryId: string, input: StoreCategoryInput): Promise<StoreAdminCategory>;
+  deleteStoreCategory(storeId: string, categoryId: string): Promise<{ deletedIds: string[] }>;
+  listStoreReviews(storeId: string, options?: { status?: 'all' | 'approved' | 'pending'; page?: number; limit?: number }): Promise<StoreReviewList>;
+  createStoreReview(storeId: string, input: StoreReviewInput): Promise<StoreFeedback>;
+  updateStoreReview(storeId: string, feedbackId: string, update: StoreReviewUpdate): Promise<void>;
+  deleteStoreReview(storeId: string, feedbackId: string): Promise<void>;
 }
