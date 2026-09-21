@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 142 tools across 18 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 164 tools across 19 domains.
 
 ## Overview
 
@@ -79,7 +79,7 @@ export GGCHECKOUT_API_URL="https://your-staging.example.com"
 
 ---
 
-## Available Tools (142)
+## Available Tools (164)
 
 ### Products (16 tools)
 
@@ -297,27 +297,49 @@ const isValid = sig === incomingHeader.replace('sha256=', '');
 
 ---
 
-### Store (9 tools)
+### Store (16 tools)
+
+`list_stores` returns your stores' ids; every other store tool takes one.
+
+**Store builder:** `get_store_layout`, `update_store_layout`, `publish_store_layout`,
+`list_store_layout_history`, `restore_store_layout_version`, `get_store_theme`.
+`update_store_layout` saves a draft and merges `theme`, `config` and `pageSettings` into the
+stored ones; `blocks` replaces the whole list. Nothing is public until you publish.
+
+**Catalog reads** (`get_store_public`, `list_store_products`, `get_store_product`,
+`list_categories`, `list_feedbacks`) read the public storefront: they only see published
+stores, list approved reviews only, and may be cached for up to 7 days.
+`get_store_order` only returns pending orders with an API key.
+
+Creating a store, its settings, categories, product order and review moderation are not
+available: the dashboard does them without a public API route.
 
 **Example prompts:**
-- "Show me my store configuration"
+- "List my stores"
+- "Change the primary color of my store to #8b5cf6 and publish it"
+- "Undo the last store publish"
 - "List all products in my store"
-- "Get product details for product abc123 in store xyz"
-- "Show me the categories in my store"
 - "List customer reviews for my store with rating stats"
 - "Validate coupon code SAVE20 for an order of R$100"
 
 ---
 
-### Funnels / Quiz (9 tools)
+### Funnels / Quiz (10 tools)
+
+A quiz is a funnel: `question` components with options and scores, `result` components,
+`scoring.ranges` and conditional `flow.edges`. `update_funnel` merges `design` and `settings`
+into the stored ones; `steps`, `flow` and `scoring` replace the stored value, so read the
+funnel first and send the full array back. Pixels and webhooks are linked by id
+(`settings.pixelTokenIds` from `list_tokens`, `settings.webhookIds` from `list_webhooks`).
+`list_funnel_checkouts` gives the checkouts and gateways a `pix` component can use.
 
 **Example prompts:**
 - "List all my funnels"
-- "Show me the details of funnel abc123"
-- "Create a new funnel called 'Lead Capture'"
+- "Create a quiz with 3 questions that scores leads into beginner and advanced"
+- "Change the primary color of funnel abc123 to red"
+- "Send the leads of funnel abc123 to my Zapier webhook"
 - "Duplicate funnel abc123"
 - "Show me the leads from funnel abc123 that completed all steps"
-- "What's the conversion rate for funnel abc123?"
 - "Show me the drop-off analytics for each step in funnel abc123"
 
 ---
@@ -348,7 +370,7 @@ const isValid = sig === incomingHeader.replace('sha256=', '');
 
 ---
 
-### WhatsApp (15 tools)
+### WhatsApp (13 tools)
 
 **Example prompts:**
 - "List my WhatsApp sessions"
@@ -386,7 +408,7 @@ const isValid = sig === incomingHeader.replace('sha256=', '');
 
 ---
 
-### Gateway Tokens (3 tools)
+### Gateway Tokens (4 tools)
 
 **Example prompts:**
 - "List my payment gateway tokens"
@@ -452,6 +474,20 @@ Supports 26+ gateways: pushinpay, mercadopago, stripe, efibank, amplopay, infini
 **Example prompts:**
 - "List my registered push devices"
 - "Remove device abc123"
+
+---
+
+### Telegram (15 tools)
+
+Bots (`list_telegram_bots`, `get_telegram_bot`, `create_telegram_bot`, `update_telegram_bot`,
+`delete_telegram_bot`, `validate_telegram_token`, `get_telegram_bot_groups`), flows
+(`list_telegram_flows`, `get_telegram_flow`, `create_telegram_flow`, `update_telegram_flow`,
+`delete_telegram_flow`, `deploy_telegram_flow`), `list_telegram_leads` and `telegram_media_upload`.
+
+**Example prompts:**
+- "List my Telegram bots"
+- "Create a basic flow for bot abc123 and deploy it"
+- "Show the qualified leads of bot abc123"
 
 ---
 
