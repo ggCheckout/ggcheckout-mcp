@@ -26,7 +26,7 @@ describe('FunnelService', () => {
     mockPort = {
       list: vi.fn(),
       getById: vi.fn(),
-      getStored: vi.fn().mockResolvedValue(structuredClone(stored)),
+      getRawForMerge: vi.fn().mockResolvedValue(structuredClone(stored)),
       listCheckouts: vi.fn(),
       create: vi.fn(),
       update: vi.fn().mockResolvedValue({}),
@@ -42,7 +42,7 @@ describe('FunnelService', () => {
   it('passes a top-level-only update straight through without reading', async () => {
     await service.update('f-1', { title: 'Novo' });
 
-    expect(mockPort.getStored).not.toHaveBeenCalled();
+    expect(mockPort.getRawForMerge).not.toHaveBeenCalled();
     expect(mockPort.update).toHaveBeenCalledWith('f-1', { title: 'Novo' });
   });
 
@@ -89,7 +89,7 @@ describe('FunnelService', () => {
   });
 
   it('does not write when the funnel cannot be read', async () => {
-    vi.mocked(mockPort.getStored).mockRejectedValue(new Error('404'));
+    vi.mocked(mockPort.getRawForMerge).mockRejectedValue(new Error('404'));
 
     await expect(service.update('f-1', { design: { colors: { primary: '#f00' } } })).rejects.toThrow('404');
     expect(mockPort.update).not.toHaveBeenCalled();

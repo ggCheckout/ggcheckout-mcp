@@ -5,7 +5,7 @@ import {
   sanitizeWhatsappSession, sanitizeLead, sanitizeFunnel,
   sanitizeBillingCard, sanitizeStoreConfig, sanitizeCustomer,
   sanitizeFeedback, sanitizeStudent, sanitizePushDevice,
-  sanitizeWhatsappDelivery, sanitizeStorePaymentMethods,
+  sanitizeWhatsappDelivery, sanitizeStorePaymentMethods, sanitizeStoreAdminConfig,
 } from './sanitizer.js';
 
 describe('maskCpf', () => {
@@ -170,6 +170,27 @@ describe('sanitizeStoreConfig', () => {
     expect(result.paymentMethods.pix.token).toBeUndefined();
     expect(result.paymentMethods.credit_card.token).toBeUndefined();
     expect(result.paymentMethods.pix.enabled).toBe(true);
+  });
+});
+
+describe('sanitizeStoreAdminConfig', () => {
+  it('removes all three credential families and integration token ids', () => {
+    const result = sanitizeStoreAdminConfig({
+      id: 's1',
+      paymentMethods: { pix: { enabled: true, gateways: ['g1'], token: 't' }, bank_slip: { token: 't2' } },
+      gatewayConfig: { pushinpay: { apiKey: 'k' } },
+      analytics: { providers: { meta: { pixelId: 'p', accessToken: 'a' }, ga4: { measurementId: 'm', apiSecret: 's' } } },
+      integrations: { utmify: { enabled: true, tokenId: 'tid' } },
+      blocks: [{ type: 'hero', props: { token: 'x', title: 'T' } }],
+    });
+
+    expect(result).toEqual({
+      id: 's1',
+      paymentMethods: { pix: { enabled: true, gateways: ['g1'] }, bank_slip: {} },
+      analytics: { providers: { meta: { pixelId: 'p' }, ga4: { measurementId: 'm' } } },
+      integrations: { utmify: { enabled: true } },
+      blocks: [{ type: 'hero', props: { title: 'T' } }],
+    });
   });
 });
 

@@ -22,7 +22,7 @@ import type {
   StoreReviewUpdate,
   StoreReviewList,
 } from '../../core/types/store.js';
-import { sanitizeStoreConfig, sanitizeCustomer, sanitizeFeedback } from '../../shared/sanitizer.js';
+import { sanitizeStoreConfig, sanitizeStoreAdminConfig, sanitizeCustomer, sanitizeFeedback } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
 export class StoreApiAdapter implements StorePort {
@@ -164,12 +164,12 @@ export class StoreApiAdapter implements StorePort {
 
   async getStore(storeId: string): Promise<StoreAdminConfig> {
     const data = await this.http.get<{ config: StoreAdminConfig }>(this.storePath(storeId));
-    return sanitizeStoreConfig(data.config);
+    return sanitizeStoreAdminConfig(data.config);
   }
 
   async updateStore(storeId: string, patch: StoreConfigPatch): Promise<StoreAdminConfig> {
     const data = await this.http.patch<{ config: StoreAdminConfig }>(this.storePath(storeId), patch);
-    return sanitizeStoreConfig(data.config);
+    return sanitizeStoreAdminConfig(data.config);
   }
 
   async deleteStore(storeId: string): Promise<void> {

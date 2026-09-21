@@ -12,7 +12,7 @@ export interface FunnelPort {
   list(): Promise<Funnel[]>;
   getById(funnelId: string): Promise<Funnel>;
   /** The stored document, unsanitized. Only for merging an update; never hand it to the agent. */
-  getStored(funnelId: string): Promise<Funnel>;
+  getRawForMerge(funnelId: string): Promise<Funnel>;
   listCheckouts(method?: 'pix' | 'credit_card'): Promise<FunnelCheckoutOptions>;
   create(input: CreateFunnelInput): Promise<Funnel>;
   update(funnelId: string, input: UpdateFunnelInput): Promise<Funnel>;

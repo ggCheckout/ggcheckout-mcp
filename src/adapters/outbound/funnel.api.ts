@@ -20,10 +20,10 @@ export class FunnelApiAdapter implements FunnelPort {
   }
 
   async getById(funnelId: string): Promise<Funnel> {
-    return sanitizeFunnel(await this.getStored(funnelId));
+    return sanitizeFunnel(await this.getRawForMerge(funnelId));
   }
 
-  async getStored(funnelId: string): Promise<Funnel> {
+  async getRawForMerge(funnelId: string): Promise<Funnel> {
     const data = await this.http.get<{ funnel: Funnel }>(`/api/funnels/${encodeURIComponent(funnelId)}`);
     return data.funnel;
   }

@@ -127,6 +127,18 @@ describe('ProductService', () => {
     expect(mockPort.createUpsell).toHaveBeenCalledWith('p-1', 'u-1', expect.objectContaining({ order: 4 }));
   });
 
+  it('createUpsell starts at 1 and follows a dense list', async () => {
+    vi.mocked(mockPort.createUpsell).mockResolvedValue({} as any);
+
+    vi.mocked(mockPort.listUpsells).mockResolvedValueOnce([]);
+    await service.createUpsell('p-1', 'u-1', { upsellProductId: 'p-2', title: 'Oferta' });
+    vi.mocked(mockPort.listUpsells).mockResolvedValueOnce([{ order: 1 }, { order: 2 }] as any);
+    await service.createUpsell('p-1', 'u-2', { upsellProductId: 'p-2', title: 'Oferta' });
+
+    const orders = vi.mocked(mockPort.createUpsell).mock.calls.map((call) => call[2].order);
+    expect(orders).toEqual([1, 3]);
+  });
+
   it('createUpsell keeps an explicit order without listing', async () => {
     vi.mocked(mockPort.createUpsell).mockResolvedValue({} as any);
 

@@ -369,7 +369,6 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
     imagePosition: z.string().max(40).optional().describe('CSS object-position, e.g. "center" or "50% 30%"'),
     productIds: z.array(z.string()).max(1000).optional()
       .describe('Product uids in this category (replaces the list; unknown or deleted ids are dropped silently)'),
-    order: z.number().int().min(0).max(100000).optional().describe('Position among siblings (same parent)'),
     parentId: z.string().nullable().optional().describe('Parent category id; null for top level (max depth 3)'),
   };
 
@@ -390,7 +389,7 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
   server.registerTool(
     'create_store_category',
     {
-      description: 'Create a store category and optionally put products in it. Check productIds in the response: unknown ids are dropped.',
+      description: 'Create a store category and optionally put products in it. It is added last among its siblings; move it with update_store_category. Check productIds in the response: unknown ids are dropped.',
       inputSchema: {
         storeId: storeIdSchema,
         name: z.string().trim().min(1).max(100).describe('Category name'),
@@ -412,6 +411,7 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
         categoryId: z.string().describe('Category id from list_store_categories'),
         name: z.string().trim().min(1).max(100).optional(),
         ...categoryFields,
+        order: z.number().int().min(0).max(100000).optional().describe('Position among siblings (same parent)'),
       },
     },
     createToolHandler('update_store_category', async ({ storeId, categoryId, ...input }) => {

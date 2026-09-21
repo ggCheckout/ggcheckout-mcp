@@ -161,6 +161,33 @@ export function sanitizeStoreConfig(config: any): any {
   return result;
 }
 
+/** Credential keys a store document can carry at any depth (payment methods, analytics providers, integrations). */
+const STORE_CREDENTIAL_KEYS = new Set([
+  'token', 'tokenId', 'apiSecret', 'accessToken', 'refreshToken', 'secret', 'clientSecret', 'apiKey', 'privateKey', 'password', 'webhookSecret',
+]);
+
+function stripCredentialsDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripCredentialsDeep);
+  if (!value || typeof value !== 'object') return value;
+  const result: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (!STORE_CREDENTIAL_KEYS.has(key)) result[key] = stripCredentialsDeep(child);
+  }
+  return result;
+}
+
+/**
+ * The full admin store document (get_store / update_store). It carries three credential
+ * families: paymentMethods.*.token, gatewayConfig and analytics.providers.*.{apiSecret,accessToken,token},
+ * plus integrations.*.tokenId. gatewayConfig is dropped whole and credential keys are removed at
+ * every depth, so a provider added later is covered without being listed here.
+ */
+export function sanitizeStoreAdminConfig(config: any): any {
+  if (!config) return config;
+  const { gatewayConfig: _gatewayConfig, ...rest } = config;
+  return stripCredentialsDeep(rest);
+}
+
 export function sanitizeStorePaymentMethods(methods: any): any {
   if (!methods) return methods;
   const result = { ...methods };

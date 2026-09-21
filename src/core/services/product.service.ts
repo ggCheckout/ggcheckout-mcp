@@ -34,6 +34,9 @@ export class ProductService {
     // The API validates the body as a whole product (a title-only PATCH is rejected for
     // lacking url/deliverable/stockLines), so the stored document is re-sent with the edit
     // on top. uid is the document key and updatedAt is stamped by the server.
+    // Re-sending the whole document is not a whole overwrite: the API writes an explicit key
+    // list (extra keys are ignored, createdAt is outside it), and its change detection compares
+    // values, so unchanged fields do not trigger a sync.
     const { uid: _uid, updatedAt: _updatedAt, ...current } = (await this.productPort.getById(id)) as any;
     return this.productPort.update(id, { ...current, ...validated });
   }
@@ -107,7 +110,10 @@ export class ProductService {
   }
 }
 
-/** One past the highest stored position; the list length would reuse a slot left by a deletion. */
+/**
+ * One past the highest stored position (1-based, as the editor writes it). The list length would
+ * reuse a slot left by a deletion. An item without `order` counts at its 1-based list position.
+ */
 function nextOrder(items: Array<{ order?: number }>): number {
-  return items.reduce((max, item) => Math.max(max, item.order ?? 0), items.length) + 1;
+  return items.reduce((max, item, index) => Math.max(max, item.order ?? index + 1), 0) + 1;
 }

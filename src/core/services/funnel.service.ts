@@ -37,7 +37,7 @@ export class FunnelService {
     }
     // Unsanitized on purpose: merging from the sanitized read would write the hidden fields back
     // as absent and erase them.
-    const stored = await this.funnelPort.getStored(funnelId);
+    const stored = await this.funnelPort.getRawForMerge(funnelId);
     return this.funnelPort.update(funnelId, {
       ...input,
       ...(input.design !== undefined ? { design: mergeDeep(stored.design, input.design) } : {}),

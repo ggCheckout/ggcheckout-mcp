@@ -70,9 +70,11 @@ export class ProductApiAdapter implements ProductPort {
   }
 
   async listDownsells(productId: string): Promise<{ downsells: DownsellSequenceItem[]; count: number }> {
-    return this.http.get<{ success: boolean; downsells: DownsellSequenceItem[]; count: number }>(
+    const data = await this.http.get<{ success?: boolean; downsells?: DownsellSequenceItem[]; count?: number }>(
       `/api/product-delivery/${productId}/downsells/list`,
     );
+    const downsells = data.downsells ?? [];
+    return { downsells, count: data.count ?? downsells.length };
   }
 
   async createDownsell(productId: string, downsellId: string, input: CreateDownsellPayload): Promise<DownsellSequenceItem> {
