@@ -54,6 +54,32 @@ describe('StoreApiAdapter', () => {
     expect(http.get).toHaveBeenCalledWith('/api/store/catalog/coupon/PROMO10?storeId=store-1&orderValue=5000');
   });
 
+  it('validateCoupon escapes the code so it cannot change the path', async () => {
+    vi.mocked(http.get).mockResolvedValue({ isValid: false });
+    await adapter.validateCoupon('store 1', 'A/B?x', 99.9);
+    expect(http.get).toHaveBeenCalledWith('/api/store/catalog/coupon/A%2FB%3Fx?storeId=store+1&orderValue=100');
+  });
+
+  it('listStores unwraps the stores array', async () => {
+    vi.mocked(http.get).mockResolvedValue({ stores: [{ storeId: 's1', title: 'Loja', logo: null }] });
+    expect(await adapter.listStores()).toEqual([{ storeId: 's1', title: 'Loja', logo: null }]);
+    expect(http.get).toHaveBeenCalledWith('/api/stores');
+  });
+
+  it('saveLayoutDraft PUTs { storeId, layout }', async () => {
+    vi.mocked(http.put).mockResolvedValue({ success: true });
+    await adapter.saveLayoutDraft('s1', { theme: {}, blocks: [] });
+    expect(http.put).toHaveBeenCalledWith('/api/store/layout', { storeId: 's1', layout: { theme: {}, blocks: [] } });
+  });
+
+  it('publishLayout and restoreLayoutVersion post to their routes', async () => {
+    vi.mocked(http.post).mockResolvedValueOnce({ success: true, version: 4 }).mockResolvedValueOnce({ layout: { blocks: [] } });
+    expect(await adapter.publishLayout('s1')).toEqual({ version: 4 });
+    expect(await adapter.restoreLayoutVersion('s1', 2)).toEqual({ blocks: [] });
+    expect(http.post).toHaveBeenNthCalledWith(1, '/api/store/layout/publish', { storeId: 's1' });
+    expect(http.post).toHaveBeenNthCalledWith(2, '/api/store/layout/history', { storeId: 's1', version: 2 });
+  });
+
   it('listFeedbacks passes includeStats flag', async () => {
     vi.mocked(http.get).mockResolvedValue({ feedbacks: [], pagination: {} });
     await adapter.listFeedbacks('store-1', { includeStats: true, rating: 5 });

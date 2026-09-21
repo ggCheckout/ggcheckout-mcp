@@ -236,3 +236,37 @@ export interface CouponValidationResult {
   finalValue?: number;
   message?: string;
 }
+
+/** One of the seller's own stores, as `GET /api/stores` lists them. */
+export interface StoreSummary {
+  storeId?: string;
+  title?: string;
+  logo: string | null;
+}
+
+/**
+ * The four keys the draft write accepts. The route validates them strictly (blocks, theme and
+ * page settings each have a schema there) and refuses any other top-level key.
+ */
+export interface StoreLayoutDraft {
+  theme: Record<string, unknown>;
+  blocks: Array<Record<string, unknown>>;
+  config?: Record<string, unknown>;
+  pageSettings?: Record<string, unknown>;
+}
+
+/** The layout the builder opens: the draft, else the published one, else a seed from the theme. */
+export interface StoreLayout extends StoreLayoutDraft {
+  id?: string;
+  storeId?: string;
+  version?: number;
+  status?: string;
+  [key: string]: unknown;
+}
+
+export interface StoreLayoutUpdate {
+  theme?: Record<string, unknown>;
+  blocks?: Array<Record<string, unknown>>;
+  config?: Record<string, unknown>;
+  pageSettings?: Record<string, unknown>;
+}

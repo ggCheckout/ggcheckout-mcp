@@ -10,6 +10,9 @@ import type {
   FeedbacksPagination,
   FeedbacksStats,
   CouponValidationResult,
+  StoreSummary,
+  StoreLayout,
+  StoreLayoutDraft,
 } from '../types/store.js';
 
 export interface StorePort {
@@ -35,4 +38,11 @@ export interface StorePort {
     includeStats?: boolean;
   }): Promise<{ feedbacks: StoreFeedback[]; pagination: FeedbacksPagination; stats?: FeedbacksStats }>;
   validateCoupon(storeId: string, code: string, orderValue: number): Promise<CouponValidationResult>;
+  listStores(): Promise<StoreSummary[]>;
+  getLayout(storeId: string): Promise<{ layout: StoreLayout | null; isNewStore: boolean }>;
+  saveLayoutDraft(storeId: string, layout: StoreLayoutDraft): Promise<void>;
+  publishLayout(storeId: string): Promise<{ version: number }>;
+  listLayoutHistory(storeId: string): Promise<Array<{ version: number; publishedAt: unknown }>>;
+  restoreLayoutVersion(storeId: string, version: number): Promise<StoreLayout>;
+  getTheme(storeId: string): Promise<Record<string, unknown>>;
 }

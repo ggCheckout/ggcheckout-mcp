@@ -11,7 +11,13 @@ import type {
   FeedbacksPagination,
   FeedbacksStats,
   CouponValidationResult,
+  StoreSummary,
+  StoreLayout,
+  StoreLayoutDraft,
+  StoreLayoutUpdate,
 } from '../types/store.js';
+import { mergeDeep } from '../../shared/merge.js';
+import { ValidationError } from '../../shared/errors.js';
 
 export class StoreService {
   constructor(private readonly storePort: StorePort) {}
@@ -63,5 +69,56 @@ export class StoreService {
 
   async validateCoupon(storeId: string, code: string, orderValue: number): Promise<CouponValidationResult> {
     return this.storePort.validateCoupon(storeId, code, orderValue);
+  }
+
+  async listStores(): Promise<StoreSummary[]> {
+    return this.storePort.listStores();
+  }
+
+  async getLayout(storeId: string): Promise<{ layout: StoreLayout | null; isNewStore: boolean }> {
+    return this.storePort.getLayout(storeId);
+  }
+
+  /**
+   * Saves the builder draft. The route refuses any top-level key besides theme, blocks, config
+   * and pageSettings, while the read carries id, version, status and timestamps — so the stored
+   * layout is read, the edit merged in (theme, config and pageSettings key by key; blocks as a
+   * whole list), and only the four writable keys are sent. Nothing is public until publish.
+   */
+  async updateLayout(storeId: string, update: StoreLayoutUpdate): Promise<StoreLayoutDraft> {
+    const { layout: stored } = await this.storePort.getLayout(storeId);
+    const theme = stored ? mergeDeep(stored.theme, update.theme) : update.theme;
+    const blocks = update.blocks ?? stored?.blocks;
+    if (!theme || !blocks) {
+      throw new ValidationError(
+        `Store ${storeId} has no layout yet, so the first save must send both theme and blocks.`,
+      );
+    }
+    const config = mergeDeep(stored?.config, update.config);
+    const pageSettings = mergeDeep(stored?.pageSettings, update.pageSettings);
+    const draft: StoreLayoutDraft = {
+      theme,
+      blocks,
+      ...(config !== undefined ? { config } : {}),
+      ...(pageSettings !== undefined ? { pageSettings } : {}),
+    };
+    await this.storePort.saveLayoutDraft(storeId, draft);
+    return draft;
+  }
+
+  async publishLayout(storeId: string): Promise<{ version: number }> {
+    return this.storePort.publishLayout(storeId);
+  }
+
+  async listLayoutHistory(storeId: string): Promise<Array<{ version: number; publishedAt: unknown }>> {
+    return this.storePort.listLayoutHistory(storeId);
+  }
+
+  async restoreLayoutVersion(storeId: string, version: number): Promise<StoreLayout> {
+    return this.storePort.restoreLayoutVersion(storeId, version);
+  }
+
+  async getTheme(storeId: string): Promise<Record<string, unknown>> {
+    return this.storePort.getTheme(storeId);
   }
 }

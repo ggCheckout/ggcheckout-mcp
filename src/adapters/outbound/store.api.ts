@@ -11,6 +11,9 @@ import type {
   FeedbacksPagination,
   FeedbacksStats,
   CouponValidationResult,
+  StoreSummary,
+  StoreLayout,
+  StoreLayoutDraft,
 } from '../../core/types/store.js';
 import { sanitizeStoreConfig, sanitizeCustomer, sanitizeFeedback } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
@@ -19,13 +22,13 @@ export class StoreApiAdapter implements StorePort {
   constructor(private readonly http: HttpClient) {}
 
   async getConfig(storeId: string): Promise<StoreConfig> {
-    const data = await this.http.get<{ config: StoreConfig }>(`/api/store/config?storeId=${storeId}`);
+    const data = await this.http.get<{ config: StoreConfig }>(`/api/store/config?${new URLSearchParams({ storeId })}`);
     return sanitizeStoreConfig(data.config);
   }
 
   async getPublic(storeId: string): Promise<{ store: Store; categories: StoreCategory[]; products: StoreProduct[] }> {
     return this.http.get<{ store: Store; categories: StoreCategory[]; products: StoreProduct[] }>(
-      `/api/store/public/${storeId}`,
+      `/api/store/public/${encodeURIComponent(storeId)}`,
     );
   }
 
@@ -53,14 +56,14 @@ export class StoreApiAdapter implements StorePort {
 
   async getProduct(storeId: string, productId: string): Promise<StoreProductDetail> {
     const data = await this.http.get<{ product: StoreProductDetail }>(
-      `/api/store/catalog/products/${productId}?storeId=${storeId}`,
+      `/api/store/catalog/products/${encodeURIComponent(productId)}?${new URLSearchParams({ storeId })}`,
     );
     return data.product;
   }
 
   async listCategories(storeId: string): Promise<{ categories: StoreCategory[]; total: number }> {
     return this.http.get<{ categories: StoreCategory[]; total: number }>(
-      `/api/store/catalog/categories?storeId=${storeId}`,
+      `/api/store/catalog/categories?${new URLSearchParams({ storeId })}`,
     );
   }
 
@@ -74,7 +77,7 @@ export class StoreApiAdapter implements StorePort {
 
   async getOrder(storeId: string, orderId: string): Promise<StoreOrder> {
     const data = await this.http.get<{ order: StoreOrder }>(
-      `/api/store/orders/${orderId}?storeId=${storeId}`,
+      `/api/store/orders/${encodeURIComponent(orderId)}?${new URLSearchParams({ storeId })}`,
     );
     return { ...data.order, customer: sanitizeCustomer(data.order.customer) };
   }
@@ -100,8 +103,45 @@ export class StoreApiAdapter implements StorePort {
   }
 
   async validateCoupon(storeId: string, code: string, orderValue: number): Promise<CouponValidationResult> {
+    const params = new URLSearchParams({ storeId, orderValue: String(Math.round(orderValue)) });
     return this.http.get<CouponValidationResult>(
-      `/api/store/catalog/coupon/${code}?storeId=${storeId}&orderValue=${orderValue}`,
+      `/api/store/catalog/coupon/${encodeURIComponent(code)}?${params}`,
     );
+  }
+
+  async listStores(): Promise<StoreSummary[]> {
+    const data = await this.http.get<{ stores?: StoreSummary[] }>('/api/stores');
+    return data.stores ?? [];
+  }
+
+  async getLayout(storeId: string): Promise<{ layout: StoreLayout | null; isNewStore: boolean }> {
+    return this.http.get<{ layout: StoreLayout | null; isNewStore: boolean }>(
+      `/api/store/layout?${new URLSearchParams({ storeId })}`,
+    );
+  }
+
+  async saveLayoutDraft(storeId: string, layout: StoreLayoutDraft): Promise<void> {
+    await this.http.put('/api/store/layout', { storeId, layout });
+  }
+
+  async publishLayout(storeId: string): Promise<{ version: number }> {
+    const data = await this.http.post<{ success: boolean; version: number }>('/api/store/layout/publish', { storeId });
+    return { version: data.version };
+  }
+
+  async listLayoutHistory(storeId: string): Promise<Array<{ version: number; publishedAt: unknown }>> {
+    const data = await this.http.get<{ versions?: Array<{ version: number; publishedAt: unknown }> }>(
+      `/api/store/layout/history?${new URLSearchParams({ storeId })}`,
+    );
+    return data.versions ?? [];
+  }
+
+  async restoreLayoutVersion(storeId: string, version: number): Promise<StoreLayout> {
+    const data = await this.http.post<{ layout: StoreLayout }>('/api/store/layout/history', { storeId, version });
+    return data.layout;
+  }
+
+  async getTheme(storeId: string): Promise<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(`/api/store/store-theme?${new URLSearchParams({ storeId })}`);
   }
 }
