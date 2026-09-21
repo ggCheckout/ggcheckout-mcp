@@ -62,7 +62,8 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'update_product',
     {
-      description: 'Update an existing product/delivery. Only provide fields you want to update.',
+      description:
+        'Update an existing product/delivery. Only provide fields you want to update — the stored product is re-sent with your changes on top.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
         title: z.string().max(200).optional().describe('Product title'),
@@ -80,6 +81,9 @@ export function registerProductTools(server: McpServer, service: ProductService)
           .optional()
           .describe('Delivery method'),
         isPhysicalProduct: z.boolean().optional().describe('Whether this is a physical product'),
+        stockEnabled: z.boolean().optional().describe('Enable stock control'),
+        unlimitedStock: z.boolean().optional().describe('Unlimited stock (if stockEnabled)'),
+        stockQuantity: z.number().min(0).max(100000).optional().describe('Stock quantity (if stockEnabled)'),
       },
     },
     createToolHandler('update_product', async ({ productId, ...input }) => {
@@ -172,6 +176,7 @@ export function registerProductTools(server: McpServer, service: ProductService)
         timerEnabled: z.boolean().optional().describe('Enable countdown timer'),
         timerMinutes: z.number().min(0).max(525600).optional().describe('Timer duration in minutes'),
         status: z.enum(['active', 'inactive']).optional().describe('Upsell status (default: active)'),
+        order: z.number().int().min(1).max(1000).optional().describe('Position in the funnel, 1-based (default: after the existing upsells)'),
       },
     },
     createToolHandler('create_upsell', async (args) => {
@@ -253,6 +258,7 @@ export function registerProductTools(server: McpServer, service: ProductService)
         mediaType: z.enum(['image', 'video']).optional().describe('Media type'),
         status: z.enum(['active', 'inactive']).optional().describe('Downsell status'),
         chainBehavior: z.enum(['continue', 'stop']).optional().describe('Chain behavior after this downsell'),
+        order: z.number().int().min(1).max(1000).optional().describe('Position in the sequence, 1-based (default: after the existing downsells)'),
       },
     },
     createToolHandler('create_downsell', async (args) => {

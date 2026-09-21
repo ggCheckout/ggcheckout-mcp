@@ -6,7 +6,9 @@ import type {
   FunnelLead,
   FunnelLeadStats,
   FunnelAnalytics,
+  FunnelCheckoutOptions,
 } from '../types/funnel.js';
+import { mergeDeep } from '../../shared/merge.js';
 
 export class FunnelService {
   constructor(private readonly funnelPort: FunnelPort) {}
@@ -23,8 +25,28 @@ export class FunnelService {
     return this.funnelPort.create(input);
   }
 
+  /**
+   * The API replaces each top-level field whole, so `design: { colors }` would drop general,
+   * header, typography, animation and loadingScreen. `design` and `settings` are merged into the
+   * stored document first, the way the dashboard editor does before its PUT. `steps`, `flow` and
+   * `scoring` stay whole replacements: they are lists the caller sends complete.
+   */
   async update(funnelId: string, input: UpdateFunnelInput): Promise<Funnel> {
-    return this.funnelPort.update(funnelId, input);
+    if (input.design === undefined && input.settings === undefined) {
+      return this.funnelPort.update(funnelId, input);
+    }
+    // Unsanitized on purpose: merging from the sanitized read would write the hidden fields back
+    // as absent and erase them.
+    const stored = await this.funnelPort.getRawForMerge(funnelId);
+    return this.funnelPort.update(funnelId, {
+      ...input,
+      ...(input.design !== undefined ? { design: mergeDeep(stored.design, input.design) } : {}),
+      ...(input.settings !== undefined ? { settings: mergeDeep(stored.settings, input.settings) } : {}),
+    });
+  }
+
+  async listCheckouts(method?: 'pix' | 'credit_card'): Promise<FunnelCheckoutOptions> {
+    return this.funnelPort.listCheckouts(method);
   }
 
   async delete(funnelId: string): Promise<void> {

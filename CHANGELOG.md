@@ -5,6 +5,51 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## Unreleased
+
+Checked end to end against a QA account on the Postgres (v2) data path, and product edits
+also against production.
+
+### Breaking
+
+- **`update_funnel` no longer takes `settings.pixels` or `settings.webhookUrl`.** Nothing
+  read them: the quiz page resolves `settings.pixelTokenIds` (ids from `list_tokens`) and
+  webhooks are `settings.webhookIds` (ids from `list_webhooks`). A call that still sends
+  them is refused by validation instead of being silently ignored.
+- **`list_products` hides deleted products.** `delete_product` is a soft delete and the API
+  keeps listing the row with `deleted: true`.
+- `list_store_products` no longer accepts `sortBy: "createdAt"` (the API ignored it), and
+  `validate_coupon` takes `orderValue` as integer cents.
+
+### Added
+
+- `list_stores`, the only way to get the `storeId` every store tool takes.
+- Store management: `create_store`, `get_store`, `update_store`, `delete_store`, store
+  categories (`list_store_categories`, `create_store_category`, `update_store_category`,
+  `delete_store_category`) and review moderation (`list_store_reviews`,
+  `create_store_review`, `update_store_review`, `delete_store_review`). **These need the
+  `/api/stores/{storeId}` routes from saas-checkout** (branch
+  `feat/store-admin-api-routes`); against a deployment without them they answer 404/405.
+- Store builder: `get_store_layout`, `update_store_layout`, `publish_store_layout`,
+  `list_store_layout_history`, `restore_store_layout_version`, `get_store_theme`.
+- `list_funnel_checkouts`: the checkouts and gateways a funnel `pix` component can use.
+- `update_product` takes `stockEnabled`, `unlimitedStock` and `stockQuantity`;
+  `create_upsell` / `create_downsell` take an optional `order`.
+
+### Fixed
+
+- `update_product` with only some fields was refused (400 "Você precisa fornecer um link
+  (url)…"): the API validates the body as a whole product. The stored product is now
+  re-sent with the edit on top.
+- `create_upsell` / `create_downsell` were refused on v2 accounts (422 "missing field
+  sortOrder") and, where accepted, stored an offer with no product to sell. They now write
+  `order` and `upsellProductIds` / `downsellProductIds` the way the dashboard does.
+- `update_funnel` with part of `design` or `settings` erased the rest of it. Both are now
+  merged into the stored funnel. Steps keep every field the editor stores (`loadingScreen`,
+  `allowBack`, `stickyButton`…), and the `level` and `social_proof` components are accepted.
+- `list_upsells` returned the API envelope instead of the list.
+- Store and funnel ids and coupon codes are URL-encoded; store read limits match the API.
+
 ## 0.3.0
 
 ### Breaking

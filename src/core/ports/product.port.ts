@@ -5,9 +5,9 @@ import type {
   UploadDeliverableInput,
   Upsell,
   ReorderUpsellItem,
-  CreateUpsellInput,
+  CreateUpsellPayload,
   DownsellSequenceItem,
-  CreateDownsellInput,
+  CreateDownsellPayload,
 } from '../types/product.js';
 
 export interface ProductPort {
@@ -19,11 +19,11 @@ export interface ProductPort {
   uploadDeliverable(productId: string, input: UploadDeliverableInput): Promise<DeliverableConfig>;
   deleteDeliverable(productId: string): Promise<void>;
   listUpsells(productId: string): Promise<Upsell[]>;
-  createUpsell(productId: string, upsellId: string, input: CreateUpsellInput): Promise<Upsell>;
+  createUpsell(productId: string, upsellId: string, input: CreateUpsellPayload): Promise<Upsell>;
   deleteUpsell(productId: string, upsellId: string): Promise<void>;
   reorderUpsells(productId: string, upsells: ReorderUpsellItem[]): Promise<void>;
   listDownsells(productId: string): Promise<{ downsells: DownsellSequenceItem[]; count: number }>;
-  createDownsell(productId: string, downsellId: string, input: CreateDownsellInput): Promise<DownsellSequenceItem>;
+  createDownsell(productId: string, downsellId: string, input: CreateDownsellPayload): Promise<DownsellSequenceItem>;
   deleteDownsell(productId: string, downsellId: string): Promise<void>;
   reorderDownsells(productId: string, order: string[]): Promise<void>;
   manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }>;

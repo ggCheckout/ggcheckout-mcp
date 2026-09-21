@@ -4,10 +4,55 @@ import type { FunnelService } from '../../../core/services/funnel.service.js';
 import type { UpdateFunnelInput } from '../../../core/types/funnel.js';
 import { createToolHandler } from '../tool-handler.js';
 
+const slugSchema = z
+  .string()
+  .max(100)
+  .regex(/^[a-z0-9-]+$/, 'slug may only contain lowercase letters, numbers and hyphens');
+
+const componentTypeSchema = z.enum([
+  'alert', 'arguments', 'audio', 'button', 'card', 'carousel', 'cartesian',
+  'compare', 'confetti', 'countdown', 'coupon', 'divider', 'email', 'faq',
+  'form', 'gate', 'guarantee', 'headline', 'hero', 'iframe', 'image', 'input',
+  'level', 'list', 'loading', 'logo', 'marquee', 'menu', 'pix', 'price', 'progress',
+  'question', 'result', 'reviews', 'social_proof', 'stats', 'terms', 'text', 'video', 'whatsapp',
+]);
+
+const loadingScreenSchema = z.object({
+  enabled: z.boolean(),
+  duration: z.number().min(500).max(5000).describe('Total duration in ms'),
+  color: z.string().describe('Bar color (hex)'),
+  targetPercent: z.number().min(10).max(95).describe('Where the bar pauses before completing'),
+  showText: z.boolean(),
+  text: z.string(),
+  mediaType: z.enum(['none', 'emoji', 'image']),
+  mediaValue: z.string().describe('Emoji or image URL'),
+}).partial().passthrough();
+
+// Steps are sent back whole, so every field the editor stores must survive the round trip:
+// unknown keys pass through instead of being stripped.
+const stepSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  order: z.number(),
+  components: z.array(z.object({
+    id: z.string(),
+    type: componentTypeSchema.describe('Component type'),
+    order: z.number(),
+    props: z.record(z.string(), z.unknown()).describe('Component properties'),
+  }).passthrough()),
+  position: z.object({ x: z.number(), y: z.number() }),
+  loadingScreen: loadingScreenSchema.optional().describe('Per-step loading screen override'),
+  showLogo: z.boolean().optional().describe('Omit to follow design.header'),
+  showProgress: z.boolean().optional().describe('Omit to follow design.general.showProgress'),
+  allowBack: z.boolean().optional().describe('Omit to allow going back'),
+  stickyButton: z.boolean().optional().describe('Sticky CTA bar at the bottom'),
+  stickyButtonLabel: z.string().optional().describe('Microcopy above the sticky button'),
+}).passthrough();
+
 export function registerFunnelTools(server: McpServer, service: FunnelService) {
   server.tool(
     'list_funnels',
-    'List all funnels for the authenticated user',
+    'List all funnels (quizzes) for the authenticated user',
     createToolHandler('list_funnels', async () => {
       const funnels = await service.list();
       return { funnels };
@@ -17,7 +62,7 @@ export function registerFunnelTools(server: McpServer, service: FunnelService) {
   server.registerTool(
     'get_funnel',
     {
-      description: 'Get full details of a funnel (steps, flow, design, settings, scoring)',
+      description: 'Get full details of a funnel/quiz (steps, flow, design, settings, scoring)',
       inputSchema: {
         funnelId: z.string().describe('Funnel ID'),
       },
@@ -31,10 +76,11 @@ export function registerFunnelTools(server: McpServer, service: FunnelService) {
   server.registerTool(
     'create_funnel',
     {
-      description: 'Create a new funnel with a title and optional slug',
+      description:
+        'Create a new funnel (the dashboard calls it a quiz) with a title and optional slug. It starts unpublished with one empty step; build it with update_funnel.',
       inputSchema: {
         title: z.string().min(1).max(50).describe('Funnel title (1-50 chars)'),
-        slug: z.string().max(100).optional().describe('URL slug (lowercase, numbers, hyphens). Auto-generated if omitted.'),
+        slug: slugSchema.optional().describe('URL slug (lowercase, numbers, hyphens). Auto-generated if omitted.'),
       },
     },
     createToolHandler('create_funnel', async (args) => {
@@ -46,35 +92,22 @@ export function registerFunnelTools(server: McpServer, service: FunnelService) {
   server.registerTool(
     'update_funnel',
     {
-      description: 'Update a funnel. Only provide fields you want to change.',
+      description:
+        'Update a funnel/quiz. Top-level fields you omit are kept. `design` and `settings` are merged into the stored ones, '
+        + 'so send only the keys you change. `steps`, `flow.edges` and `scoring` REPLACE the stored value: '
+        + 'call get_funnel, edit the full array and send it back. A quiz is questions (`question` components with options '
+        + 'and optional scores), `result` components, `scoring.ranges` and conditional `flow.edges`.',
       inputSchema: {
         funnelId: z.string().describe('Funnel ID'),
         title: z.string().min(1).max(50).optional().describe('Funnel title'),
-        slug: z.string().max(100).optional().describe('URL slug'),
+        slug: slugSchema.optional().describe('URL slug'),
         published: z.boolean().optional().describe('Publish or unpublish the funnel'),
-        steps: z.array(z.object({
-          id: z.string(),
-          title: z.string(),
-          order: z.number(),
-          components: z.array(z.object({
-            id: z.string(),
-            type: z.enum([
-              'alert', 'arguments', 'audio', 'button', 'card', 'carousel', 'cartesian',
-              'compare', 'confetti', 'countdown', 'coupon', 'divider', 'email', 'faq',
-              'form', 'gate', 'guarantee', 'headline', 'hero', 'iframe', 'image', 'input',
-              'list', 'loading', 'logo', 'marquee', 'menu', 'pix', 'price', 'progress',
-              'question', 'result', 'reviews', 'stats', 'terms', 'text', 'video', 'whatsapp',
-            ]).describe('Component type'),
-            order: z.number(),
-            props: z.record(z.string(), z.unknown()).describe('Component properties'),
-          })),
-          position: z.object({ x: z.number(), y: z.number() }),
-        })).max(100).optional().describe('Funnel steps array'),
+        steps: z.array(stepSchema).max(100).optional().describe('ALL steps, in full (replaces the stored steps)'),
         flow: z.object({
           edges: z.array(z.object({
             id: z.string(),
-            source: z.string(),
-            target: z.string(),
+            source: z.string().describe('Step id the edge leaves from'),
+            target: z.string().describe('Step id the edge goes to'),
             sourceHandle: z.string().optional(),
             label: z.string().optional(),
             condition: z.object({
@@ -82,58 +115,75 @@ export function registerFunnelTools(server: McpServer, service: FunnelService) {
               operator: z.enum(['equals', 'contains', 'gt', 'lt', 'score_range']),
               value: z.string(),
             }).optional(),
-            isFallback: z.boolean().optional(),
+            isFallback: z.boolean().optional().describe('Taken when no condition matches'),
           })).max(500),
-        }).optional().describe('Flow configuration with edges'),
+        }).optional().describe('ALL flow edges (replaces the stored flow)'),
         design: z.object({
           general: z.object({
-            maxWidth: z.number(), spacing: z.number(), borderRadius: z.number(), showProgress: z.boolean().optional(),
-          }).optional(),
+            maxWidth: z.number(), spacing: z.number(), borderRadius: z.number(), showProgress: z.boolean(),
+          }).partial().optional(),
           header: z.object({
             logoUrl: z.string(), bgColor: z.string(), showHeader: z.boolean(),
-          }).optional(),
+          }).partial().optional(),
           colors: z.object({
             primary: z.string(), secondary: z.string(), background: z.string(), text: z.string(),
-            input: z.record(z.string(), z.string()).optional(),
-            button: z.record(z.string(), z.record(z.string(), z.string())).optional(),
-            hover: z.record(z.string(), z.string()).optional(),
-            checkbox: z.record(z.string(), z.string()).optional(),
-          }).optional(),
+            input: z.record(z.string(), z.string()),
+            button: z.record(z.string(), z.record(z.string(), z.string())),
+            hover: z.record(z.string(), z.string()),
+            checkbox: z.record(z.string(), z.string()),
+          }).partial().optional(),
           typography: z.object({
             headingFont: z.string(), bodyFont: z.string(), headingWeight: z.number(), bodyWeight: z.number(),
-          }).optional(),
+          }).partial().optional(),
           animation: z.object({
             type: z.enum(['none', 'fade', 'slide', 'scale']),
             speed: z.number(),
             direction: z.enum(['up', 'down', 'left', 'right']),
-          }).optional(),
-        }).optional().describe('Design configuration'),
+          }).partial().optional(),
+          loadingScreen: loadingScreenSchema.optional().describe('Loading screen between steps'),
+        }).optional().describe('Design changes, merged into the stored design'),
         settings: z.object({
-          customDomain: z.string().optional(),
+          customDomainId: z.string().nullable().optional().describe('Id from list_custom_domains; null to remove'),
           seo: z.object({
             title: z.string(), description: z.string(), ogImage: z.string(), favicon: z.string(),
-          }).optional(),
-          pixels: z.object({
-            facebookId: z.string().optional(), tiktokId: z.string().optional(), googleId: z.string().optional(),
-          }).optional(),
+          }).partial().optional(),
+          pixelTokenIds: z.object({
+            facebook_ads: z.string().nullable(), tiktok_ads: z.string().nullable(), google_ads: z.string().nullable(),
+          }).partial().optional().describe('Pixel token ids from list_tokens (type facebook_ads / tiktok_ads / google_ads), one per platform; null removes that platform\'s pixel'),
           scripts: z.object({
-            head: z.string().max(10000).optional(),
-            body: z.string().max(10000).optional(),
-            footer: z.string().max(10000).optional(),
-          }).optional(),
-          webhookUrl: z.string().url().optional(),
-        }).optional().describe('Settings (SEO, pixels, scripts, webhook)'),
+            head: z.string().max(10000),
+            body: z.string().max(10000),
+            footer: z.string().max(10000),
+          }).partial().optional(),
+          webhookIds: z.array(z.string()).max(50).optional().describe('Ids from list_webhooks that receive quiz.completed (replaces the list)'),
+          clarity: z.object({ projectId: z.string() }).partial().optional().describe('Microsoft Clarity project id for this funnel'),
+          postPurchaseUrl: z.string().url().nullable().optional().describe('Where the buyer goes after a confirmed payment; null to remove'),
+        }).optional().describe('Settings changes, merged into the stored settings'),
         scoring: z.object({
           enabled: z.boolean(),
           ranges: z.array(z.object({
             id: z.string(), label: z.string(), minScore: z.number(), maxScore: z.number(),
           })).max(50),
-        }).optional().describe('Scoring configuration (enabled, ranges)'),
+        }).optional().describe('Scoring configuration (replaces the stored one)'),
       },
     },
     createToolHandler('update_funnel', async ({ funnelId, ...input }) => {
       const funnel = await service.update(funnelId, input as UpdateFunnelInput);
       return { success: true, funnel };
+    }),
+  );
+
+  server.registerTool(
+    'list_funnel_checkouts',
+    {
+      description:
+        'List the checkouts and payment gateways a funnel `pix` component can use (checkout uid, price, order bumps; gateway id, type, name). Use the ids in the component props.',
+      inputSchema: {
+        method: z.enum(['pix', 'credit_card']).optional().describe('Payment method the gateways must support (default: pix)'),
+      },
+    },
+    createToolHandler('list_funnel_checkouts', async ({ method }) => {
+      return service.listCheckouts(method);
     }),
   );
 

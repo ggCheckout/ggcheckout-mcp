@@ -236,3 +236,91 @@ export interface CouponValidationResult {
   finalValue?: number;
   message?: string;
 }
+
+/** One of the seller's own stores, as `GET /api/stores` lists them. */
+export interface StoreSummary {
+  storeId?: string;
+  title?: string;
+  logo: string | null;
+}
+
+/**
+ * The four keys the draft write accepts. The route validates them strictly (blocks, theme and
+ * page settings each have a schema there) and refuses any other top-level key.
+ */
+export interface StoreLayoutDraft {
+  theme: Record<string, unknown>;
+  blocks: Array<Record<string, unknown>>;
+  config?: Record<string, unknown>;
+  pageSettings?: Record<string, unknown>;
+}
+
+/** The layout the builder opens: the draft, else the published one, else a seed from the theme. */
+export interface StoreLayout extends StoreLayoutDraft {
+  id?: string;
+  storeId?: string;
+  version?: number;
+  status?: string;
+  [key: string]: unknown;
+}
+
+export interface StoreLayoutUpdate {
+  theme?: Record<string, unknown>;
+  blocks?: Array<Record<string, unknown>>;
+  config?: Record<string, unknown>;
+  pageSettings?: Record<string, unknown>;
+}
+
+// --- Store admin (seller routes under /api/stores/{storeId}) ---
+
+/** A partial store config. The API reads the stored document and merges this into it. */
+export type StoreConfigPatch = Record<string, unknown>;
+
+/** The owner's full store document, unpublished stores included; payment tokens are removed. */
+export type StoreAdminConfig = Record<string, unknown> & { id?: string; published?: boolean };
+
+export interface StoreAdminCategory {
+  id: string;
+  name: string;
+  description?: string;
+  image?: string;
+  imagePosition?: string;
+  productIds: string[];
+  order: number;
+  parentId: string | null;
+  deleted?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StoreCategoryInput {
+  name?: string;
+  description?: string;
+  image?: string;
+  imagePosition?: string;
+  productIds?: string[];
+  order?: number;
+  parentId?: string | null;
+}
+
+export interface StoreReviewInput {
+  productId: string;
+  rating: number;
+  comment: string;
+  customerName: string;
+  createdAt?: string;
+}
+
+export interface StoreReviewUpdate {
+  approved?: boolean;
+  customerName?: string;
+  rating?: number;
+  comment?: string;
+  createdAt?: string;
+}
+
+export interface StoreReviewList {
+  feedbacks: StoreFeedback[];
+  pagination: Record<string, number>;
+  counts: { all: number; pending: number; approved: number };
+}

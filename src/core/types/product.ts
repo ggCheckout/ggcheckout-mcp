@@ -66,6 +66,8 @@ export interface Product {
   upsells?: any[];
   tags?: ProductTag[];
   uuidOwner?: string;
+  /** Set by delete_product, which is a soft delete; the listing still returns the row. */
+  deleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -204,6 +206,16 @@ export interface CreateUpsellInput {
   timerMinutes?: number;
   downsell?: DownsellConfig;
   status?: UpsellStatus;
+  /** Position in the funnel, 1-based. Defaults to the end of the current list. */
+  order?: number;
+}
+
+/** What the API stores for an upsell: the input plus the keys the dashboard editor always writes. */
+export interface CreateUpsellPayload extends CreateUpsellInput {
+  uid: string;
+  id: string;
+  upsellProductIds: string[];
+  order: number;
 }
 
 export interface DownsellSequenceItem {
@@ -251,4 +263,14 @@ export interface CreateDownsellInput {
   customImage?: UpsellCustomImageConfig;
   status?: UpsellStatus;
   chainBehavior?: DownsellChainBehavior;
+  /** Position in the sequence, 1-based. Defaults to the end of the current list. */
+  order?: number;
+}
+
+/** What the API stores for a downsell: the input plus the keys the dashboard editor always writes. */
+export interface CreateDownsellPayload extends CreateDownsellInput {
+  uid: string;
+  id: string;
+  downsellProductIds: string[];
+  order: number;
 }
