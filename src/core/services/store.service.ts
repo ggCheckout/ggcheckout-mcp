@@ -110,7 +110,10 @@ export class StoreService {
       ...(pageSettings !== undefined ? { pageSettings } : {}),
     };
     await this.storePort.saveLayoutDraft(storeId, draft);
-    return draft;
+    // The PUT answers only { success }, and its schema drops unknown keys and swaps invalid
+    // values for defaults, so the draft as sent is not necessarily what was stored.
+    const { layout: saved } = await this.storePort.getLayout(storeId);
+    return saved ?? draft;
   }
 
   async publishLayout(storeId: string): Promise<{ version: number }> {

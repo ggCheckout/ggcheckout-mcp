@@ -179,13 +179,27 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
       description:
         'Save the store builder DRAFT (not public until publish_store_layout). `theme`, `config` and `pageSettings` are merged into the stored ones, '
         + 'so send only the keys you change. `blocks` REPLACES the stored list: call get_store_layout, edit the full array and send it back. '
-        + 'The API validates every block, so keep the block shapes you read.',
+        + 'The API validates every block, so keep the block shapes you read. Returns the layout as stored: the API drops keys it does not know, '
+        + 'so compare it with what you sent.',
       inputSchema: {
         storeId: storeIdSchema,
         theme: z.record(z.string(), z.unknown()).optional().describe('Theme changes (colors, fonts…), merged into the stored theme'),
         blocks: z.array(z.record(z.string(), z.unknown())).max(200).optional().describe('ALL page blocks, in order (replaces the stored blocks)'),
         config: z.record(z.string(), z.unknown()).optional().describe('Layout config changes, merged'),
-        pageSettings: z.record(z.string(), z.unknown()).optional().describe('Page settings changes, merged'),
+        pageSettings: z.object({
+          product: z.object({
+            density: z.enum(['comfortable', 'compact']),
+            showBreadcrumbs: z.boolean(),
+            showRelatedProducts: z.boolean(),
+            galleryStyle: z.enum(['thumbnails', 'dots']),
+          }).partial(),
+          category: z.object({
+            density: z.enum(['comfortable', 'compact']),
+            columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
+            showCount: z.boolean(),
+          }).partial(),
+          cart: z.object({ density: z.enum(['comfortable', 'compact']) }).partial(),
+        }).partial().strict().optional().describe('Product, category and cart page settings, merged'),
       },
     },
     createToolHandler('update_store_layout', async ({ storeId, ...update }) => {
