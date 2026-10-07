@@ -74,7 +74,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-dotenv.config();
+// `quiet` porque dotenv >= 17 anuncia o que injetou no STDOUT, e em transporte stdio o stdout
+// e' o canal do protocolo MCP: a linha de aviso entra no fio como quadro invalido.
+dotenv.config({ quiet: true });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));

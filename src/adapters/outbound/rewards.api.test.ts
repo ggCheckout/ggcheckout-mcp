@@ -15,17 +15,19 @@ describe('RewardsApiAdapter', () => {
     adapter = new RewardsApiAdapter(http);
   });
 
-  it('getProgress GETs /api/rewards', async () => {
+  // `/api/rewards` was removed upstream; `/calculate` is the only reward reader left, and it is
+  // the one that carries the milestones.
+  it('calculate GETs /api/rewards/calculate and carries the milestones', async () => {
     vi.mocked(http.get).mockResolvedValue({ currentRevenue: 5000, milestones: [10000, 50000] });
-    const result = await adapter.getProgress();
-    expect(http.get).toHaveBeenCalledWith('/api/rewards');
+    const result = await adapter.calculate();
+    expect(http.get).toHaveBeenCalledWith('/api/rewards/calculate');
     expect(result.milestones).toHaveLength(2);
   });
 
-  it('calculate GETs /api/rewards/calculate', async () => {
+  it('never calls the removed /api/rewards', async () => {
     vi.mocked(http.get).mockResolvedValue({ currentRevenueCents: 500000 });
     await adapter.calculate();
-    expect(http.get).toHaveBeenCalledWith('/api/rewards/calculate');
+    expect(http.get).not.toHaveBeenCalledWith('/api/rewards');
   });
 
   it('redeem POSTs rewardId', async () => {

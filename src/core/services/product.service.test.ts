@@ -73,18 +73,75 @@ describe('ProductService', () => {
     expect(mockPort.update).toHaveBeenCalledWith('p-1', expect.objectContaining({ price: 2990 }));
   });
 
-  it('update re-sends the stored product so a one-field edit keeps the rest', async () => {
-    vi.mocked(mockPort.getById).mockResolvedValue(stored as any);
+  // The PATCH preserves by absence, but the deliverable check reads the BODY: a title-only edit
+  // of a product that has a url is still refused. So the delta travels with one carried-over term.
+  it('update carries the stored url so a title-only edit is not refused', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({ ...stored, url: 'https://x.com/a' } as any);
     vi.mocked(mockPort.update).mockResolvedValue(undefined);
 
     await service.update('p-1', { title: 'New' });
 
-    const { uid: _uid, updatedAt: _updatedAt, ...rest } = stored;
-    expect(mockPort.update).toHaveBeenCalledWith('p-1', { ...rest, title: 'New' });
+    expect(mockPort.update).toHaveBeenCalledWith('p-1', { title: 'New', url: 'https://x.com/a' });
+  });
+
+  it('update sends the bare delta when the edit already carries a deliverable term', async () => {
+    vi.mocked(mockPort.update).mockResolvedValue(undefined);
+
+    await service.update('p-1', { title: 'New', url: 'https://x.com/b' });
+
+    expect(mockPort.update).toHaveBeenCalledWith('p-1', { title: 'New', url: 'https://x.com/b' });
+    expect(mockPort.getById).not.toHaveBeenCalled();
+  });
+
+  it('update never forwards the derived read-only fields of the new storage', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({
+      ...stored, url: 'https://x.com/a', hasDeliverableFile: true, stockLineCount: 12,
+    } as any);
+    vi.mocked(mockPort.update).mockResolvedValue(undefined);
+
+    await service.update('p-1', { title: 'New' });
+
+    const sent = vi.mocked(mockPort.update).mock.calls[0][1] as Record<string, unknown>;
+    expect(sent).not.toHaveProperty('hasDeliverableFile');
+    expect(sent).not.toHaveProperty('stockLineCount');
+  });
+
+  it('update uses an exemption flag instead of a deliverable when the product is physical', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({
+      ...stored, url: undefined, isPhysicalProduct: true,
+    } as any);
+    vi.mocked(mockPort.update).mockResolvedValue(undefined);
+
+    await service.update('p-1', { title: 'New' });
+
+    expect(mockPort.update).toHaveBeenCalledWith('p-1', { title: 'New', isPhysicalProduct: true });
+  });
+
+  // Nothing can be carried over: the file and the stock lines are not readable through the API,
+  // so the save would be refused for lacking a deliverable. Say that instead of sending a doomed
+  // request and surfacing a bare 400.
+  it('update refuses with an explanation when the only deliverable is a file', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({
+      ...stored, url: undefined, deliverableUrl: undefined, whatsappUrl: undefined,
+      hasDeliverableFile: true,
+    } as any);
+
+    await expect(service.update('p-1', { title: 'New' })).rejects.toThrow(/dashboard/);
+    expect(mockPort.update).not.toHaveBeenCalled();
+  });
+
+  it('update refuses with an explanation when the only deliverable is stock', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({
+      ...stored, url: undefined, deliverableUrl: undefined, whatsappUrl: undefined,
+      stockLineCount: 12,
+    } as any);
+
+    await expect(service.update('p-1', { title: 'New' })).rejects.toThrow(/stock lines/);
+    expect(mockPort.update).not.toHaveBeenCalled();
   });
 
   it('update accepts empty input (all optional)', async () => {
-    vi.mocked(mockPort.getById).mockResolvedValue(stored as any);
+    vi.mocked(mockPort.getById).mockResolvedValue({ ...stored, url: 'https://x.com/a' } as any);
     vi.mocked(mockPort.update).mockResolvedValue(undefined);
 
     await service.update('p-1', {});
@@ -162,10 +219,10 @@ describe('ProductService', () => {
     }));
   });
 
-  it('update does not write when the product cannot be read', async () => {
-    vi.mocked(mockPort.getById).mockRejectedValue(new Error('404'));
+  it('update surfaces the write failure as-is', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({ ...stored, url: 'https://x.com/a' } as any);
+    vi.mocked(mockPort.update).mockRejectedValue(new Error('404'));
 
     await expect(service.update('p-1', { title: 'New' })).rejects.toThrow('404');
-    expect(mockPort.update).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ProductService } from '../../../core/services/product.service.js';
-import type { ReorderUpsellItem } from '../../../core/types/product.js';
 import { createToolHandler } from '../tool-handler.js';
 
 export function registerProductTools(server: McpServer, service: ProductService) {
@@ -110,19 +109,45 @@ export function registerProductTools(server: McpServer, service: ProductService)
     'upload_deliverable',
     {
       description:
-        'Upload a deliverable file to a product. Provide the file URL, name, and optionally the MIME type.',
+        'Step 1 of 2 to attach a file to a product: mint an upload URL. The file does NOT pass through '
+        + 'this server. Returns { uploadUrl, filePath, contentType }. Step 2 is yours: PUT the raw bytes '
+        + 'to `uploadUrl` with ONLY the header `Content-Type: <fileType>` and NO Authorization header '
+        + '(the signature is in the URL and an extra header breaks it); the URL expires in 1 hour. '
+        + 'Then call attach_deliverable with the same filePath/fileName/fileSize/fileType to confirm the '
+        + 'upload and link it to the product. Max 250MB.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        fileUrl: z.string().url().describe('Public URL of the file to attach as deliverable'),
         fileName: z.string().max(200).describe('File name (e.g., "ebook.pdf")'),
-        fileType: z
-          .string()
-          .optional()
-          .describe('MIME type of the file (e.g., "application/pdf"). Auto-detected if omitted.'),
+        fileType: z.string().describe('MIME type of the file (e.g., "application/pdf")'),
+        fileSize: z.number().int().positive().describe('File size in bytes (max 250MB)'),
       },
     },
     createToolHandler('upload_deliverable', async ({ productId, ...input }) => {
-      const deliverable = await service.uploadDeliverable(productId, input);
+      const presign = await service.presignDeliverable(productId, input);
+      return {
+        ...presign,
+        next: 'PUT the bytes to uploadUrl with only Content-Type set, then call attach_deliverable.',
+      };
+    }),
+  );
+
+  server.registerTool(
+    'attach_deliverable',
+    {
+      description:
+        'Step 2 of 2: confirm an uploaded file exists in storage and attach it to the product as its '
+        + 'deliverable. Call it after PUTting the bytes to the uploadUrl from upload_deliverable, with '
+        + 'the same values. Answers 404 if the bytes never landed.',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+        filePath: z.string().describe('The filePath returned by upload_deliverable'),
+        fileName: z.string().max(200).describe('File name'),
+        fileType: z.string().describe('MIME type'),
+        fileSize: z.number().int().positive().describe('File size in bytes'),
+      },
+    },
+    createToolHandler('attach_deliverable', async ({ productId, ...input }) => {
+      const deliverable = await service.attachDeliverable(productId, input);
       return { success: true, deliverable };
     }),
   );
@@ -130,14 +155,21 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'delete_deliverable',
     {
-      description: 'Remove the deliverable file from a product',
+      description:
+        'Unlink the deliverable file from a product. Pass `filePath` to also delete the stored bytes; '
+        + 'without it the file stays in storage, unreferenced.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
+        filePath: z.string().optional()
+          .describe('The stored path (from get_product deliverable data) to also delete the bytes'),
       },
     },
-    createToolHandler('delete_deliverable', async ({ productId }) => {
-      await service.deleteDeliverable(productId);
-      return { success: true, message: `Deliverable removed from product ${productId}` };
+    createToolHandler('delete_deliverable', async ({ productId, filePath }) => {
+      await service.deleteDeliverable(productId, filePath);
+      return {
+        success: true,
+        message: `Deliverable unlinked from product ${productId}${filePath ? ' and the file deleted' : ''}`,
+      };
     }),
   );
 
@@ -204,22 +236,19 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'reorder_upsells',
     {
-      description: 'Reorder upsells for a product by sending the full upsells array in desired order',
+      description:
+        'Reorder the upsells of a product: send every upsell id, in the order you want. Returns the '
+        + 'positions as stored. Ids are taken from list_upsells; an id that does not belong to the '
+        + 'product is refused.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        upsells: z.array(z.object({
-          uid: z.string().describe('Upsell UID'),
-          id: z.string().describe('Upsell ID'),
-          order: z.number().min(0).max(1000).optional().describe('New order position'),
-          upsellProductId: z.string(),
-          title: z.string(),
-          status: z.enum(['active', 'inactive']),
-        }).passthrough()).max(50).describe('Full upsells array in desired order'),
+        upsellIds: z.array(z.string()).min(1).max(50)
+          .describe('All upsell ids, in the desired order'),
       },
     },
-    createToolHandler('reorder_upsells', async ({ productId, upsells }) => {
-      await service.reorderUpsells(productId, upsells as ReorderUpsellItem[]);
-      return { success: true, message: 'Upsells reordered' };
+    createToolHandler('reorder_upsells', async ({ productId, upsellIds }) => {
+      const newOrder = await service.reorderUpsells(productId, upsellIds);
+      return { success: true, newOrder };
     }),
   );
 
@@ -286,15 +315,17 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'reorder_downsells',
     {
-      description: 'Reorder downsells for a product',
+      description:
+        'Reorder the downsells of a product. Returns the positions as stored. An id that does not '
+        + 'belong to the product is refused.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        order: z.array(z.string()).max(100).describe('Ordered list of downsell IDs'),
+        order: z.array(z.string()).min(1).max(100).describe('All downsell ids, in the desired order'),
       },
     },
     createToolHandler('reorder_downsells', async ({ productId, order }) => {
-      await service.reorderDownsells(productId, order);
-      return { success: true, message: 'Downsells reordered' };
+      const newOrder = await service.reorderDownsells(productId, order);
+      return { success: true, newOrder };
     }),
   );
 

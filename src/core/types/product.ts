@@ -125,6 +125,37 @@ export interface UploadDeliverableInput {
   fileType?: string;
 }
 
+/** Step 1 of attaching a file: where to PUT the bytes, and the path that identifies them. */
+export interface DeliverablePresign {
+  uploadUrl: string;
+  filePath: string;
+  /** The Content-Type to send on the PUT. */
+  contentType?: string;
+}
+
+/**
+ * The stored file, as `complete-upload` describes it. This whole object is what the product's
+ * `deliverableFile` field takes, so it is passed through unchanged when linking.
+ */
+export interface DeliverableFile {
+  filePath: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  formattedSize?: string;
+  url?: string;
+  /** Time-limited download URL (7 days). */
+  signedUrl?: string;
+  publicUrl?: string;
+  uploadedAt?: string;
+}
+
+/** One line of a reorder result: the offer and the position it ended up in. */
+export interface ReorderResult {
+  id: string;
+  order: number;
+}
+
 export interface UpsellPaymentMethodConfig {
   token: string;
   type: string;

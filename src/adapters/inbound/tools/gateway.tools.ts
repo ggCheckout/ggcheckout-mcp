@@ -10,10 +10,14 @@ export function registerGatewayTools(server: McpServer, service: GatewayService)
   }, createToolHandler('list_tokens', async (args) => service.listTokens(args)));
 
   server.registerTool('insert_token', {
-    description: 'Add or update a payment gateway token',
+    description:
+      'Add or update a payment gateway token. Only four types can be created through the API — the '
+      + 'route refuses anything else with 400 "Tipo de token inválido.", even for gateways the platform '
+      + 'supports elsewhere (stripe and efibank among them, which this tool used to advertise).',
     inputSchema: {
       token: z.string().describe('Gateway token/credential'),
-      type: z.string().describe('Gateway type (e.g., pushinpay, mercadopago, stripe, efibank)'),
+      type: z.enum(['pushinpay', 'utmify', 'emailprovider', 'mercadopago'])
+        .describe('Gateway type — the only four the creation route accepts'),
       title: z.string().max(200).describe('Token display name'),
       target: z.string().describe('Target identifier'),
       status: z.string().describe('Token status'),

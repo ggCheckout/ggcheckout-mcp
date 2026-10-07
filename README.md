@@ -124,13 +124,22 @@ Update an existing product. Only provide fields you want to change.
 
 **Example prompt:** "Delete product abc123"
 
-#### `upload_deliverable`
+#### `upload_deliverable` / `attach_deliverable` / `delete_deliverable`
 
-Upload a deliverable file to a product.
+Attaching a file takes two tool calls and one upload you perform yourself — the bytes never pass
+through this server:
 
-**Parameters:** `productId`, `fileUrl`, `fileName`, `fileType` (optional)
+1. `upload_deliverable` (`productId`, `fileName`, `fileType`, `fileSize`) returns
+   `{ uploadUrl, filePath }`.
+2. `PUT` the raw bytes to `uploadUrl` with **only** `Content-Type: <fileType>` set. Do not send
+   an `Authorization` header — the signature is already in the URL and an extra header breaks it.
+   The URL is valid for one hour; the file may be up to 250MB.
+3. `attach_deliverable` (`productId`, `filePath`, `fileName`, `fileType`, `fileSize`) confirms the
+   upload landed and links it to the product.
 
-**Example prompt:** "Upload the ebook at https://files.example.com/ebook.pdf to product abc123"
+`delete_deliverable` unlinks the file; pass `filePath` to delete the stored bytes as well.
+
+**Example prompt:** "Attach ebook.pdf (2MB, application/pdf) to product abc123"
 
 #### `list_upsells` / `create_upsell` / `delete_upsell` / `reorder_upsells`
 
@@ -244,11 +253,30 @@ Manage physical order fulfillment.
 
 **Example prompts:**
 - "Show me all my webhooks"
-- "Create a webhook for payment.paid events at https://myapp.com/webhook"
-- "Update webhook abc123 to also listen for payment.refunded"
+- "Create a webhook for pix.paid events at https://myapp.com/webhook"
+- "Update webhook abc123 to also listen for card.paid"
 - "Delete webhook abc123"
-- "Send a test payment.paid event to webhook abc123"
-- "Test my webhook abc123 with a refunded event overriding the payment ID to pay_xyz"
+- "Send a test pix.paid event to webhook abc123"
+- "Test my webhook abc123 with an expired event overriding the payment ID to pay_xyz"
+
+#### Event names
+
+The API stores the event names you register **without checking them**, and delivery matches
+them exactly — so a name outside this list is accepted, saved, and never fires, with no error
+anywhere. These are the names that exist:
+
+| Family | Events |
+|---|---|
+| PIX | `pix.paid`, `pix.generated`, `pix.expired`, `pix.failed` |
+| Card | `card.paid`, `card.generated`, `card.expired`, `card.failed`, `card.pending` |
+| Subscription | `subscription.canceled`, `subscription.past_due`, `subscription.renewed` |
+| Quiz funnel | `quiz.completed`, `quiz.lead_captured` |
+| Cart | `checkout.abandoned` |
+
+There is **no refund or chargeback event**: nothing dispatches one. `pix.generated`,
+`pix.failed` and `card.pending` can be registered but have no emitter today. Names of the form
+`payment.*` are the platform's internal vocabulary between services, not seller webhooks —
+registering one gets you silence.
 
 #### Webhook Event Payloads
 
@@ -258,35 +286,35 @@ All events share the same top-level shape. Key fields:
 |---|---|---|
 | `event` | string | Event type (see below) |
 | `payment.id` | string | Payment identifier |
-| `payment.status` | string | `pending`, `paid`, `refunded`, `expired`, `chargeback` |
-| `payment.method` | string | `pix`, `pix.paid`, `card`, `card.paid` |
+| `payment.status` | string | `pending`, `paid`, `expired` |
+| `payment.method` | string | `pix`, `credit_card` |
 | `payment.amount` | number | Amount in **cents** (e.g. `9900` = R$99,00) |
 | `payment.customer.name` | string | Buyer name |
 | `payment.customer.email` | string | Buyer email |
 | `payment.customer.document` | string | CPF |
 | `payment.customer.phone` | string | Phone (E.164, e.g. `5511999999999`) |
 | `payment.createdAt` | string | ISO 8601 |
-| `payment.paidAt` | string \| undefined | Present on `payment.paid`, `payment.refunded`, `payment.chargeback` |
-| `payment.refundedAt` | string \| undefined | Present on `payment.refunded` |
-| `payment.expiredAt` | string \| undefined | Present on `payment.expired` |
+| `payment.paidAt` | string \| undefined | Present on `pix.paid` and `card.paid` |
+| `payment.expiredAt` | string \| undefined | Present on `pix.expired` and `card.expired` |
 | `product.id` | string | Product identifier |
 | `product.title` | string | Product name |
 
-**Supported events:**
+**What `test_webhook` sends.** These bodies are built by the MCP server and posted straight to
+your endpoint — the platform is not involved — so they are a plausible payment-shaped payload to
+exercise your handler with, not a byte-for-byte copy of a live delivery:
 
 ```json
-{ "event": "payment.created",    "payment": { "status": "pending",    "method": "pix" }, ... }
-{ "event": "payment.paid",       "payment": { "status": "paid",       "method": "pix.paid", "paidAt": "..." }, ... }
-{ "event": "payment.refunded",   "payment": { "status": "refunded",   "method": "pix.paid", "paidAt": "...", "refundedAt": "..." }, ... }
-{ "event": "payment.expired",    "payment": { "status": "expired",    "method": "pix", "expiredAt": "..." }, ... }
-{ "event": "payment.chargeback", "payment": { "status": "chargeback", "method": "card.paid", "paidAt": "..." }, ... }
+{ "event": "pix.paid",     "payment": { "status": "paid",    "method": "pix",         "paidAt": "..." }, ... }
+{ "event": "card.paid",    "payment": { "status": "paid",    "method": "credit_card", "paidAt": "..." }, ... }
+{ "event": "pix.expired",  "payment": { "status": "expired", "method": "pix",         "expiredAt": "..." }, ... }
+{ "event": "card.expired", "payment": { "status": "expired", "method": "credit_card", "expiredAt": "..." }, ... }
 ```
 
 **Signature verification** (when a `secret` is set):
 
 ```
 X-Webhook-Signature: sha256=<HMAC-SHA256(secret, raw_body)>
-X-GGCheckout-Event: payment.paid
+X-GGCheckout-Event: pix.paid
 ```
 
 ```ts
@@ -422,10 +450,12 @@ funnel first and send the full array back. Pixels and webhooks are linked by id
 
 **Example prompts:**
 - "List my payment gateway tokens"
-- "Add a Stripe token"
+- "Add a PushinPay token"
 - "Remove token abc123"
 
-Supports 26+ gateways: pushinpay, mercadopago, stripe, efibank, amplopay, infinitepay, abacatepay, and more.
+`insert_token` creates only the four types the API accepts: `pushinpay`, `utmify`,
+`emailprovider` and `mercadopago`. The platform processes payments through 25+ gateways, but the
+others are connected from the dashboard, not through this API — asking for one here is refused.
 
 ---
 
@@ -459,12 +489,15 @@ Supports 26+ gateways: pushinpay, mercadopago, stripe, efibank, amplopay, infini
 
 ---
 
-### Rewards / Goals (3 tools)
+### Rewards / Goals (2 tools)
 
 **Example prompts:**
 - "What's my progress on sales milestones?"
-- "Recalculate my reward progress"
 - "Redeem the 10K bracelet reward"
+
+`calculate_rewards` is the only reader: it returns the progress and the milestone list together,
+in reais (`currentRevenueCents` carries the same value in cents). There is no reward catalogue
+endpoint, and a cache miss is rate limited to 10 per hour.
 
 ---
 

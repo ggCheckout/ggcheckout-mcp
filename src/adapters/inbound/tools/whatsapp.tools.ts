@@ -21,7 +21,10 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   }));
 
   server.registerTool('create_whatsapp_session', {
-    description: 'Create a new WhatsApp session',
+    description:
+      'Create a new WhatsApp session. NOT AVAILABLE TO API KEYS: the route classes this as sensitive '
+      + 'and answers 403 for any API key, by design. Create the session in the dashboard; every other '
+      + 'WhatsApp tool here (list, delete, pairing code, templates, send) does work with the API key.',
     inputSchema: { sessionName: z.string().max(200).describe('Session name') },
   }, createToolHandler('create_whatsapp_session', async ({ sessionName }) => {
     const session = await service.createSession(sessionName);
@@ -121,7 +124,10 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   }));
 
   server.registerTool('resend_delivery', {
-    description: 'Resend WhatsApp delivery for a payment (rate limited: 50/hour per user)',
+    description:
+      'Resend WhatsApp delivery for a payment (rate limited: 50/hour per user). NOT AVAILABLE TO API '
+      + 'KEYS today: this route accepts only a dashboard session cookie and answers 401 for a key, '
+      + 'while get_delivery_status on the same payment does work. Resend from the dashboard.',
     inputSchema: { paymentId: z.string().describe('Payment ID') },
   }, createToolHandler('resend_delivery', async ({ paymentId }) => {
     return service.resendDelivery(paymentId);

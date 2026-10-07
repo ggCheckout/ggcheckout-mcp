@@ -1,6 +1,12 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as logger from '../../shared/logger.js';
-import { ApiError, AuthenticationError, NetworkError, RateLimitError } from '../../shared/errors.js';
+import {
+  ApiError,
+  AuthenticationError,
+  NetworkError,
+  RateLimitError,
+  TemporarilyUnavailableError,
+} from '../../shared/errors.js';
 
 export class HttpClient {
   private client: AxiosInstance;
@@ -35,22 +41,60 @@ export class HttpClient {
         }
 
         const status = error.response?.status;
-        const apiMessage = (error.response?.data as any)?.error
-          || (error.response?.data as any)?.message;
+        const body = (error.response?.data ?? {}) as any;
+        // The API's convention is `error: string` (already human readable, pt-BR), sometimes with
+        // `code` as a discriminator and `message`/`details` beside it. Without the extras the
+        // caller only saw "Request failed with status 409" and could not act on it.
+        const apiMessage = body?.error || body?.message;
+        const extras = [body?.code, body?.message !== apiMessage ? body?.message : undefined]
+          .filter((v): v is string => typeof v === 'string' && v.length > 0);
+        const detail = extras.length ? ` (${extras.join('; ')})` : '';
 
         // Use API error message when available; fallback to generic message
         // to avoid leaking internal details (URLs, headers, stack traces)
-        const safeMessage = typeof apiMessage === 'string'
+        const safeMessage = (typeof apiMessage === 'string'
           ? apiMessage
-          : `Request failed with status ${status || 'unknown'}`;
+          : `Request failed with status ${status || 'unknown'}`) + detail;
+
+        // Seconds to wait. The header is the standard one; in the body the API spells it
+        // `retry_after` (snake_case), and that is the only spelling that crosses the wire —
+        // a 429 forwarded from the backend carries the body even when the header is dropped.
+        const retryHeader = (error.response?.headers as any)?.['retry-after'];
+        const retryRaw = [retryHeader, body?.retry_after].find((v) => v !== undefined && v !== null);
+        const retrySeconds = retryRaw !== undefined && /^\d+$/.test(String(retryRaw))
+          ? Number(retryRaw)
+          : undefined;
+        const withRetry = (msg: string) => {
+          const base = msg.endsWith('.') ? msg.slice(0, -1) : msg;
+          return retrySeconds ? `${base}. Retry after ${retrySeconds} seconds.` : `${base}.`;
+        };
 
         if (status === 401) throw new AuthenticationError(safeMessage, error);
-        if (status === 429) {
-          const retryAfter = (error.response?.headers as any)?.['retry-after'];
-          const retrySeconds = retryAfter && /^\d+$/.test(String(retryAfter)) ? retryAfter : null;
-          const retryMsg = retrySeconds ? ` Retry after ${retrySeconds} seconds.` : '';
-          const base = safeMessage.endsWith('.') ? safeMessage.slice(0, -1) : safeMessage;
-          throw new RateLimitError(`${base}.${retryMsg}`, error);
+        if (status === 429) throw new RateLimitError(withRetry(safeMessage), error);
+        // 503 is the rate-limiter failing closed (its backing store is degraded), not the API
+        // being down — a down backend surfaces as 502. Both are worth retrying, and neither
+        // means the request was rejected on its merits.
+        if (status === 503) {
+          throw new TemporarilyUnavailableError(
+            503,
+            withRetry(
+              `${safeMessage} The API is refusing requests while its rate-limit backend is degraded; `
+              + 'nothing was changed',
+            ),
+            retrySeconds,
+            error,
+          );
+        }
+        if (status === 502) {
+          throw new TemporarilyUnavailableError(
+            502,
+            withRetry(
+              `${safeMessage} The API could not reach the service behind it; `
+              + 'a write may not have been applied',
+            ),
+            retrySeconds,
+            error,
+          );
         }
         throw new ApiError(status || 500, safeMessage, error);
       },

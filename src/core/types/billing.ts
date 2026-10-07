@@ -60,6 +60,58 @@ export interface SellerInvoice {
   paymentIds?: string[];
 }
 
+/** What a credit ledger line is: the v2 statement, kept in the payments service. */
+export type CreditLedgerKind = 'topup' | 'cycle_debit' | 'opening' | 'adjustment' | 'debt_settled';
+
+export interface CreditLedgerEntry {
+  id: string;
+  kind: CreditLedgerKind;
+  /** Signed: credit is positive, debit negative. */
+  amountCents: number;
+  balanceAfterCents: number;
+  refId: string | null;
+  description: string | null;
+  createdAt: string;
+  /** Only on `cycle_debit` / `debt_settled`. */
+  invoice?: {
+    invoiceId: string;
+    closedAt: string;
+    closeTrigger: 'cap' | 'time' | null;
+    grossCents: number | null;
+    creditAppliedCents: number | null;
+    remainingCents: number | null;
+  } | null;
+  /** Only on `topup` / positive `adjustment`. `shortfallCents > 0` means the invoice is not settled. */
+  pendingInvoice?: {
+    invoiceId: string;
+    amountCents: number;
+    shortfallCents: number;
+  } | null;
+}
+
+/** Keyset pagination: `nextBefore` is the cursor to pass back, `null` at the end. */
+export interface CreditLedgerPage {
+  entries: CreditLedgerEntry[];
+  nextBefore: string | null;
+}
+
+/**
+ * One top-up, however the account's generation happens to mint it. The legacy route answers
+ * `{ creditId, qrCode, qrCodeImage }` and the v2 route `{ topupId, pix: { emv, qrBase64 } }`;
+ * both are normalized to this so a caller does not branch on the seller's generation.
+ */
+export interface CreditTopup {
+  creditId: string;
+  amountCents: number;
+  /** PIX copy-and-paste string. */
+  pixCode: string | null;
+  /** QR image as base64, with no `data:` prefix. */
+  pixQrBase64: string | null;
+  expiresAt: string | null;
+  /** Which route served it — `topup` is the Postgres-backed one. */
+  via: 'legacy' | 'topup';
+}
+
 export interface BillingCredit {
   id: string;
   businessId: string;

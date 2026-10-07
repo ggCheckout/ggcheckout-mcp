@@ -84,11 +84,22 @@ describe('ProductApiAdapter', () => {
     expect(http.delete).toHaveBeenCalledWith('/api/product-delivery/p1/upsells/u1');
   });
 
-  it('reorderUpsells PATCHes /upsells with { upsells } body', async () => {
-    vi.mocked(http.patch).mockResolvedValue({});
-    const upsells = [{ uid: 'u1' }, { uid: 'u2' }] as any;
-    await adapter.reorderUpsells('p1', upsells);
-    expect(http.patch).toHaveBeenCalledWith('/api/product-delivery/p1/upsells', { upsells });
+  // It used to PATCH `/upsells` with whole objects. That route replaces the legacy upsell array
+  // instead of reordering, and it does not exist for a product stored in Postgres, where it came
+  // back as an opaque 502.
+  it('reorderUpsells POSTs the ids to /upsells/reorder and returns the stored order', async () => {
+    vi.mocked(http.post).mockResolvedValue({
+      success: true,
+      message: 'Upsells reordenados com sucesso.',
+      newOrder: [{ id: 'u2', order: 1 }, { id: 'u1', order: 2 }],
+    });
+    const result = await adapter.reorderUpsells('p1', ['u2', 'u1']);
+    expect(http.post).toHaveBeenCalledWith(
+      '/api/product-delivery/p1/upsells/reorder',
+      { upsellIds: ['u2', 'u1'] },
+    );
+    expect(result).toEqual([{ id: 'u2', order: 1 }, { id: 'u1', order: 2 }]);
+    expect(http.patch).not.toHaveBeenCalled();
   });
 
   it('createDownsell POSTs to /downsells/{downsellId} with { downsell: input } body', async () => {
@@ -119,18 +130,56 @@ describe('ProductApiAdapter', () => {
     expect(result.tags).toEqual(tags);
   });
 
-  it('uploadDeliverable POSTs to /api/products/{id}/deliverable/upload', async () => {
-    vi.mocked(http.post).mockResolvedValue({ enabled: true, fileUrl: 'https://...' });
-    await adapter.uploadDeliverable('p1', { fileUrl: 'https://file.com/a.pdf', fileName: 'a.pdf' });
-    expect(http.post).toHaveBeenCalledWith(
-      '/api/products/p1/deliverable/upload',
-      { fileUrl: 'https://file.com/a.pdf', fileName: 'a.pdf' },
-    );
+  // `/api/products/**` does not exist in the API at all — these two called a route that never
+  // answered. The real flow is presign, PUT the bytes elsewhere, confirm, then link.
+  it('presignDeliverable POSTs to /api/deliverables/presigned-upload with the productId', async () => {
+    vi.mocked(http.post).mockResolvedValue({
+      success: true,
+      data: { uploadUrl: 'https://r2/put?sig', filePath: 'deliverables/s1/p1/uuid-a.pdf', fields: { 'Content-Type': 'application/pdf' } },
+    });
+    const result = await adapter.presignDeliverable('p1', {
+      fileName: 'a.pdf', fileType: 'application/pdf', fileSize: 1024,
+    });
+    expect(http.post).toHaveBeenCalledWith('/api/deliverables/presigned-upload', {
+      fileName: 'a.pdf', fileType: 'application/pdf', fileSize: 1024, productId: 'p1',
+    });
+    expect(result.uploadUrl).toBe('https://r2/put?sig');
+    expect(result.filePath).toBe('deliverables/s1/p1/uuid-a.pdf');
   });
 
-  it('deleteDeliverable calls DELETE /api/products/{id}/deliverable', async () => {
-    vi.mocked(http.delete).mockResolvedValue({});
+  it('attachDeliverable confirms the upload and then links it to the product', async () => {
+    const stored = { filePath: 'deliverables/s1/p1/uuid-a.pdf', fileName: 'a.pdf', fileSize: 1024, fileType: 'application/pdf' };
+    vi.mocked(http.post).mockResolvedValue({ success: true, data: stored });
+    vi.mocked(http.patch).mockResolvedValue({});
+
+    const result = await adapter.attachDeliverable('p1', stored);
+
+    expect(http.post).toHaveBeenCalledWith('/api/deliverables/complete-upload', stored);
+    // Nothing under /api/deliverables links a file to a product, so the PATCH is what makes it
+    // reachable by a buyer.
+    expect(http.patch).toHaveBeenCalledWith(
+      '/api/product-delivery/p1',
+      expect.objectContaining({ deliverableFile: stored, deliverableFileId: '', deliverableUrl: '' }),
+    );
+    expect(result).toEqual(stored);
+  });
+
+  it('deleteDeliverable unlinks via PATCH and leaves the bytes alone without a filePath', async () => {
+    vi.mocked(http.patch).mockResolvedValue({});
     await adapter.deleteDeliverable('p1');
-    expect(http.delete).toHaveBeenCalledWith('/api/products/p1/deliverable');
+    expect(http.patch).toHaveBeenCalledWith(
+      '/api/product-delivery/p1',
+      expect.objectContaining({ deliverableFile: null, deliverableFileId: '', deliverableUrl: '' }),
+    );
+    expect(http.delete).not.toHaveBeenCalled();
+  });
+
+  it('deleteDeliverable deletes the bytes only after the unlink succeeded', async () => {
+    vi.mocked(http.patch).mockResolvedValue({});
+    vi.mocked(http.delete).mockResolvedValue({});
+    await adapter.deleteDeliverable('p1', 'deliverables/s1/p1/uuid-a.pdf');
+    expect(http.delete).toHaveBeenCalledWith(
+      '/api/deliverables/upload?filePath=deliverables%2Fs1%2Fp1%2Fuuid-a.pdf',
+    );
   });
 });

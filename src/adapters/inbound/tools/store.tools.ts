@@ -13,7 +13,9 @@ const storeIdSchema = z.string().describe('Store ID (from list_stores)');
 export function registerStoreTools(server: McpServer, service: StoreService) {
   server.tool(
     'list_stores',
-    'List the stores owned by the authenticated seller ({ storeId, title, logo }). Every other store tool takes one of these storeIds.',
+    'List the stores owned by the authenticated seller ({ storeId, title, logo }). Every other store tool takes one of these storeIds. '
+      + 'WARNING: this listing also returns DELETED stores — the API does not mark them, and the listing it comes from never filtered them. '
+      + 'A deleted store answers 404 ("Loja não encontrada ou não autorizado") in every other store tool, so confirm an unfamiliar storeId with get_store before acting on it.',
     createToolHandler('list_stores', async () => {
       const stores = await service.listStores();
       return { stores };

@@ -45,6 +45,19 @@ export class NetworkError extends AppError {
   }
 }
 
+/**
+ * The request was well formed and the caller is allowed, but the API cannot serve it right now:
+ * 423 while the seller's account is being moved between storage generations, 503 while the
+ * backend is down. Both are worth retrying, which is why they do not come back as a plain
+ * ApiError — the message always says how long to wait when the API says so.
+ */
+export class TemporarilyUnavailableError extends AppError {
+  constructor(statusCode: number, message: string, public readonly retryAfterSeconds?: number, cause?: Error) {
+    super(message, 'TEMPORARILY_UNAVAILABLE', statusCode, cause);
+    this.name = 'TemporarilyUnavailableError';
+  }
+}
+
 export class ApiError extends AppError {
   constructor(statusCode: number, message: string, cause?: Error) {
     super(`API Error (${statusCode}): ${message}`, 'API_ERROR', statusCode, cause);

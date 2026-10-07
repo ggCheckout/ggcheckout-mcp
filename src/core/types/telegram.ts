@@ -1,4 +1,4 @@
-// Types validated against saas-checkout/types/telegram-bot.ts
+// Types validated against the Telegram bot payloads the GG Checkout API accepts.
 
 export type TelegramBotStatus = 'active' | 'paused' | 'error';
 export type TelegramFlowMode = 'basic' | 'visual';
@@ -110,9 +110,13 @@ export interface TelegramTokenValidation {
 }
 
 export interface TelegramMediaUpload {
+  /** Presigned PUT URL, valid for one hour. The signature is in the query string. */
   uploadUrl: string;
   filePath: string;
-  publicUrl: string;
+  /** `/api/r2-proxy/{filePath}` — the URL to store in the flow node, derived by the adapter. */
+  proxyUrl: string;
+  /** The API does not return this today; kept optional for the day it does. */
+  publicUrl?: string;
 }
 
 // --- Input types ---

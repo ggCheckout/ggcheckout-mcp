@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 import { HttpClient } from './http-client.js';
-import { AuthenticationError, RateLimitError, ApiError } from '../../shared/errors.js';
+import {
+  AuthenticationError,
+  RateLimitError,
+  ApiError,
+  TemporarilyUnavailableError,
+} from '../../shared/errors.js';
 
 vi.mock('axios');
 vi.mock('../../shared/logger.js', () => ({
@@ -129,7 +134,7 @@ describe('HttpClient', () => {
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
-      response: { status: 503, data: null },
+      response: { status: 500, data: null },
       message: 'connect ECONNREFUSED 127.0.0.1:3000 - internal stack trace here',
     };
 
@@ -138,7 +143,76 @@ describe('HttpClient', () => {
     } catch (e: any) {
       expect(e).toBeInstanceOf(ApiError);
       expect(e.message).not.toContain('ECONNREFUSED');
-      expect(e.message).toContain('503');
+      expect(e.message).toContain('500');
+    }
+  });
+
+  // 503 is the rate limiter failing closed, not a rejection on the merits, and the wait comes in
+  // the body as `retry_after` — the header is dropped when the answer is forwarded.
+  it('turns 503 into a retryable error and reads retry_after from the body', () => {
+    new HttpClient('https://api.test.com', 'key');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+
+    const axiosError = {
+      response: {
+        status: 503,
+        data: { error: 'service_unavailable', reason: 'rate_limit_backend_degraded', retry_after: 5 },
+        headers: {},
+      },
+      message: 'Request failed',
+    };
+
+    try {
+      errorHandler(axiosError);
+      expect.unreachable('should have thrown');
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(TemporarilyUnavailableError);
+      expect(e.retryAfterSeconds).toBe(5);
+      expect(e.message).toContain('Retry after 5 seconds');
+      expect(e.message).toContain('nothing was changed');
+    }
+  });
+
+  it('turns 502 into a retryable error that warns the write may not have landed', () => {
+    new HttpClient('https://api.test.com', 'key');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+
+    const axiosError = {
+      response: { status: 502, data: { error: 'Erro ao comunicar com o serviço' }, headers: {} },
+      message: 'Request failed',
+    };
+
+    try {
+      errorHandler(axiosError);
+      expect.unreachable('should have thrown');
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(TemporarilyUnavailableError);
+      expect(e.message).toContain('may not have been applied');
+    }
+  });
+
+  // A bare "Request failed with status 409" told the caller nothing; the refusal explains itself
+  // in `code`, beside the message.
+  it('surfaces the code beside the error message', () => {
+    new HttpClient('https://api.test.com', 'key');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+
+    const axiosError = {
+      response: {
+        status: 409,
+        data: { error: 'Seller migrado', code: 'seller_migrated_to_payments' },
+        headers: {},
+      },
+      message: 'Request failed',
+    };
+
+    try {
+      errorHandler(axiosError);
+      expect.unreachable('should have thrown');
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(ApiError);
+      expect(e.message).toContain('Seller migrado');
+      expect(e.message).toContain('seller_migrated_to_payments');
     }
   });
 

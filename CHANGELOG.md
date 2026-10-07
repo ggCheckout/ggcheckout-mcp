@@ -5,10 +5,79 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
-## Unreleased
+## 0.4.0
 
 Checked end to end against a QA account on the Postgres (v2) data path, and product edits
 also against production.
+
+### Routes that had moved
+
+A sweep of every endpoint this client calls against the current API found four with no route
+behind them any more, plus a set of tools whose behaviour had drifted. Each item below was
+confirmed in the API source, and the fixes were exercised against a live account.
+
+- **`list_rewards` is gone; use `calculate_rewards`.** The route it called was removed along
+  with the stored counter it served. `calculate_rewards` answers the same fields, derived from
+  paid sales, and carries the milestone list — there is no reward catalogue endpoint.
+  `currentRevenue` and `milestones` are in reais, not cents.
+- **`add_credit` works on both billing generations.** The legacy route refuses a migrated
+  seller with 409; the call now follows that refusal to the current top-up route. The answer is
+  normalized to `{ creditId, amountCents, pixCode, pixQrBase64, expiresAt, via }`. The amount is
+  validated up front: whole cents, 325 to 25000 (R$ 3,25 to R$ 250,00). Takes an optional
+  `idempotencyKey` so a retry reuses the same top-up.
+- **`list_credits` returns the statement for either generation.** It reads the legacy credits
+  and the credit ledger, and answers `{ credits, total, ledger: { entries, nextBefore } }`. One
+  side is empty depending on the account, which is the true answer and not an error — before
+  this, a migrated seller got an empty list with no indication the data lived elsewhere.
+- **`upload_deliverable` / `delete_deliverable` now call routes that exist.** The paths they
+  used (`/api/products/{id}/deliverable/…`) are not part of the API. Attaching a file is now
+  two steps: `upload_deliverable` mints an upload URL, you PUT the bytes to it (only
+  `Content-Type`, no `Authorization`), then **`attach_deliverable`** confirms the upload and
+  links it to the product. `delete_deliverable` unlinks the file and, given `filePath`, deletes
+  the bytes too.
+- **`telegram_media_upload` calls `/presign`.** The old path was renamed. It returns
+  `{ uploadUrl, filePath, proxyUrl }`; `proxyUrl` is the URL to store in the flow node, because
+  the route does not return a public URL. The previously advertised `publicUrl` was always
+  undefined.
+- **`reorder_upsells` takes `upsellIds`.** It used to send whole objects to a route that
+  replaces the legacy upsell array instead of reordering, and that route does not exist for a
+  product on the new storage, where the call failed as an opaque 502. Both reorder tools now
+  return the resulting positions.
+- **`update_product` no longer loses the deliverable.** It used to re-send the whole stored
+  product; on the new storage the read does not carry the deliverable or the stock lines, so the
+  re-send dropped them and the save was refused. It now sends the edit plus the one field needed
+  to satisfy the API's deliverable check (the check reads the request body, not the stored
+  product). When the only deliverable is a file or stock lines — neither readable through the
+  API — the edit is refused here with an explanation instead of a bare 400.
+- **`create_webhook` / `update_webhook` validate `events`.** The API stores event names without
+  checking them and dispatch matches exactly, so a wrong name is accepted and never fires. The
+  names this tool used to suggest (`payment.created`, `payment.paid`, `payment.refunded`) are
+  not seller webhook events at all. The real vocabulary is now enforced here, and `test_webhook`
+  simulates only the payment-shaped events.
+- **`insert_token` accepts only the four types the API takes** (`pushinpay`, `utmify`,
+  `emailprovider`, `mercadopago`). `stripe` and `efibank` were advertised and always refused.
+- **`list_payments` answers an empty list for a seller with no sales.** The route reports that
+  state as 404, which surfaced as an error.
+- **`get_payments_paginated`**: `pageSize` is capped at 100 (1000 was accepted and silently
+  reduced), the cursor in the answer is `nextCursor`, and a text search may come back with
+  `coverageCapped`.
+- **423 is not a thing, 503 is not "the backend is down".** 503 means the rate limiter is
+  failing closed and 502 means the service behind the API did not answer; both are now reported
+  as retryable, with the wait read from `Retry-After` or the body's `retry_after`. A refusal
+  that carries a `code` now shows it instead of just a status number.
+
+### Tools that an API key cannot use
+
+These answer 401/403 for an API key by how the routes authenticate, not because of anything in
+this client. They now say so and what to do instead, rather than surfacing a bare "Unauthorized":
+`create_whatsapp_session` (blocked for API keys deliberately), `resend_delivery` and
+`list_members_areas` (session-cookie only, while their sibling routes accept the key).
+
+### Packaging
+
+- Compiled tests no longer ship in the published package (560 files down to 428).
+- `dotenv` is loaded quietly: version 17 announces itself on stdout, which is the MCP protocol
+  channel over stdio, and a strict client reads that line as a malformed frame.
 
 ### Breaking
 
@@ -23,15 +92,21 @@ also against production.
 
 ### Added
 
-- `list_stores`, the only way to get the `storeId` every store tool takes.
+- `list_stores`, the only way to get the `storeId` every store tool takes. It also returns
+  DELETED stores — the listing it comes from never filtered them and the API does not mark
+  them — and such a storeId answers 404 in every other store tool, so the description now
+  warns to confirm an unfamiliar one with `get_store`.
 - Store management: `create_store`, `get_store`, `update_store`, `delete_store`, store
   categories (`list_store_categories`, `create_store_category`, `update_store_category`,
   `delete_store_category`) and review moderation (`list_store_reviews`,
   `create_store_review`, `update_store_review`, `delete_store_review`). **These need the
-  `/api/stores/{storeId}` routes from saas-checkout** (branch
-  `feat/store-admin-api-routes`); against a deployment without them they answer 404/405.
+  `/api/stores/{storeId}` routes**, available from the GG Checkout release that ships them;
+  against an older deployment they answer 404/405.
 - Store builder: `get_store_layout`, `update_store_layout`, `publish_store_layout`,
-  `list_store_layout_history`, `restore_store_layout_version`, `get_store_theme`.
+  `list_store_layout_history`, `restore_store_layout_version`, `get_store_theme`. A store with
+  no layout yet — which is every newly created one — has nothing to copy the block shapes
+  from, and the route validates them strictly, so the first-save error now spells out an
+  accepted `theme` and block shape.
 - `list_funnel_checkouts`: the checkouts and gateways a funnel `pix` component can use.
 - `update_product` takes `stockEnabled`, `unlimitedStock` and `stockQuantity`;
   `create_upsell` / `create_downsell` take an optional `order`.
