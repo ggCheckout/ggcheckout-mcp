@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 176 tools across 19 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 182 tools across 19 domains.
 
 ## Overview
 
@@ -81,7 +81,7 @@ export GGCHECKOUT_API_URL="https://your-staging.example.com"
 
 ## Available Tools (176)
 
-### Products (16 tools)
+### Products (18 tools)
 
 #### `list_products`
 
@@ -166,6 +166,23 @@ Manage upsells for a product.
 Manage downsells for a product.
 
 **Example prompt:** "Add a downsell to product abc123 with a 50% discount headline"
+
+#### `set_offer_external_flow` (external upsell)
+
+Shows an upsell or downsell on the seller's own page instead of the GG offer page. Two writes:
+
+1. `update_checkout` on the checkout that sells the product, with `url` = the seller's page and
+   `checkout: { externalUpsellPage: true }` (the `checkout` object is merged, so the rest of the page
+   setup is kept).
+2. `set_offer_external_flow` on the offer: where the accept button and the decline link lead (a URL
+   of the seller or `thank_you`), their texts and the button color. The answer carries, for each
+   offered product, the HTML to paste on the seller's page — the same as "Copiar HTML" in the
+   dashboard.
+
+Pages must be https; plain http only works for localhost against a development server.
+
+**Example prompt:** "Make upsell u1 of product abc123 external: accept goes to https://seller.com/next,
+decline to the thank-you page, green button saying 'Quero!'"
 
 #### `manage_tags`
 
@@ -393,7 +410,7 @@ funnel first and send the full array back. Pixels and webhooks are linked by id
 
 ---
 
-### Members Area (21 tools)
+### Members Area (26 tools)
 
 **Example prompts:**
 - "List all my members areas"
@@ -405,6 +422,20 @@ funnel first and send the full array back. Pixels and webhooks are linked by id
 - "Add student john@example.com to members area xyz"
 - "Import these 50 students to members area xyz"
 - "Block student abc123"
+
+**Files the seller sends.** `upload_members_area_file` uploads a file that is already on the machine
+running this server (an absolute path) and returns the URL to pass on:
+
+| `kind` | Accepts | Use the `url` in |
+|---|---|---|
+| `image` | jpg, png, webp, gif, avif | `update_members_area` branding (logo, banner), module `imageUrl`, section and lesson `thumbnailUrl` |
+| `video` | mp4, webm, mov, avi, mpeg — up to 500 MB | `create_lesson` type `video`: `videoUrl` and `content: { videoUrl, videoSourceType: "upload" }` |
+| `file` | pdf, doc(x), xls(x), zip, rar, 7z, mp3, ogg, wav, images, videos — up to 100 MB; needs `areaId` | `create_pdf_lessons`, `create_lesson` `content.fileUrl`, or `add_lesson_attachment` |
+
+Nothing is downloaded from another platform: videos and PDFs come from the seller. Modules and
+sections take `dripSettings` (release N days after purchase, enrollment or first access); lessons
+take a cover and a position. Editing or deleting a module, section or lesson is not available to an
+API key yet.
 
 ---
 

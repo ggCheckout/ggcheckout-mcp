@@ -117,6 +117,15 @@ sensitive. It now says so and what to do instead, rather than surfacing a bare "
 
 ### Added
 
+- **External upsell:** `set_offer_external_flow` routes an upsell or downsell shown on the seller's
+  own page and returns the snippet to paste there. `update_checkout` now merges the `checkout`
+  object, so setting `externalUpsellPage` keeps the rest of the page setup.
+- **Members-area files:** `upload_members_area_file` uploads an image, a lesson video or a file
+  (PDF, document, audio) from the machine running the server and returns the URL to use.
+  `create_pdf_lessons` creates a batch of PDF lessons; `list_lesson_attachments`,
+  `add_lesson_attachment` and `delete_lesson_attachment` manage a lesson's complementary files.
+- `create_module` and `create_section` take `dripSettings`; `create_section` and `create_lesson`
+  take `showTitleOverlay`, `showImageOnly` and `order`, and `create_lesson` a `thumbnailUrl`.
 - `list_stores`, the only way to get the `storeId` every store tool takes. It also returns
   DELETED stores — the listing it comes from never filtered them and the API does not mark
   them — and such a storeId answers 404 in every other store tool, so the description now

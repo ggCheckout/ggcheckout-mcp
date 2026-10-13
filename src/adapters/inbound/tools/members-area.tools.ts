@@ -2,6 +2,14 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MembersAreaService } from '../../../core/services/members-area.service.js';
 import { createToolHandler } from '../tool-handler.js';
+import { acceptedExtensions } from '../../../shared/local-file.js';
+
+/** When a module or section unlocks for a student, counted from the reference date. */
+const dripSettingsSchema = z.object({
+  enabled: z.boolean(),
+  daysAfterPurchase: z.number().int().min(0).max(365).describe('Days after the reference date'),
+  referenceDate: z.enum(['purchase', 'enrollment', 'first_access']),
+});
 
 export function registerMembersAreaTools(server: McpServer, service: MembersAreaService) {
   // --- Areas ---
@@ -117,7 +125,9 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
       areaId: z.string().describe('Members area ID'),
       title: z.string().describe('Module title'),
       description: z.string().optional().describe('Module description'),
-      imageUrl: z.string().optional().describe('Module image URL'),
+      imageUrl: z.string().optional().describe('Module image URL (upload_members_area_file with kind "image")'),
+      dripSettings: dripSettingsSchema.optional()
+        .describe('Release the module only N days after purchase, enrollment or first access'),
     },
   }, createToolHandler('create_module', async ({ areaId, ...input }) => {
     const result = await service.createModule(areaId, input);
@@ -154,7 +164,12 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
       moduleId: z.string().describe('Module ID'),
       title: z.string().describe('Section title'),
       description: z.string().optional().describe('Section description'),
-      thumbnailUrl: z.string().optional().describe('Section thumbnail URL'),
+      thumbnailUrl: z.string().optional().describe('Section thumbnail URL (upload_members_area_file with kind "image")'),
+      showTitleOverlay: z.boolean().optional().describe('Show the title over the thumbnail'),
+      showImageOnly: z.boolean().optional().describe('Show only the thumbnail, without the title'),
+      order: z.number().int().min(0).optional().describe('Position in the module (default: at the end)'),
+      dripSettings: dripSettingsSchema.optional()
+        .describe('Release the section only N days after purchase, enrollment or first access'),
     },
   }, createToolHandler('create_section', async ({ areaId, moduleId, ...input }) => {
     const result = await service.createSection(areaId, moduleId, input);
@@ -196,7 +211,13 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
       description: z.string().optional().describe('Lesson description'),
       type: z.enum(['video', 'text', 'pdf', 'quiz', 'file']).describe('Lesson type'),
       duration: z.number().optional().describe('Duration in seconds'),
-      videoUrl: z.string().optional().describe('Video URL (for video lessons)'),
+      order: z.number().int().min(0).optional().describe('Position in the section (default: at the end)'),
+      thumbnailUrl: z.string().optional().describe('Lesson cover image URL (upload_members_area_file with kind "image")'),
+      showTitleOverlay: z.boolean().optional().describe('Show the title over the cover'),
+      showImageOnly: z.boolean().optional().describe('Show only the cover, without the title'),
+      videoUrl: z.string().optional()
+        .describe('Video URL. For a video uploaded with upload_members_area_file, pass its `url` here and in '
+          + '`content.videoUrl`, with `content.videoSourceType: "upload"`'),
       content: z.object({
         videoUrl: z.string().optional().describe('Video URL (for video lessons)'),
         videoProvider: z.enum(['youtube', 'vimeo', 'bunny', 'cloudflare', 's3']).optional(),
@@ -208,7 +229,8 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
         textHtml: z.string().max(500000).optional().describe('HTML content (for text lessons)'),
         textMarkdown: z.string().max(500000).optional().describe('Markdown content (for text lessons)'),
         estimatedReadTime: z.number().optional(),
-        fileUrl: z.string().optional().describe('File URL (for file/pdf lessons)'),
+        fileUrl: z.string().optional()
+          .describe('File URL (for file/pdf lessons): the `url` of upload_members_area_file with kind "file"'),
         fileName: z.string().max(500).optional(),
         fileSize: z.number().optional(),
         fileType: z.string().max(100).optional(),
@@ -242,6 +264,104 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
   }, createToolHandler('reorder_lessons', async ({ areaId, moduleId, sectionId, lessonIds }) => {
     const result = await service.reorderLessons(areaId, moduleId, sectionId, lessonIds);
     return { success: true, updated: result.updated };
+  }));
+
+  server.registerTool('create_pdf_lessons', {
+    description:
+      'Create several PDF lessons in a section at once, appended in order: the same route as the dashboard\'s '
+      + 'PDF import. Upload each PDF first with upload_members_area_file (kind "file") and pass its `url`.',
+    inputSchema: {
+      areaId: z.string().describe('Members area ID'),
+      moduleId: z.string().describe('Module ID'),
+      sectionId: z.string().describe('Section ID'),
+      lessons: z.array(z.object({
+        title: z.string().trim().min(1).max(200).describe('Lesson title'),
+        description: z.string().max(2000).optional(),
+        fileUrl: z.string().url().max(2048)
+          .refine((value) => value.toLowerCase().startsWith('https://'), 'must be an https URL')
+          .describe('The `url` returned by upload_members_area_file'),
+        fileName: z.string().trim().min(1).max(300),
+        fileSize: z.number().int().min(0).optional().describe('Bytes'),
+      })).min(1).max(100),
+    },
+  }, createToolHandler('create_pdf_lessons', async ({ areaId, moduleId, sectionId, lessons }) => {
+    const result = await service.createPdfLessons(areaId, moduleId, sectionId, lessons);
+    return { success: true, ...result };
+  }));
+
+  // --- Lesson attachments (complementary material) ---
+  server.registerTool('list_lesson_attachments', {
+    description: 'List the complementary files of a lesson',
+    inputSchema: {
+      areaId: z.string().describe('Members area ID'),
+      moduleId: z.string().describe('Module ID'),
+      sectionId: z.string().describe('Section ID'),
+      lessonId: z.string().describe('Lesson ID'),
+    },
+  }, createToolHandler('list_lesson_attachments', async ({ areaId, moduleId, sectionId, lessonId }) => {
+    const attachments = await service.listLessonAttachments(areaId, moduleId, sectionId, lessonId);
+    return { attachments };
+  }));
+
+  server.registerTool('add_lesson_attachment', {
+    description:
+      'Attach a complementary file to a lesson (shown to students under the lesson). Upload it first with '
+      + 'upload_members_area_file (kind "file") and pass its `url`, `filePath`, `fileType` as `mime` and '
+      + '`fileSize` as `sizeBytes`; with `filePath` the student\'s download link is signed afresh on each click.',
+    inputSchema: {
+      areaId: z.string().describe('Members area ID'),
+      moduleId: z.string().describe('Module ID'),
+      sectionId: z.string().describe('Section ID'),
+      lessonId: z.string().describe('Lesson ID'),
+      name: z.string().min(1).max(200).describe('Name shown to students'),
+      url: z.string().url().max(2048)
+        .refine((value) => value.toLowerCase().startsWith('https://'), 'must be an https URL'),
+      mime: z.string().min(1).max(200).describe('MIME type, e.g. application/pdf'),
+      sizeBytes: z.number().int().min(0).max(100 * 1024 * 1024),
+      filePath: z.string().min(1).max(1024).optional()
+        .describe('The storage key from upload_members_area_file; omit for an external link'),
+    },
+  }, createToolHandler('add_lesson_attachment', async ({ areaId, moduleId, sectionId, lessonId, ...input }) => {
+    const attachment = await service.addLessonAttachment(areaId, moduleId, sectionId, lessonId, input);
+    return { success: true, attachment };
+  }));
+
+  server.registerTool('delete_lesson_attachment', {
+    description: 'Remove a complementary file from a lesson; an uploaded file is deleted from storage too',
+    inputSchema: {
+      areaId: z.string().describe('Members area ID'),
+      moduleId: z.string().describe('Module ID'),
+      sectionId: z.string().describe('Section ID'),
+      lessonId: z.string().describe('Lesson ID'),
+      attachmentId: z.string().describe('Attachment ID, from list_lesson_attachments'),
+    },
+  }, createToolHandler('delete_lesson_attachment', async ({ areaId, moduleId, sectionId, lessonId, attachmentId }) => {
+    await service.deleteLessonAttachment(areaId, moduleId, sectionId, lessonId, attachmentId);
+    return { success: true, message: `Attachment ${attachmentId} removed` };
+  }));
+
+  // --- Uploads ---
+  server.registerTool('upload_members_area_file', {
+    description:
+      'Upload a file from the machine running this MCP server for a members area. The file must already be '
+      + 'on disk (the seller sends it; nothing is downloaded from another platform). Returns `url` (and '
+      + '`filePath` for video and file) to pass on:\n'
+      + '- kind "image" (' + acceptedExtensions('image').join(' ') + '): update_members_area branding '
+      + '(logoUrl, heroBannerUrl, favicon…), create_module imageUrl, create_section / create_lesson thumbnailUrl. '
+      + 'Use preset "banner" for tall banners so they are not cropped.\n'
+      + '- kind "video" (' + acceptedExtensions('video').join(' ') + ', up to 500 MB): create_lesson type '
+      + '"video" with videoUrl = url and content { videoUrl: url, videoSourceType: "upload" }.\n'
+      + '- kind "file" (' + acceptedExtensions('file').join(' ') + ', up to 100 MB, needs areaId): '
+      + 'create_pdf_lessons / create_lesson content.fileUrl, or add_lesson_attachment.',
+    inputSchema: {
+      localPath: z.string().min(1).describe('Absolute path of the file on the machine running this server'),
+      kind: z.enum(['image', 'video', 'file']).describe('What the file is for'),
+      areaId: z.string().optional().describe('Members area ID; required for kind "file"'),
+      preset: z.enum(['banner']).optional().describe('Image processing preset for tall banners (kind "image")'),
+    },
+  }, createToolHandler('upload_members_area_file', async (args) => {
+    const upload = await service.uploadFile(args);
+    return { success: true, upload };
   }));
 
   // --- Classes ---

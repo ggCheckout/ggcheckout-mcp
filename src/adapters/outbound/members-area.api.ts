@@ -4,9 +4,16 @@ import type {
   CreateMembersAreaInput, CreateModuleInput, CreateSectionInput,
   CreateLessonInput, CreateClassInput, AddStudentInput,
   UpdateStudentInput, ImportStudentsInput, ImportStudentsResult,
+  LessonAttachment, AddLessonAttachmentInput, PdfLessonInput,
 } from '../../core/types/members-area.js';
+import { readFile } from 'node:fs/promises';
 import { sanitizeStudent } from '../../shared/sanitizer.js';
+import type { LocalFile } from '../../shared/local-file.js';
 import type { HttpClient } from './http-client.js';
+import { putToSignedUrl } from './signed-upload.js';
+
+/** What a presign route answers: where to PUT the bytes, and the key that names them afterwards. */
+type PresignResponse = { success: boolean; data: { uploadUrl: string; filePath: string } };
 
 export class MembersAreaApiAdapter implements MembersAreaPort {
   constructor(private readonly http: HttpClient) {}
@@ -98,6 +105,77 @@ export class MembersAreaApiAdapter implements MembersAreaPort {
     return data.data;
   }
 
+  /** The route the dashboard's PDF import uses: one `pdf` lesson per entry, appended in order. */
+  async createPdfLessons(areaId: string, moduleId: string, sectionId: string, lessons: PdfLessonInput[]) {
+    const data = await this.http.post<{ success: boolean; data: { count: number; lessons: Array<{ id: string; title: string; order: number }> } }>(
+      `${lessonPath(areaId, moduleId, sectionId)}/bulk`, { lessons },
+    );
+    return data.data;
+  }
+
+  // Lesson attachments
+  async listLessonAttachments(areaId: string, moduleId: string, sectionId: string, lessonId: string) {
+    const data = await this.http.get<{ success: boolean; data: LessonAttachment[] }>(
+      `${lessonPath(areaId, moduleId, sectionId)}/${encodeURIComponent(lessonId)}/attachments`,
+    );
+    return data.data ?? [];
+  }
+
+  async addLessonAttachment(areaId: string, moduleId: string, sectionId: string, lessonId: string, input: AddLessonAttachmentInput) {
+    const data = await this.http.post<{ success: boolean; data: LessonAttachment }>(
+      `${lessonPath(areaId, moduleId, sectionId)}/${encodeURIComponent(lessonId)}/attachments`, input,
+    );
+    return data.data;
+  }
+
+  async deleteLessonAttachment(areaId: string, moduleId: string, sectionId: string, lessonId: string, attachmentId: string) {
+    await this.http.delete(
+      `${lessonPath(areaId, moduleId, sectionId)}/${encodeURIComponent(lessonId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    );
+  }
+
+  // Uploads
+
+  /**
+   * Images go through the API (it resizes them before storing), as a multipart form. The answer is
+   * the app-relative `/api/r2-proxy/...` URL the dashboard stores for logos, banners and covers.
+   */
+  async uploadImage(file: LocalFile, preset?: 'banner') {
+    const form = new FormData();
+    form.append('file', new Blob([await readFile(file.path)], { type: file.fileType }), file.fileName);
+    if (preset) form.append('preset', preset);
+    const data = await this.http.postForm<{ success: boolean; url: string; path: string }>('/api/uploads-r2', form);
+    return { url: data.url };
+  }
+
+  /** The lesson video upload of the dashboard: presign, PUT the bytes to storage, confirm. */
+  async uploadVideo(file: LocalFile) {
+    const meta = { fileName: file.fileName, fileType: file.fileType, fileSize: file.fileSize };
+    const presign = await this.http.post<PresignResponse>('/api/video/presigned-upload', meta);
+    await putToSignedUrl(presign.data.uploadUrl, file);
+    const done = await this.http.post<{ success: boolean; data: { url: string; filePath: string } }>(
+      '/api/video/complete-upload', { ...meta, filePath: presign.data.filePath },
+    );
+    return { url: done.data.url, filePath: done.data.filePath };
+  }
+
+  /**
+   * A members-area file (PDF, document, audio…): presign under the area, PUT, confirm. The confirm
+   * checks the stored bytes against the declared type and only then hands out a serve URL — the
+   * signed one when there is one, as the dashboard does.
+   */
+  async uploadAreaFile(areaId: string, file: LocalFile) {
+    const meta = { fileName: file.fileName, fileType: file.fileType, fileSize: file.fileSize };
+    const presign = await this.http.post<PresignResponse>(
+      `/api/members-area/${encodeURIComponent(areaId)}/attachments/presigned-upload`, meta,
+    );
+    await putToSignedUrl(presign.data.uploadUrl, file);
+    const done = await this.http.post<{ success: boolean; data: { url?: string; publicUrl?: string; filePath: string } }>(
+      `/api/members-area/${encodeURIComponent(areaId)}/attachments/complete-upload`, { filePath: presign.data.filePath },
+    );
+    return { url: done.data.url || done.data.publicUrl || '', filePath: done.data.filePath };
+  }
+
   // Classes
   async listClasses(areaId: string): Promise<Class[]> {
     const data = await this.http.get<{ success: boolean; data: Class[] }>(`/api/members-area/${areaId}/classes`);
@@ -137,4 +215,9 @@ export class MembersAreaApiAdapter implements MembersAreaPort {
     );
     return { summary: data.summary, results: data.results };
   }
+}
+
+function lessonPath(areaId: string, moduleId: string, sectionId: string): string {
+  return `/api/members-area/${encodeURIComponent(areaId)}/modules/${encodeURIComponent(moduleId)}`
+    + `/sections/${encodeURIComponent(sectionId)}/lessons`;
 }

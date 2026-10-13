@@ -3,7 +3,9 @@ import type {
   CreateMembersAreaInput, CreateModuleInput, CreateSectionInput,
   CreateLessonInput, CreateClassInput, AddStudentInput,
   UpdateStudentInput, ImportStudentsInput, ImportStudentsResult,
+  LessonAttachment, AddLessonAttachmentInput, PdfLessonInput,
 } from '../types/members-area.js';
+import type { LocalFile } from '../../shared/local-file.js';
 
 export interface MembersAreaPort {
   listByOwner(ownerId: string): Promise<Array<{ id: string; productId: string; name: string }>>;
@@ -23,6 +25,15 @@ export interface MembersAreaPort {
   listLessons(areaId: string, moduleId: string, sectionId: string): Promise<Lesson[]>;
   createLesson(areaId: string, moduleId: string, sectionId: string, input: CreateLessonInput): Promise<{ id: string; title: string; sectionId: string; order: number }>;
   reorderLessons(areaId: string, moduleId: string, sectionId: string, lessonIds: string[]): Promise<{ updated: number }>;
+  createPdfLessons(areaId: string, moduleId: string, sectionId: string, lessons: PdfLessonInput[]): Promise<{ count: number; lessons: Array<{ id: string; title: string; order: number }> }>;
+
+  listLessonAttachments(areaId: string, moduleId: string, sectionId: string, lessonId: string): Promise<LessonAttachment[]>;
+  addLessonAttachment(areaId: string, moduleId: string, sectionId: string, lessonId: string, input: AddLessonAttachmentInput): Promise<LessonAttachment>;
+  deleteLessonAttachment(areaId: string, moduleId: string, sectionId: string, lessonId: string, attachmentId: string): Promise<void>;
+
+  uploadImage(file: LocalFile, preset?: 'banner'): Promise<{ url: string }>;
+  uploadVideo(file: LocalFile): Promise<{ url: string; filePath: string }>;
+  uploadAreaFile(areaId: string, file: LocalFile): Promise<{ url: string; filePath: string }>;
 
   listClasses(areaId: string): Promise<Class[]>;
   createClass(areaId: string, input: CreateClassInput): Promise<Class>;

@@ -112,6 +112,17 @@ export class HttpClient {
     return response.data;
   }
 
+  /**
+   * Multipart POST. `postForm` sets the multipart content type: with the instance's JSON default,
+   * axios would serialize the form into JSON and the file would never arrive. The bytes pass through
+   * the API, which processes images before storing them, so the wait is longer than a JSON call's.
+   */
+  async postForm<T>(url: string, form: FormData): Promise<T> {
+    logger.info('HTTP', `POST ${url} (multipart)`);
+    const response = await this.client.postForm<T>(url, form, { timeout: 120_000 });
+    return response.data;
+  }
+
   async patch<T>(url: string, data?: any): Promise<T> {
     logger.info('HTTP', `PATCH ${url}`);
     const response = await this.client.patch<T>(url, data);
