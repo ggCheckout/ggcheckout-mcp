@@ -11,6 +11,7 @@ import type {
 import type { Product } from '../types/product.js';
 import { AppError, NotFoundError, ValidationError } from '../../shared/errors.js';
 import { parsePriceToCents } from '../../shared/validation.js';
+import { mergeDeep } from '../../shared/merge.js';
 
 const PRODUCT_HINT =
   'It does not exist or belongs to another seller. Call create_product first and use the '
@@ -114,6 +115,9 @@ export class CheckoutService {
       currency: current.currency,
       internationalizeCheckout: current.internationalizeCheckout,
       ...input,
+      // Merged, not replaced: `checkout` holds the whole page setup (timer, coupon, shipping…), and a
+      // caller that sets one flag (`externalUpsellPage`) would otherwise wipe the rest of it.
+      ...(input.checkout !== undefined ? { checkout: mergeDeep(current.checkout, input.checkout) } : {}),
       ...(input.price !== undefined ? { price: parsePriceToCents(input.price) } : {}),
       ...(orderBumps ? { orderBumps } : {}),
     };

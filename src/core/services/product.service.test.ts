@@ -24,9 +24,10 @@ describe('ProductService', () => {
       createDownsell: vi.fn(),
       deleteDownsell: vi.fn(),
       reorderDownsells: vi.fn(),
+      setOfferExternalFlow: vi.fn(),
       manageTags: vi.fn(),
     };
-    service = new ProductService(mockPort);
+    service = new ProductService(mockPort, 'https://app.test');
   });
 
   it('create validates input and converts price to cents before calling port', async () => {
@@ -282,6 +283,51 @@ describe('ProductService', () => {
 
     expect(mockPort.update).toHaveBeenCalled();
     expect(result).toEqual({ fileDeleted: false, fileDeleteError: 'API Error (403): forbidden' });
+  });
+
+  const flow = {
+    onAccept: { kind: 'url', url: 'https://seller.example/next' },
+    onDecline: { kind: 'thank_you' },
+    acceptLabel: 'Quero <agora>',
+    declineLabel: 'Não, obrigado',
+    buttonColor: '#22C55E',
+  } as const;
+
+  it('setOfferExternalFlow returns a snippet for every product the offer sells', async () => {
+    vi.mocked(mockPort.setOfferExternalFlow).mockResolvedValue(flow);
+    vi.mocked(mockPort.listUpsells).mockResolvedValue([
+      { uid: 'other', upsellProductId: 'x' },
+      { uid: 'u-1', upsellProductId: 'p-2', upsellProductIds: ['p-2', 'p-3'] },
+    ] as any);
+
+    const result = await service.setOfferExternalFlow('p-1', 'upsell', 'u-1', flow);
+
+    expect(mockPort.setOfferExternalFlow).toHaveBeenCalledWith('p-1', 'upsell', 'u-1', flow);
+    expect(result.externalFlow).toEqual(flow);
+    expect(result.snippets.map((s) => s.offerRef)).toEqual(['upsell:p-1:u-1:p-2', 'upsell:p-1:u-1:p-3']);
+    expect(result.snippets[0].html).toContain('data-gg-offer="upsell:p-1:u-1:p-2"');
+    expect(result.snippets[0].html).toContain('Quero &lt;agora&gt;');
+    expect(result.snippets[0].html).toContain('<script src="https://app.test/embed/upsell.js?v=1" async></script>');
+  });
+
+  it('setOfferExternalFlow reads a downsell from the downsell list', async () => {
+    vi.mocked(mockPort.setOfferExternalFlow).mockResolvedValue(flow);
+    vi.mocked(mockPort.listDownsells).mockResolvedValue({
+      downsells: [{ uid: 'd-1', downsellProductId: 'p-4' }], count: 1,
+    } as any);
+
+    const result = await service.setOfferExternalFlow('p-1', 'downsell', 'd-1', flow);
+
+    expect(result.snippets.map((s) => s.offerRef)).toEqual(['downsell:p-1:d-1:p-4']);
+    expect(mockPort.listUpsells).not.toHaveBeenCalled();
+  });
+
+  it('setOfferExternalFlow with null turns the mode off and returns no snippet', async () => {
+    vi.mocked(mockPort.setOfferExternalFlow).mockResolvedValue(null);
+
+    expect(await service.setOfferExternalFlow('p-1', 'upsell', 'u-1', null))
+      .toEqual({ externalFlow: null, snippets: [] });
+    expect(mockPort.listUpsells).not.toHaveBeenCalled();
   });
 
   it('list hides soft-deleted products', async () => {

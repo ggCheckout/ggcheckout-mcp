@@ -334,6 +334,51 @@ export function registerProductTools(server: McpServer, service: ProductService)
     }),
   );
 
+  // --- External upsell ---
+
+  // Scheme checked in code: `z.string().url()` alone accepts `javascript:`.
+  const pageUrl = z.string().url().max(2048)
+    .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), 'must be an http(s) URL');
+  const externalStep = z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('url'), url: pageUrl }),
+    z.object({ kind: z.literal('thank_you') }),
+  ]);
+
+  server.registerTool(
+    'set_offer_external_flow',
+    {
+      description:
+        "Make an upsell or downsell an EXTERNAL offer, shown on the seller's own page instead of the GG "
+        + 'offer page. Writes where the accept button and the decline link send the buyer next (a URL of '
+        + 'the seller, or `thank_you` = the GG thank-you page with the deliverables), the two texts and '
+        + "the button color, and returns for each offered product the HTML to paste on the seller's page "
+        + '(the same as "Copiar HTML" in the dashboard). `externalFlow: null` turns it off. The buyer only '
+        + "reaches the seller's page when the checkout is in external mode too: update_checkout with "
+        + '`url` = that page and `checkout: { externalUpsellPage: true }`. URLs must be https; plain http '
+        + 'is accepted only for localhost on a development server.',
+      inputSchema: {
+        productId: z.string()
+          .describe('Product ID (uid) the offer is configured under — for an upsell, the product sold by the checkout'),
+        kind: z.enum(['upsell', 'downsell']).describe('Offer kind'),
+        offerId: z.string().describe('The offer uid, from list_upsells / list_downsells'),
+        externalFlow: z
+          .object({
+            onAccept: externalStep.describe('Where the buyer goes after accepting'),
+            onDecline: externalStep.describe('Where the buyer goes after declining (e.g. the downsell page)'),
+            acceptLabel: z.string().trim().min(1).max(160).describe('Text of the accept button'),
+            declineLabel: z.string().trim().min(1).max(160).describe('Text of the decline link'),
+            buttonColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe('Accept button color, #RRGGBB'),
+          })
+          .nullable()
+          .describe('The routing, or null to turn the external mode of this offer off'),
+      },
+    },
+    createToolHandler('set_offer_external_flow', async ({ productId, kind, offerId, externalFlow }) => {
+      const result = await service.setOfferExternalFlow(productId, kind, offerId, externalFlow);
+      return { success: true, ...result };
+    }),
+  );
+
   // --- Tags ---
 
   server.registerTool(

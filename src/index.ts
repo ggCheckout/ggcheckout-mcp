@@ -130,7 +130,7 @@ const pushAdapter = new PushApiAdapter(httpClient);
 const telegramAdapter = new TelegramApiAdapter(httpClient);
 
 // Services (use cases)
-const productService = new ProductService(productAdapter);
+const productService = new ProductService(productAdapter, API_URL);
 const paymentService = new PaymentService(paymentAdapter, authAdapter);
 const checkoutService = new CheckoutService(checkoutAdapter, authAdapter, productAdapter);
 const webhookService = new WebhookService(webhookAdapter, authAdapter);

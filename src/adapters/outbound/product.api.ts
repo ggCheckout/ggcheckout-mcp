@@ -9,6 +9,8 @@ import type {
   CreateUpsellPayload,
   DownsellSequenceItem,
   CreateDownsellPayload,
+  ExternalFlow,
+  OfferKind,
 } from '../../core/types/product.js';
 import type { HttpClient } from './http-client.js';
 import type { AuthPort } from '../../core/ports/auth.port.js';
@@ -123,6 +125,24 @@ export class ProductApiAdapter implements ProductPort {
 
   async reorderDownsells(productId: string, downsellIds: string[]): Promise<ReorderResult[]> {
     return this.reorder(productId, 'downsell', downsellIds);
+  }
+
+  /**
+   * `PUT .../{kind}s/{offerId}/external-flow` writes only the routing, without resending the offer.
+   * It lands on the offer's top level, which is the fallback for every product of the offer that has
+   * no routing of its own. The answer carries only the routing, as the API stored it.
+   */
+  async setOfferExternalFlow(
+    productId: string,
+    kind: OfferKind,
+    offerId: string,
+    externalFlow: ExternalFlow | null,
+  ): Promise<ExternalFlow | null> {
+    const data = await this.http.put<{ success: boolean; externalFlow: ExternalFlow | null }>(
+      `/api/product-delivery/${encodeURIComponent(productId)}/${kind}s/${encodeURIComponent(offerId)}/external-flow`,
+      { externalFlow },
+    );
+    return data.externalFlow ?? null;
   }
 
   /**

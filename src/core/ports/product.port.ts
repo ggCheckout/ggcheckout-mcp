@@ -8,6 +8,8 @@ import type {
   CreateUpsellPayload,
   DownsellSequenceItem,
   CreateDownsellPayload,
+  ExternalFlow,
+  OfferKind,
 } from '../types/product.js';
 
 export interface ProductPort {
@@ -32,5 +34,11 @@ export interface ProductPort {
   createDownsell(productId: string, downsellId: string, input: CreateDownsellPayload): Promise<DownsellSequenceItem>;
   deleteDownsell(productId: string, downsellId: string): Promise<void>;
   reorderDownsells(productId: string, downsellIds: string[]): Promise<ReorderResult[]>;
+  setOfferExternalFlow(
+    productId: string,
+    kind: OfferKind,
+    offerId: string,
+    externalFlow: ExternalFlow | null,
+  ): Promise<ExternalFlow | null>;
   manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }>;
 }

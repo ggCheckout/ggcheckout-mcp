@@ -9,12 +9,17 @@ import type {
   CreateUpsellInput,
   DownsellSequenceItem,
   CreateDownsellInput,
+  ExternalFlow,
+  ExternalOfferSnippet,
+  OfferKind,
 } from '../types/product.js';
 import { validateCreateProductInput, validateUpdateProductInput } from '../../shared/validation.js';
 import { ValidationError } from '../../shared/errors.js';
+import { buildExternalOfferSnippet, externalOfferRef } from '../../shared/external-offer-snippet.js';
 
 export class ProductService {
-  constructor(private readonly productPort: ProductPort) {}
+  /** `appUrl` is the app the seller's page loads the upsell script from (the API base URL). */
+  constructor(private readonly productPort: ProductPort, private readonly appUrl: string) {}
 
   async list(): Promise<Product[]> {
     // delete_product is a soft delete: the API keeps listing the row with `deleted: true`.
@@ -213,9 +218,50 @@ export class ProductService {
     return this.productPort.reorderDownsells(productId, downsellIds);
   }
 
+  /**
+   * Routes an offer shown on the seller's own page (external upsell), or turns that off with
+   * `null`. The routing goes to the offer's top level, the fallback for every product it sells, and
+   * the answer carries the snippet to paste for each of those products — the `data-gg-offer`
+   * reference names one product, so an offer that sells two needs two buttons.
+   */
+  async setOfferExternalFlow(
+    productId: string,
+    kind: OfferKind,
+    offerId: string,
+    externalFlow: ExternalFlow | null,
+  ): Promise<{ externalFlow: ExternalFlow | null; snippets: ExternalOfferSnippet[] }> {
+    const stored = await this.productPort.setOfferExternalFlow(productId, kind, offerId, externalFlow);
+    if (!stored) return { externalFlow: null, snippets: [] };
+
+    const offers = kind === 'upsell'
+      ? await this.productPort.listUpsells(productId)
+      : (await this.productPort.listDownsells(productId)).downsells;
+    const offer = offers.find((item) => item.uid === offerId);
+
+    return {
+      externalFlow: stored,
+      snippets: (offer ? offeredProductIds(offer) : []).map((offeredId) => {
+        const offerRef = externalOfferRef(kind, productId, offerId, offeredId);
+        return {
+          productId: offeredId,
+          offerRef,
+          html: buildExternalOfferSnippet({ offerRef, flow: stored, appUrl: this.appUrl }),
+        };
+      }),
+    };
+  }
+
   async manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }> {
     return this.productPort.manageTags(productId, tags);
   }
+}
+
+/** Every product an offer sells, whichever kind it is. */
+function offeredProductIds(offer: Upsell | DownsellSequenceItem): string[] {
+  const ids = 'upsellProductId' in offer
+    ? offer.upsellProductIds ?? [offer.upsellProductId]
+    : offer.downsellProductIds ?? [offer.downsellProductId];
+  return ids.filter(Boolean);
 }
 
 /** These exempt a product from needing a deliverable at all. */

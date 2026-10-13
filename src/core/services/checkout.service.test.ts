@@ -160,6 +160,17 @@ describe('CheckoutService', () => {
       );
     });
 
+    // `checkout` is the whole page setup. Replacing it with the one key a caller sets would wipe the
+    // timer, the coupon and the rest with a 200.
+    it('merges a partial checkout object into the stored one', async () => {
+      await service.update('ck-1', { checkout: { externalUpsellPage: true } });
+
+      expect(mockCheckoutPort.update).toHaveBeenCalledWith(
+        'ck-1',
+        expect.objectContaining({ checkout: { theme: 'dark', externalUpsellPage: true } }),
+      );
+    });
+
     it('converts an updated price from reais to cents', async () => {
       await service.update('ck-1', { price: 12.5 });
 

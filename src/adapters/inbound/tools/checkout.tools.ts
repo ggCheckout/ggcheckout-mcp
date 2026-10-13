@@ -117,8 +117,13 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
         title: z.string().max(200).optional().describe('Checkout page title'),
         price: z.number().min(0).optional().describe('Price in Brazilian Reais — converted to cents before it is sent'),
         paymentMethods: paymentMethodsSchema.optional().describe('Payment methods configuration'),
-        checkout: z.record(z.string(), z.unknown()).optional().describe('Checkout page styling/configuration'),
-        url: z.string().url().optional().describe('Checkout URL'),
+        checkout: z.record(z.string(), z.unknown()).optional()
+          .describe('Checkout page configuration, merged into the stored one (send only the keys to change). '
+            + '`externalUpsellPage: true` makes `url` an external upsell page: after the purchase the buyer '
+            + 'goes there with a token, and the offers set up with set_offer_external_flow run on it'),
+        url: z.string().url().optional()
+          .describe('Where the buyer goes after the purchase. With `checkout.externalUpsellPage` it is the '
+            + "seller's external upsell page, which must be https (http only for localhost on a development server)"),
         bannerUrl: z.string().url().optional().describe('Banner image URL'),
         image: z.string().url().optional().describe('Product image URL'),
         sellerName: z.string().max(200).optional().describe('Seller name'),

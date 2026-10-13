@@ -161,6 +161,9 @@ export interface Upsell {
   order?: number;
   chainBehavior?: UpsellChainBehavior;
   upsellProductId: string;
+  /** Every product the offer sells; `upsellProductId` is the first one. */
+  upsellProductIds?: string[];
+  externalFlow?: ExternalFlow | null;
   title: string;
   description?: string;
   price?: number;
@@ -249,6 +252,9 @@ export interface DownsellSequenceItem {
   status: UpsellStatus;
   chainBehavior: DownsellChainBehavior;
   downsellProductId: string;
+  /** Every product the offer sells; `downsellProductId` is the first one. */
+  downsellProductIds?: string[];
+  externalFlow?: ExternalFlow | null;
   title: string;
   headline?: string;
   description?: string;
@@ -281,6 +287,31 @@ export interface CreateDownsellInput {
   chainBehavior?: DownsellChainBehavior;
   /** Position in the sequence, 1-based. Defaults to the end of the current list. */
   order?: number;
+}
+
+export type OfferKind = 'upsell' | 'downsell';
+
+/** Where a button on the seller's external upsell page sends the buyer next. */
+export type ExternalStep = { kind: 'url'; url: string } | { kind: 'thank_you' };
+
+/**
+ * The routing of an offer shown on the seller's own page instead of the GG offer page: where the
+ * accept button and the decline link lead, their texts and the button color (`#RRGGBB`).
+ */
+export interface ExternalFlow {
+  onAccept: ExternalStep;
+  onDecline: ExternalStep;
+  acceptLabel: string;
+  declineLabel: string;
+  buttonColor: string;
+}
+
+/** The HTML to paste on the seller's page for one product of the offer. */
+export interface ExternalOfferSnippet {
+  productId: string;
+  /** `<kind>:<parentProductId>:<offerUid>:<offeredProductId>`, the `data-gg-offer` value. */
+  offerRef: string;
+  html: string;
 }
 
 /** What the API stores for a downsell: the input plus the keys the dashboard editor always writes. */

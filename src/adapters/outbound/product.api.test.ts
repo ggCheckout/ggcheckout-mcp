@@ -168,6 +168,22 @@ describe('ProductApiAdapter', () => {
     );
   });
 
+  it('setOfferExternalFlow PUTs only the routing and returns it as stored', async () => {
+    const flow = {
+      onAccept: { kind: 'thank_you' }, onDecline: { kind: 'thank_you' },
+      acceptLabel: 'Sim', declineLabel: 'Não', buttonColor: '#22C55E',
+    } as const;
+    vi.mocked(http.put).mockResolvedValue({ success: true, externalFlow: flow });
+
+    const result = await adapter.setOfferExternalFlow('p1', 'downsell', 'd1', flow);
+
+    expect(http.put).toHaveBeenCalledWith(
+      '/api/product-delivery/p1/downsells/d1/external-flow',
+      { externalFlow: flow },
+    );
+    expect(result).toEqual(flow);
+  });
+
   it('reorderDownsells POSTs the ids to /downsells/reorder and returns the stored order', async () => {
     vi.mocked(http.post).mockResolvedValue({
       success: true,
