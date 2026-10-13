@@ -1,7 +1,7 @@
 import type { BillingPort } from '../../core/ports/billing.port.js';
 import type {
   BalanceResponse, BillingStatusResponse, BillingHistoryEntry,
-  SellerInvoice, BillingCredit, BillingCard, CreditLedgerPage, CreditTopup,
+  SellerInvoice, BillingCredit, BillingCard, CreditLedgerPage, CreditTopup, PendingCreditTopup,
 } from '../../core/types/billing.js';
 import { sanitizeBillingCard } from '../../shared/sanitizer.js';
 import { ApiError } from '../../shared/errors.js';
@@ -128,6 +128,25 @@ export class BillingApiAdapter implements BillingPort {
         via: 'topup',
       };
     }
+  }
+
+  /** The current top-up on the new billing; `{ topup: null }` when there is none. */
+  async getCreditTopup(): Promise<PendingCreditTopup | null> {
+    const data = await this.http.get<{
+      topupId?: string;
+      amountCents?: number;
+      status?: PendingCreditTopup['status'];
+      pix?: { emv: string; qrBase64: string; expiresAt: string } | null;
+    }>(TOPUP_ROUTE);
+    if (!data.topupId) return null;
+    return {
+      creditId: data.topupId,
+      amountCents: data.amountCents ?? 0,
+      status: data.status ?? 'pending',
+      pixCode: data.pix?.emv ?? null,
+      pixQrBase64: data.pix?.qrBase64 ?? null,
+      expiresAt: data.pix?.expiresAt ?? null,
+    };
   }
 
   async getCardStatus() {

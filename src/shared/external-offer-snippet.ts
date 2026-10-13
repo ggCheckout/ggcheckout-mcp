@@ -38,6 +38,25 @@ function cssText(style: Record<string, string>): string {
     .join(';');
 }
 
+const COLOR = /^#[0-9a-fA-F]{6}$/;
+
+function isStep(value: unknown): boolean {
+  const step = value as { kind?: unknown; url?: unknown } | null;
+  return step?.kind === 'thank_you' || (step?.kind === 'url' && typeof step.url === 'string');
+}
+
+/**
+ * Whether a stored value is a routing the API would apply — the shape of its `externalFlowSchema`.
+ * The API reads an invalid one as absent, so the snippet must too.
+ */
+export function isExternalFlow(value: unknown): value is ExternalFlow {
+  const flow = value as Partial<ExternalFlow> | null;
+  return typeof flow?.acceptLabel === 'string' && flow.acceptLabel.trim() !== ''
+    && typeof flow.declineLabel === 'string' && flow.declineLabel.trim() !== ''
+    && typeof flow.buttonColor === 'string' && COLOR.test(flow.buttonColor)
+    && isStep(flow.onAccept) && isStep(flow.onDecline);
+}
+
 export function externalOfferRef(kind: OfferKind, parentProductId: string, offerUid: string, productId: string) {
   return `${kind}:${parentProductId}:${offerUid}:${productId}`;
 }

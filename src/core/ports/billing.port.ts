@@ -1,6 +1,6 @@
 import type {
   BalanceResponse, BillingStatusResponse, BillingHistoryEntry,
-  SellerInvoice, BillingCredit, BillingCard, CreditLedgerPage, CreditTopup,
+  SellerInvoice, BillingCredit, BillingCard, CreditLedgerPage, CreditTopup, PendingCreditTopup,
 } from '../types/billing.js';
 
 export interface BillingPort {
@@ -19,6 +19,7 @@ export interface BillingPort {
     ledgerError?: string;
   }>;
   addCredit(amountCents: number, idempotencyKey?: string): Promise<CreditTopup>;
+  getCreditTopup(): Promise<PendingCreditTopup | null>;
   getCardStatus(): Promise<{ hasCard: boolean; card?: BillingCard; isExpiringSoon: boolean }>;
   removeCard(): Promise<void>;
 }

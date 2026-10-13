@@ -11,34 +11,52 @@ const dripSettingsSchema = z.object({
   referenceDate: z.enum(['purchase', 'enrollment', 'first_access']),
 });
 
-/** A lesson's `content`, whose fields depend on its type (video, text, file/pdf, quiz). */
+const urlOrEmpty = z.union([z.string().url(), z.literal('')]);
+
+/**
+ * A quiz question in the API's shape (`quizQuestionSchema`), with its rules. The API checks them when
+ * a lesson is EDITED but stores the content of a NEW lesson as it comes, so this is the only gate
+ * between a malformed quiz and a student who cannot answer it.
+ */
+const quizQuestionSchema = z.object({
+  id: z.string().min(1),
+  question: z.string().min(1).max(500),
+  type: z.enum(['multiple_choice', 'true_false', 'essay']),
+  options: z.array(z.string().max(300)).min(2).max(6).optional().describe('multiple_choice: the choices'),
+  correctAnswer: z.union([z.number().int(), z.boolean(), z.string()]).optional()
+    .describe('multiple_choice: index of the right option; true_false: true or false; essay: not graded'),
+  explanation: z.string().max(500).optional(),
+  points: z.number().int().min(1).max(100),
+}).superRefine((q, ctx) => {
+  if (q.type === 'multiple_choice') {
+    const count = q.options?.length ?? 0;
+    if (count < 2) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['options'], message: 'multiple_choice needs at least 2 options' });
+    if (typeof q.correctAnswer !== 'number' || q.correctAnswer < 0 || q.correctAnswer >= count) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['correctAnswer'], message: 'multiple_choice needs the index of a listed option' });
+    }
+  }
+  if (q.type === 'true_false' && typeof q.correctAnswer !== 'boolean') {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['correctAnswer'], message: 'true_false needs true or false' });
+  }
+});
+
+/**
+ * A lesson's `content`, field for field what the API keeps (`lessonContentSchema` and
+ * `quizContentSchema` there): a key outside it is dropped with a 200, so it is not offered here.
+ */
 const lessonContentSchema = z.object({
-  videoUrl: z.string().optional().describe('Video URL (for video lessons)'),
-  videoProvider: z.enum(['youtube', 'vimeo', 'bunny', 'cloudflare', 's3']).optional(),
-  videoSourceType: z.string().optional(),
-  videoId: z.string().optional(),
-  videoDuration: z.number().optional(),
-  videoThumbnail: z.string().optional(),
-  videoQualities: z.array(z.string()).optional(),
+  videoUrl: urlOrEmpty.optional().describe('Video URL (for video lessons)'),
+  videoProvider: z.string().max(50).optional(),
+  videoSourceType: z.enum(['upload', 'provider']).optional()
+    .describe('"upload" for a video uploaded with upload_members_area_file'),
+  vturbVideoId: z.string().max(200).optional(),
+  vturbAccountId: z.string().max(200).optional(),
   textHtml: z.string().max(500000).optional().describe('HTML content (for text lessons)'),
-  textMarkdown: z.string().max(500000).optional().describe('Markdown content (for text lessons)'),
-  estimatedReadTime: z.number().optional(),
-  fileUrl: z.string().optional()
+  fileUrl: urlOrEmpty.optional()
     .describe('File URL (for file/pdf lessons): the `url` of upload_members_area_file with kind "file"'),
   fileName: z.string().max(500).optional(),
-  fileSize: z.number().optional(),
-  fileType: z.string().max(100).optional(),
-  questions: z.array(z.object({
-    id: z.string(),
-    text: z.string().max(2000),
-    options: z.array(z.object({
-      id: z.string(),
-      text: z.string().max(1000),
-      isCorrect: z.boolean().optional(),
-    })).max(20).optional(),
-    type: z.string().optional(),
-  })).max(100).optional().describe('Quiz questions (for quiz lessons)'),
-  minScore: z.number().optional(),
+  questions: z.array(quizQuestionSchema).max(50).optional().describe('Quiz questions (for quiz lessons)'),
+  minScore: z.number().int().min(0).max(100).optional().describe('Quiz: minimum score to pass, 0 to 100'),
   allowRetry: z.boolean().optional(),
 });
 
@@ -319,6 +337,7 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
     inputSchema: {
       areaId: z.string().describe('Members area ID'),
       moduleId: z.string().describe('Module ID'),
+      confirm: z.literal(true).describe('Must be true: the seller confirmed this deletion'),
     },
   }, createToolHandler('delete_module', async ({ areaId, moduleId }) => {
     const result = await service.deleteModule(areaId, moduleId);
@@ -350,6 +369,7 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
       areaId: z.string().describe('Members area ID'),
       moduleId: z.string().describe('Module ID'),
       sectionId: z.string().describe('Section ID'),
+      confirm: z.literal(true).describe('Must be true: the seller confirmed this deletion'),
     },
   }, createToolHandler('delete_section', async ({ areaId, moduleId, sectionId }) => {
     const result = await service.deleteSection(areaId, moduleId, sectionId);
@@ -389,6 +409,7 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
       moduleId: z.string().describe('Module ID'),
       sectionId: z.string().describe('Section ID'),
       lessonId: z.string().describe('Lesson ID'),
+      confirm: z.literal(true).describe('Must be true: the seller confirmed this deletion'),
     },
   }, createToolHandler('delete_lesson', async ({ areaId, moduleId, sectionId, lessonId }) => {
     const result = await service.deleteLesson(areaId, moduleId, sectionId, lessonId);
@@ -458,7 +479,8 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
       + '- kind "video" (' + acceptedExtensions('video').join(' ') + ', up to 500 MB): create_lesson type '
       + '"video" with videoUrl = url and content { videoUrl: url, videoSourceType: "upload" }.\n'
       + '- kind "file" (' + acceptedExtensions('file').join(' ') + ', up to 100 MB, needs areaId): '
-      + 'create_pdf_lessons / create_lesson content.fileUrl, or add_lesson_attachment.',
+      + 'create_pdf_lessons (pass its `filePath` too), create_lesson content.fileUrl, or '
+      + 'add_lesson_attachment (with `filePath`).',
     inputSchema: {
       localPath: z.string().min(1).describe('Absolute path of the file on the machine running this server'),
       kind: z.enum(['image', 'video', 'file']).describe('What the file is for'),

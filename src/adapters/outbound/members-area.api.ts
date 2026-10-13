@@ -10,7 +10,7 @@ import type {
 import { readFile } from 'node:fs/promises';
 import { sanitizeStudent } from '../../shared/sanitizer.js';
 import type { LocalFile } from '../../shared/local-file.js';
-import type { HttpClient } from './http-client.js';
+import { explainMissingRoute, type HttpClient } from './http-client.js';
 import { putToSignedUrl } from './signed-upload.js';
 
 /** What a presign route answers: where to PUT the bytes, and the key that names them afterwards. */
@@ -108,24 +108,24 @@ export class MembersAreaApiAdapter implements MembersAreaPort {
 
   // Editing and deleting the structure: the API answers `{ success, data }`.
   async updateModule(areaId: string, moduleId: string, input: UpdateModuleInput) {
-    await this.http.patch(modulePath(areaId, moduleId), input);
+    await this.http.patch(modulePath(areaId, moduleId), input).catch(structureRouteMissing);
   }
 
   async deleteModule(areaId: string, moduleId: string) {
     const res = await this.http.delete<{ success: boolean; data: { deleted: boolean; deletedSections: number; deletedLessons: number } }>(
       modulePath(areaId, moduleId),
-    );
+    ).catch(structureRouteMissing);
     return res.data;
   }
 
   async updateSection(areaId: string, moduleId: string, sectionId: string, input: UpdateSectionInput) {
-    await this.http.patch(`${modulePath(areaId, moduleId)}/sections/${encodeURIComponent(sectionId)}`, input);
+    await this.http.patch(`${modulePath(areaId, moduleId)}/sections/${encodeURIComponent(sectionId)}`, input).catch(structureRouteMissing);
   }
 
   async deleteSection(areaId: string, moduleId: string, sectionId: string) {
     const res = await this.http.delete<{ success: boolean; data: { deleted: boolean; deletedLessons: number } }>(
       `${modulePath(areaId, moduleId)}/sections/${encodeURIComponent(sectionId)}`,
-    );
+    ).catch(structureRouteMissing);
     return res.data;
   }
 
@@ -133,14 +133,14 @@ export class MembersAreaApiAdapter implements MembersAreaPort {
   async updateLesson(areaId: string, moduleId: string, sectionId: string, lessonId: string, input: UpdateLessonInput) {
     const res = await this.http.patch<{ success: boolean; data: { id: string; updatedAt: string } }>(
       `${lessonPath(areaId, moduleId, sectionId)}/${encodeURIComponent(lessonId)}`, input,
-    );
+    ).catch(structureRouteMissing);
     return res.data;
   }
 
   async deleteLesson(areaId: string, moduleId: string, sectionId: string, lessonId: string) {
     const res = await this.http.delete<{ success: boolean; data: { deleted: boolean } }>(
       `${lessonPath(areaId, moduleId, sectionId)}/${encodeURIComponent(lessonId)}`,
-    );
+    ).catch(structureRouteMissing);
     return res.data;
   }
 
@@ -254,6 +254,13 @@ export class MembersAreaApiAdapter implements MembersAreaPort {
     );
     return { summary: data.summary, results: data.results };
   }
+}
+
+const STRUCTURE_ROUTES = 'editing and deleting modules, sections and lessons needs the release with '
+  + 'the PATCH/DELETE structure routes.';
+
+function structureRouteMissing(error: unknown): never {
+  throw explainMissingRoute(error, STRUCTURE_ROUTES);
 }
 
 function modulePath(areaId: string, moduleId: string): string {

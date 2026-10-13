@@ -29,6 +29,20 @@ describe('BillingService', () => {
     await expect(service.addCredit(1000)).rejects.toThrow(/may have been opened anyway/);
   });
 
+  it('addCredit points to get_credit_topup, where a pending top-up of the new billing is', async () => {
+    vi.mocked(port.addCredit).mockRejectedValue(new TemporarilyUnavailableError(504, 'API Error (504): timeout.'));
+
+    await expect(service.addCredit(1000)).rejects.toThrow(/get_credit_topup/);
+  });
+
+  it('addCredit treats a connection reset after sending as ambiguous', async () => {
+    vi.mocked(port.addCredit).mockRejectedValue(
+      new NetworkError('socket hang up', Object.assign(new Error('reset'), { code: 'ECONNRESET' })),
+    );
+
+    await expect(service.addCredit(1000)).rejects.toThrow(/may have been opened anyway/);
+  });
+
   it('addCredit leaves alone a failure that never reached the API', async () => {
     vi.mocked(port.addCredit).mockRejectedValue(
       new NetworkError('could not reach the API', Object.assign(new Error('dns'), { code: 'ENOTFOUND' })),

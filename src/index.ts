@@ -136,7 +136,11 @@ const checkoutService = new CheckoutService(checkoutAdapter, authAdapter, produc
 const webhookService = new WebhookService(webhookAdapter, authAdapter);
 const storeService = new StoreService(storeAdapter);
 const funnelService = new FunnelService(funnelAdapter);
-const membersAreaService = new MembersAreaService(membersAreaAdapter, authAdapter);
+const membersAreaService = new MembersAreaService(
+  membersAreaAdapter,
+  authAdapter,
+  process.env.GGCHECKOUT_UPLOAD_ROOT || undefined,
+);
 const discountService = new DiscountService(discountAdapter);
 const whatsappService = new WhatsAppService(whatsappAdapter);
 const billingService = new BillingService(billingAdapter);

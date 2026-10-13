@@ -8,6 +8,20 @@ import {
   TemporarilyUnavailableError,
 } from '../../shared/errors.js';
 
+/**
+ * A 404 or 405 that carries no API error body is a route this deployment does not have, not a
+ * refusal: the API's own 404s say what is missing ("Upsell não encontrado", `not_found`). Without
+ * this the two read the same, and a caller hunts for an offer that exists.
+ */
+export function explainMissingRoute(error: unknown, requirement: string): unknown {
+  const routeMissing = error instanceof ApiError
+    && (error.statusCode === 404 || error.statusCode === 405)
+    && error.message.includes('Request failed with status');
+  return routeMissing
+    ? new ApiError(error.statusCode ?? 404, `This GG Checkout API has no such route yet: ${requirement}`, error)
+    : error;
+}
+
 export class HttpClient {
   private client: AxiosInstance;
 
@@ -85,13 +99,14 @@ export class HttpClient {
             error,
           );
         }
-        if (status === 502) {
+        // 502 and 504: the service behind the API failed or did not answer in time. A write may
+        // have landed anyway, so the wait the API suggests only applies once the result is checked.
+        if (status === 502 || status === 504) {
+          const wait = retrySeconds ? ` If it did not, wait ${retrySeconds} seconds before retrying.` : '';
           throw new TemporarilyUnavailableError(
-            502,
-            withRetry(
-              `${safeMessage} The API could not reach the service behind it; a write may or may not `
-              + 'have been applied, so check its result before repeating it',
-            ),
+            status,
+            `${safeMessage} The API could not get an answer from the service behind it; a write may `
+            + `or may not have been applied, so check its result before repeating it.${wait}`,
             error,
           );
         }

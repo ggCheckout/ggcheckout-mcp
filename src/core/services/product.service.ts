@@ -15,7 +15,7 @@ import type {
 } from '../types/product.js';
 import { validateCreateProductInput, validateUpdateProductInput } from '../../shared/validation.js';
 import { ValidationError } from '../../shared/errors.js';
-import { buildExternalOfferSnippet, externalOfferRef } from '../../shared/external-offer-snippet.js';
+import { buildExternalOfferSnippet, externalOfferRef, isExternalFlow } from '../../shared/external-offer-snippet.js';
 
 export class ProductService {
   /** `appUrl` is the app the seller's page loads the upsell script from (the API base URL). */
@@ -82,13 +82,14 @@ export class ProductService {
   ): Promise<{ fileDeleted: boolean; fileDeleteError?: string }> {
     const stored = await this.read(productId);
 
-    // Only the old storage's read carries the file, so only there can the path be checked against
-    // the product. On the new one the API still refuses a path outside the seller's own folder.
-    const linkedPath = (stored.deliverableFile as { filePath?: unknown } | null | undefined)?.filePath;
-    if (filePath && !isNewStorageRead(stored) && linkedPath !== filePath) {
+    // The path is checked against the product before anything changes: the API only confines it to
+    // the seller's folder, so a wrong one would unlink this product and delete the file another of
+    // their products delivers, and that product's buyers would lose the download.
+    if (filePath && !isProductFile(stored, productId, filePath)) {
+      const linked = linkedFilePath(stored);
       throw new ValidationError(
-        `${filePath} is not the file linked to product ${productId}`
-        + `${typeof linkedPath === 'string' ? ` (that is ${linkedPath})` : ''}. Nothing was changed.`,
+        `${filePath} is not a file of product ${productId}`
+        + `${linked ? ` (the linked one is ${linked})` : ''}. Nothing was changed.`,
       );
     }
 
@@ -127,7 +128,8 @@ export class ProductService {
    * file or the stock lines (only `hasDeliverableFile` / `stockLineCount`), and the "at least one
    * deliverable" check reads the BODY, not the merged product: a title-only edit of a product that
    * has a `url` is refused. So the change travels with the cheapest term that satisfies the check,
-   * carried over from the stored product, or with an exemption flag when one applies. When the only
+   * carried over from the stored product (a link first, then an exemption flag), never one the
+   * change itself sets. When the only
    * deliverable is a file or stock lines there is nothing to carry, and the change is refused here
    * with an explanation instead of as a bare 400.
    */
@@ -140,13 +142,20 @@ export class ProductService {
     const current = stored ?? (await this.read(id));
     if (!isNewStorageRead(current)) return this.productPort.update(id, wholeDocument(current, change));
     if (hasDeliveryTerm(change)) return this.productPort.update(id, change);
+    // An exemption the change turns on satisfies the check by itself.
+    if (CARRIED_EXEMPTIONS.some((key) => change[key] === true)) return this.productPort.update(id, change);
 
-    // The fourth exemption, an active members area, is resolved by the API itself.
-    const flag = EXEMPTION_FLAGS.find((key) => current[key] === true);
-    if (flag) return this.productPort.update(id, { ...change, [flag]: true });
-
-    const link = LINK_FIELDS.find((key) => isNonEmptyString(current[key]));
+    // Nothing is carried that the change itself sets: an empty `url` or a `false` flag is the seller
+    // removing it, and carrying the stored value would undo the edit with a 200.
+    //
+    // A link first, because re-sending it changes nothing a buyer sees. Then an exemption the product
+    // already has. Never `membersAreaEnabled`: on the new storage it makes the core blank the delivery
+    // fields, and an active members area is an exemption the API resolves by itself.
+    const link = LINK_FIELDS.find((key) => !(key in change) && isNonEmptyString(current[key]));
     if (link) return this.productPort.update(id, { ...change, [link]: current[link] });
+
+    const flag = CARRIED_EXEMPTIONS.find((key) => !(key in change) && current[key] === true);
+    if (flag) return this.productPort.update(id, { ...change, [flag]: true });
 
     const keepsFile = current.hasDeliverableFile === true && !('deliverableFile' in change);
     if (keepsFile || Number(current.stockLineCount ?? 0) > 0) {
@@ -223,6 +232,10 @@ export class ProductService {
    * `null`. The routing goes to the offer's top level, the fallback for every product it sells, and
    * the answer carries the snippet to paste for each of those products — the `data-gg-offer`
    * reference names one product, so an offer that sells two needs two buttons.
+   *
+   * A product with its own routing (`productOverrides[product].externalFlow`, what the dashboard
+   * writes) keeps it: the API reads it first. Its snippet is built from that routing and says so, or
+   * the seller would paste a button whose text and color are not the ones the buyer sees.
    */
   async setOfferExternalFlow(
     productId: string,
@@ -242,10 +255,13 @@ export class ProductService {
       externalFlow: stored,
       snippets: (offer ? offeredProductIds(offer) : []).map((offeredId) => {
         const offerRef = externalOfferRef(kind, productId, offerId, offeredId);
+        const own = offer?.productOverrides?.[offeredId]?.externalFlow;
+        const flow = isExternalFlow(own) ? own : stored;
         return {
           productId: offeredId,
           offerRef,
-          html: buildExternalOfferSnippet({ offerRef, flow: stored, appUrl: this.appUrl }),
+          html: buildExternalOfferSnippet({ offerRef, flow, appUrl: this.appUrl }),
+          ...(flow === own ? { productOverride: true } : {}),
         };
       }),
     };
@@ -266,6 +282,9 @@ function offeredProductIds(offer: Upsell | DownsellSequenceItem): string[] {
 
 /** These exempt a product from needing a deliverable at all. */
 const EXEMPTION_FLAGS = ['isPhysicalProduct', 'skipDeliveryEmail', 'membersAreaEnabled'] as const;
+
+/** The exemptions safe to re-send: `membersAreaEnabled` is left out, see `write`. */
+const CARRIED_EXEMPTIONS = ['isPhysicalProduct', 'skipDeliveryEmail'] as const;
 
 /** The deliverables a read returns as plain strings, so they can be carried over. */
 const LINK_FIELDS = ['url', 'deliverableUrl', 'whatsappUrl'] as const;
@@ -288,6 +307,22 @@ function hasDeliveryTerm(body: Record<string, unknown>): boolean {
   return LINK_FIELDS.some((key) => Boolean(body[key]))
     || Boolean(body.deliverableFile)
     || (Array.isArray(body.stockLines) && body.stockLines.length > 0);
+}
+
+function linkedFilePath(stored: Record<string, unknown>): string | undefined {
+  const path = (stored.deliverableFile as { filePath?: unknown } | null | undefined)?.filePath;
+  return typeof path === 'string' ? path : undefined;
+}
+
+/**
+ * Whether `filePath` is this product's file. The old storage's read carries the linked file, so the
+ * path must be exactly it. The new one never returns the path, so the key itself is checked: the
+ * upload names it `deliverables/<seller>/<productId>/<file>`.
+ */
+function isProductFile(stored: Record<string, unknown>, productId: string, filePath: string): boolean {
+  if (!isNewStorageRead(stored)) return linkedFilePath(stored) === filePath;
+  const segments = filePath.split('/');
+  return segments.length >= 4 && segments[0] === 'deliverables' && segments[2] === productId;
 }
 
 /** Whether the stored product, in either storage's shape, still delivers once its file is gone. */

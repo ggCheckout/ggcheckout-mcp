@@ -124,3 +124,16 @@ export interface BillingCredit {
   confirmedAt: string | null;
   createdAt: string;
 }
+
+/**
+ * The seller's current top-up on the new billing, as `GET /api/billing/credit/topup` answers it. A
+ * pending one is NOT in the credit ledger: its line is only written once the PIX is paid.
+ */
+export interface PendingCreditTopup {
+  creditId: string;
+  amountCents: number;
+  status: 'pending' | 'paid' | 'expired';
+  pixCode: string | null;
+  pixQrBase64: string | null;
+  expiresAt: string | null;
+}

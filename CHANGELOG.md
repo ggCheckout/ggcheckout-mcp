@@ -10,6 +10,18 @@ right now.
 Checked end to end against a QA account on the Postgres (v2) data path, and product edits
 also against production.
 
+### Release requirement — do not publish before the API has these routes
+
+Seven tools call API routes that are still in open pull requests of the API. Published before
+them, the install (unpinned) reaches everyone and these tools answer 404/405 — reported as "this
+API has no such route yet", not as a missing offer:
+
+- `set_offer_external_flow` needs `PUT /api/product-delivery/{id}/{upsells|downsells}/{offerId}/external-flow`
+  (ggCheckout/saas-checkout#1681).
+- `update_module`, `update_section`, `update_lesson`, `delete_module`, `delete_section`,
+  `delete_lesson` need the `PATCH`/`DELETE` routes under `/api/members-area/{areaId}/modules/…`
+  (ggCheckout/saas-checkout#1685).
+
 ### Breaking
 
 Every item here changes what an existing call sends or gets back. A 0.x minor bump is a
@@ -42,6 +54,19 @@ breaking release, and with the unpinned install it reaches everyone on the next 
   keeps listing the row with `deleted: true`.
 - `list_store_products` no longer accepts `sortBy: "createdAt"` (the API ignored it), and
   `validate_coupon` takes `orderValue` as integer cents.
+- **`update_checkout` merges the `checkout` object instead of replacing it.** Send only the keys
+  to change. An array still replaces the stored one, and a key can no longer be removed by leaving
+  it out; set it to `null` instead.
+- **`upload_deliverable` requires `fileType`.**
+- **Empty lists are refused** where the API would do nothing with them: `events` in
+  `create_webhook` / `update_webhook` and `order` in `reorder_downsells` need at least one item.
+- **Lesson `content` follows the API's shape** (`create_lesson`, `update_lesson`). Quiz questions
+  are `{ id, question, type, options: string[], correctAnswer, explanation, points }`; the old
+  `{ text, options: [{ id, text, isCorrect }] }` was stored as sent and no student could be graded
+  on it. `textMarkdown`, `videoId`, `videoDuration`, `videoThumbnail`, `videoQualities`,
+  `estimatedReadTime`, `fileSize` and `fileType` are gone: the API dropped them with a 200. URLs
+  must be absolute, at most 50 questions, `minScore` a whole number from 0 to 100.
+- **Cascading deletes need `confirm: true`** (`delete_module`, `delete_section`, `delete_lesson`).
 
 ### Routes that had moved
 

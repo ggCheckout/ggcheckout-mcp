@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 188 tools across 19 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 189 tools across 19 domains.
 
 ## Overview
 
@@ -77,9 +77,18 @@ export GGCHECKOUT_API_KEY="ggck_live_your_key_here"
 export GGCHECKOUT_API_URL="https://your-staging.example.com"
 ```
 
+### Upload folder
+
+`upload_members_area_file` reads files from the machine running this server. Set this to accept
+files only from one folder (symbolic links are always refused):
+
+```bash
+export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
+```
+
 ---
 
-## Available Tools (176)
+## Available Tools (189)
 
 ### Products (18 tools)
 
@@ -436,8 +445,8 @@ Nothing is downloaded from another platform: videos and PDFs come from the selle
 sections take `dripSettings` (release N days after purchase, enrollment or first access); lessons
 take a cover and a position. `update_module` / `update_section` / `update_lesson` change only the
 fields sent, and `delete_module` / `delete_section` / `delete_lesson` remove the item with everything
-under it — irreversible. These six need the API release with the `PATCH`/`DELETE` structure routes;
-an older deployment answers 404/405.
+under it — irreversible, so they take `confirm: true`. These six need the API release with the
+`PATCH`/`DELETE` structure routes; an older deployment answers that it has no such route yet.
 
 ---
 
@@ -467,7 +476,7 @@ an older deployment answers 404/405.
 
 ---
 
-### Billing (10 tools)
+### Billing (11 tools)
 
 **Example prompts:**
 - "What's my current billing balance?"
@@ -673,6 +682,7 @@ npm install
 ```bash
 GGCHECKOUT_API_KEY=ggck_live_your_key_here
 GGCHECKOUT_API_URL=http://localhost:3000  # optional, defaults to https://ggcheckout.app
+GGCHECKOUT_UPLOAD_ROOT=/path/to/import    # optional, the only folder uploads may read from
 ```
 
 ### Commands

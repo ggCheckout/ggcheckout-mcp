@@ -164,6 +164,8 @@ export interface Upsell {
   /** Every product the offer sells; `upsellProductId` is the first one. */
   upsellProductIds?: string[];
   externalFlow?: ExternalFlow | null;
+  /** Per offered product settings; the dashboard writes each product's `externalFlow` here. */
+  productOverrides?: Record<string, { externalFlow?: unknown } | undefined>;
   title: string;
   description?: string;
   price?: number;
@@ -255,6 +257,8 @@ export interface DownsellSequenceItem {
   /** Every product the offer sells; `downsellProductId` is the first one. */
   downsellProductIds?: string[];
   externalFlow?: ExternalFlow | null;
+  /** Per offered product settings; the dashboard writes each product's `externalFlow` here. */
+  productOverrides?: Record<string, { externalFlow?: unknown } | undefined>;
   title: string;
   headline?: string;
   description?: string;
@@ -312,6 +316,12 @@ export interface ExternalOfferSnippet {
   /** `<kind>:<parentProductId>:<offerUid>:<offeredProductId>`, the `data-gg-offer` value. */
   offerRef: string;
   html: string;
+  /**
+   * True when this product has its own routing, set in the dashboard. It wins over the offer's
+   * routing that `set_offer_external_flow` writes, so the snippet carries the product's texts and
+   * color, and the change did not reach this product.
+   */
+  productOverride?: boolean;
 }
 
 /** What the API stores for a downsell: the input plus the keys the dashboard editor always writes. */

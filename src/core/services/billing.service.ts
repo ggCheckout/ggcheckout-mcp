@@ -31,21 +31,31 @@ export class BillingService {
       throw new TemporarilyUnavailableError(
         error.statusCode ?? 502,
         `${error.message} The top-up may have been opened anyway. Before calling add_credit again, `
-        + 'wait a minute and look for it in list_credits. A retry with the same amount and the same '
-        + 'idempotencyKey reuses a top-up already opened on the new billing; on the legacy billing the '
-        + 'same amount reuses the PIX already opened, for 30 minutes after it was created.',
+        + 'wait a minute and look for it: get_credit_topup on the new billing (a pending top-up is not '
+        + 'in the ledger until it is paid), or a pending entry in list_credits on the legacy one. A '
+        + 'retry with the same amount and the same idempotencyKey reuses a top-up already opened on the '
+        + 'new billing; on the legacy billing the same amount reuses the PIX already opened, for 30 '
+        + 'minutes after it was created.',
         error,
       );
     }
   }
 
+  async getCreditTopup() { return this.port.getCreditTopup(); }
   async getCardStatus() { return this.port.getCardStatus(); }
   async removeCard() { return this.port.removeCard(); }
 }
 
-/** A 502, or a request that timed out after reaching the API — not one that never got there. */
+/** Connection failures that can happen AFTER the request was sent: a timeout or a dropped socket. */
+const AMBIGUOUS_NETWORK_CODES = new Set(['ECONNABORTED', 'ECONNRESET']);
+
+/**
+ * A 502 or 504, or a connection lost after the request was sent — not one refused before it got
+ * there (a DNS failure or a refused connection never reached the API).
+ */
 function mayHaveLanded(error: unknown): error is TemporarilyUnavailableError | NetworkError {
-  if (error instanceof TemporarilyUnavailableError) return error.statusCode === 502;
-  return error instanceof NetworkError
-    && (error.cause as { code?: string } | undefined)?.code === 'ECONNABORTED';
+  if (error instanceof TemporarilyUnavailableError) return error.statusCode === 502 || error.statusCode === 504;
+  if (!(error instanceof NetworkError)) return false;
+  const code = (error.cause as { code?: string } | undefined)?.code;
+  return code !== undefined && AMBIGUOUS_NETWORK_CODES.has(code);
 }

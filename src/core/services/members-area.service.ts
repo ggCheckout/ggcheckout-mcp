@@ -15,6 +15,8 @@ export class MembersAreaService {
   constructor(
     private readonly port: MembersAreaPort,
     private readonly authPort: AuthPort,
+    /** `GGCHECKOUT_UPLOAD_ROOT`: when set, only files under this folder can be uploaded. */
+    private readonly uploadRoot?: string,
   ) {}
 
   async list() {
@@ -65,7 +67,7 @@ export class MembersAreaService {
     if (input.kind === 'file' && !input.areaId) {
       throw new ValidationError('areaId is required for a file upload: the file is stored under that members area.');
     }
-    const file = await readLocalFile(input.localPath, input.kind);
+    const file = await readLocalFile(input.localPath, input.kind, this.uploadRoot);
     const described = { kind: input.kind, fileName: file.fileName, fileType: file.fileType, fileSize: file.fileSize };
 
     if (input.kind === 'image') return { ...described, ...(await this.port.uploadImage(file, input.preset)) };

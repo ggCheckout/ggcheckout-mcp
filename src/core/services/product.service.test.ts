@@ -154,6 +154,37 @@ describe('ProductService', () => {
     expect(mockPort.update).not.toHaveBeenCalled();
   });
 
+  // The change wins over anything carried: carrying the stored flag back would undo the edit with a 200.
+  it('update never re-sends an exemption the change turns off', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({
+      ...storedV2, url: 'https://x.com/a', isPhysicalProduct: true,
+    } as any);
+
+    await service.update('p-1', { isPhysicalProduct: false });
+
+    expect(mockPort.update).toHaveBeenCalledWith('p-1', { isPhysicalProduct: false, url: 'https://x.com/a' });
+  });
+
+  it('update carries a link before an exemption', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({
+      ...storedV2, url: 'https://x.com/a', skipDeliveryEmail: true,
+    } as any);
+
+    await service.update('p-1', { title: 'New' });
+
+    expect(mockPort.update).toHaveBeenCalledWith('p-1', { title: 'New', url: 'https://x.com/a' });
+  });
+
+  // `membersAreaEnabled: true` makes the core blank the delivery fields; the API resolves an active
+  // area by itself.
+  it('update never injects membersAreaEnabled', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({ ...storedV2, url: '', membersAreaEnabled: true } as any);
+
+    await service.update('p-1', { title: 'New' });
+
+    expect(mockPort.update).toHaveBeenCalledWith('p-1', { title: 'New' });
+  });
+
   it('update accepts empty input (all optional)', async () => {
     vi.mocked(mockPort.getById).mockResolvedValue(storedV2 as any);
 
@@ -258,7 +289,17 @@ describe('ProductService', () => {
     vi.mocked(mockPort.getById).mockResolvedValue({ ...storedV1, url: 'https://x.com/a' } as any);
 
     await expect(service.deleteDeliverable('p-1', 'deliverables/s1/other/z.pdf'))
-      .rejects.toThrow(/not the file linked/);
+      .rejects.toThrow(/is not a file of product p-1 \(the linked one is/);
+    expect(mockPort.update).not.toHaveBeenCalled();
+    expect(mockPort.deleteDeliverableFile).not.toHaveBeenCalled();
+  });
+
+  // The API only confines the path to the seller's folder: another product's file would be deleted
+  // and its buyers would lose the download.
+  it('deleteDeliverable on the new storage refuses a file of another product', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({ ...storedV2, hasDeliverableFile: true } as any);
+
+    await expect(service.deleteDeliverable('p-1', 'deliverables/s1/p-2/b.pdf')).rejects.toThrow(/not a file of product p-1/);
     expect(mockPort.update).not.toHaveBeenCalled();
     expect(mockPort.deleteDeliverableFile).not.toHaveBeenCalled();
   });
@@ -308,6 +349,25 @@ describe('ProductService', () => {
     expect(result.snippets[0].html).toContain('data-gg-offer="upsell:p-1:u-1:p-2"');
     expect(result.snippets[0].html).toContain('Quero &lt;agora&gt;');
     expect(result.snippets[0].html).toContain('<script src="https://app.test/embed/upsell.js?v=1" async></script>');
+  });
+
+  // The dashboard writes a product's own routing, and the API reads it before the offer's.
+  it('setOfferExternalFlow builds the snippet from a product override, and says so', async () => {
+    const own = { ...flow, acceptLabel: 'Comprar agora', buttonColor: '#FACC15' };
+    vi.mocked(mockPort.setOfferExternalFlow).mockResolvedValue(flow);
+    vi.mocked(mockPort.listUpsells).mockResolvedValue([{
+      uid: 'u-1', upsellProductId: 'p-2', upsellProductIds: ['p-2', 'p-3'],
+      productOverrides: { 'p-2': { externalFlow: own }, 'p-3': { externalFlow: { acceptLabel: '' } } },
+    }] as any);
+
+    const { snippets } = await service.setOfferExternalFlow('p-1', 'upsell', 'u-1', flow);
+
+    expect(snippets[0]).toMatchObject({ productId: 'p-2', productOverride: true });
+    expect(snippets[0].html).toContain('Comprar agora');
+    expect(snippets[0].html).toContain('#FACC15');
+    // An invalid override is ignored by the API, so the offer's routing applies.
+    expect(snippets[1]).not.toHaveProperty('productOverride');
+    expect(snippets[1].html).toContain('Quero &lt;agora&gt;');
   });
 
   it('setOfferExternalFlow reads a downsell from the downsell list', async () => {

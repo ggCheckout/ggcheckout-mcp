@@ -97,6 +97,23 @@ describe('BillingApiAdapter', () => {
     await expect(adapter.listCredits()).rejects.toThrow('legacy down');
   });
 
+  it('getCreditTopup normalizes the current top-up of the new billing', async () => {
+    vi.mocked(http.get).mockResolvedValueOnce({
+      topupId: 't-1', amountCents: 1000, status: 'pending', pix: { emv: 'emv', qrBase64: 'qr', expiresAt: 'x' },
+    });
+
+    expect(await adapter.getCreditTopup()).toEqual({
+      creditId: 't-1', amountCents: 1000, status: 'pending', pixCode: 'emv', pixQrBase64: 'qr', expiresAt: 'x',
+    });
+    expect(http.get).toHaveBeenCalledWith('/api/billing/credit/topup');
+  });
+
+  it('getCreditTopup answers null when there is none', async () => {
+    vi.mocked(http.get).mockResolvedValueOnce({ topup: null });
+
+    expect(await adapter.getCreditTopup()).toBeNull();
+  });
+
   it('removeCard calls DELETE /api/billing/card/status', async () => {
     vi.mocked(http.delete).mockResolvedValue({});
     await adapter.removeCard();

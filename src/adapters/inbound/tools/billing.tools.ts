@@ -71,8 +71,9 @@ export function registerBillingTools(server: McpServer, service: BillingService)
       'Add billing credit via PIX. Returns { creditId, amountCents, pixCode, pixQrBase64, expiresAt, via }: '
       + '`pixCode` is the copy-and-paste string and `pixQrBase64` the QR image (base64, no `data:` prefix). '
       + 'Works on both billing generations — the right route is picked for the account, and `via` says '
-      + 'which one answered. The credit only exists once the PIX is actually paid. On a timeout or a 502 '
-      + 'the PIX may have been opened anyway: look in list_credits before calling this again.',
+      + 'which one answered. The credit only exists once the PIX is actually paid. On a timeout, a 502 '
+      + 'or a 504 the PIX may have been opened anyway: check get_credit_topup (new billing) or the pending '
+      + 'entries of list_credits (legacy) before calling this again.',
     inputSchema: {
       amountCents: z.number()
         .int('amountCents is a whole number of CENTS: R$ 10,00 is 1000')
@@ -85,6 +86,13 @@ export function registerBillingTools(server: McpServer, service: BillingService)
           + 'billing ignores it and reuses the PIX already opened for the same amount, for 30 minutes.'),
     },
   }, createToolHandler('add_credit', async ({ amountCents, idempotencyKey }) => service.addCredit(amountCents, idempotencyKey)));
+
+  server.tool('get_credit_topup',
+    'The current credit top-up on the new billing: { creditId, amountCents, status (pending, paid, '
+    + 'expired), pixCode, pixQrBase64, expiresAt }, or null when there is none. A pending top-up is not '
+    + 'in the list_credits ledger until it is paid, so this is where to find one opened by add_credit.',
+    createToolHandler('get_credit_topup', async () => ({ topup: await service.getCreditTopup() })),
+  );
 
   server.tool('get_card_status', 'Get saved card status (validated, brand, last four, expiring soon)',
     createToolHandler('get_card_status', async () => service.getCardStatus()),

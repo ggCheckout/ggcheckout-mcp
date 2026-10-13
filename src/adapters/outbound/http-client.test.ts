@@ -193,6 +193,22 @@ describe('HttpClient', () => {
     }
   });
 
+  it('treats a 504 like a 502 and only suggests waiting once the write was checked', () => {
+    new HttpClient('https://api.test.com', 'key');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+
+    try {
+      errorHandler({ response: { status: 504, data: { error: 'Gateway Timeout', retry_after: 30 }, headers: {} }, message: 'x' });
+      expect.unreachable('should have thrown');
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(TemporarilyUnavailableError);
+      expect(e.statusCode).toBe(504);
+      expect(e.message).toContain('check its result before repeating it');
+      expect(e.message).toContain('If it did not, wait 30 seconds');
+      expect(e.message).not.toContain('Retry after');
+    }
+  });
+
   // A bare "Request failed with status 409" told the caller nothing; the refusal explains itself
   // in `code`, beside the message.
   it('surfaces the code beside the error message', () => {

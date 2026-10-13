@@ -12,7 +12,7 @@ import type {
   ExternalFlow,
   OfferKind,
 } from '../../core/types/product.js';
-import type { HttpClient } from './http-client.js';
+import { explainMissingRoute, type HttpClient } from './http-client.js';
 import type { AuthPort } from '../../core/ports/auth.port.js';
 
 type ReorderResponse = { success: boolean; message: string; newOrder: ReorderResult[] };
@@ -141,7 +141,9 @@ export class ProductApiAdapter implements ProductPort {
     const data = await this.http.put<{ success: boolean; externalFlow: ExternalFlow | null }>(
       `/api/product-delivery/${encodeURIComponent(productId)}/${kind}s/${encodeURIComponent(offerId)}/external-flow`,
       { externalFlow },
-    );
+    ).catch((error) => {
+      throw explainMissingRoute(error, 'set_offer_external_flow needs the release with external upsells.');
+    });
     return data.externalFlow ?? null;
   }
 

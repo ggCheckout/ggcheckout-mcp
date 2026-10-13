@@ -1,5 +1,5 @@
-import { stat } from 'node:fs/promises';
-import { basename, extname, isAbsolute } from 'node:path';
+import { lstat, realpath } from 'node:fs/promises';
+import { basename, extname, isAbsolute, relative, resolve } from 'node:path';
 import { ValidationError } from './errors.js';
 
 /** What an upload is for, which decides the route and the accepted types. */
@@ -42,16 +42,31 @@ const TYPES_BY_KIND: Record<UploadKind, Record<string, string>> = {
   },
 };
 
+const MB = 1024 * 1024;
+
+/**
+ * The largest file each kind uploads: the API's own cap for video (500 MB) and members-area files
+ * (100 MB). An image is read whole into memory to post it, so it gets a cap of its own.
+ */
+export const MAX_BYTES_BY_KIND: Record<UploadKind, number> = { image: 20 * MB, video: 500 * MB, file: 100 * MB };
+
 /** The extensions a kind accepts, for error messages and tool descriptions. */
 export function acceptedExtensions(kind: UploadKind): string[] {
   return Object.keys(TYPES_BY_KIND[kind]);
 }
 
 /**
- * Resolves an absolute path into an uploadable file. Relative paths are refused: the server's working
- * directory is not the caller's, and guessing it would upload the wrong file.
+ * Resolves an absolute path into an uploadable file.
+ *
+ * The path comes from an agent, and what the agent reads (a page, a PDF) can carry instructions, so
+ * the extension is not the only gate:
+ * - relative paths are refused, since the server's working directory is not the caller's;
+ * - symbolic links are refused, the file itself and any directory on the way (`/tmp/x.pdf` pointing
+ *   at a secrets file would otherwise pass the extension check and land in the seller's bucket);
+ * - with `root` (`GGCHECKOUT_UPLOAD_ROOT`), only files under that folder upload at all;
+ * - the size is capped per kind.
  */
-export async function readLocalFile(path: string, kind: UploadKind): Promise<LocalFile> {
+export async function readLocalFile(path: string, kind: UploadKind, root?: string): Promise<LocalFile> {
   if (!isAbsolute(path)) {
     throw new ValidationError(`localPath must be an absolute path on the machine running this server, got "${path}".`);
   }
@@ -62,9 +77,34 @@ export async function readLocalFile(path: string, kind: UploadKind): Promise<Loc
     );
   }
 
-  const info = await stat(path).catch(() => null);
-  if (!info?.isFile()) throw new ValidationError(`No file at ${path}.`);
-  if (info.size === 0) throw new ValidationError(`${path} is empty.`);
+  const info = await lstat(path).catch(() => null);
+  if (!info) throw new ValidationError(`No file at ${path}.`);
+  if (info.isSymbolicLink()) throw new ValidationError(`${path} is a symbolic link; upload the file itself.`);
+  if (!info.isFile()) throw new ValidationError(`No file at ${path}.`);
 
-  return { path, fileName: basename(path), fileType, fileSize: info.size };
+  const real = await realpath(path);
+  if (!samePath(real, resolve(path))) {
+    throw new ValidationError(`${path} goes through a symbolic link (it resolves to ${real}); use the real path.`);
+  }
+  if (root && !isInside(real, await realpath(root).catch(() => resolve(root)))) {
+    throw new ValidationError(`${path} is outside the upload folder ${root} (GGCHECKOUT_UPLOAD_ROOT).`);
+  }
+
+  if (info.size === 0) throw new ValidationError(`${path} is empty.`);
+  const max = MAX_BYTES_BY_KIND[kind];
+  if (info.size > max) {
+    throw new ValidationError(`A ${kind} upload is at most ${max / MB} MB; ${basename(path)} has ${(info.size / MB).toFixed(1)} MB.`);
+  }
+
+  return { path: real, fileName: basename(path), fileType, fileSize: info.size };
+}
+
+/** Windows paths compare case-insensitively. */
+function samePath(a: string, b: string): boolean {
+  return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+}
+
+function isInside(path: string, folder: string): boolean {
+  const rel = relative(folder, path);
+  return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
 }
