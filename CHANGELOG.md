@@ -124,6 +124,10 @@ sensitive. It now says so and what to do instead, rather than surfacing a bare "
   (PDF, document, audio) from the machine running the server and returns the URL to use.
   `create_pdf_lessons` creates a batch of PDF lessons; `list_lesson_attachments`,
   `add_lesson_attachment` and `delete_lesson_attachment` manage a lesson's complementary files.
+- **Editing and deleting the course structure:** `update_module`, `update_section`, `update_lesson`,
+  `delete_module`, `delete_section`, `delete_lesson` — until now only the dashboard could, through
+  server actions an API key cannot call. **They need the API release with the `PATCH`/`DELETE`
+  routes under `/api/members-area/{areaId}/modules/…`**; an older deployment answers 404/405.
 - `create_module` and `create_section` take `dripSettings`; `create_section` and `create_lesson`
   take `showTitleOverlay`, `showImageOnly` and `order`, and `create_lesson` a `thumbnailUrl`.
 - `list_stores`, the only way to get the `storeId` every store tool takes. It also returns

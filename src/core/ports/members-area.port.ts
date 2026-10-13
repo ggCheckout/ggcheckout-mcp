@@ -4,6 +4,7 @@ import type {
   CreateLessonInput, CreateClassInput, AddStudentInput,
   UpdateStudentInput, ImportStudentsInput, ImportStudentsResult,
   LessonAttachment, AddLessonAttachmentInput, PdfLessonInput,
+  UpdateModuleInput, UpdateSectionInput, UpdateLessonInput,
 } from '../types/members-area.js';
 import type { LocalFile } from '../../shared/local-file.js';
 
@@ -17,14 +18,20 @@ export interface MembersAreaPort {
   listModules(areaId: string): Promise<Module[]>;
   createModule(areaId: string, input: CreateModuleInput): Promise<{ id: string }>;
   reorderModules(areaId: string, moduleIds: string[]): Promise<{ updated: number }>;
+  updateModule(areaId: string, moduleId: string, input: UpdateModuleInput): Promise<void>;
+  deleteModule(areaId: string, moduleId: string): Promise<{ deleted: boolean; deletedSections: number; deletedLessons: number }>;
 
   listSections(areaId: string, moduleId: string): Promise<Section[]>;
   createSection(areaId: string, moduleId: string, input: CreateSectionInput): Promise<{ id: string; title: string; moduleId: string; order: number }>;
   reorderSections(areaId: string, moduleId: string, sectionIds: string[]): Promise<{ updated: number }>;
+  updateSection(areaId: string, moduleId: string, sectionId: string, input: UpdateSectionInput): Promise<void>;
+  deleteSection(areaId: string, moduleId: string, sectionId: string): Promise<{ deleted: boolean; deletedLessons: number }>;
 
   listLessons(areaId: string, moduleId: string, sectionId: string): Promise<Lesson[]>;
   createLesson(areaId: string, moduleId: string, sectionId: string, input: CreateLessonInput): Promise<{ id: string; title: string; sectionId: string; order: number }>;
   reorderLessons(areaId: string, moduleId: string, sectionId: string, lessonIds: string[]): Promise<{ updated: number }>;
+  updateLesson(areaId: string, moduleId: string, sectionId: string, lessonId: string, input: UpdateLessonInput): Promise<{ id: string; updatedAt: string }>;
+  deleteLesson(areaId: string, moduleId: string, sectionId: string, lessonId: string): Promise<{ deleted: boolean }>;
   createPdfLessons(areaId: string, moduleId: string, sectionId: string, lessons: PdfLessonInput[]): Promise<{ count: number; lessons: Array<{ id: string; title: string; order: number }> }>;
 
   listLessonAttachments(areaId: string, moduleId: string, sectionId: string, lessonId: string): Promise<LessonAttachment[]>;

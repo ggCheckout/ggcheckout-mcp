@@ -5,6 +5,7 @@ import type {
   CreateLessonInput, CreateClassInput, AddStudentInput,
   UpdateStudentInput, ImportStudentsInput, ImportStudentsResult,
   LessonAttachment, AddLessonAttachmentInput, PdfLessonInput,
+  UpdateModuleInput, UpdateSectionInput, UpdateLessonInput,
 } from '../../core/types/members-area.js';
 import { readFile } from 'node:fs/promises';
 import { sanitizeStudent } from '../../shared/sanitizer.js';
@@ -103,6 +104,44 @@ export class MembersAreaApiAdapter implements MembersAreaPort {
       `/api/members-area/${areaId}/modules/${moduleId}/sections/${sectionId}/lessons/reorder`, { lessonIds },
     );
     return data.data;
+  }
+
+  // Editing and deleting the structure: the API answers `{ success, data }`.
+  async updateModule(areaId: string, moduleId: string, input: UpdateModuleInput) {
+    await this.http.patch(modulePath(areaId, moduleId), input);
+  }
+
+  async deleteModule(areaId: string, moduleId: string) {
+    const res = await this.http.delete<{ success: boolean; data: { deleted: boolean; deletedSections: number; deletedLessons: number } }>(
+      modulePath(areaId, moduleId),
+    );
+    return res.data;
+  }
+
+  async updateSection(areaId: string, moduleId: string, sectionId: string, input: UpdateSectionInput) {
+    await this.http.patch(`${modulePath(areaId, moduleId)}/sections/${encodeURIComponent(sectionId)}`, input);
+  }
+
+  async deleteSection(areaId: string, moduleId: string, sectionId: string) {
+    const res = await this.http.delete<{ success: boolean; data: { deleted: boolean; deletedLessons: number } }>(
+      `${modulePath(areaId, moduleId)}/sections/${encodeURIComponent(sectionId)}`,
+    );
+    return res.data;
+  }
+
+  /** The body is the fields to change; the API rebuilds `content` from the stored lesson. */
+  async updateLesson(areaId: string, moduleId: string, sectionId: string, lessonId: string, input: UpdateLessonInput) {
+    const res = await this.http.patch<{ success: boolean; data: { id: string; updatedAt: string } }>(
+      `${lessonPath(areaId, moduleId, sectionId)}/${encodeURIComponent(lessonId)}`, input,
+    );
+    return res.data;
+  }
+
+  async deleteLesson(areaId: string, moduleId: string, sectionId: string, lessonId: string) {
+    const res = await this.http.delete<{ success: boolean; data: { deleted: boolean } }>(
+      `${lessonPath(areaId, moduleId, sectionId)}/${encodeURIComponent(lessonId)}`,
+    );
+    return res.data;
   }
 
   /** The route the dashboard's PDF import uses: one `pdf` lesson per entry, appended in order. */
@@ -217,7 +256,10 @@ export class MembersAreaApiAdapter implements MembersAreaPort {
   }
 }
 
+function modulePath(areaId: string, moduleId: string): string {
+  return `/api/members-area/${encodeURIComponent(areaId)}/modules/${encodeURIComponent(moduleId)}`;
+}
+
 function lessonPath(areaId: string, moduleId: string, sectionId: string): string {
-  return `/api/members-area/${encodeURIComponent(areaId)}/modules/${encodeURIComponent(moduleId)}`
-    + `/sections/${encodeURIComponent(sectionId)}/lessons`;
+  return `${modulePath(areaId, moduleId)}/sections/${encodeURIComponent(sectionId)}/lessons`;
 }

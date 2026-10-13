@@ -91,6 +91,29 @@ describe('MembersAreaApiAdapter', () => {
     expect(http.post).toHaveBeenCalledWith(`${lessons}/bulk`, { lessons: batch });
   });
 
+  // These only existed as server actions; the API key reaches them through PATCH/DELETE routes.
+  it('edits and deletes modules, sections and lessons on their own paths', async () => {
+    vi.mocked(http.patch).mockResolvedValue({ success: true, data: { id: 'l1', updatedAt: 't' } });
+    vi.mocked(http.delete)
+      .mockResolvedValueOnce({ success: true, data: { deleted: true, deletedSections: 1, deletedLessons: 3 } })
+      .mockResolvedValueOnce({ success: true, data: { deleted: true, deletedLessons: 2 } })
+      .mockResolvedValueOnce({ success: true, data: { deleted: true } });
+
+    await adapter.updateModule('a1', 'm1', { title: 'M', dripSettings: null });
+    await adapter.updateSection('a1', 'm1', 's1', { thumbnailUrl: '' });
+    expect(await adapter.updateLesson('a1', 'm1', 's1', 'l1', { title: 'L' })).toEqual({ id: 'l1', updatedAt: 't' });
+    expect(await adapter.deleteModule('a1', 'm1')).toEqual({ deleted: true, deletedSections: 1, deletedLessons: 3 });
+    expect(await adapter.deleteSection('a1', 'm1', 's1')).toEqual({ deleted: true, deletedLessons: 2 });
+    expect(await adapter.deleteLesson('a1', 'm1', 's1', 'l1')).toEqual({ deleted: true });
+
+    expect(http.patch).toHaveBeenNthCalledWith(1, '/api/members-area/a1/modules/m1', { title: 'M', dripSettings: null });
+    expect(http.patch).toHaveBeenNthCalledWith(2, '/api/members-area/a1/modules/m1/sections/s1', { thumbnailUrl: '' });
+    expect(http.patch).toHaveBeenNthCalledWith(3, `${lessons}/l1`, { title: 'L' });
+    expect(http.delete).toHaveBeenNthCalledWith(1, '/api/members-area/a1/modules/m1');
+    expect(http.delete).toHaveBeenNthCalledWith(2, '/api/members-area/a1/modules/m1/sections/s1');
+    expect(http.delete).toHaveBeenNthCalledWith(3, `${lessons}/l1`);
+  });
+
   it('lesson attachments are listed, added and deleted under the lesson', async () => {
     vi.mocked(http.get).mockResolvedValue({ success: true, data: [{ id: 'at1' }] });
     vi.mocked(http.post).mockResolvedValue({ success: true, data: { id: 'at2' } });

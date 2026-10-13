@@ -246,3 +246,34 @@ export interface PdfLessonInput {
   fileName: string;
   fileSize?: number;
 }
+
+export interface UpdateModuleInput {
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  locked?: boolean;
+  dripSettings?: ModuleDripSettings | null;
+}
+
+export interface UpdateSectionInput {
+  title?: string;
+  description?: string;
+  thumbnailUrl?: string;
+  showTitleOverlay?: boolean;
+  showImageOnly?: boolean;
+  dripSettings?: ModuleDripSettings | null;
+}
+
+export interface UpdateLessonInput {
+  title?: string;
+  description?: string;
+  type?: LessonType;
+  duration?: number;
+  order?: number;
+  thumbnailUrl?: string;
+  showTitleOverlay?: boolean;
+  showImageOnly?: boolean;
+  isPublished?: boolean;
+  videoUrl?: string;
+  content?: any;
+}

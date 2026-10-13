@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 182 tools across 19 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 188 tools across 19 domains.
 
 ## Overview
 
@@ -410,7 +410,7 @@ funnel first and send the full array back. Pixels and webhooks are linked by id
 
 ---
 
-### Members Area (26 tools)
+### Members Area (32 tools)
 
 **Example prompts:**
 - "List all my members areas"
@@ -434,8 +434,10 @@ running this server (an absolute path) and returns the URL to pass on:
 
 Nothing is downloaded from another platform: videos and PDFs come from the seller. Modules and
 sections take `dripSettings` (release N days after purchase, enrollment or first access); lessons
-take a cover and a position. Editing or deleting a module, section or lesson is not available to an
-API key yet.
+take a cover and a position. `update_module` / `update_section` / `update_lesson` change only the
+fields sent, and `delete_module` / `delete_section` / `delete_lesson` remove the item with everything
+under it — irreversible. These six need the API release with the `PATCH`/`DELETE` structure routes;
+an older deployment answers 404/405.
 
 ---
 
