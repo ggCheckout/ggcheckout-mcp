@@ -245,6 +245,8 @@ export interface PdfLessonInput {
   fileUrl: string;
   fileName: string;
   fileSize?: number;
+  /** The storage key from the upload; the API signs the student's link from it on every read. */
+  filePath?: string;
 }
 
 export interface UpdateModuleInput {

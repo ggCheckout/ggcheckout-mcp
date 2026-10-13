@@ -286,6 +286,9 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
           .describe('The `url` returned by upload_members_area_file'),
         fileName: z.string().trim().min(1).max(300),
         fileSize: z.number().int().min(0).optional().describe('Bytes'),
+        filePath: z.string().min(1).max(1024).optional()
+          .describe('The `filePath` returned by upload_members_area_file. Always pass it: `fileUrl` is a '
+            + 'signed link that expires in 7 days, and the API re-signs the link students get from this key'),
       })).min(1).max(100),
     },
   }, createToolHandler('create_pdf_lessons', async ({ areaId, moduleId, sectionId, lessons }) => {
