@@ -114,9 +114,14 @@ Create a new product/delivery.
 
 #### `update_product`
 
-Update an existing product. Only provide fields you want to change.
+Update an existing product. Only provide fields you want to change; everything else is kept.
 
 **Parameters:** `productId` + any fields from create_product (all optional)
+
+On accounts whose product read does not carry the file or the stock lines, an edit of a product
+that delivers only one of those is refused with an explanation: the API checks the request body
+for a deliverable, and those two cannot be read back to be sent along. Pass `url` with the
+change, or make it in the dashboard.
 
 **Example prompt:** "Update product abc123 price to R$79.90"
 
@@ -137,7 +142,13 @@ through this server:
 3. `attach_deliverable` (`productId`, `filePath`, `fileName`, `fileType`, `fileSize`) confirms the
    upload landed and links it to the product.
 
-`delete_deliverable` unlinks the file; pass `filePath` to delete the stored bytes as well.
+`attach_deliverable` keeps any link (`url`) the product already has; when both exist, the file
+is what the buyer receives.
+
+`delete_deliverable` unlinks the file; pass `filePath` to delete the stored bytes as well. It is
+refused when the file is the product's only deliverable, since the API will not save a product
+with nothing to deliver: give it a `url` first. If the unlink works and the byte deletion does
+not, the answer carries `fileDeleteError` and the product stays unlinked.
 
 **Example prompt:** "Attach ebook.pdf (2MB, application/pdf) to product abc123"
 
@@ -273,8 +284,8 @@ anywhere. These are the names that exist:
 | Quiz funnel | `quiz.completed`, `quiz.lead_captured` |
 | Cart | `checkout.abandoned` |
 
-There is **no refund or chargeback event**: nothing dispatches one. `pix.generated`,
-`pix.failed` and `card.pending` can be registered but have no emitter today. Names of the form
+There is **no refund or chargeback event**: nothing dispatches one. `pix.failed` and
+`card.pending` can be registered but have no emitter today. Names of the form
 `payment.*` are the platform's internal vocabulary between services, not seller webhooks —
 registering one gets you silence.
 

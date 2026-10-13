@@ -33,7 +33,8 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
       description:
         'Get paginated payments for a business with optional filters. Page through it with `lastCreatedAt` '
         + '= the `nextCursor` of the previous answer; `nextCursor` is null on the last page. `total` is a '
-        + 'count, not a collection size, and comes back 0 when counting is skipped. On a `searchTerm` query '
+        + 'count, not a collection size, and comes back 0 when counting is skipped; with `totalCapped: true` '
+        + 'the count stopped at its cap and `total` is a floor, not the exact number. On a `searchTerm` query '
         + 'the answer may carry `coverageCapped: true`, meaning the scan hit its read cap and more matches '
         + 'may exist. Status filtering requires the matching index.',
       inputSchema: {

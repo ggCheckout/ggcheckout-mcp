@@ -3,6 +3,12 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { GatewayService } from '../../../core/services/gateway.service.js';
 import { createToolHandler } from '../tool-handler.js';
 
+/**
+ * The only types the creation route takes. It checks `target` against the same list, because
+ * `target` is what becomes the stored type, so both fields share it.
+ */
+const TOKEN_TYPES = ['pushinpay', 'utmify', 'emailprovider', 'mercadopago'] as const;
+
 export function registerGatewayTools(server: McpServer, service: GatewayService) {
   server.registerTool('list_tokens', {
     description: 'List payment gateway tokens',
@@ -16,10 +22,10 @@ export function registerGatewayTools(server: McpServer, service: GatewayService)
       + 'supports elsewhere (stripe and efibank among them, which this tool used to advertise).',
     inputSchema: {
       token: z.string().describe('Gateway token/credential'),
-      type: z.enum(['pushinpay', 'utmify', 'emailprovider', 'mercadopago'])
-        .describe('Gateway type — the only four the creation route accepts'),
+      type: z.enum(TOKEN_TYPES).describe('Gateway type — the only four the creation route accepts'),
       title: z.string().max(200).describe('Token display name'),
-      target: z.string().describe('Target identifier'),
+      target: z.enum(TOKEN_TYPES)
+        .describe('Target type, from the same four: it is what gets stored as the token type'),
       status: z.string().describe('Token status'),
       tokenId: z.string().optional().describe('Token ID (for updates)'),
     },

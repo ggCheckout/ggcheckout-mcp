@@ -7,10 +7,7 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
   // --- Areas ---
   server.tool(
     'list_members_areas',
-    'List all members areas for the authenticated seller. NOT AVAILABLE TO API KEYS today: this one '
-      + 'listing reads only the dashboard session cookie and answers 401 for a key, while every other '
-      + 'members-area tool (get_members_area, update_members_area, modules, lessons, students…) accepts '
-      + 'it. Get the areaId from the dashboard and use get_members_area.',
+    'List all members areas for the authenticated seller',
     createToolHandler('list_members_areas', async () => {
       const areas = await service.list();
       return { areas };

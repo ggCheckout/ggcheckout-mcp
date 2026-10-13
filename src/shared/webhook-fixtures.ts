@@ -40,7 +40,6 @@ export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
  * a delivery that never comes.
  */
 export const WEBHOOK_EVENTS_WITHOUT_EMITTER: readonly WebhookEvent[] = [
-  'pix.generated',
   'pix.failed',
   'card.pending',
 ];

@@ -4,7 +4,7 @@ import type {
   WhatsAppDeliverySummary, CreateTemplateInput, SendMessageInput,
 } from '../../core/types/whatsapp.js';
 import { sanitizeWhatsappSession, sanitizeWhatsappDelivery } from '../../shared/sanitizer.js';
-import { ApiError, AuthenticationError } from '../../shared/errors.js';
+import { ApiError } from '../../shared/errors.js';
 import type { HttpClient } from './http-client.js';
 
 export class WhatsAppApiAdapter implements WhatsAppPort {
@@ -82,28 +82,10 @@ export class WhatsAppApiAdapter implements WhatsAppPort {
     return { ...data, deliveries: data.deliveries.map(sanitizeWhatsappDelivery) };
   }
 
-  /**
-   * Reading a delivery accepts the API key; resending it does not — the resend route reads the
-   * dashboard session cookie instead of the key-aware reader, so the key can only get 401. That
-   * asymmetry on the same resource looks accidental, so the call stays and the refusal is
-   * translated rather than pre-empted.
-   */
   async resendDelivery(paymentId: string) {
-    try {
-      return await this.http.post<{ success: boolean; message: string }>(
-        `/api/whatsapp/deliveries/${encodeURIComponent(paymentId)}/resend`,
-      );
-    } catch (error) {
-      if (error instanceof AuthenticationError) {
-        throw new AuthenticationError(
-          'Resending a delivery is the one WhatsApp route that only accepts a dashboard session '
-          + 'cookie, so an API key cannot call it (reading the same delivery with get_delivery_status '
-          + 'does work). Retrying will not help. Resend it from the dashboard.',
-          error,
-        );
-      }
-      throw error;
-    }
+    return this.http.post<{ success: boolean; message: string }>(
+      `/api/whatsapp/deliveries/${encodeURIComponent(paymentId)}/resend`,
+    );
   }
 
   async sendMessage(input: SendMessageInput) {

@@ -10,77 +10,30 @@ right now.
 Checked end to end against a QA account on the Postgres (v2) data path, and product edits
 also against production.
 
-### Routes that had moved
+### Breaking
 
-A sweep of every endpoint this client calls against the current API found four with no route
-behind them any more, plus a set of tools whose behaviour had drifted. Each item below was
-confirmed in the API source, and the fixes were exercised against a live account.
+Every item here changes what an existing call sends or gets back. A 0.x minor bump is a
+breaking release, and with the unpinned install it reaches everyone on the next start.
 
 - **`list_rewards` is gone; use `calculate_rewards`.** The route it called was removed along
   with the stored counter it served. `calculate_rewards` answers the same fields, derived from
   paid sales, and carries the milestone list — there is no reward catalogue endpoint.
   `currentRevenue` and `milestones` are in reais, not cents.
-- **`add_credit` works on both billing generations.** The legacy route refuses a migrated
-  seller with 409; the call now follows that refusal to the current top-up route. The answer is
-  normalized to `{ creditId, amountCents, pixCode, pixQrBase64, expiresAt, via }`. The amount is
-  validated up front: whole cents, 325 to 25000 (R$ 3,25 to R$ 250,00). Takes an optional
-  `idempotencyKey` so a retry reuses the same top-up.
-- **`list_credits` returns the statement for either generation.** It reads the legacy credits
-  and the credit ledger, and answers `{ credits, total, ledger: { entries, nextBefore } }`. One
-  side is empty depending on the account, which is the true answer and not an error — before
-  this, a migrated seller got an empty list with no indication the data lived elsewhere.
-- **`upload_deliverable` / `delete_deliverable` now call routes that exist.** The paths they
-  used (`/api/products/{id}/deliverable/…`) are not part of the API. Attaching a file is now
-  two steps: `upload_deliverable` mints an upload URL, you PUT the bytes to it (only
-  `Content-Type`, no `Authorization`), then **`attach_deliverable`** confirms the upload and
-  links it to the product. `delete_deliverable` unlinks the file and, given `filePath`, deletes
-  the bytes too.
-- **`telegram_media_upload` calls `/presign`.** The old path was renamed. It returns
-  `{ uploadUrl, filePath, proxyUrl }`; `proxyUrl` is the URL to store in the flow node, because
-  the route does not return a public URL. The previously advertised `publicUrl` was always
-  undefined.
-- **`reorder_upsells` takes `upsellIds`.** It used to send whole objects to a route that
-  replaces the legacy upsell array instead of reordering, and that route does not exist for a
-  product on the new storage, where the call failed as an opaque 502. Both reorder tools now
-  return the resulting positions.
-- **`update_product` no longer loses the deliverable.** It used to re-send the whole stored
-  product; on the new storage the read does not carry the deliverable or the stock lines, so the
-  re-send dropped them and the save was refused. It now sends the edit plus the one field needed
-  to satisfy the API's deliverable check (the check reads the request body, not the stored
-  product). When the only deliverable is a file or stock lines — neither readable through the
-  API — the edit is refused here with an explanation instead of a bare 400.
-- **`create_webhook` / `update_webhook` validate `events`.** The API stores event names without
-  checking them and dispatch matches exactly, so a wrong name is accepted and never fires. The
-  names this tool used to suggest (`payment.created`, `payment.paid`, `payment.refunded`) are
-  not seller webhook events at all. The real vocabulary is now enforced here, and `test_webhook`
-  simulates only the payment-shaped events.
-- **`insert_token` accepts only the four types the API takes** (`pushinpay`, `utmify`,
-  `emailprovider`, `mercadopago`). `stripe` and `efibank` were advertised and always refused.
-- **`list_payments` answers an empty list for a seller with no sales.** The route reports that
-  state as 404, which surfaced as an error.
-- **`get_payments_paginated`**: `pageSize` is capped at 100 (1000 was accepted and silently
-  reduced), the cursor in the answer is `nextCursor`, and a text search may come back with
-  `coverageCapped`.
-- **423 is not a thing, 503 is not "the backend is down".** 503 means the rate limiter is
-  failing closed and 502 means the service behind the API did not answer; both are now reported
-  as retryable, with the wait read from `Retry-After` or the body's `retry_after`. A refusal
-  that carries a `code` now shows it instead of just a status number.
-
-### Tools that an API key cannot use
-
-These answer 401/403 for an API key by how the routes authenticate, not because of anything in
-this client. They now say so and what to do instead, rather than surfacing a bare "Unauthorized":
-`create_whatsapp_session` (blocked for API keys deliberately), `resend_delivery` and
-`list_members_areas` (session-cookie only, while their sibling routes accept the key).
-
-### Packaging
-
-- Compiled tests no longer ship in the published package (560 files down to 428).
-- `dotenv` is loaded quietly: version 17 announces itself on stdout, which is the MCP protocol
-  channel over stdio, and a strict client reads that line as a malformed frame.
-
-### Breaking
-
+- **`upload_deliverable` takes `fileSize` and no longer takes `fileUrl`**, and attaching is now
+  two calls: `upload_deliverable` mints an upload URL, you PUT the bytes to it, and
+  **`attach_deliverable`** confirms the upload and links it. See "Routes that had moved".
+- **`reorder_upsells` takes `upsellIds`** (all the ids, in order) instead of `upsells` (whole
+  objects). Both reorder tools now return the resulting positions.
+- **`add_credit` answers a new shape** — `{ creditId, amountCents, pixCode, pixQrBase64,
+  expiresAt, via }` — and **`amountCents` must be whole cents from 325 to 25000** (R$ 3,25 to
+  R$ 250,00). Anything else used to reach the API; it is now refused before the call.
+- **`create_webhook` / `update_webhook` accept only the 15 real event names**, and
+  **`test_webhook` simulates only `pix.paid`, `card.paid`, `pix.expired`, `card.expired`**. The
+  old suggestions (`payment.created`, `payment.paid`, `payment.refunded`…) are refused.
+- **`insert_token` takes `type` and `target` from `pushinpay`, `utmify`, `emailprovider`,
+  `mercadopago`.** Any other value was always refused by the API.
+- **Lower caps:** `get_payments_paginated` `pageSize` 1000 → 100 (the API already reduced it
+  silently); `list_credits` `limit` 1000 → 200, the lowest cap of the two statements it reads.
 - **`update_funnel` no longer takes `settings.pixels` or `settings.webhookUrl`.** Nothing
   read them: the quiz page resolves `settings.pixelTokenIds` (ids from `list_tokens`) and
   webhooks are `settings.webhookIds` (ids from `list_webhooks`). A call that still sends
@@ -89,6 +42,78 @@ this client. They now say so and what to do instead, rather than surfacing a bar
   keeps listing the row with `deleted: true`.
 - `list_store_products` no longer accepts `sortBy: "createdAt"` (the API ignored it), and
   `validate_coupon` takes `orderValue` as integer cents.
+
+### Routes that had moved
+
+A sweep of every endpoint this client calls against the current API found four with no route
+behind them any more, plus a set of tools whose behaviour had drifted. Each item below was
+confirmed in the API source, and the fixes were exercised against a live account.
+
+- **`list_rewards` → `calculate_rewards`** (see Breaking).
+- **`add_credit` works on both billing generations.** The legacy route refuses a migrated
+  seller with 409 pointing at the top-up route; the call now follows that refusal, and only
+  that one. Takes an optional `idempotencyKey`, which only the new billing reads. A timeout or
+  a 502 may still have opened the PIX, so that error now says to look in `list_credits` before
+  retrying instead of inviting a second charge.
+- **`list_credits` returns the statement for either generation.** It reads the legacy credits
+  and the credit ledger, and answers `{ credits, total, ledger: { entries, nextBefore } }`. One
+  side is empty depending on the account, which is the true answer and not an error — before
+  this, a migrated seller got an empty list with no indication the data lived elsewhere. If one
+  side fails, the other still answers and `creditsError` / `ledgerError` says what failed.
+- **`upload_deliverable` / `delete_deliverable` now call routes that exist.** The paths they
+  used (`/api/products/{id}/deliverable/…`) are not part of the API. Attaching a file is now
+  two steps: `upload_deliverable` mints an upload URL, you PUT the bytes to it (only
+  `Content-Type`, no `Authorization`), then **`attach_deliverable`** confirms the upload and
+  links it to the product, keeping any link the product already has. `delete_deliverable`
+  unlinks the file and, given `filePath`, deletes the bytes too; it refuses when the file is
+  the only deliverable, and a failed byte deletion comes back as `fileDeleteError` beside the
+  completed unlink.
+- **`telegram_media_upload` calls `/presign`.** The old path was renamed. It returns
+  `{ uploadUrl, filePath, proxyUrl }`; `proxyUrl` is the URL to store in the flow node, because
+  the route does not return a public URL. The previously advertised `publicUrl` was always
+  undefined.
+- **`reorder_upsells` calls `.../upsells/reorder`.** It used to send whole objects to a route
+  that replaces the legacy upsell array instead of reordering, and that route does not exist
+  for a product on the new storage, where the call failed as an opaque 502.
+- **`update_product` writes the way each storage expects.** It used to re-send the whole
+  stored product. That is still what the old storage needs — its write puts a default into
+  every key the body omits (`url: ''`, `deliverableFile: null`, `membersAreaEnabled: false`…),
+  so a partial body would wipe the product with a 200 — and its read carries the file and the
+  stock lines, so it still goes back whole (minus the live `stockQuantity`). On the new storage
+  the read carries neither, so the re-send dropped them and the save was refused; there the
+  call now sends the edit plus the one field that satisfies the API's deliverable check (the
+  check reads the request body, not the stored product). When the only deliverable is a file or
+  stock lines — neither readable there — the edit is refused here with an explanation instead
+  of a bare 400. `attach_deliverable` and `delete_deliverable` go through the same write.
+- **`create_webhook` / `update_webhook` validate `events`.** The API stores event names without
+  checking them and dispatch matches exactly, so a wrong name is accepted and never fires. The
+  names this tool used to suggest (`payment.created`, `payment.paid`, `payment.refunded`) are
+  not seller webhook events at all. The real vocabulary is now enforced here, and `test_webhook`
+  simulates only the payment-shaped events.
+- **`insert_token` accepts only the four types the API takes**, in `type` and in `target`,
+  which the route checks against the same list. `stripe` and `efibank` were advertised and
+  always refused.
+- **`list_payments` answers an empty list for a seller with no sales.** The route reports that
+  state as 404, which surfaced as an error.
+- **`get_payments_paginated`**: the cursor in the answer is `nextCursor`; `totalCapped: true`
+  means the count stopped at its cap and `total` is a floor; a text search may come back with
+  `coverageCapped`.
+- **423 is not a thing, 503 is not "the backend is down".** 503 means the rate limiter is
+  failing closed and nothing was changed, so it is reported as retryable. 502 means the service
+  behind the API did not answer, and a write may or may not have landed, so it says to check
+  before repeating one. The wait is read from `Retry-After` or the body's `retry_after`. A
+  refusal that carries a `code` now shows it instead of just a status number.
+
+### Tools that an API key cannot use
+
+`create_whatsapp_session` answers 403 for an API key by design: the route classes it as
+sensitive. It now says so and what to do instead, rather than surfacing a bare "Forbidden".
+
+### Packaging
+
+- Compiled tests no longer ship in the published package (560 files down to 428).
+- `dotenv` is loaded quietly: version 17 announces itself on stdout, which is the MCP protocol
+  channel over stdio, and a strict client reads that line as a malformed frame.
 
 ### Added
 

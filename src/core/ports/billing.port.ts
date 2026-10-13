@@ -14,6 +14,9 @@ export interface BillingPort {
     credits: BillingCredit[];
     total: number;
     ledger: CreditLedgerPage;
+    /** Set when that side failed; its list above is then empty, not "no data". */
+    creditsError?: string;
+    ledgerError?: string;
   }>;
   addCredit(amountCents: number, idempotencyKey?: string): Promise<CreditTopup>;
   getCardStatus(): Promise<{ hasCard: boolean; card?: BillingCard; isExpiringSoon: boolean }>;

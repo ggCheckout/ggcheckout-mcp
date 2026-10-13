@@ -30,62 +30,9 @@ export class ProductService {
     return this.productPort.create(validated);
   }
 
-  /**
-   * The edit, plus the one field needed to get past the API's deliverable check.
-   *
-   * Two facts pull in opposite directions, and both are verified against a live account:
-   * the PATCH preserves by absence (an omitted `price` keeps the stored price), but the
-   * "at least one deliverable" refusal is evaluated against the BODY, not against the merged
-   * product — a title-only edit of a product that *has* a `url` is still refused with
-   * "Você precisa fornecer um link (url), arquivo (deliverableFile)…".
-   *
-   * So neither extreme works: sending the whole document loses data on accounts stored in
-   * Postgres (the read there answers `hasDeliverableFile` / `stockLineCount`, derived flags, and
-   * never the file or the stock lines), and sending the bare delta is refused. What travels is
-   * the delta plus the cheapest term that satisfies the check, carried over from the stored
-   * product — or an exemption flag, when one applies.
-   *
-   * When the only deliverable is a file or stock lines, there is nothing to carry over: the
-   * content is not readable through any route an API key can call. That edit cannot be made
-   * through the API at all, so it fails here with an explanation instead of as a bare 400.
-   */
   async update(id: string, input: any): Promise<void> {
     const validated = validateUpdateProductInput(input) as Record<string, unknown>;
-
-    const hasTerm = (body: Record<string, unknown>) =>
-      Boolean(body.url || body.deliverableFile || body.deliverableUrl || body.whatsappUrl)
-      || (Array.isArray(body.stockLines) && body.stockLines.length > 0);
-
-    if (hasTerm(validated)) return this.productPort.update(id, validated);
-
-    const stored = ((await this.productPort.getById(id)) ?? {}) as unknown as Record<string, unknown>;
-
-    // These three exempt a product from needing a deliverable at all; the fourth exemption (an
-    // active members area) is resolved by the API itself and needs nothing from us.
-    for (const flag of ['isPhysicalProduct', 'skipDeliveryEmail', 'membersAreaEnabled']) {
-      if (stored[flag] === true) {
-        return this.productPort.update(id, { ...validated, [flag]: true });
-      }
-    }
-
-    const carried = ['url', 'deliverableUrl', 'whatsappUrl']
-      .find((key) => typeof stored[key] === 'string' && (stored[key] as string).length > 0);
-    if (carried) {
-      return this.productPort.update(id, { ...validated, [carried]: stored[carried] });
-    }
-
-    if (stored.hasDeliverableFile === true || Number(stored.stockLineCount ?? 0) > 0) {
-      throw new ValidationError(
-        `Product ${id} delivers a file or stock lines, and the API does not expose either one for `
-        + 'reading, so an edit cannot be sent without dropping the deliverable — the save would be '
-        + 'refused. Edit this product in the dashboard, or pass the deliverable explicitly in this '
-        + 'call (deliverableFile / stockLines) together with your change.',
-      );
-    }
-
-    // No term and no exemption: the product has no deliverable at all, so the API would refuse any
-    // save of it. Let it answer, since its message names every accepted field.
-    return this.productPort.update(id, validated);
+    return this.write(id, validated);
   }
 
   async delete(id: string): Promise<void> {
@@ -99,15 +46,119 @@ export class ProductService {
     return this.productPort.presignDeliverable(productId, input);
   }
 
+  /**
+   * Confirms the upload, then links it. Nothing under `deliverables/*` links a file to a product,
+   * so without the product write the file would sit in storage where no buyer can reach it.
+   *
+   * A link the product already has is left alone: when a product has both, the file is what gets
+   * delivered, and blanking the link would throw away the seller's fallback without a word.
+   */
   async attachDeliverable(
     productId: string,
     input: { filePath: string; fileName: string; fileSize: number; fileType: string },
   ): Promise<DeliverableFile> {
-    return this.productPort.attachDeliverable(productId, input);
+    const file = await this.productPort.completeDeliverableUpload(input);
+    await this.write(productId, { deliverableFile: file, deliverableFileId: '' });
+    return file;
   }
 
-  async deleteDeliverable(productId: string, filePath?: string): Promise<void> {
-    return this.productPort.deleteDeliverable(productId, filePath);
+  /**
+   * Unlinks the file (`deliverableFile: null` is how both storages express a removal), then, given
+   * `filePath`, deletes the bytes — same order the dashboard uses, so a refused unlink never
+   * destroys a file that is still linked.
+   *
+   * The unlink is refused here when nothing would be left to deliver, since the API refuses to save
+   * such a product. A failed byte deletion does not undo the unlink, so it comes back as
+   * `fileDeleteError` next to a success instead of as an error that would hide the change.
+   */
+  async deleteDeliverable(
+    productId: string,
+    filePath?: string,
+  ): Promise<{ fileDeleted: boolean; fileDeleteError?: string }> {
+    const stored = await this.read(productId);
+
+    // Only the old storage's read carries the file, so only there can the path be checked against
+    // the product. On the new one the API still refuses a path outside the seller's own folder.
+    const linkedPath = (stored.deliverableFile as { filePath?: unknown } | null | undefined)?.filePath;
+    if (filePath && !isNewStorageRead(stored) && linkedPath !== filePath) {
+      throw new ValidationError(
+        `${filePath} is not the file linked to product ${productId}`
+        + `${typeof linkedPath === 'string' ? ` (that is ${linkedPath})` : ''}. Nothing was changed.`,
+      );
+    }
+
+    if (!deliversWithoutFile(stored)) {
+      throw new ValidationError(
+        `Removing the file would leave product ${productId} with nothing to deliver, and the API `
+        + 'refuses to save a product without a deliverable. Give it another one first (update_product '
+        + 'with `url`), then remove the file. Nothing was changed.',
+      );
+    }
+
+    await this.write(productId, { deliverableFile: null, deliverableFileId: '' }, stored);
+    if (!filePath) return { fileDeleted: false };
+
+    try {
+      await this.productPort.deleteDeliverableFile(filePath);
+      return { fileDeleted: true };
+    } catch (error) {
+      return { fileDeleted: false, fileDeleteError: (error as Error).message };
+    }
+  }
+
+  /**
+   * Every product write goes through here, because the two storages read and write in opposite
+   * ways and the body that is safe for one loses data on the other.
+   *
+   * **Old storage (Firestore).** The write puts a DEFAULT into every key the body omits — `url`,
+   * `imageUrl` and `deliverableUrl` become `''`, `deliverableFile` becomes `null`,
+   * `membersAreaEnabled` / `isPhysicalProduct` / `skipDeliveryEmail` become `false`, and so on. A
+   * partial body therefore wipes the product with a 200. The read echoes the stored document,
+   * file and stock lines included, so the whole document travels with the change on top.
+   * `stockQuantity` stays out: it is a live counter that a sale moves, and an absent one keeps
+   * what is stored instead of writing back the number that was read.
+   *
+   * **New storage (Postgres).** An omitted key keeps what is stored, but the read never carries the
+   * file or the stock lines (only `hasDeliverableFile` / `stockLineCount`), and the "at least one
+   * deliverable" check reads the BODY, not the merged product: a title-only edit of a product that
+   * has a `url` is refused. So the change travels with the cheapest term that satisfies the check,
+   * carried over from the stored product, or with an exemption flag when one applies. When the only
+   * deliverable is a file or stock lines there is nothing to carry, and the change is refused here
+   * with an explanation instead of as a bare 400.
+   */
+  private async write(
+    id: string,
+    change: Record<string, unknown>,
+    stored?: Record<string, unknown>,
+  ): Promise<void> {
+    // Read even when the change names a deliverable: that is the only way to know the storage.
+    const current = stored ?? (await this.read(id));
+    if (!isNewStorageRead(current)) return this.productPort.update(id, wholeDocument(current, change));
+    if (hasDeliveryTerm(change)) return this.productPort.update(id, change);
+
+    // The fourth exemption, an active members area, is resolved by the API itself.
+    const flag = EXEMPTION_FLAGS.find((key) => current[key] === true);
+    if (flag) return this.productPort.update(id, { ...change, [flag]: true });
+
+    const link = LINK_FIELDS.find((key) => isNonEmptyString(current[key]));
+    if (link) return this.productPort.update(id, { ...change, [link]: current[link] });
+
+    const keepsFile = current.hasDeliverableFile === true && !('deliverableFile' in change);
+    if (keepsFile || Number(current.stockLineCount ?? 0) > 0) {
+      throw new ValidationError(
+        `Product ${id} delivers stock lines or a file, and the API does not expose either one for `
+        + 'reading, so this change cannot carry them and the save would be refused. Make it in the '
+        + 'dashboard, or pass a `url` with the change if the product should also deliver one.',
+      );
+    }
+
+    // No term and no exemption: the product delivers nothing, so the API refuses any save of it.
+    // Let it answer, since its message names every accepted field.
+    return this.productPort.update(id, change);
+  }
+
+  private async read(id: string): Promise<Record<string, unknown>> {
+    return ((await this.productPort.getById(id)) ?? {}) as unknown as Record<string, unknown>;
   }
 
   async listUpsells(productId: string): Promise<Upsell[]> {
@@ -158,13 +209,53 @@ export class ProductService {
     return this.productPort.deleteDownsell(productId, downsellId);
   }
 
-  async reorderDownsells(productId: string, order: string[]): Promise<ReorderResult[]> {
-    return this.productPort.reorderDownsells(productId, order);
+  async reorderDownsells(productId: string, downsellIds: string[]): Promise<ReorderResult[]> {
+    return this.productPort.reorderDownsells(productId, downsellIds);
   }
 
   async manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }> {
     return this.productPort.manageTags(productId, tags);
   }
+}
+
+/** These exempt a product from needing a deliverable at all. */
+const EXEMPTION_FLAGS = ['isPhysicalProduct', 'skipDeliveryEmail', 'membersAreaEnabled'] as const;
+
+/** The deliverables a read returns as plain strings, so they can be carried over. */
+const LINK_FIELDS = ['url', 'deliverableUrl', 'whatsappUrl'] as const;
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+/**
+ * The read on the new storage collapses the file and the stock lines into these two derived
+ * flags; the read on the old one echoes the stored document, which never has them. It is the
+ * only signal of the storage this client gets.
+ */
+function isNewStorageRead(stored: Record<string, unknown>): boolean {
+  return 'hasDeliverableFile' in stored || 'stockLineCount' in stored;
+}
+
+/** The API's own "at least one deliverable" test, applied to a request body. */
+function hasDeliveryTerm(body: Record<string, unknown>): boolean {
+  return LINK_FIELDS.some((key) => Boolean(body[key]))
+    || Boolean(body.deliverableFile)
+    || (Array.isArray(body.stockLines) && body.stockLines.length > 0);
+}
+
+/** Whether the stored product, in either storage's shape, still delivers once its file is gone. */
+function deliversWithoutFile(stored: Record<string, unknown>): boolean {
+  return EXEMPTION_FLAGS.some((key) => stored[key] === true)
+    || LINK_FIELDS.some((key) => isNonEmptyString(stored[key]))
+    || (Array.isArray(stored.stockLines) && stored.stockLines.length > 0)
+    || Number(stored.stockLineCount ?? 0) > 0;
+}
+
+/** The old storage's body: the stored document with the change on top. See `write`. */
+function wholeDocument(stored: Record<string, unknown>, change: Record<string, unknown>) {
+  const { uid: _uid, updatedAt: _updatedAt, stockQuantity: _stockQuantity, ...document } = stored;
+  return { ...document, ...change };
 }
 
 /**

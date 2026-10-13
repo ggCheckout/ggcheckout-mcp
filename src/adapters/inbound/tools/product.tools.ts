@@ -62,7 +62,9 @@ export function registerProductTools(server: McpServer, service: ProductService)
     'update_product',
     {
       description:
-        'Update an existing product/delivery. Only provide fields you want to update — the stored product is re-sent with your changes on top.',
+        'Update an existing product/delivery. Only provide fields you want to update; everything else is '
+        + 'kept. Refused with an explanation when the product delivers only stock lines or a file on an '
+        + 'account where the API cannot read them back: pass `url` with the change, or edit it in the dashboard.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
         title: z.string().max(200).optional().describe('Product title'),
@@ -137,7 +139,8 @@ export function registerProductTools(server: McpServer, service: ProductService)
       description:
         'Step 2 of 2: confirm an uploaded file exists in storage and attach it to the product as its '
         + 'deliverable. Call it after PUTting the bytes to the uploadUrl from upload_deliverable, with '
-        + 'the same values. Answers 404 if the bytes never landed.',
+        + 'the same values. Answers 404 if the bytes never landed. A link (`url`) the product already '
+        + 'has is kept; when both exist, the file is what the buyer receives.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
         filePath: z.string().describe('The filePath returned by upload_deliverable'),
@@ -156,20 +159,22 @@ export function registerProductTools(server: McpServer, service: ProductService)
     'delete_deliverable',
     {
       description:
-        'Unlink the deliverable file from a product. Pass `filePath` to also delete the stored bytes; '
-        + 'without it the file stays in storage, unreferenced.',
+        'Unlink the deliverable file from a product; a link (`url`) it also has stays. Refused when the '
+        + 'file is the only deliverable, because the API will not save a product with nothing to deliver: '
+        + 'give it a `url` first. Pass `filePath` to also delete the stored bytes; without it the file '
+        + 'stays in storage, unreferenced. If the unlink works and the byte deletion does not, the answer '
+        + 'says so in `fileDeleteError` and the product stays unlinked.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
         filePath: z.string().optional()
-          .describe('The stored path (from get_product deliverable data) to also delete the bytes'),
+          .describe('The filePath returned by upload_deliverable (also `deliverableFile.filePath` in '
+            + 'get_product, on accounts whose read carries it), to also delete the bytes'),
       },
     },
     createToolHandler('delete_deliverable', async ({ productId, filePath }) => {
-      await service.deleteDeliverable(productId, filePath);
-      return {
-        success: true,
-        message: `Deliverable unlinked from product ${productId}${filePath ? ' and the file deleted' : ''}`,
-      };
+      const result = await service.deleteDeliverable(productId, filePath);
+      const bytes = result.fileDeleted ? ' and the file deleted' : '';
+      return { success: true, ...result, message: `Deliverable unlinked from product ${productId}${bytes}` };
     }),
   );
 

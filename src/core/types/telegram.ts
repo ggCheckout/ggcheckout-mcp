@@ -115,8 +115,6 @@ export interface TelegramMediaUpload {
   filePath: string;
   /** `/api/r2-proxy/{filePath}` — the URL to store in the flow node, derived by the adapter. */
   proxyUrl: string;
-  /** The API does not return this today; kept optional for the day it does. */
-  publicUrl?: string;
 }
 
 // --- Input types ---

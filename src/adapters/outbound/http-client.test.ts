@@ -149,7 +149,7 @@ describe('HttpClient', () => {
 
   // 503 is the rate limiter failing closed, not a rejection on the merits, and the wait comes in
   // the body as `retry_after` — the header is dropped when the answer is forwarded.
-  it('turns 503 into a retryable error and reads retry_after from the body', () => {
+  it('turns 503 into a retryable error and puts retry_after from the body in the message', () => {
     new HttpClient('https://api.test.com', 'key');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
@@ -167,13 +167,14 @@ describe('HttpClient', () => {
       expect.unreachable('should have thrown');
     } catch (e: any) {
       expect(e).toBeInstanceOf(TemporarilyUnavailableError);
-      expect(e.retryAfterSeconds).toBe(5);
       expect(e.message).toContain('Retry after 5 seconds');
       expect(e.message).toContain('nothing was changed');
     }
   });
 
-  it('turns 502 into a retryable error that warns the write may not have landed', () => {
+  // A 502 on a write is ambiguous: the service behind the API may have applied it before the
+  // answer was lost, so a blind retry can repeat it (a second PIX charge, for one).
+  it('turns 502 into an error that says to check a write before repeating it', () => {
     new HttpClient('https://api.test.com', 'key');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
@@ -187,7 +188,8 @@ describe('HttpClient', () => {
       expect.unreachable('should have thrown');
     } catch (e: any) {
       expect(e).toBeInstanceOf(TemporarilyUnavailableError);
-      expect(e.message).toContain('may not have been applied');
+      expect(e.message).toContain('may or may not have been applied');
+      expect(e.message).toContain('check its result before repeating it');
     }
   });
 

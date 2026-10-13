@@ -74,8 +74,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-// `quiet` porque dotenv >= 17 anuncia o que injetou no STDOUT, e em transporte stdio o stdout
-// e' o canal do protocolo MCP: a linha de aviso entra no fio como quadro invalido.
+// quiet: dotenv >= 17 prints to STDOUT, which is the MCP protocol channel over stdio; that line
+// reaches the client as a malformed frame.
 dotenv.config({ quiet: true });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

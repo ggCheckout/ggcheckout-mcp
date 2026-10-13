@@ -147,39 +147,38 @@ describe('ProductApiAdapter', () => {
     expect(result.filePath).toBe('deliverables/s1/p1/uuid-a.pdf');
   });
 
-  it('attachDeliverable confirms the upload and then links it to the product', async () => {
+  // Confirming is all this route does: nothing under /api/deliverables links a file to a product,
+  // so the service makes the product write separately.
+  it('completeDeliverableUpload confirms the upload and returns the stored file', async () => {
     const stored = { filePath: 'deliverables/s1/p1/uuid-a.pdf', fileName: 'a.pdf', fileSize: 1024, fileType: 'application/pdf' };
     vi.mocked(http.post).mockResolvedValue({ success: true, data: stored });
-    vi.mocked(http.patch).mockResolvedValue({});
 
-    const result = await adapter.attachDeliverable('p1', stored);
+    const result = await adapter.completeDeliverableUpload(stored);
 
     expect(http.post).toHaveBeenCalledWith('/api/deliverables/complete-upload', stored);
-    // Nothing under /api/deliverables links a file to a product, so the PATCH is what makes it
-    // reachable by a buyer.
-    expect(http.patch).toHaveBeenCalledWith(
-      '/api/product-delivery/p1',
-      expect.objectContaining({ deliverableFile: stored, deliverableFileId: '', deliverableUrl: '' }),
-    );
+    expect(http.patch).not.toHaveBeenCalled();
     expect(result).toEqual(stored);
   });
 
-  it('deleteDeliverable unlinks via PATCH and leaves the bytes alone without a filePath', async () => {
-    vi.mocked(http.patch).mockResolvedValue({});
-    await adapter.deleteDeliverable('p1');
-    expect(http.patch).toHaveBeenCalledWith(
-      '/api/product-delivery/p1',
-      expect.objectContaining({ deliverableFile: null, deliverableFileId: '', deliverableUrl: '' }),
-    );
-    expect(http.delete).not.toHaveBeenCalled();
-  });
-
-  it('deleteDeliverable deletes the bytes only after the unlink succeeded', async () => {
-    vi.mocked(http.patch).mockResolvedValue({});
+  it('deleteDeliverableFile DELETEs the bytes by their encoded path', async () => {
     vi.mocked(http.delete).mockResolvedValue({});
-    await adapter.deleteDeliverable('p1', 'deliverables/s1/p1/uuid-a.pdf');
+    await adapter.deleteDeliverableFile('deliverables/s1/p1/uuid-a.pdf');
     expect(http.delete).toHaveBeenCalledWith(
       '/api/deliverables/upload?filePath=deliverables%2Fs1%2Fp1%2Fuuid-a.pdf',
     );
+  });
+
+  it('reorderDownsells POSTs the ids to /downsells/reorder and returns the stored order', async () => {
+    vi.mocked(http.post).mockResolvedValue({
+      success: true,
+      message: 'ok',
+      newOrder: [{ id: 'd2', order: 1 }, { id: 'd1', order: 2 }],
+    });
+    const result = await adapter.reorderDownsells('p1', ['d2', 'd1']);
+    expect(http.post).toHaveBeenCalledWith(
+      '/api/product-delivery/p1/downsells/reorder',
+      { downsellIds: ['d2', 'd1'] },
+    );
+    expect(result).toEqual([{ id: 'd2', order: 1 }, { id: 'd1', order: 2 }]);
   });
 });

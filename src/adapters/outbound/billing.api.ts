@@ -7,6 +7,12 @@ import { sanitizeBillingCard } from '../../shared/sanitizer.js';
 import { ApiError } from '../../shared/errors.js';
 import type { HttpClient } from './http-client.js';
 
+const TOPUP_ROUTE = '/api/billing/credit/topup';
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export class BillingApiAdapter implements BillingPort {
   constructor(private readonly http: HttpClient) {}
 
@@ -50,6 +56,9 @@ export class BillingApiAdapter implements BillingPort {
    * statement for those lives in `/api/billing/credit-ledger`, which answers an empty page for a
    * seller still on the old one. Reading both is what the dashboard does, and it means the caller
    * does not have to know which generation the account is on — the side that has data answers.
+   *
+   * One side failing does not discard the other: that side comes back empty with its error next
+   * to it (`creditsError` / `ledgerError`), so an outage never reads as "no credits".
    */
   async listCredits(options?: { status?: string; limit?: number; before?: string }) {
     const params = new URLSearchParams();
@@ -58,15 +67,23 @@ export class BillingApiAdapter implements BillingPort {
     const qs = params.toString();
 
     const ledgerParams = new URLSearchParams();
-    if (options?.limit) ledgerParams.append('limit', Math.min(options.limit, 100).toString());
+    if (options?.limit) ledgerParams.append('limit', options.limit.toString());
     if (options?.before) ledgerParams.append('before', options.before);
     const ledgerQs = ledgerParams.toString();
 
-    const [legacy, ledger] = await Promise.all([
+    const [legacy, ledger] = await Promise.allSettled([
       this.http.get<{ credits: BillingCredit[]; total: number }>(`/api/billing/credit${qs ? `?${qs}` : ''}`),
       this.http.get<CreditLedgerPage>(`/api/billing/credit-ledger${ledgerQs ? `?${ledgerQs}` : ''}`),
     ]);
-    return { ...legacy, ledger };
+    if (legacy.status === 'rejected' && ledger.status === 'rejected') throw legacy.reason;
+
+    return {
+      credits: legacy.status === 'fulfilled' ? legacy.value.credits : [],
+      total: legacy.status === 'fulfilled' ? legacy.value.total : 0,
+      ...(legacy.status === 'rejected' ? { creditsError: errorMessage(legacy.reason) } : {}),
+      ledger: ledger.status === 'fulfilled' ? ledger.value : { entries: [], nextBefore: null },
+      ...(ledger.status === 'rejected' ? { ledgerError: errorMessage(ledger.reason) } : {}),
+    };
   }
 
   /**
@@ -74,6 +91,7 @@ export class BillingApiAdapter implements BillingPort {
    * and the new route is the only one that reaches the Postgres balance. Trying the legacy one
    * first and following the 409 keeps both generations working without the MCP having to know
    * which one the account is on; the 409 is a refusal, so nothing was written when it happens.
+   * Only a 409 that names the top-up route is followed — any other conflict is the caller's to see.
    */
   async addCredit(amountCents: number, idempotencyKey?: string): Promise<CreditTopup> {
     try {
@@ -89,12 +107,15 @@ export class BillingApiAdapter implements BillingPort {
         via: 'legacy',
       };
     } catch (error) {
-      if (!(error instanceof ApiError) || error.statusCode !== 409) throw error;
+      const movedToTopup = error instanceof ApiError
+        && error.statusCode === 409
+        && error.message.includes(TOPUP_ROUTE);
+      if (!movedToTopup) throw error;
       const topup = await this.http.post<{
         topupId: string;
         amountCents: number;
         pix: { emv: string; qrBase64: string; expiresAt: string } | null;
-      }>('/api/billing/credit/topup', {
+      }>(TOPUP_ROUTE, {
         amountCents,
         ...(idempotencyKey ? { idempotencyKey } : {}),
       });

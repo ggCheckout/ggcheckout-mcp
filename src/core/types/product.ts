@@ -119,12 +119,6 @@ export interface UpdateProductInput {
   customSupport?: CustomerSupportConfig;
 }
 
-export interface UploadDeliverableInput {
-  fileUrl: string;
-  fileName: string;
-  fileType?: string;
-}
-
 /** Step 1 of attaching a file: where to PUT the bytes, and the path that identifies them. */
 export interface DeliverablePresign {
   uploadUrl: string;
@@ -269,15 +263,6 @@ export interface DownsellSequenceItem {
   uuidOwner: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface ReorderUpsellItem {
-  uid: string;
-  id: string;
-  order?: number;
-  upsellProductId: string;
-  title: string;
-  status: UpsellStatus;
 }
 
 export interface CreateDownsellInput {

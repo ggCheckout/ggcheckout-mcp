@@ -6,36 +6,16 @@ import type {
   UpdateStudentInput, ImportStudentsInput, ImportStudentsResult,
 } from '../../core/types/members-area.js';
 import { sanitizeStudent } from '../../shared/sanitizer.js';
-import { AuthenticationError } from '../../shared/errors.js';
 import type { HttpClient } from './http-client.js';
 
 export class MembersAreaApiAdapter implements MembersAreaPort {
   constructor(private readonly http: HttpClient) {}
 
-  /**
-   * This route reads the `__session` cookie directly instead of going through the API-key aware
-   * reader its sibling routes use, so a `ggck_live_` key can only ever get 401 here. The call is
-   * kept (it starts working the day the route takes a key) but the refusal is translated, or the
-   * caller only sees a bare "Unauthorized" and retries forever.
-   */
   async listByOwner(ownerId: string) {
-    try {
-      const data = await this.http.get<{ areas: Array<{ id: string; productId: string; name: string }> }>(
-        `/api/members-area/by-owner?ownerId=${encodeURIComponent(ownerId)}`,
-      );
-      return data.areas;
-    } catch (error) {
-      if (error instanceof AuthenticationError) {
-        throw new AuthenticationError(
-          'This listing is the one members-area route that only accepts a dashboard session cookie, '
-          + 'so an API key cannot read it (the sibling routes do accept the key). Retrying will not help. '
-          + 'Use get_members_area with a known areaId, which does accept the API key, or list the areas '
-          + 'from the dashboard.',
-          error,
-        );
-      }
-      throw error;
-    }
+    const data = await this.http.get<{ areas: Array<{ id: string; productId: string; name: string }> }>(
+      `/api/members-area/by-owner?ownerId=${encodeURIComponent(ownerId)}`,
+    );
+    return data.areas;
   }
 
   async getById(areaId: string): Promise<MembersArea> {

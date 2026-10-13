@@ -30,8 +30,9 @@ export class HttpClient {
         // connection refused, wrong base URL, or timeout). Surface a clear,
         // actionable message instead of failing silently / opaquely.
         if (!error.response) {
+          // A timeout is not a refusal: the API may still finish a write it already received.
           const reason = error.code === 'ECONNABORTED'
-            ? 'request timed out'
+            ? 'request timed out, and a write may still have been applied, so check before repeating it'
             : `could not reach the API (${error.code || error.message})`;
           throw new NetworkError(
             `Cannot connect to GG Checkout API at ${baseURL}: ${reason}. `
@@ -72,8 +73,8 @@ export class HttpClient {
         if (status === 401) throw new AuthenticationError(safeMessage, error);
         if (status === 429) throw new RateLimitError(withRetry(safeMessage), error);
         // 503 is the rate-limiter failing closed (its backing store is degraded), not the API
-        // being down — a down backend surfaces as 502. Both are worth retrying, and neither
-        // means the request was rejected on its merits.
+        // being down — a down backend surfaces as 502. Neither means the request was rejected on
+        // its merits, but only the 503 is known to have changed nothing.
         if (status === 503) {
           throw new TemporarilyUnavailableError(
             503,
@@ -81,7 +82,6 @@ export class HttpClient {
               `${safeMessage} The API is refusing requests while its rate-limit backend is degraded; `
               + 'nothing was changed',
             ),
-            retrySeconds,
             error,
           );
         }
@@ -89,10 +89,9 @@ export class HttpClient {
           throw new TemporarilyUnavailableError(
             502,
             withRetry(
-              `${safeMessage} The API could not reach the service behind it; `
-              + 'a write may not have been applied',
+              `${safeMessage} The API could not reach the service behind it; a write may or may not `
+              + 'have been applied, so check its result before repeating it',
             ),
-            retrySeconds,
             error,
           );
         }

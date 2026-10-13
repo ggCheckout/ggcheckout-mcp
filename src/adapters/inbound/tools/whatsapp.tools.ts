@@ -124,10 +124,7 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   }));
 
   server.registerTool('resend_delivery', {
-    description:
-      'Resend WhatsApp delivery for a payment (rate limited: 50/hour per user). NOT AVAILABLE TO API '
-      + 'KEYS today: this route accepts only a dashboard session cookie and answers 401 for a key, '
-      + 'while get_delivery_status on the same payment does work. Resend from the dashboard.',
+    description: 'Resend WhatsApp delivery for a payment (rate limited: 50/hour per user)',
     inputSchema: { paymentId: z.string().describe('Payment ID') },
   }, createToolHandler('resend_delivery', async ({ paymentId }) => {
     return service.resendDelivery(paymentId);
