@@ -1,9 +1,9 @@
 import type { ExternalFlow, OfferKind } from '../core/types/product.js';
 
 /**
- * The HTML the seller pastes on their own page for an external upsell — the same markup the
- * dashboard's "Copiar HTML" produces (`lib/upsell/externalOfferSnippet.ts` in the saas). The API has
- * no route that renders it, so it is built here; keep the two in step.
+ * The HTML the seller pastes on their own page for an offered product shown there ("Minha página")
+ * — the same markup the dashboard's "Copiar HTML" produces (`lib/upsell/externalOfferSnippet.ts` in
+ * the saas). The API has no route that renders it, so it is built here; keep the two in step.
  *
  * Only `data-gg-offer`, `data-gg-accept`, `data-gg-decline` and the script are the contract: the
  * script reads those, opens the GG iframe and charges from inside it. The inline styles only make
@@ -40,21 +40,44 @@ function cssText(style: Record<string, string>): string {
 
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 
-function isStep(value: unknown): boolean {
-  const step = value as { kind?: unknown; url?: unknown } | null;
-  return step?.kind === 'thank_you' || (step?.kind === 'url' && typeof step.url === 'string');
+/**
+ * An absolute `https:` page URL. The API also takes `http://localhost` on a development server; the
+ * MCP cannot tell, so it accepts that host too and leaves the final word to the API.
+ */
+export function isSellerPageUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.trim() === '' || value.length > 2048) return false;
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    return false;
+  }
+  if (url.protocol === 'https:') return true;
+  return url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
 }
 
 /**
- * Whether a stored value is a routing the API would apply — the shape of its `externalFlowSchema`.
- * The API reads an invalid one as absent, so the snippet must too.
+ * Whether a stored value is a seller page the API would apply — the shape of its
+ * `externalFlowSchema` (`pageUrl`, both texts and the color). The API reads an invalid one as absent,
+ * so the snippet must too.
  */
 export function isExternalFlow(value: unknown): value is ExternalFlow {
   const flow = value as Partial<ExternalFlow> | null;
-  return typeof flow?.acceptLabel === 'string' && flow.acceptLabel.trim() !== ''
+  return isSellerPageUrl(flow?.pageUrl)
+    && typeof flow?.acceptLabel === 'string' && flow.acceptLabel.trim() !== ''
     && typeof flow.declineLabel === 'string' && flow.declineLabel.trim() !== ''
-    && typeof flow.buttonColor === 'string' && COLOR.test(flow.buttonColor)
-    && isStep(flow.onAccept) && isStep(flow.onDecline);
+    && typeof flow.buttonColor === 'string' && COLOR.test(flow.buttonColor);
+}
+
+/**
+ * The seller page of one offered product, or `null` when it opens on the GG page. The API's rule:
+ * external needs BOTH `displayMode: 'external'` and a valid page; a product marked external with a
+ * broken page opens on the GG page, so no snippet is handed out for it.
+ */
+export function externalPageOf(override: unknown): ExternalFlow | null {
+  const stored = override as { displayMode?: unknown; externalFlow?: unknown } | null | undefined;
+  if (stored?.displayMode !== 'external') return null;
+  return isExternalFlow(stored.externalFlow) ? stored.externalFlow : null;
 }
 
 export function externalOfferRef(kind: OfferKind, parentProductId: string, offerUid: string, productId: string) {

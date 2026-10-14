@@ -163,9 +163,11 @@ export interface Upsell {
   upsellProductId: string;
   /** Every product the offer sells; `upsellProductId` is the first one. */
   upsellProductIds?: string[];
-  externalFlow?: ExternalFlow | null;
-  /** Per offered product settings; the dashboard writes each product's `externalFlow` here. */
-  productOverrides?: Record<string, { externalFlow?: unknown } | undefined>;
+  /**
+   * Per offered product settings (price, texts, media). `displayMode: 'external'` puts that product
+   * on the seller's own page, with `externalFlow` = that page and its buttons; absent is the GG page.
+   */
+  productOverrides?: Record<string, OfferProductOverride | undefined>;
   title: string;
   description?: string;
   price?: number;
@@ -256,9 +258,11 @@ export interface DownsellSequenceItem {
   downsellProductId: string;
   /** Every product the offer sells; `downsellProductId` is the first one. */
   downsellProductIds?: string[];
-  externalFlow?: ExternalFlow | null;
-  /** Per offered product settings; the dashboard writes each product's `externalFlow` here. */
-  productOverrides?: Record<string, { externalFlow?: unknown } | undefined>;
+  /**
+   * Per offered product settings (price, texts, media). `displayMode: 'external'` puts that product
+   * on the seller's own page, with `externalFlow` = that page and its buttons; absent is the GG page.
+   */
+  productOverrides?: Record<string, OfferProductOverride | undefined>;
   title: string;
   headline?: string;
   description?: string;
@@ -295,33 +299,39 @@ export interface CreateDownsellInput {
 
 export type OfferKind = 'upsell' | 'downsell';
 
-/** Where a button on the seller's external upsell page sends the buyer next. */
-export type ExternalStep = { kind: 'url'; url: string } | { kind: 'thank_you' };
+/** Where one offered product opens in the post-purchase funnel: the GG offer page or the seller's. */
+export type OfferDisplayMode = 'native' | 'external';
 
 /**
- * The routing of an offer shown on the seller's own page instead of the GG offer page: where the
- * accept button and the decline link lead, their texts and the button color (`#RRGGBB`).
+ * One offered product on the seller's own page: the page where its buttons are pasted, their texts
+ * and the accept button color (`#RRGGBB`). Where the buyer goes after accepting or declining is not
+ * here: the funnel order decides, as on the GG page.
  */
 export interface ExternalFlow {
-  onAccept: ExternalStep;
-  onDecline: ExternalStep;
+  pageUrl: string;
   acceptLabel: string;
   declineLabel: string;
   buttonColor: string;
 }
 
-/** The HTML to paste on the seller's page for one product of the offer. */
-export interface ExternalOfferSnippet {
+/** What the dashboard stores per offered product; only the keys the MCP reads are typed. */
+export type OfferProductOverride = Record<string, unknown> & {
+  displayMode?: unknown;
+  externalFlow?: unknown;
+};
+
+/** One product of the offer, in funnel order, with the HTML to paste when it is on the seller's page. */
+export interface OfferProductPage {
   productId: string;
+  /** 1-based position in the offer's funnel. */
+  position: number;
+  displayMode: OfferDisplayMode;
+  /** The seller's page where `html` goes; `null` on the GG page. */
+  pageUrl: string | null;
   /** `<kind>:<parentProductId>:<offerUid>:<offeredProductId>`, the `data-gg-offer` value. */
   offerRef: string;
-  html: string;
-  /**
-   * True when this product has its own routing, set in the dashboard. It wins over the offer's
-   * routing that `set_offer_external_flow` writes, so the snippet carries the product's texts and
-   * color, and the change did not reach this product.
-   */
-  productOverride?: boolean;
+  /** The buttons to paste (the dashboard's "Copiar HTML"); `null` on the GG page. */
+  html: string | null;
 }
 
 /** What the API stores for a downsell: the input plus the keys the dashboard editor always writes. */

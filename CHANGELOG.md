@@ -10,14 +10,16 @@ right now.
 Checked end to end against a QA account on the Postgres (v2) data path, and product edits
 also against production.
 
-### Release requirement — do not publish before the API has these routes
+### Release requirement — do not publish before the API has these changes
 
-Seven tools call API routes that are still in open pull requests of the API. Published before
-them, the install (unpinned) reaches everyone and these tools answer 404/405 — reported as "this
-API has no such route yet", not as a missing offer:
+Eight tools depend on open pull requests of the API. Published before them, the install
+(unpinned) reaches everyone: the six members-area tools answer 404/405 (reported as "this API has
+no such route yet", not as a missing item), and the two seller-page tools write a model the API
+does not read yet:
 
-- `set_offer_external_flow` needs `PUT /api/product-delivery/{id}/{upsells|downsells}/{offerId}/external-flow`
-  (ggCheckout/saas-checkout#1681).
+- `set_offer_product_page` and `get_offer_snippets` need the per-product seller page model of
+  ggCheckout/saas-checkout#1681 (`productOverrides[product].displayMode` + `externalFlow.pageUrl`).
+  Against an API without it, the write is saved but the buyer never reaches the seller's page.
 - `update_module`, `update_section`, `update_lesson`, `delete_module`, `delete_section`,
   `delete_lesson` need the `PATCH`/`DELETE` routes under `/api/members-area/{areaId}/modules/…`
   (ggCheckout/saas-checkout#1685).
@@ -142,9 +144,11 @@ sensitive. It now says so and what to do instead, rather than surfacing a bare "
 
 ### Added
 
-- **External upsell:** `set_offer_external_flow` routes an upsell or downsell shown on the seller's
-  own page and returns the snippet to paste there. `update_checkout` now merges the `checkout`
-  object, so setting `externalUpsellPage` keeps the rest of the page setup.
+- **Offers on the seller's page:** `set_offer_product_page` puts one product of an upsell or
+  downsell on the seller's own page (or back on the GG page), mixed with GG pages in the same
+  funnel; `get_offer_snippets` returns, read only, the HTML to paste for each product on the
+  seller's page. `update_checkout` now merges the `checkout` object, so setting one key keeps the
+  rest of the page setup.
 - **Members-area files:** `upload_members_area_file` uploads an image, a lesson video or a file
   (PDF, document, audio) from the machine running the server and returns the URL to use.
   `create_pdf_lessons` creates a batch of PDF lessons; `list_lesson_attachments`,

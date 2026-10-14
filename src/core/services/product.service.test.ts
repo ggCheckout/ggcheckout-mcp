@@ -24,7 +24,7 @@ describe('ProductService', () => {
       createDownsell: vi.fn(),
       deleteDownsell: vi.fn(),
       reorderDownsells: vi.fn(),
-      setOfferExternalFlow: vi.fn(),
+      saveOffer: vi.fn(),
       manageTags: vi.fn(),
     };
     service = new ProductService(mockPort, 'https://app.test');
@@ -326,68 +326,117 @@ describe('ProductService', () => {
     expect(result).toEqual({ fileDeleted: false, fileDeleteError: 'API Error (403): forbidden' });
   });
 
-  const flow = {
-    onAccept: { kind: 'url', url: 'https://seller.example/next' },
-    onDecline: { kind: 'thank_you' },
+  const page = {
+    pageUrl: 'https://seller.example/oferta',
     acceptLabel: 'Quero <agora>',
     declineLabel: 'Não, obrigado',
     buttonColor: '#22C55E',
   } as const;
 
-  it('setOfferExternalFlow returns a snippet for every product the offer sells', async () => {
-    vi.mocked(mockPort.setOfferExternalFlow).mockResolvedValue(flow);
+  it('getOfferPages lists every product in funnel order, with HTML only for the seller-page ones', async () => {
     vi.mocked(mockPort.listUpsells).mockResolvedValue([
       { uid: 'other', upsellProductId: 'x' },
-      { uid: 'u-1', upsellProductId: 'p-2', upsellProductIds: ['p-2', 'p-3'] },
+      {
+        uid: 'u-1', upsellProductId: 'p-2', upsellProductIds: ['p-2', 'p-3'],
+        productOverrides: { 'p-3': { price: 9700, displayMode: 'external', externalFlow: page } },
+      },
     ] as any);
 
-    const result = await service.setOfferExternalFlow('p-1', 'upsell', 'u-1', flow);
+    const result = await service.getOfferPages('p-1', 'upsell', 'u-1');
 
-    expect(mockPort.setOfferExternalFlow).toHaveBeenCalledWith('p-1', 'upsell', 'u-1', flow);
-    expect(result.externalFlow).toEqual(flow);
-    expect(result.snippets.map((s) => s.offerRef)).toEqual(['upsell:p-1:u-1:p-2', 'upsell:p-1:u-1:p-3']);
-    expect(result.snippets[0].html).toContain('data-gg-offer="upsell:p-1:u-1:p-2"');
-    expect(result.snippets[0].html).toContain('Quero &lt;agora&gt;');
-    expect(result.snippets[0].html).toContain('<script src="https://app.test/embed/upsell.js?v=1" async></script>');
+    expect(result.products.map((p) => [p.position, p.productId, p.displayMode])).toEqual([
+      [1, 'p-2', 'native'],
+      [2, 'p-3', 'external'],
+    ]);
+    expect(result.products[0]).toMatchObject({ pageUrl: null, html: null, offerRef: 'upsell:p-1:u-1:p-2' });
+    expect(result.products[1].pageUrl).toBe('https://seller.example/oferta');
+    expect(result.products[1].html).toContain('data-gg-offer="upsell:p-1:u-1:p-3"');
+    expect(result.products[1].html).toContain('Quero &lt;agora&gt;');
+    expect(result.products[1].html).toContain('<script src="https://app.test/embed/upsell.js?v=1" async></script>');
+    expect(mockPort.saveOffer).not.toHaveBeenCalled();
   });
 
-  // The dashboard writes a product's own routing, and the API reads it before the offer's.
-  it('setOfferExternalFlow builds the snippet from a product override, and says so', async () => {
-    const own = { ...flow, acceptLabel: 'Comprar agora', buttonColor: '#FACC15' };
-    vi.mocked(mockPort.setOfferExternalFlow).mockResolvedValue(flow);
+  // The API's rule: external needs the mode AND a valid page; otherwise the product opens on GG.
+  it('getOfferPages hands out no snippet for a product without both the mode and a valid page', async () => {
     vi.mocked(mockPort.listUpsells).mockResolvedValue([{
-      uid: 'u-1', upsellProductId: 'p-2', upsellProductIds: ['p-2', 'p-3'],
-      productOverrides: { 'p-2': { externalFlow: own }, 'p-3': { externalFlow: { acceptLabel: '' } } },
+      uid: 'u-1', upsellProductId: 'p-2', upsellProductIds: ['p-2', 'p-3', 'p-4'],
+      productOverrides: {
+        'p-2': { externalFlow: page },
+        'p-3': { displayMode: 'external', externalFlow: { ...page, pageUrl: 'javascript:alert(1)' } },
+        'p-4': { displayMode: 'external', externalFlow: { onAccept: { kind: 'thank_you' } } },
+      },
     }] as any);
 
-    const { snippets } = await service.setOfferExternalFlow('p-1', 'upsell', 'u-1', flow);
+    const { products } = await service.getOfferPages('p-1', 'upsell', 'u-1');
 
-    expect(snippets[0]).toMatchObject({ productId: 'p-2', productOverride: true });
-    expect(snippets[0].html).toContain('Comprar agora');
-    expect(snippets[0].html).toContain('#FACC15');
-    // An invalid override is ignored by the API, so the offer's routing applies.
-    expect(snippets[1]).not.toHaveProperty('productOverride');
-    expect(snippets[1].html).toContain('Quero &lt;agora&gt;');
+    expect(products.map((p) => [p.displayMode, p.html])).toEqual([
+      ['native', null],
+      ['native', null],
+      ['native', null],
+    ]);
   });
 
-  it('setOfferExternalFlow reads a downsell from the downsell list', async () => {
-    vi.mocked(mockPort.setOfferExternalFlow).mockResolvedValue(flow);
+  it('getOfferPages reads a downsell from the downsell list, and an unknown offer is not found', async () => {
     vi.mocked(mockPort.listDownsells).mockResolvedValue({
       downsells: [{ uid: 'd-1', downsellProductId: 'p-4' }], count: 1,
     } as any);
 
-    const result = await service.setOfferExternalFlow('p-1', 'downsell', 'd-1', flow);
-
-    expect(result.snippets.map((s) => s.offerRef)).toEqual(['downsell:p-1:d-1:p-4']);
+    const result = await service.getOfferPages('p-1', 'downsell', 'd-1');
+    expect(result.products.map((p) => p.offerRef)).toEqual(['downsell:p-1:d-1:p-4']);
     expect(mockPort.listUpsells).not.toHaveBeenCalled();
+
+    await expect(service.getOfferPages('p-1', 'downsell', 'nope')).rejects.toThrow('Downsell nope not found');
   });
 
-  it('setOfferExternalFlow with null turns the mode off and returns no snippet', async () => {
-    vi.mocked(mockPort.setOfferExternalFlow).mockResolvedValue(null);
+  it('setOfferProductPage saves the whole offer with only that product moved to the seller page', async () => {
+    const offer = {
+      uid: 'u-1', upsellProductId: 'p-2', upsellProductIds: ['p-2', 'p-3'], title: 'Oferta',
+      productOverrides: { 'p-2': { price: 4700 }, 'p-3': { price: 9700, title: 'Mentoria' } },
+    };
+    vi.mocked(mockPort.listUpsells).mockResolvedValue([offer] as any);
+    vi.mocked(mockPort.saveOffer).mockResolvedValue(null);
 
-    expect(await service.setOfferExternalFlow('p-1', 'upsell', 'u-1', null))
-      .toEqual({ externalFlow: null, snippets: [] });
-    expect(mockPort.listUpsells).not.toHaveBeenCalled();
+    const result = await service.setOfferProductPage('p-1', 'upsell', 'u-1', 'p-3', page);
+
+    expect(mockPort.saveOffer).toHaveBeenCalledWith('p-1', 'upsell', 'u-1', {
+      ...offer,
+      productOverrides: {
+        'p-2': { price: 4700 },
+        'p-3': { price: 9700, title: 'Mentoria', displayMode: 'external', externalFlow: page },
+      },
+    });
+    expect(result.products[1]).toMatchObject({ productId: 'p-3', displayMode: 'external' });
+    expect(result.products[1].html).toContain('data-gg-offer="upsell:p-1:u-1:p-3"');
+  });
+
+  it('setOfferProductPage with null puts the product back on the GG page and keeps the stored page', async () => {
+    vi.mocked(mockPort.listDownsells).mockResolvedValue({
+      downsells: [{
+        uid: 'd-1', downsellProductId: 'p-4',
+        productOverrides: { 'p-4': { price: 1900, displayMode: 'external', externalFlow: page } },
+      }],
+      count: 1,
+    } as any);
+    vi.mocked(mockPort.saveOffer).mockResolvedValue(null);
+
+    const result = await service.setOfferProductPage('p-1', 'downsell', 'd-1', 'p-4', null);
+
+    expect(vi.mocked(mockPort.saveOffer).mock.calls[0][3].productOverrides).toEqual({
+      'p-4': { price: 1900, externalFlow: page },
+    });
+    expect(result.products).toEqual([
+      expect.objectContaining({ productId: 'p-4', displayMode: 'native', html: null }),
+    ]);
+  });
+
+  it('setOfferProductPage refuses a product the offer does not sell, without saving', async () => {
+    vi.mocked(mockPort.listUpsells).mockResolvedValue([
+      { uid: 'u-1', upsellProductId: 'p-2', upsellProductIds: ['p-2'] },
+    ] as any);
+
+    await expect(service.setOfferProductPage('p-1', 'upsell', 'u-1', 'p-9', page))
+      .rejects.toThrow('Product p-9 is not offered by this upsell');
+    expect(mockPort.saveOffer).not.toHaveBeenCalled();
   });
 
   it('list hides soft-deleted products', async () => {

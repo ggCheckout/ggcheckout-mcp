@@ -9,10 +9,9 @@ import type {
   CreateUpsellPayload,
   DownsellSequenceItem,
   CreateDownsellPayload,
-  ExternalFlow,
   OfferKind,
 } from '../../core/types/product.js';
-import { explainMissingRoute, type HttpClient } from './http-client.js';
+import type { HttpClient } from './http-client.js';
 import type { AuthPort } from '../../core/ports/auth.port.js';
 
 type ReorderResponse = { success: boolean; message: string; newOrder: ReorderResult[] };
@@ -128,23 +127,22 @@ export class ProductApiAdapter implements ProductPort {
   }
 
   /**
-   * `PUT .../{kind}s/{offerId}/external-flow` writes only the routing, without resending the offer.
-   * It lands on the offer's top level, which is the fallback for every product of the offer that has
-   * no routing of its own. The answer carries only the routing, as the API stored it.
+   * `POST .../{kind}s/{offerId}` with `{ <kind>: offer }`: the dashboard editor's save. The API
+   * replaces the stored offer with what is sent (in both storage eras), so the caller sends the offer
+   * it read with only its change applied. Answers the offer as stored, when the API returns it.
    */
-  async setOfferExternalFlow(
+  async saveOffer(
     productId: string,
     kind: OfferKind,
     offerId: string,
-    externalFlow: ExternalFlow | null,
-  ): Promise<ExternalFlow | null> {
-    const data = await this.http.put<{ success: boolean; externalFlow: ExternalFlow | null }>(
-      `/api/product-delivery/${encodeURIComponent(productId)}/${kind}s/${encodeURIComponent(offerId)}/external-flow`,
-      { externalFlow },
-    ).catch((error) => {
-      throw explainMissingRoute(error, 'set_offer_external_flow needs the release with external upsells.');
-    });
-    return data.externalFlow ?? null;
+    offer: Record<string, unknown>,
+  ): Promise<Record<string, unknown> | null> {
+    const data = await this.http.post<Record<string, unknown>>(
+      `/api/product-delivery/${encodeURIComponent(productId)}/${kind}s/${encodeURIComponent(offerId)}`,
+      { [kind]: offer },
+    );
+    const stored = data?.[kind];
+    return stored && typeof stored === 'object' ? (stored as Record<string, unknown>) : null;
   }
 
   /**

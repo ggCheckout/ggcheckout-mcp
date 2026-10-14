@@ -168,20 +168,19 @@ describe('ProductApiAdapter', () => {
     );
   });
 
-  it('setOfferExternalFlow PUTs only the routing and returns it as stored', async () => {
-    const flow = {
-      onAccept: { kind: 'thank_you' }, onDecline: { kind: 'thank_you' },
-      acceptLabel: 'Sim', declineLabel: 'Não', buttonColor: '#22C55E',
-    } as const;
-    vi.mocked(http.put).mockResolvedValue({ success: true, externalFlow: flow });
+  it('saveOffer POSTs the whole offer under its kind and returns it as stored', async () => {
+    const offer = { uid: 'd1', downsellProductId: 'p2', productOverrides: { p2: { displayMode: 'external' } } };
+    vi.mocked(http.post).mockResolvedValue({ success: true, downsell: offer });
 
-    const result = await adapter.setOfferExternalFlow('p1', 'downsell', 'd1', flow);
+    const result = await adapter.saveOffer('p1', 'downsell', 'd1', offer);
 
-    expect(http.put).toHaveBeenCalledWith(
-      '/api/product-delivery/p1/downsells/d1/external-flow',
-      { externalFlow: flow },
-    );
-    expect(result).toEqual(flow);
+    expect(http.post).toHaveBeenCalledWith('/api/product-delivery/p1/downsells/d1', { downsell: offer });
+    expect(result).toEqual(offer);
+  });
+
+  it('saveOffer answers null when the API does not return the offer', async () => {
+    vi.mocked(http.post).mockResolvedValue({ success: true });
+    expect(await adapter.saveOffer('p1', 'upsell', 'u1', { uid: 'u1' })).toBeNull();
   });
 
   it('reorderDownsells POSTs the ids to /downsells/reorder and returns the stored order', async () => {

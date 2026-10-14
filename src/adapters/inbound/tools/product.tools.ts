@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ProductService } from '../../../core/services/product.service.js';
 import { createToolHandler } from '../tool-handler.js';
+import { isSellerPageUrl } from '../../../shared/external-offer-snippet.js';
 
 export function registerProductTools(server: McpServer, service: ProductService) {
   server.tool(
@@ -334,47 +335,66 @@ export function registerProductTools(server: McpServer, service: ProductService)
     }),
   );
 
-  // --- External upsell ---
+  // --- Offers on the seller's page ("Minha página") ---
 
-  // Scheme checked in code: `z.string().url()` alone accepts `javascript:`.
-  const pageUrl = z.string().url().max(2048)
-    .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), 'must be an http(s) URL');
-  const externalStep = z.discriminatedUnion('kind', [
-    z.object({ kind: z.literal('url'), url: pageUrl }),
-    z.object({ kind: z.literal('thank_you') }),
-  ]);
+  // Scheme checked in code: `z.string().url()` alone accepts `javascript:`. http only for localhost
+  // (a development server); the API has the final word.
+  const sellerPageUrl = z.string().url().max(2048)
+    .refine((value) => isSellerPageUrl(value), 'must be an https URL (http only for localhost)');
+  const offerTarget = {
+    productId: z.string()
+      .describe('Product ID (uid) the offer is configured under — for an upsell, the product sold by the checkout'),
+    kind: z.enum(['upsell', 'downsell']).describe('Offer kind'),
+    offerId: z.string().describe('The offer uid, from list_upsells / list_downsells'),
+  };
 
   server.registerTool(
-    'set_offer_external_flow',
+    'get_offer_snippets',
     {
       description:
-        "Make an upsell or downsell an EXTERNAL offer, shown on the seller's own page instead of the GG "
-        + 'offer page. Writes where the accept button and the decline link send the buyer next (a URL of '
-        + 'the seller, or `thank_you` = the GG thank-you page with the deliverables), the two texts and '
-        + "the button color, and returns for each offered product the HTML to paste on the seller's page "
-        + '(the same as "Copiar HTML" in the dashboard). `externalFlow: null` turns it off. The buyer only '
-        + "reaches the seller's page when the checkout is in external mode too: update_checkout with "
-        + '`url` = that page and `checkout: { externalUpsellPage: true }`. URLs must be https; plain http '
-        + 'is accepted only for localhost on a development server.',
+        "Read-only. Every product of an upsell or downsell offer in funnel order, with where it opens "
+        + "(the GG offer page, or the seller's own page) and, for each product on the seller's page, the "
+        + 'HTML to paste there (the same as "Copiar HTML" in the dashboard) and the page it goes on. Use '
+        + "it to have an agent put the buttons on the seller's landing page: paste each `html` where the "
+        + 'buttons should appear on its `pageUrl`, keeping the <script> tag. Each snippet works only for '
+        + 'its own product, when the funnel order reaches it.',
+      inputSchema: offerTarget,
+    },
+    createToolHandler('get_offer_snippets', async ({ productId, kind, offerId }) => {
+      const result = await service.getOfferPages(productId, kind, offerId);
+      return { success: true, ...result };
+    }),
+  );
+
+  server.registerTool(
+    'set_offer_product_page',
+    {
+      description:
+        "Put ONE product of an upsell or downsell offer on the seller's own page (\"Minha página\") "
+        + 'instead of the GG offer page, or back on the GG page with `page: null`. GG and seller pages '
+        + 'can be mixed in the same funnel: the funnel order decides where the buyer goes after '
+        + 'accepting or declining, and each product opens on its own kind of page (there are no '
+        + "per-button destinations). `page.pageUrl` is the seller's page where that product's buttons "
+        + 'are pasted (https; http only for localhost on a development server). Answers every product '
+        + 'of the offer like get_offer_snippets, with the HTML to paste for the products on the '
+        + "seller's page. Back on the GG page keeps the stored page, so nothing is lost.",
       inputSchema: {
-        productId: z.string()
-          .describe('Product ID (uid) the offer is configured under — for an upsell, the product sold by the checkout'),
-        kind: z.enum(['upsell', 'downsell']).describe('Offer kind'),
-        offerId: z.string().describe('The offer uid, from list_upsells / list_downsells'),
-        externalFlow: z
+        ...offerTarget,
+        offeredProductId: z.string()
+          .describe('The offered product (uid) to move: one of the products the offer sells, as listed by get_offer_snippets'),
+        page: z
           .object({
-            onAccept: externalStep.describe('Where the buyer goes after accepting'),
-            onDecline: externalStep.describe('Where the buyer goes after declining (e.g. the downsell page)'),
+            pageUrl: sellerPageUrl.describe("The seller's page where this product's buttons are pasted"),
             acceptLabel: z.string().trim().min(1).max(160).describe('Text of the accept button'),
             declineLabel: z.string().trim().min(1).max(160).describe('Text of the decline link'),
             buttonColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe('Accept button color, #RRGGBB'),
           })
           .nullable()
-          .describe('The routing, or null to turn the external mode of this offer off'),
+          .describe("The seller's page of this product, or null to show it on the GG offer page again"),
       },
     },
-    createToolHandler('set_offer_external_flow', async ({ productId, kind, offerId, externalFlow }) => {
-      const result = await service.setOfferExternalFlow(productId, kind, offerId, externalFlow);
+    createToolHandler('set_offer_product_page', async ({ productId, kind, offerId, offeredProductId, page }) => {
+      const result = await service.setOfferProductPage(productId, kind, offerId, offeredProductId, page);
       return { success: true, ...result };
     }),
   );

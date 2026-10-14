@@ -176,22 +176,26 @@ Manage downsells for a product.
 
 **Example prompt:** "Add a downsell to product abc123 with a 50% discount headline"
 
-#### `set_offer_external_flow` (external upsell)
+#### `get_offer_snippets` / `set_offer_product_page` (offers on the seller's page)
 
-Shows an upsell or downsell on the seller's own page instead of the GG offer page. Two writes:
+The post-purchase funnel is one ordered sequence of products, and each product opens either on the
+GG offer page or on the seller's own page ("Minha página"). Both can be mixed in the same funnel: the
+funnel order decides where the buyer goes after accepting or declining, and each product opens on its
+own kind of page.
 
-1. `update_checkout` on the checkout that sells the product, with `url` = the seller's page and
-   `checkout: { externalUpsellPage: true }` (the `checkout` object is merged, so the rest of the page
-   setup is kept).
-2. `set_offer_external_flow` on the offer: where the accept button and the decline link lead (a URL
-   of the seller or `thank_you`), their texts and the button color. The answer carries, for each
-   offered product, the HTML to paste on the seller's page — the same as "Copiar HTML" in the
-   dashboard.
+- `set_offer_product_page` puts ONE product of an upsell or downsell on the seller's page (the page
+  where its buttons are pasted, the two texts and the button color), or back on the GG page with
+  `page: null` (the stored page is kept, so moving it back loses nothing).
+- `get_offer_snippets` is read only: every product of the offer in funnel order, and for each one on
+  the seller's page the HTML to paste there (the same as "Copiar HTML" in the dashboard) and the page
+  it goes on. An agent with access to the seller's landing page can paste each snippet where the
+  buttons should appear, keeping the `<script>` tag.
 
-Pages must be https; plain http only works for localhost against a development server.
+Each snippet works only for its own product, when the funnel order reaches it. Pages must be https;
+plain http only works for localhost against a development server.
 
-**Example prompt:** "Make upsell u1 of product abc123 external: accept goes to https://seller.com/next,
-decline to the thank-you page, green button saying 'Quero!'"
+**Example prompt:** "Put the second product of upsell u1 of product abc123 on https://seller.com/oferta
+with a green button saying 'Quero!', then give me the HTML to paste on that page"
 
 #### `manage_tags`
 

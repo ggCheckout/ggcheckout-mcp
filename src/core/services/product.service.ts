@@ -10,12 +10,12 @@ import type {
   DownsellSequenceItem,
   CreateDownsellInput,
   ExternalFlow,
-  ExternalOfferSnippet,
   OfferKind,
+  OfferProductPage,
 } from '../types/product.js';
 import { validateCreateProductInput, validateUpdateProductInput } from '../../shared/validation.js';
-import { ValidationError } from '../../shared/errors.js';
-import { buildExternalOfferSnippet, externalOfferRef, isExternalFlow } from '../../shared/external-offer-snippet.js';
+import { NotFoundError, ValidationError } from '../../shared/errors.js';
+import { buildExternalOfferSnippet, externalOfferRef, externalPageOf } from '../../shared/external-offer-snippet.js';
 
 export class ProductService {
   /** `appUrl` is the app the seller's page loads the upsell script from (the API base URL). */
@@ -228,43 +228,93 @@ export class ProductService {
   }
 
   /**
-   * Routes an offer shown on the seller's own page (external upsell), or turns that off with
-   * `null`. The routing goes to the offer's top level, the fallback for every product it sells, and
-   * the answer carries the snippet to paste for each of those products — the `data-gg-offer`
-   * reference names one product, so an offer that sells two needs two buttons.
+   * Every product of an offer in funnel order, with where it opens and, for those on the seller's
+   * page ("Minha página"), the HTML to paste there — the dashboard's "Copiar HTML". Read only: what an
+   * agent needs to put the buttons on the seller's landing page.
    *
-   * A product with its own routing (`productOverrides[product].externalFlow`, what the dashboard
-   * writes) keeps it: the API reads it first. Its snippet is built from that routing and says so, or
-   * the seller would paste a button whose text and color are not the ones the buyer sees.
+   * The `data-gg-offer` reference names ONE product, so each external product has its own snippet,
+   * and the buyer only reaches it when the funnel order gets to that product.
    */
-  async setOfferExternalFlow(
+  async getOfferPages(
     productId: string,
     kind: OfferKind,
     offerId: string,
-    externalFlow: ExternalFlow | null,
-  ): Promise<{ externalFlow: ExternalFlow | null; snippets: ExternalOfferSnippet[] }> {
-    const stored = await this.productPort.setOfferExternalFlow(productId, kind, offerId, externalFlow);
-    if (!stored) return { externalFlow: null, snippets: [] };
+  ): Promise<{ offerId: string; kind: OfferKind; products: OfferProductPage[] }> {
+    const offer = await this.findOffer(productId, kind, offerId);
+    return { offerId, kind, products: this.offerPages(productId, kind, offerId, offer) };
+  }
 
+  /**
+   * Puts ONE product of an offer on the seller's own page (`page`), or back on the GG offer page
+   * (`null`), and answers the offer's products as `getOfferPages` does. Where the buyer goes after
+   * accepting or declining is not set here: the funnel order decides, on both kinds of page.
+   *
+   * The API has no per-product write: the offer is read, only that product's override changes, and
+   * the whole offer is saved back (the dashboard editor's save). Back on the GG page keeps the stored
+   * page, so moving the product to the seller's page again loses nothing — the dashboard does the same.
+   */
+  async setOfferProductPage(
+    productId: string,
+    kind: OfferKind,
+    offerId: string,
+    offeredProductId: string,
+    page: ExternalFlow | null,
+  ): Promise<{ offerId: string; kind: OfferKind; products: OfferProductPage[] }> {
+    const offer = await this.findOffer(productId, kind, offerId);
+    if (!offeredProductIds(offer).includes(offeredProductId)) {
+      throw new ValidationError(
+        `Product ${offeredProductId} is not offered by this ${kind}. Products in the offer: `
+          + `${offeredProductIds(offer).join(', ') || 'none'}.`,
+      );
+    }
+
+    const overrides = { ...(offer.productOverrides ?? {}) };
+    const { displayMode: _previous, ...rest } = overrides[offeredProductId] ?? {};
+    overrides[offeredProductId] = page
+      ? { ...rest, displayMode: 'external', externalFlow: page }
+      : rest;
+
+    const saved = await this.productPort.saveOffer(productId, kind, offerId, {
+      ...(offer as unknown as Record<string, unknown>),
+      productOverrides: overrides,
+    });
+    const after = saved && 'productOverrides' in saved
+      ? (saved as unknown as Upsell | DownsellSequenceItem)
+      : { ...offer, productOverrides: overrides };
+    return { offerId, kind, products: this.offerPages(productId, kind, offerId, after) };
+  }
+
+  private async findOffer(
+    productId: string,
+    kind: OfferKind,
+    offerId: string,
+  ): Promise<Upsell | DownsellSequenceItem> {
     const offers = kind === 'upsell'
       ? await this.productPort.listUpsells(productId)
       : (await this.productPort.listDownsells(productId)).downsells;
     const offer = offers.find((item) => item.uid === offerId);
+    if (!offer) throw new NotFoundError(kind === 'upsell' ? 'Upsell' : 'Downsell', offerId);
+    return offer;
+  }
 
-    return {
-      externalFlow: stored,
-      snippets: (offer ? offeredProductIds(offer) : []).map((offeredId) => {
-        const offerRef = externalOfferRef(kind, productId, offerId, offeredId);
-        const own = offer?.productOverrides?.[offeredId]?.externalFlow;
-        const flow = isExternalFlow(own) ? own : stored;
-        return {
-          productId: offeredId,
-          offerRef,
-          html: buildExternalOfferSnippet({ offerRef, flow, appUrl: this.appUrl }),
-          ...(flow === own ? { productOverride: true } : {}),
-        };
-      }),
-    };
+  private offerPages(
+    productId: string,
+    kind: OfferKind,
+    offerId: string,
+    offer: Upsell | DownsellSequenceItem,
+  ): OfferProductPage[] {
+    return offeredProductIds(offer).map((offeredId, index) => {
+      const offerRef = externalOfferRef(kind, productId, offerId, offeredId);
+      const page = externalPageOf(offer.productOverrides?.[offeredId]);
+      return {
+        productId: offeredId,
+        position: index + 1,
+        displayMode: page ? 'external' : 'native',
+        pageUrl: page?.pageUrl ?? null,
+        offerRef,
+        html: page ? buildExternalOfferSnippet({ offerRef, flow: page, appUrl: this.appUrl }) : null,
+      };
+    });
   }
 
   async manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }> {

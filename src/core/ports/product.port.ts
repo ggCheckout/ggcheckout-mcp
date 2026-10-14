@@ -8,7 +8,6 @@ import type {
   CreateUpsellPayload,
   DownsellSequenceItem,
   CreateDownsellPayload,
-  ExternalFlow,
   OfferKind,
 } from '../types/product.js';
 
@@ -34,11 +33,15 @@ export interface ProductPort {
   createDownsell(productId: string, downsellId: string, input: CreateDownsellPayload): Promise<DownsellSequenceItem>;
   deleteDownsell(productId: string, downsellId: string): Promise<void>;
   reorderDownsells(productId: string, downsellIds: string[]): Promise<ReorderResult[]>;
-  setOfferExternalFlow(
+  /**
+   * Saves a WHOLE offer (the dashboard editor's save): the stored document is replaced, so callers
+   * send what they read with only their change applied.
+   */
+  saveOffer(
     productId: string,
     kind: OfferKind,
     offerId: string,
-    externalFlow: ExternalFlow | null,
-  ): Promise<ExternalFlow | null>;
+    offer: Record<string, unknown>,
+  ): Promise<Record<string, unknown> | null>;
   manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }>;
 }

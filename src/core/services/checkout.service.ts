@@ -116,7 +116,7 @@ export class CheckoutService {
       internationalizeCheckout: current.internationalizeCheckout,
       ...input,
       // Merged, not replaced: `checkout` holds the whole page setup (timer, coupon, shipping…), and a
-      // caller that sets one flag (`externalUpsellPage`) would otherwise wipe the rest of it.
+      // caller that sets one key (the timer, say) would otherwise wipe the rest of it.
       ...(input.checkout !== undefined ? { checkout: mergeDeep(current.checkout, input.checkout) } : {}),
       ...(input.price !== undefined ? { price: parsePriceToCents(input.price) } : {}),
       ...(orderBumps ? { orderBumps } : {}),
