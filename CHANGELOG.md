@@ -38,6 +38,11 @@ also against production.
 
 ### Fixed
 
+- **`update_checkout` sends only the required keys and what changed.** The checkout API
+  keeps every key absent from the body as stored, so the tool no longer echoes the whole
+  document it read back (the `checkout` object, `url`, `fields`, `sellerName`, `currency`,
+  `published`, `createBy`). Echoing it could overwrite stored values the read does not
+  return.
 - `update_product` with only some fields was refused (400 "Você precisa fornecer um link
   (url)…"): the API validates the body as a whole product. The stored product is now
   re-sent with the edit on top.

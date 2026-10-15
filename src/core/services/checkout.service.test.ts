@@ -145,18 +145,30 @@ describe('CheckoutService', () => {
       );
     });
 
-    it('resends every field the API resets when it is absent from the body', async () => {
+    it('sends only the required keys plus the changed ones (the API keeps what is absent)', async () => {
       await service.update('ck-1', { title: 'Updated Title' });
+
+      const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
+      expect(Object.keys(payload).sort()).toEqual(
+        ['orderBumps', 'paymentMethods', 'price', 'productId', 'title', 'uuidOwner'].sort(),
+      );
+    });
+
+    it('never echoes the stored checkout object back (it would overwrite stored references)', async () => {
+      await service.update('ck-1', { title: 'Updated Title' });
+
+      const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
+      for (const key of ['checkout', 'url', 'fields', 'sellerName', 'currency', 'internationalizeCheckout', 'published', 'createBy']) {
+        expect(payload).not.toHaveProperty(key);
+      }
+    });
+
+    it('still sends a key the caller did change', async () => {
+      await service.update('ck-1', { url: 'https://pay.example/nova', published: false });
 
       expect(mockCheckoutPort.update).toHaveBeenCalledWith(
         'ck-1',
-        expect.objectContaining({
-          url: 'https://pay.example/offer',
-          fields: { haveEmail: true, haveCpf: true },
-          sellerName: 'Loja',
-          currency: 'USD',
-          internationalizeCheckout: true,
-        }),
+        expect.objectContaining({ url: 'https://pay.example/nova', published: false }),
       );
     });
 

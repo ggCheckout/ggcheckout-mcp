@@ -96,28 +96,22 @@ export class CheckoutService {
       );
     }
     const orderBumps = await this.serializeOrderBumps(input.orderBumps);
-    const fullPayload: UpdateCheckoutPayload = {
-      // The API destructures with defaults instead of merging, so anything omitted here is
-      // reset — a one-field edit would wipe url, fields, sellerName and currency.
+    // Only the keys the API requires, plus what the caller changed. The API writes under a
+    // field mask (a key absent from the body is kept as stored), so resending the rest is not
+    // needed — and the read above is the PUBLIC view, which leaves the stored payment
+    // references out: echoing it back (the `checkout` object above all) would overwrite them.
+    const payload: UpdateCheckoutPayload = {
       title: current.title,
       uuidOwner: current.uuidOwner,
       productId: current.productId,
       price: current.price,
       paymentMethods: current.paymentMethods,
-      checkout: current.checkout,
       orderBumps: current.orderBumps || [],
-      published: current.published ?? true,
-      createBy: current.createBy || 'system',
-      url: current.url,
-      fields: current.fields,
-      sellerName: current.sellerName,
-      currency: current.currency,
-      internationalizeCheckout: current.internationalizeCheckout,
       ...input,
       ...(input.price !== undefined ? { price: parsePriceToCents(input.price) } : {}),
       ...(orderBumps ? { orderBumps } : {}),
     };
-    return this.checkoutPort.update(id, fullPayload);
+    return this.checkoutPort.update(id, payload);
   }
 
   async delete(id: string): Promise<void> {

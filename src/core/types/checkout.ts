@@ -118,12 +118,12 @@ export interface UpdateCheckoutInput {
 }
 
 /**
- * The full body `PATCH /api/checkouts/{id}` expects.
+ * The body of `PATCH /api/checkouts/{id}`.
  *
- * The API destructures with defaults rather than merging, so every key listed here
- * is RESET when it is absent from the body — `url` to `''`, `fields` to the default
- * form shape, `sellerName` to `null`, `currency` to `'BRL'`. A partial PATCH is a
- * silent wipe, which is why the service rebuilds the whole document.
+ * The API requires `title`, `uuidOwner`, `id` (`productId` here), `price` and
+ * `paymentMethods`, and writes every other key under a field mask: a key absent from the
+ * body keeps its stored value. Send only the required keys and what changed — never echo
+ * the document read back, which is the public view without the stored payment references.
  */
 export interface UpdateCheckoutPayload {
   title: string;
@@ -133,8 +133,8 @@ export interface UpdateCheckoutPayload {
   paymentMethods?: CheckoutPaymentMethods;
   checkout?: Record<string, unknown>;
   orderBumps: string[];
-  published: boolean;
-  createBy: string;
+  published?: boolean;
+  createBy?: string;
   url?: string;
   fields?: CheckoutFields;
   sellerName?: string | null;
