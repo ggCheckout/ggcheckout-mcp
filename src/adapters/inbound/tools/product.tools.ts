@@ -169,7 +169,9 @@ export function registerProductTools(server: McpServer, service: ProductService)
         productId: z.string().describe('Product ID (uid)'),
         filePath: z.string().optional()
           .describe('The filePath returned by upload_deliverable (also `deliverableFile.filePath` in '
-            + 'get_product, on accounts whose read carries it), to also delete the bytes'),
+            + 'get_product, on accounts whose read carries it), to also delete the bytes. It must be a file '
+            + 'of this product; a file uploaded in the dashboard before the product was saved cannot be '
+            + 'confirmed here, so for those call without filePath (unlink only)'),
       },
     },
     createToolHandler('delete_deliverable', async ({ productId, filePath }) => {

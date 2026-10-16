@@ -304,6 +304,17 @@ describe('ProductService', () => {
     expect(mockPort.deleteDeliverableFile).not.toHaveBeenCalled();
   });
 
+  // The dashboard names the key of a file uploaded before the product existed with a generated
+  // segment, never the product id: the refusal says so and how to unlink it anyway.
+  it('deleteDeliverable on the new storage explains a dashboard key it cannot attribute', async () => {
+    vi.mocked(mockPort.getById).mockResolvedValue({ ...storedV2, hasDeliverableFile: true } as any);
+
+    await expect(service.deleteDeliverable('p-1', 'deliverables/s1/new-1760000000000/a.pdf'))
+      .rejects.toThrow(/uploaded in the dashboard before its product was saved.*without filePath/s);
+    expect(mockPort.update).not.toHaveBeenCalled();
+    expect(mockPort.deleteDeliverableFile).not.toHaveBeenCalled();
+  });
+
   it('deleteDeliverable deletes the bytes after the unlink', async () => {
     vi.mocked(mockPort.getById).mockResolvedValue({ ...storedV1, url: 'https://x.com/a' } as any);
 

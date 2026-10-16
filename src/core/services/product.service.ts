@@ -85,6 +85,14 @@ export class ProductService {
     // The path is checked against the product before anything changes: the API only confines it to
     // the seller's folder, so a wrong one would unlink this product and delete the file another of
     // their products delivers, and that product's buyers would lose the download.
+    if (filePath && isNewStorageRead(stored) && isUnnamedProductKey(filePath)) {
+      throw new ValidationError(
+        `${filePath} was uploaded in the dashboard before its product was saved, so the key does not `
+        + `name a product and this server cannot confirm it belongs to product ${productId}. Nothing was `
+        + 'changed. Call delete_deliverable without filePath to unlink the file, and remove the stored '
+        + 'file in the dashboard.',
+      );
+    }
     if (filePath && !isProductFile(stored, productId, filePath)) {
       const linked = linkedFilePath(stored);
       throw new ValidationError(
@@ -373,6 +381,14 @@ function isProductFile(stored: Record<string, unknown>, productId: string, fileP
   if (!isNewStorageRead(stored)) return linkedFilePath(stored) === filePath;
   const segments = filePath.split('/');
   return segments.length >= 4 && segments[0] === 'deliverables' && segments[2] === productId;
+}
+
+/**
+ * A key the dashboard minted while the product had no id yet: the API names that segment
+ * `new-<timestamp>` instead of the product id, so the key itself cannot say whose file it is.
+ */
+function isUnnamedProductKey(filePath: string): boolean {
+  return /^new-\d+$/.test(filePath.split('/')[2] ?? '');
 }
 
 /** Whether the stored product, in either storage's shape, still delivers once its file is gone. */
