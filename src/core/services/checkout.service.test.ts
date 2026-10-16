@@ -115,7 +115,9 @@ describe('CheckoutService', () => {
       price: 5000,
       paymentMethods: { pix: true },
       checkout: { theme: 'dark' },
-      orderBumps: [],
+      orderBumps: [JSON.stringify({ uid: 'bump-1', id: 'bump-1', title: 'Bump', price: 990 })],
+      orderBumpsOriginalPrice: { 'bump-1': 1990 },
+      orderBumpsButtonText: { 'bump-1': 'Quero' },
       published: true,
       createBy: 'user',
       url: 'https://pay.example/offer',
@@ -140,23 +142,32 @@ describe('CheckoutService', () => {
           title: 'Updated Title',
           uuidOwner: 'owner-1',
           price: 5000,
-          paymentMethods: { pix: true },
         }),
       );
     });
 
-    it('resends every field the API resets when it is absent from the body', async () => {
+    it('sends only the identity keys plus the changed ones (the API keeps what is absent)', async () => {
       await service.update('ck-1', { title: 'Updated Title' });
+
+      const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
+      expect(Object.keys(payload).sort()).toEqual(['price', 'productId', 'title', 'uuidOwner'].sort());
+    });
+
+    it('never echoes the stored document back (it would overwrite stored values)', async () => {
+      await service.update('ck-1', { title: 'Updated Title' });
+
+      const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
+      for (const key of ['checkout', 'paymentMethods', 'orderBumps', 'url', 'fields', 'sellerName', 'currency', 'internationalizeCheckout', 'published', 'createBy']) {
+        expect(payload).not.toHaveProperty(key);
+      }
+    });
+
+    it('still sends a key the caller did change', async () => {
+      await service.update('ck-1', { url: 'https://pay.example/nova', published: false });
 
       expect(mockCheckoutPort.update).toHaveBeenCalledWith(
         'ck-1',
-        expect.objectContaining({
-          url: 'https://pay.example/offer',
-          fields: { haveEmail: true, haveCpf: true },
-          sellerName: 'Loja',
-          currency: 'USD',
-          internationalizeCheckout: true,
-        }),
+        expect.objectContaining({ url: 'https://pay.example/nova', published: false }),
       );
     });
 
@@ -169,6 +180,19 @@ describe('CheckoutService', () => {
         'ck-1',
         expect.objectContaining({ checkout: { theme: 'dark', timerEnabled: true } }),
       );
+    });
+
+    it('sends order bumps only when the caller changes them, as the snapshots the page parses', async () => {
+      await service.update('ck-1', { orderBumps: ['prod-1'] });
+
+      const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
+      expect(payload.orderBumps?.map((entry) => JSON.parse(entry).uid)).toEqual(['prod-1']);
+    });
+
+    it('sends an empty order bump list when the caller clears them', async () => {
+      await service.update('ck-1', { orderBumps: [] });
+
+      expect(mockCheckoutPort.update).toHaveBeenCalledWith('ck-1', expect.objectContaining({ orderBumps: [] }));
     });
 
     it('converts an updated price from reais to cents', async () => {
