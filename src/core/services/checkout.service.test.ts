@@ -115,7 +115,9 @@ describe('CheckoutService', () => {
       price: 5000,
       paymentMethods: { pix: true },
       checkout: { theme: 'dark' },
-      orderBumps: [],
+      orderBumps: [JSON.stringify({ uid: 'bump-1', id: 'bump-1', title: 'Bump', price: 990 })],
+      orderBumpsOriginalPrice: { 'bump-1': 1990 },
+      orderBumpsButtonText: { 'bump-1': 'Quero' },
       published: true,
       createBy: 'user',
       url: 'https://pay.example/offer',
@@ -144,20 +146,18 @@ describe('CheckoutService', () => {
       );
     });
 
-    it('sends only the required keys plus the changed ones (the API keeps what is absent)', async () => {
+    it('sends only the identity keys plus the changed ones (the API keeps what is absent)', async () => {
       await service.update('ck-1', { title: 'Updated Title' });
 
       const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
-      expect(Object.keys(payload).sort()).toEqual(
-        ['orderBumps', 'price', 'productId', 'title', 'uuidOwner'].sort(),
-      );
+      expect(Object.keys(payload).sort()).toEqual(['price', 'productId', 'title', 'uuidOwner'].sort());
     });
 
-    it('never echoes the stored checkout object back (it would overwrite stored references)', async () => {
+    it('never echoes the stored document back (it would overwrite stored values)', async () => {
       await service.update('ck-1', { title: 'Updated Title' });
 
       const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
-      for (const key of ['checkout', 'paymentMethods', 'url', 'fields', 'sellerName', 'currency', 'internationalizeCheckout', 'published', 'createBy']) {
+      for (const key of ['checkout', 'paymentMethods', 'orderBumps', 'url', 'fields', 'sellerName', 'currency', 'internationalizeCheckout', 'published', 'createBy']) {
         expect(payload).not.toHaveProperty(key);
       }
     });
@@ -171,14 +171,17 @@ describe('CheckoutService', () => {
       );
     });
 
-    it('sends paymentMethods only when the caller changes them', async () => {
-      const pix = { gateways: [{ tokenId: 'tok-1', type: 'mercadopago' }] };
-      await service.update('ck-1', { paymentMethods: { pix } });
+    it('sends order bumps only when the caller changes them, as the snapshots the page parses', async () => {
+      await service.update('ck-1', { orderBumps: ['prod-1'] });
 
-      expect(mockCheckoutPort.update).toHaveBeenCalledWith(
-        'ck-1',
-        expect.objectContaining({ paymentMethods: { pix } }),
-      );
+      const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
+      expect(payload.orderBumps?.map((entry) => JSON.parse(entry).uid)).toEqual(['prod-1']);
+    });
+
+    it('sends an empty order bump list when the caller clears them', async () => {
+      await service.update('ck-1', { orderBumps: [] });
+
+      expect(mockCheckoutPort.update).toHaveBeenCalledWith('ck-1', expect.objectContaining({ orderBumps: [] }));
     });
 
     it('converts an updated price from reais to cents', async () => {

@@ -120,10 +120,10 @@ export interface UpdateCheckoutInput {
 /**
  * The body of `PATCH /api/checkouts/{id}`.
  *
- * The API requires `title`, `id` (`productId` here) and `price`, and writes every other key
- * under a field mask: a key absent from the body keeps its stored value. Send only those
- * keys and what changed — never echo the document read back, which is the public view
- * without the stored payment references (`paymentMethods` and `checkout` above all).
+ * The write keeps every key absent from the body as stored (field mask). Send the checkout's
+ * identity (`title`, `uuidOwner`, `productId` — `id` on the wire — and `price`) plus what changed,
+ * and never echo the document read back: the read does not necessarily carry every stored value
+ * (`paymentMethods`, `checkout` and `orderBumps` above all).
  */
 export interface UpdateCheckoutPayload {
   title: string;
@@ -132,7 +132,7 @@ export interface UpdateCheckoutPayload {
   price: number;
   paymentMethods?: CheckoutPaymentMethods;
   checkout?: Record<string, unknown>;
-  orderBumps: string[];
+  orderBumps?: string[];
   published?: boolean;
   createBy?: string;
   url?: string;

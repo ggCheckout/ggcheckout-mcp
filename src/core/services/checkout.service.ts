@@ -96,18 +96,17 @@ export class CheckoutService {
       );
     }
     const orderBumps = await this.serializeOrderBumps(input.orderBumps);
-    // Only the keys the API requires, plus what the caller changed. The API writes under a
-    // field mask (a key absent from the body is kept as stored), so resending the rest is not
-    // needed — and the read above is the PUBLIC view, which leaves the stored payment
-    // references out. Echoing `paymentMethods` or `checkout` back would rewrite them without
-    // those references and silently unlink the PIX gateway cascade, so they only travel when
-    // the caller sends them.
+    // The write keeps every key absent from the body as stored (field mask), so only the
+    // checkout's identity (title, owner, product, price, re-sent unchanged) and what the caller
+    // changed travel. Nothing else is echoed from the read: it does not necessarily carry every
+    // stored value, so echoing `paymentMethods`, `checkout` or `orderBumps` could rewrite them
+    // with less than what is stored (stored order bumps, for one, would lose their per-bump
+    // original price and button text). Each of those travels only when the caller sends it.
     const payload: UpdateCheckoutPayload = {
       title: current.title,
       uuidOwner: current.uuidOwner,
       productId: current.productId,
       price: current.price,
-      orderBumps: current.orderBumps || [],
       ...input,
       ...(input.price !== undefined ? { price: parsePriceToCents(input.price) } : {}),
       ...(orderBumps ? { orderBumps } : {}),
