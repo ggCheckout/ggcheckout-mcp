@@ -119,10 +119,35 @@ export interface UpdateProductInput {
   customSupport?: CustomerSupportConfig;
 }
 
-export interface UploadDeliverableInput {
-  fileUrl: string;
+/** Step 1 of attaching a file: where to PUT the bytes, and the path that identifies them. */
+export interface DeliverablePresign {
+  uploadUrl: string;
+  filePath: string;
+  /** The Content-Type to send on the PUT. */
+  contentType?: string;
+}
+
+/**
+ * The stored file, as `complete-upload` describes it. This whole object is what the product's
+ * `deliverableFile` field takes, so it is passed through unchanged when linking.
+ */
+export interface DeliverableFile {
+  filePath: string;
   fileName: string;
-  fileType?: string;
+  fileSize: number;
+  fileType: string;
+  formattedSize?: string;
+  url?: string;
+  /** Time-limited download URL (7 days). */
+  signedUrl?: string;
+  publicUrl?: string;
+  uploadedAt?: string;
+}
+
+/** One line of a reorder result: the offer and the position it ended up in. */
+export interface ReorderResult {
+  id: string;
+  order: number;
 }
 
 export interface UpsellPaymentMethodConfig {
@@ -136,6 +161,13 @@ export interface Upsell {
   order?: number;
   chainBehavior?: UpsellChainBehavior;
   upsellProductId: string;
+  /** Every product the offer sells; `upsellProductId` is the first one. */
+  upsellProductIds?: string[];
+  /**
+   * Per offered product settings (price, texts, media). `displayMode: 'external'` puts that product
+   * on the seller's own page, with `externalFlow` = that page and its buttons; absent is the GG page.
+   */
+  productOverrides?: Record<string, OfferProductOverride | undefined>;
   title: string;
   description?: string;
   price?: number;
@@ -224,6 +256,13 @@ export interface DownsellSequenceItem {
   status: UpsellStatus;
   chainBehavior: DownsellChainBehavior;
   downsellProductId: string;
+  /** Every product the offer sells; `downsellProductId` is the first one. */
+  downsellProductIds?: string[];
+  /**
+   * Per offered product settings (price, texts, media). `displayMode: 'external'` puts that product
+   * on the seller's own page, with `externalFlow` = that page and its buttons; absent is the GG page.
+   */
+  productOverrides?: Record<string, OfferProductOverride | undefined>;
   title: string;
   headline?: string;
   description?: string;
@@ -238,15 +277,6 @@ export interface DownsellSequenceItem {
   uuidOwner: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface ReorderUpsellItem {
-  uid: string;
-  id: string;
-  order?: number;
-  upsellProductId: string;
-  title: string;
-  status: UpsellStatus;
 }
 
 export interface CreateDownsellInput {
@@ -265,6 +295,43 @@ export interface CreateDownsellInput {
   chainBehavior?: DownsellChainBehavior;
   /** Position in the sequence, 1-based. Defaults to the end of the current list. */
   order?: number;
+}
+
+export type OfferKind = 'upsell' | 'downsell';
+
+/** Where one offered product opens in the post-purchase funnel: the GG offer page or the seller's. */
+export type OfferDisplayMode = 'native' | 'external';
+
+/**
+ * One offered product on the seller's own page: the page where its buttons are pasted, their texts
+ * and the accept button color (`#RRGGBB`). Where the buyer goes after accepting or declining is not
+ * here: the funnel order decides, as on the GG page.
+ */
+export interface ExternalFlow {
+  pageUrl: string;
+  acceptLabel: string;
+  declineLabel: string;
+  buttonColor: string;
+}
+
+/** What the dashboard stores per offered product; only the keys the MCP reads are typed. */
+export type OfferProductOverride = Record<string, unknown> & {
+  displayMode?: unknown;
+  externalFlow?: unknown;
+};
+
+/** One product of the offer, in funnel order, with the HTML to paste when it is on the seller's page. */
+export interface OfferProductPage {
+  productId: string;
+  /** 1-based position in the offer's funnel. */
+  position: number;
+  displayMode: OfferDisplayMode;
+  /** The seller's page where `html` goes; `null` on the GG page. */
+  pageUrl: string | null;
+  /** `<kind>:<parentProductId>:<offerUid>:<offeredProductId>`, the `data-gg-offer` value. */
+  offerRef: string;
+  /** The buttons to paste (the dashboard's "Copiar HTML"); `null` on the GG page. */
+  html: string | null;
 }
 
 /** What the API stores for a downsell: the input plus the keys the dashboard editor always writes. */

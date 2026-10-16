@@ -97,8 +97,20 @@ export class StoreService {
     const theme = stored ? mergeDeep(stored.theme, update.theme) : update.theme;
     const blocks = update.blocks ?? stored?.blocks;
     if (!theme || !blocks) {
+      // A store with no layout has nothing to copy the shapes from, and the route validates them
+      // strictly, so the message carries a payload that is known to be accepted.
       throw new ValidationError(
-        `Store ${storeId} has no layout yet, so the first save must send both theme and blocks.`,
+        `Store ${storeId} has no layout yet, so the first save must send both theme and blocks. `
+          + 'The route validates both strictly. A minimal accepted theme is '
+          + '{"colors":{"primary","secondary","background","surface","text","textMuted","accent","border"},'
+          + '"typography":{"headingFont","bodyFont","baseSize"},'
+          + '"general":{"maxWidth","borderRadius","spacing":"compact|comfortable|spacious"},'
+          + '"appearance":{"ambient":"none|grid|gradientOrb|mesh|minimal"}} — every color a string, '
+          + 'baseSize/maxWidth/borderRadius numbers. Each block is '
+          + '{"id":string,"type":string,"visible":boolean,"styles":{},"props":{…}}; the simplest is '
+          + 'type "spacer" with props {"height":0-200}. Block types: header, footer, hero, product-grid, '
+          + 'product-carousel, categories, text, image, gallery, banner, countdown, faq, reviews, video, '
+          + 'divider, spacer. Once a layout exists, read it with get_store_layout and send only what changes.',
       );
     }
     const config = mergeDeep(stored?.config, update.config);
@@ -110,7 +122,10 @@ export class StoreService {
       ...(pageSettings !== undefined ? { pageSettings } : {}),
     };
     await this.storePort.saveLayoutDraft(storeId, draft);
-    return draft;
+    // The PUT answers only { success }, and its schema drops unknown keys and swaps invalid
+    // values for defaults, so the draft as sent is not necessarily what was stored.
+    const { layout: saved } = await this.storePort.getLayout(storeId);
+    return saved ?? draft;
   }
 
   async publishLayout(storeId: string): Promise<{ version: number }> {

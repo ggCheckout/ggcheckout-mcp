@@ -52,7 +52,7 @@ export const adapters = {
 };
 
 export const services = {
-  product: new ProductService(adapters.product),
+  product: new ProductService(adapters.product, API_URL),
   payment: new PaymentService(adapters.payment, authAdapter),
   checkout: new CheckoutService(adapters.checkout, authAdapter, adapters.product),
   webhook: new WebhookService(adapters.webhook, authAdapter),

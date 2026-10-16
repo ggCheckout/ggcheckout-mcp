@@ -94,10 +94,15 @@ export class TelegramApiAdapter implements TelegramPort {
 
   // --- Media ---
 
+  /**
+   * The route is `/presign`: it mints the upload URL, it does not take the bytes. It answers
+   * `{ uploadUrl, filePath }` and NOT `publicUrl`, so the URL a flow can actually render is
+   * derived here from `filePath` — the same `/api/r2-proxy/...` the dashboard uploader uses.
+   */
   async uploadMedia(input: MediaUploadInput): Promise<TelegramMediaUpload> {
     const res = await this.http.post<{ success: boolean; data: TelegramMediaUpload }>(
-      '/api/telegram/media-upload', input
+      '/api/telegram/media-upload/presign', input
     );
-    return res.data;
+    return { ...res.data, proxyUrl: `/api/r2-proxy/${res.data.filePath}` };
   }
 }

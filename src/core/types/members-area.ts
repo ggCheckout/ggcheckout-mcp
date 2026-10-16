@@ -153,6 +153,8 @@ export interface CreateSectionInput {
   title: string;
   description?: string;
   thumbnailUrl?: string;
+  showTitleOverlay?: boolean;
+  showImageOnly?: boolean;
   order?: number;
   dripSettings?: ModuleDripSettings;
 }
@@ -165,6 +167,8 @@ export interface CreateLessonInput {
   duration?: number;
   content?: any;
   thumbnailUrl?: string;
+  showTitleOverlay?: boolean;
+  showImageOnly?: boolean;
   videoUrl?: string;
 }
 
@@ -202,4 +206,76 @@ export interface ImportStudentsResult {
   success: number;
   errors: number;
   emailsSent: number;
+}
+
+/** A file uploaded for a members area, with what to pass on to the tool that uses it. */
+export interface UploadedMembersAreaFile {
+  kind: 'image' | 'video' | 'file';
+  /** The URL to store: image and video are served through the app; a file's is a signed link. */
+  url: string;
+  /** The storage key. A lesson attachment keeps it, so the student's download is signed afresh. */
+  filePath?: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+}
+
+export interface LessonAttachment {
+  id: string;
+  name: string;
+  url: string;
+  mime: string;
+  sizeBytes: number;
+  filePath?: string;
+  [key: string]: unknown;
+}
+
+export interface AddLessonAttachmentInput {
+  name: string;
+  url: string;
+  mime: string;
+  sizeBytes: number;
+  filePath?: string;
+}
+
+/** One lesson of a PDF batch: the API creates a `pdf` lesson per entry, in order. */
+export interface PdfLessonInput {
+  title: string;
+  description?: string;
+  fileUrl: string;
+  fileName: string;
+  fileSize?: number;
+  /** The storage key from the upload; the API signs the student's link from it on every read. */
+  filePath?: string;
+}
+
+export interface UpdateModuleInput {
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  locked?: boolean;
+  dripSettings?: ModuleDripSettings | null;
+}
+
+export interface UpdateSectionInput {
+  title?: string;
+  description?: string;
+  thumbnailUrl?: string;
+  showTitleOverlay?: boolean;
+  showImageOnly?: boolean;
+  dripSettings?: ModuleDripSettings | null;
+}
+
+export interface UpdateLessonInput {
+  title?: string;
+  description?: string;
+  type?: LessonType;
+  duration?: number;
+  order?: number;
+  thumbnailUrl?: string;
+  showTitleOverlay?: boolean;
+  showImageOnly?: boolean;
+  isPublished?: boolean;
+  videoUrl?: string;
+  content?: any;
 }

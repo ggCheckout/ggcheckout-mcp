@@ -74,7 +74,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-dotenv.config();
+// quiet: dotenv >= 17 prints to STDOUT, which is the MCP protocol channel over stdio; that line
+// reaches the client as a malformed frame.
+dotenv.config({ quiet: true });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
@@ -128,13 +130,17 @@ const pushAdapter = new PushApiAdapter(httpClient);
 const telegramAdapter = new TelegramApiAdapter(httpClient);
 
 // Services (use cases)
-const productService = new ProductService(productAdapter);
+const productService = new ProductService(productAdapter, API_URL);
 const paymentService = new PaymentService(paymentAdapter, authAdapter);
 const checkoutService = new CheckoutService(checkoutAdapter, authAdapter, productAdapter);
 const webhookService = new WebhookService(webhookAdapter, authAdapter);
 const storeService = new StoreService(storeAdapter);
 const funnelService = new FunnelService(funnelAdapter);
-const membersAreaService = new MembersAreaService(membersAreaAdapter, authAdapter);
+const membersAreaService = new MembersAreaService(
+  membersAreaAdapter,
+  authAdapter,
+  process.env.GGCHECKOUT_UPLOAD_ROOT || undefined,
+);
 const discountService = new DiscountService(discountAdapter);
 const whatsappService = new WhatsAppService(whatsappAdapter);
 const billingService = new BillingService(billingAdapter);

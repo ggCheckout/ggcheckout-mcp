@@ -44,6 +44,18 @@ describe('StoreService.updateLayout', () => {
     expect(sent.pageSettings).toEqual({ title: 'Nova', favicon: 'x.png' });
   });
 
+  it('returns the layout as stored, not the draft as sent', async () => {
+    const savedByApi = { ...structuredClone(stored), pageSettings: { cart: { density: 'compact' } } };
+    vi.mocked(mockPort.getLayout)
+      .mockResolvedValueOnce({ layout: structuredClone(stored), isNewStore: false })
+      .mockResolvedValueOnce({ layout: savedByApi as any, isNewStore: false });
+
+    const result = await service.updateLayout('s-1', { pageSettings: { cart: { density: 'compact' } } });
+
+    expect(mockPort.getLayout).toHaveBeenCalledTimes(2);
+    expect(result).toBe(savedByApi);
+  });
+
   it('requires theme and blocks on the first save of a new store', async () => {
     vi.mocked(mockPort.getLayout).mockResolvedValue({ layout: null, isNewStore: true });
 

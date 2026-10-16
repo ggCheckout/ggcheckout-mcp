@@ -4,7 +4,13 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { WebhookService } from '../../../core/services/webhook.service.js';
 import { createToolHandler } from '../tool-handler.js';
-import { WEBHOOK_EVENTS, webhookFixtures } from '../../../shared/webhook-fixtures.js';
+import {
+  WEBHOOK_EVENTS,
+  WEBHOOK_EVENTS_WITHOUT_EMITTER,
+  TESTABLE_WEBHOOK_EVENTS,
+  webhookFixtures,
+  type TestableWebhookEvent,
+} from '../../../shared/webhook-fixtures.js';
 
 export function registerWebhookTools(server: McpServer, service: WebhookService) {
   server.tool(
@@ -33,15 +39,21 @@ export function registerWebhookTools(server: McpServer, service: WebhookService)
   server.registerTool(
     'create_webhook',
     {
-      description: 'Create a new webhook for payment notifications',
+      description:
+        'Create a new webhook for payment notifications. The API stores `events` without checking the '
+        + 'names and dispatch matches them exactly, so a name outside the list below is accepted with 200 '
+        + 'and never fires — this tool refuses it instead.',
       inputSchema: {
         name: z.string().max(200).describe('Webhook name/description'),
         url: z.string().url().describe('Webhook URL endpoint to receive notifications'),
         events: z
-          .array(z.string())
+          .array(z.enum(WEBHOOK_EVENTS))
+          .min(1)
           .max(100)
           .describe(
-            'Events to trigger this webhook (e.g., ["payment.created", "payment.paid", "payment.refunded"])',
+            `Events to trigger this webhook. Only these fire: ${WEBHOOK_EVENTS.join(', ')}. `
+            + `No refund or chargeback event exists. ${WEBHOOK_EVENTS_WITHOUT_EMITTER.join(', ')} are `
+            + 'accepted but nothing dispatches them today.',
           ),
         secret: z
           .string()
@@ -69,7 +81,8 @@ export function registerWebhookTools(server: McpServer, service: WebhookService)
         webhookId: z.string().describe('Webhook ID'),
         name: z.string().max(200).optional().describe('New webhook name/description'),
         url: z.string().url().optional().describe('New webhook URL'),
-        events: z.array(z.string()).max(100).optional().describe('New events list'),
+        events: z.array(z.enum(WEBHOOK_EVENTS)).min(1).max(100).optional()
+          .describe(`New events list, from: ${WEBHOOK_EVENTS.join(', ')}`),
         secret: z.string().max(200).optional().describe('New secret key'),
         productsId: z.array(z.string()).max(100).optional().describe('New product IDs filter'),
       },
@@ -98,14 +111,15 @@ export function registerWebhookTools(server: McpServer, service: WebhookService)
     'test_webhook',
     {
       description:
-        'Send a realistic test event payload directly to a webhook endpoint. Useful for validating that your endpoint handles real event shapes correctly (e.g., payment.paid, payment.refunded). The payload is sent directly from this MCP server to your webhook URL — no GG Checkout backend involvement.',
+        'Send a test event payload directly to a webhook endpoint, to check that your endpoint accepts, '
+        + 'verifies and parses a delivery. The payload is built by this MCP server and sent straight to '
+        + 'your URL — the GG Checkout backend is not involved — so it is a plausible payment-shaped body, '
+        + 'not a byte-for-byte copy of a live delivery. Only payment-shaped events can be simulated.',
       inputSchema: {
         webhookId: z.string().describe('ID of the webhook to test (used to look up the URL and secret)'),
         event: z
-          .enum(WEBHOOK_EVENTS)
-          .describe(
-            'Event type to simulate: payment.created | payment.paid | payment.refunded | payment.expired | payment.chargeback',
-          ),
+          .enum(TESTABLE_WEBHOOK_EVENTS)
+          .describe(`Event type to simulate: ${TESTABLE_WEBHOOK_EVENTS.join(' | ')}`),
         overrides: z
           .record(z.unknown())
           .optional()
@@ -116,7 +130,7 @@ export function registerWebhookTools(server: McpServer, service: WebhookService)
     },
     createToolHandler(
       'test_webhook',
-      async ({ webhookId, event, overrides }: { webhookId: string; event: typeof WEBHOOK_EVENTS[number]; overrides?: Record<string, unknown> }) => {
+      async ({ webhookId, event, overrides }: { webhookId: string; event: TestableWebhookEvent; overrides?: Record<string, unknown> }) => {
         const webhook = await service.getById(webhookId);
 
         const basePayload = webhookFixtures[event];

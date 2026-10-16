@@ -40,26 +40,26 @@ describe('test_webhook tool', () => {
     }
   });
 
-  it('POSTs correct payload to webhook URL for payment.paid event', async () => {
+  it('POSTs correct payload to webhook URL for a pix.paid event', async () => {
     vi.mocked(service.getById).mockResolvedValue({
       id: 'wh1',
       businessId: 'biz1',
       name: 'My Webhook',
       url: 'https://myapp.com/webhook',
-      events: ['payment.paid'],
+      events: ['pix.paid'],
     });
     vi.mocked(axios.post).mockResolvedValue({ status: 200, data: 'ok' });
 
-    const result = await testWebhookHandler({ webhookId: 'wh1', event: 'payment.paid' });
+    const result = await testWebhookHandler({ webhookId: 'wh1', event: 'pix.paid' });
     const parsed = JSON.parse(result.content[0].text);
 
     expect(axios.post).toHaveBeenCalledWith(
       'https://myapp.com/webhook',
-      expect.stringContaining('"event":"payment.paid"'),
+      expect.stringContaining('"event":"pix.paid"'),
       expect.objectContaining({ headers: expect.objectContaining({ 'Content-Type': 'application/json' }) }),
     );
     expect(parsed.status).toBe(200);
-    expect(parsed.sentPayload.event).toBe('payment.paid');
+    expect(parsed.sentPayload.event).toBe('pix.paid');
   });
 
   it('includes X-Webhook-Signature header when webhook has a secret', async () => {
@@ -69,11 +69,11 @@ describe('test_webhook tool', () => {
       name: 'Signed Webhook',
       url: 'https://myapp.com/webhook',
       secret: 'my-secret',
-      events: ['payment.paid'],
+      events: ['pix.paid'],
     });
     vi.mocked(axios.post).mockResolvedValue({ status: 200, data: 'ok' });
 
-    await testWebhookHandler({ webhookId: 'wh2', event: 'payment.paid' });
+    await testWebhookHandler({ webhookId: 'wh2', event: 'pix.paid' });
 
     const callArgs = vi.mocked(axios.post).mock.calls[0];
     const headers = callArgs?.[2]?.headers as Record<string, string> | undefined;
@@ -86,13 +86,13 @@ describe('test_webhook tool', () => {
       businessId: 'biz1',
       name: 'Override Webhook',
       url: 'https://myapp.com/webhook',
-      events: ['payment.paid'],
+      events: ['pix.paid'],
     });
     vi.mocked(axios.post).mockResolvedValue({ status: 200, data: 'ok' });
 
     await testWebhookHandler({
       webhookId: 'wh3',
-      event: 'payment.paid',
+      event: 'pix.paid',
       overrides: { payment: { id: 'pay_custom_001' } },
     });
 
@@ -108,14 +108,14 @@ describe('test_webhook tool', () => {
       businessId: 'biz1',
       name: 'Error Webhook',
       url: 'https://myapp.com/webhook',
-      events: ['payment.paid'],
+      events: ['pix.paid'],
     });
     const httpError = Object.assign(new Error('Request failed with status code 500'), {
       response: { status: 500, data: 'Internal Server Error' },
     });
     vi.mocked(axios.post).mockRejectedValue(httpError);
 
-    const result = await testWebhookHandler({ webhookId: 'wh4', event: 'payment.paid' });
+    const result = await testWebhookHandler({ webhookId: 'wh4', event: 'pix.paid' });
     const parsed = JSON.parse(result.content[0].text);
 
     expect(parsed.status).toBe(500);
@@ -128,12 +128,12 @@ describe('test_webhook tool', () => {
       businessId: 'biz1',
       name: 'Down Webhook',
       url: 'https://myapp.com/webhook',
-      events: ['payment.paid'],
+      events: ['pix.paid'],
     });
     const connError = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
     vi.mocked(axios.post).mockRejectedValue(connError);
 
-    const result = await testWebhookHandler({ webhookId: 'wh5', event: 'payment.paid' });
+    const result = await testWebhookHandler({ webhookId: 'wh5', event: 'pix.paid' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Could not reach webhook URL');

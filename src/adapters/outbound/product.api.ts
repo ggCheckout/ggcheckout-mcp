@@ -2,16 +2,19 @@ import type { ProductPort } from '../../core/ports/product.port.js';
 import type {
   Product,
   ProductTag,
-  DeliverableConfig,
-  UploadDeliverableInput,
+  DeliverablePresign,
+  DeliverableFile,
+  ReorderResult,
   Upsell,
-  ReorderUpsellItem,
   CreateUpsellPayload,
   DownsellSequenceItem,
   CreateDownsellPayload,
+  OfferKind,
 } from '../../core/types/product.js';
 import type { HttpClient } from './http-client.js';
 import type { AuthPort } from '../../core/ports/auth.port.js';
+
+type ReorderResponse = { success: boolean; message: string; newOrder: ReorderResult[] };
 
 export class ProductApiAdapter implements ProductPort {
   constructor(private readonly http: HttpClient, private readonly authPort: AuthPort) {}
@@ -37,12 +40,42 @@ export class ProductApiAdapter implements ProductPort {
     await this.http.delete(`/api/product-delivery/${encodeURIComponent(id)}`);
   }
 
-  async uploadDeliverable(productId: string, input: UploadDeliverableInput): Promise<DeliverableConfig> {
-    return this.http.post<DeliverableConfig>(`/api/products/${productId}/deliverable/upload`, input);
+  /**
+   * Step 1: mint the upload URL. The bytes never pass through this server — the caller PUTs them
+   * straight to storage, which is why there is no "upload the file" call here at all.
+   */
+  async presignDeliverable(
+    productId: string,
+    input: { fileName: string; fileType: string; fileSize: number },
+  ): Promise<DeliverablePresign> {
+    const data = await this.http.post<{
+      success: boolean;
+      data: { uploadUrl: string; filePath: string; fields?: Record<string, string> };
+    }>('/api/deliverables/presigned-upload', { ...input, productId });
+    return {
+      uploadUrl: data.data.uploadUrl,
+      filePath: data.data.filePath,
+      contentType: data.data.fields?.['Content-Type'] ?? input.fileType,
+    };
   }
 
-  async deleteDeliverable(productId: string): Promise<void> {
-    await this.http.delete(`/api/products/${productId}/deliverable`);
+  /**
+   * Step 3: confirm the object landed. It does not link the file to any product — that is a
+   * product write, and the service makes it.
+   */
+  async completeDeliverableUpload(
+    input: { filePath: string; fileName: string; fileSize: number; fileType: string },
+  ): Promise<DeliverableFile> {
+    const completed = await this.http.post<{ success: boolean; data: DeliverableFile }>(
+      '/api/deliverables/complete-upload',
+      input,
+    );
+    return completed.data;
+  }
+
+  /** Deletes the stored bytes. The API refuses a path outside the caller's own folder. */
+  async deleteDeliverableFile(filePath: string): Promise<void> {
+    await this.http.delete(`/api/deliverables/upload?filePath=${encodeURIComponent(filePath)}`);
   }
 
   async listUpsells(productId: string): Promise<Upsell[]> {
@@ -65,8 +98,8 @@ export class ProductApiAdapter implements ProductPort {
     await this.http.delete(`/api/product-delivery/${productId}/upsells/${upsellId}`);
   }
 
-  async reorderUpsells(productId: string, upsells: ReorderUpsellItem[]): Promise<void> {
-    await this.http.patch(`/api/product-delivery/${productId}/upsells`, { upsells });
+  async reorderUpsells(productId: string, upsellIds: string[]): Promise<ReorderResult[]> {
+    return this.reorder(productId, 'upsell', upsellIds);
   }
 
   async listDownsells(productId: string): Promise<{ downsells: DownsellSequenceItem[]; count: number }> {
@@ -89,8 +122,41 @@ export class ProductApiAdapter implements ProductPort {
     await this.http.delete(`/api/product-delivery/${productId}/downsells/${downsellId}`);
   }
 
-  async reorderDownsells(productId: string, order: string[]): Promise<void> {
-    await this.http.post(`/api/product-delivery/${productId}/downsells/reorder`, { downsellIds: order });
+  async reorderDownsells(productId: string, downsellIds: string[]): Promise<ReorderResult[]> {
+    return this.reorder(productId, 'downsell', downsellIds);
+  }
+
+  /**
+   * `POST .../{kind}s/{offerId}` with `{ <kind>: offer }`: the dashboard editor's save. The API
+   * replaces the stored offer with what is sent (in both storage eras), so the caller sends the offer
+   * it read with only its change applied. Answers the offer as stored, when the API returns it.
+   */
+  async saveOffer(
+    productId: string,
+    kind: OfferKind,
+    offerId: string,
+    offer: Record<string, unknown>,
+  ): Promise<Record<string, unknown> | null> {
+    const data = await this.http.post<Record<string, unknown>>(
+      `/api/product-delivery/${encodeURIComponent(productId)}/${kind}s/${encodeURIComponent(offerId)}`,
+      { [kind]: offer },
+    );
+    const stored = data?.[kind];
+    return stored && typeof stored === 'object' ? (stored as Record<string, unknown>) : null;
+  }
+
+  /**
+   * `POST .../{kind}s/reorder` with `{ <kind>Ids }` in the new order; both answer the resulting
+   * positions. The upsell side used to PATCH `.../upsells` with whole objects: that route replaces
+   * the legacy upsell ARRAY on the product document, and it does not exist at all for a product
+   * stored in Postgres, where it failed as an opaque 502.
+   */
+  private async reorder(productId: string, kind: 'upsell' | 'downsell', ids: string[]): Promise<ReorderResult[]> {
+    const data = await this.http.post<ReorderResponse>(
+      `/api/product-delivery/${encodeURIComponent(productId)}/${kind}s/reorder`,
+      { [`${kind}Ids`]: ids },
+    );
+    return data.newOrder ?? [];
   }
 
   async manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }> {

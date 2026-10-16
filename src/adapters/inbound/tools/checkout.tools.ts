@@ -117,8 +117,13 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
         title: z.string().max(200).optional().describe('Checkout page title'),
         price: z.number().min(0).optional().describe('Price in Brazilian Reais — converted to cents before it is sent'),
         paymentMethods: paymentMethodsSchema.optional().describe('Payment methods configuration'),
-        checkout: z.record(z.string(), z.unknown()).optional().describe('Checkout page styling/configuration'),
-        url: z.string().url().optional().describe('Checkout URL'),
+        checkout: z.record(z.string(), z.unknown()).optional()
+          .describe('Checkout page configuration, merged into the stored one (send only the keys to change). '
+            + 'Payment methods are changed through `paymentMethods`; the stored ones are never re-sent from here'),
+        url: z.string().url().optional()
+          .describe('Where the buyer goes after the post-purchase funnel (upsells and downsells), or right after the '
+            + "purchase when there is none. The offers on the seller's own page are set per product with "
+            + 'set_offer_product_page, not here'),
         bannerUrl: z.string().url().optional().describe('Banner image URL'),
         image: z.string().url().optional().describe('Product image URL'),
         sellerName: z.string().max(200).optional().describe('Seller name'),

@@ -21,7 +21,10 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   }));
 
   server.registerTool('create_whatsapp_session', {
-    description: 'Create a new WhatsApp session',
+    description:
+      'Create a new WhatsApp session. NOT AVAILABLE TO API KEYS: the route classes this as sensitive '
+      + 'and answers 403 for any API key, by design. Create the session in the dashboard; every other '
+      + 'WhatsApp tool here (list, delete, pairing code, templates, send) does work with the API key.',
     inputSchema: { sessionName: z.string().max(200).describe('Session name') },
   }, createToolHandler('create_whatsapp_session', async ({ sessionName }) => {
     const session = await service.createSession(sessionName);

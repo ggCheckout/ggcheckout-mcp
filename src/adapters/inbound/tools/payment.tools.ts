@@ -31,16 +31,22 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
     'get_payments_paginated',
     {
       description:
-        'Get paginated payments for a business with optional filters. Requires Firestore indexes for status filtering.',
+        'Get paginated payments for a business with optional filters. Page through it with `lastCreatedAt` '
+        + '= the `nextCursor` of the previous answer; `nextCursor` is null on the last page. `total` is a '
+        + 'count, not a collection size, and comes back 0 when counting is skipped; with `totalCapped: true` '
+        + 'the count stopped at its cap and `total` is a floor, not the exact number. On a `searchTerm` query '
+        + 'the answer may carry `coverageCapped: true`, meaning the scan hit its read cap and more matches '
+        + 'may exist. Status filtering requires the matching index.',
       inputSchema: {
         businessId: z.string().describe('Business ID'),
-        pageSize: z.number().min(1).max(1000).optional().describe('Number of items per page (default: 10)'),
+        pageSize: z.number().min(1).max(100).optional()
+          .describe('Number of items per page (default: 10, hard cap 100 — a larger value is silently reduced)'),
         dateFrom: z.string().optional().describe('Filter payments from this date (ISO format)'),
         dateTo: z.string().optional().describe('Filter payments until this date (ISO format)'),
         lastCreatedAt: z
           .string()
           .optional()
-          .describe('Last createdAt value for pagination cursor'),
+          .describe('Pagination cursor: the `nextCursor` returned by the previous page'),
         status: z
           .string()
           .optional()

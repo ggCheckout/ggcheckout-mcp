@@ -45,6 +45,20 @@ export class NetworkError extends AppError {
   }
 }
 
+/**
+ * The request was well formed and the caller is allowed, but the API cannot serve it right now.
+ * 503: the rate limiter is failing closed while its backend is degraded, and nothing was changed,
+ * so a retry is safe. 502: the service behind the API did not answer, and a write may or may not
+ * have landed, so it is checked before being repeated. The message carries the wait whenever the
+ * API sends one.
+ */
+export class TemporarilyUnavailableError extends AppError {
+  constructor(statusCode: number, message: string, cause?: Error) {
+    super(message, 'TEMPORARILY_UNAVAILABLE', statusCode, cause);
+    this.name = 'TemporarilyUnavailableError';
+  }
+}
+
 export class ApiError extends AppError {
   constructor(statusCode: number, message: string, cause?: Error) {
     super(`API Error (${statusCode}): ${message}`, 'API_ERROR', statusCode, cause);

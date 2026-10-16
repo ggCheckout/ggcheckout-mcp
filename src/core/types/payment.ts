@@ -135,8 +135,17 @@ export interface PaymentsListResponse {
 export interface PaymentsPaginatedResponse {
   [key: string]: unknown;
   payments: Payment[];
+  /** The count, or 0 when the route was told to skip counting. Not a collection total. */
   total: number;
-  lastCreatedAt: string | null;
+  /** True when the count stopped at its cap: `total` is then a floor (the dashboard shows `N+`). */
+  totalCapped?: boolean;
+  /** Cursor for the next page, `null` on the last one. Pass it back as `lastCreatedAt`. */
+  nextCursor: string | null;
+  /**
+   * Only ever true on a text search: the scan hit its read cap, so matches may exist beyond what
+   * was returned. Never set on an unfiltered page.
+   */
+  coverageCapped?: boolean;
 }
 
 export interface PaginationOptions {

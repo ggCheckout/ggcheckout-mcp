@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 176 tools across 19 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 189 tools across 19 domains.
 
 ## Overview
 
@@ -77,11 +77,22 @@ export GGCHECKOUT_API_KEY="ggck_live_your_key_here"
 export GGCHECKOUT_API_URL="https://your-staging.example.com"
 ```
 
+### Upload folder
+
+`upload_members_area_file` reads files from the machine running this server, and only from the
+folder named here. Without it the tool refuses every upload: what an agent reads (a page, a PDF) can
+carry instructions, so the server never reads an arbitrary path. A file that is itself a symbolic
+link is refused, and a path that leads outside the folder through a link is too.
+
+```bash
+export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
+```
+
 ---
 
-## Available Tools (176)
+## Available Tools (189)
 
-### Products (16 tools)
+### Products (18 tools)
 
 #### `list_products`
 
@@ -114,9 +125,14 @@ Create a new product/delivery.
 
 #### `update_product`
 
-Update an existing product. Only provide fields you want to change.
+Update an existing product. Only provide fields you want to change; everything else is kept.
 
 **Parameters:** `productId` + any fields from create_product (all optional)
+
+On accounts whose product read does not carry the file or the stock lines, an edit of a product
+that delivers only one of those is refused with an explanation: the API checks the request body
+for a deliverable, and those two cannot be read back to be sent along. Pass `url` with the
+change, or make it in the dashboard.
 
 **Example prompt:** "Update product abc123 price to R$79.90"
 
@@ -124,13 +140,28 @@ Update an existing product. Only provide fields you want to change.
 
 **Example prompt:** "Delete product abc123"
 
-#### `upload_deliverable`
+#### `upload_deliverable` / `attach_deliverable` / `delete_deliverable`
 
-Upload a deliverable file to a product.
+Attaching a file takes two tool calls and one upload you perform yourself — the bytes never pass
+through this server:
 
-**Parameters:** `productId`, `fileUrl`, `fileName`, `fileType` (optional)
+1. `upload_deliverable` (`productId`, `fileName`, `fileType`, `fileSize`) returns
+   `{ uploadUrl, filePath }`.
+2. `PUT` the raw bytes to `uploadUrl` with **only** `Content-Type: <fileType>` set. Do not send
+   an `Authorization` header — the signature is already in the URL and an extra header breaks it.
+   The URL is valid for one hour; the file may be up to 250MB.
+3. `attach_deliverable` (`productId`, `filePath`, `fileName`, `fileType`, `fileSize`) confirms the
+   upload landed and links it to the product.
 
-**Example prompt:** "Upload the ebook at https://files.example.com/ebook.pdf to product abc123"
+`attach_deliverable` keeps any link (`url`) the product already has; when both exist, the file
+is what the buyer receives.
+
+`delete_deliverable` unlinks the file; pass `filePath` to delete the stored bytes as well. It is
+refused when the file is the product's only deliverable, since the API will not save a product
+with nothing to deliver: give it a `url` first. If the unlink works and the byte deletion does
+not, the answer carries `fileDeleteError` and the product stays unlinked.
+
+**Example prompt:** "Attach ebook.pdf (2MB, application/pdf) to product abc123"
 
 #### `list_upsells` / `create_upsell` / `delete_upsell` / `reorder_upsells`
 
@@ -146,6 +177,27 @@ Manage upsells for a product.
 Manage downsells for a product.
 
 **Example prompt:** "Add a downsell to product abc123 with a 50% discount headline"
+
+#### `get_offer_snippets` / `set_offer_product_page` (offers on the seller's page)
+
+The post-purchase funnel is one ordered sequence of products, and each product opens either on the
+GG offer page or on the seller's own page ("Minha página"). Both can be mixed in the same funnel: the
+funnel order decides where the buyer goes after accepting or declining, and each product opens on its
+own kind of page.
+
+- `set_offer_product_page` puts ONE product of an upsell or downsell on the seller's page (the page
+  where its buttons are pasted, the two texts and the button color), or back on the GG page with
+  `page: null` (the stored page is kept, so moving it back loses nothing).
+- `get_offer_snippets` is read only: every product of the offer in funnel order, and for each one on
+  the seller's page the HTML to paste there (the same as "Copiar HTML" in the dashboard) and the page
+  it goes on. An agent with access to the seller's landing page can paste each snippet where the
+  buttons should appear, keeping the `<script>` tag.
+
+Each snippet works only for its own product, when the funnel order reaches it. Pages must be https;
+plain http only works for localhost against a development server.
+
+**Example prompt:** "Put the second product of upsell u1 of product abc123 on https://seller.com/oferta
+with a green button saying 'Quero!', then give me the HTML to paste on that page"
 
 #### `manage_tags`
 
@@ -243,11 +295,30 @@ Manage physical order fulfillment.
 
 **Example prompts:**
 - "Show me all my webhooks"
-- "Create a webhook for payment.paid events at https://myapp.com/webhook"
-- "Update webhook abc123 to also listen for payment.refunded"
+- "Create a webhook for pix.paid events at https://myapp.com/webhook"
+- "Update webhook abc123 to also listen for card.paid"
 - "Delete webhook abc123"
-- "Send a test payment.paid event to webhook abc123"
-- "Test my webhook abc123 with a refunded event overriding the payment ID to pay_xyz"
+- "Send a test pix.paid event to webhook abc123"
+- "Test my webhook abc123 with an expired event overriding the payment ID to pay_xyz"
+
+#### Event names
+
+The API stores the event names you register **without checking them**, and delivery matches
+them exactly — so a name outside this list is accepted, saved, and never fires, with no error
+anywhere. These are the names that exist:
+
+| Family | Events |
+|---|---|
+| PIX | `pix.paid`, `pix.generated`, `pix.expired`, `pix.failed` |
+| Card | `card.paid`, `card.generated`, `card.expired`, `card.failed`, `card.pending` |
+| Subscription | `subscription.canceled`, `subscription.past_due`, `subscription.renewed` |
+| Quiz funnel | `quiz.completed`, `quiz.lead_captured` |
+| Cart | `checkout.abandoned` |
+
+There is **no refund or chargeback event**: nothing dispatches one. `pix.failed` and
+`card.pending` can be registered but have no emitter today. Names of the form
+`payment.*` are the platform's internal vocabulary between services, not seller webhooks —
+registering one gets you silence.
 
 #### Webhook Event Payloads
 
@@ -257,35 +328,35 @@ All events share the same top-level shape. Key fields:
 |---|---|---|
 | `event` | string | Event type (see below) |
 | `payment.id` | string | Payment identifier |
-| `payment.status` | string | `pending`, `paid`, `refunded`, `expired`, `chargeback` |
-| `payment.method` | string | `pix`, `pix.paid`, `card`, `card.paid` |
+| `payment.status` | string | `pending`, `paid`, `expired` |
+| `payment.method` | string | `pix`, `credit_card` |
 | `payment.amount` | number | Amount in **cents** (e.g. `9900` = R$99,00) |
 | `payment.customer.name` | string | Buyer name |
 | `payment.customer.email` | string | Buyer email |
 | `payment.customer.document` | string | CPF |
 | `payment.customer.phone` | string | Phone (E.164, e.g. `5511999999999`) |
 | `payment.createdAt` | string | ISO 8601 |
-| `payment.paidAt` | string \| undefined | Present on `payment.paid`, `payment.refunded`, `payment.chargeback` |
-| `payment.refundedAt` | string \| undefined | Present on `payment.refunded` |
-| `payment.expiredAt` | string \| undefined | Present on `payment.expired` |
+| `payment.paidAt` | string \| undefined | Present on `pix.paid` and `card.paid` |
+| `payment.expiredAt` | string \| undefined | Present on `pix.expired` and `card.expired` |
 | `product.id` | string | Product identifier |
 | `product.title` | string | Product name |
 
-**Supported events:**
+**What `test_webhook` sends.** These bodies are built by the MCP server and posted straight to
+your endpoint — the platform is not involved — so they are a plausible payment-shaped payload to
+exercise your handler with, not a byte-for-byte copy of a live delivery:
 
 ```json
-{ "event": "payment.created",    "payment": { "status": "pending",    "method": "pix" }, ... }
-{ "event": "payment.paid",       "payment": { "status": "paid",       "method": "pix.paid", "paidAt": "..." }, ... }
-{ "event": "payment.refunded",   "payment": { "status": "refunded",   "method": "pix.paid", "paidAt": "...", "refundedAt": "..." }, ... }
-{ "event": "payment.expired",    "payment": { "status": "expired",    "method": "pix", "expiredAt": "..." }, ... }
-{ "event": "payment.chargeback", "payment": { "status": "chargeback", "method": "card.paid", "paidAt": "..." }, ... }
+{ "event": "pix.paid",     "payment": { "status": "paid",    "method": "pix",         "paidAt": "..." }, ... }
+{ "event": "card.paid",    "payment": { "status": "paid",    "method": "credit_card", "paidAt": "..." }, ... }
+{ "event": "pix.expired",  "payment": { "status": "expired", "method": "pix",         "expiredAt": "..." }, ... }
+{ "event": "card.expired", "payment": { "status": "expired", "method": "credit_card", "expiredAt": "..." }, ... }
 ```
 
 **Signature verification** (when a `secret` is set):
 
 ```
 X-Webhook-Signature: sha256=<HMAC-SHA256(secret, raw_body)>
-X-GGCheckout-Event: payment.paid
+X-GGCheckout-Event: pix.paid
 ```
 
 ```ts
@@ -353,7 +424,7 @@ funnel first and send the full array back. Pixels and webhooks are linked by id
 
 ---
 
-### Members Area (21 tools)
+### Members Area (32 tools)
 
 **Example prompts:**
 - "List all my members areas"
@@ -365,6 +436,23 @@ funnel first and send the full array back. Pixels and webhooks are linked by id
 - "Add student john@example.com to members area xyz"
 - "Import these 50 students to members area xyz"
 - "Block student abc123"
+
+**Files the seller sends.** `upload_members_area_file` uploads a file that is already on the machine
+running this server (an absolute path inside `GGCHECKOUT_UPLOAD_ROOT`, see "Upload folder") and
+returns the URL to pass on:
+
+| `kind` | Accepts | Use the `url` in |
+|---|---|---|
+| `image` | jpg, png, webp, gif, avif | `update_members_area` branding (logo, banner), module `imageUrl`, section and lesson `thumbnailUrl` |
+| `video` | mp4, webm, mov, avi, mpeg — up to 500 MB | `create_lesson` type `video`: `videoUrl` and `content: { videoUrl, videoSourceType: "upload" }` |
+| `file` | pdf, doc(x), xls(x), zip, rar, 7z, mp3, ogg, wav, images, videos — up to 100 MB; needs `areaId` | `create_pdf_lessons`, `create_lesson` `content.fileUrl`, or `add_lesson_attachment` |
+
+Nothing is downloaded from another platform: videos and PDFs come from the seller. Modules and
+sections take `dripSettings` (release N days after purchase, enrollment or first access); lessons
+take a cover and a position. `update_module` / `update_section` / `update_lesson` change only the
+fields sent, and `delete_module` / `delete_section` / `delete_lesson` remove the item with everything
+under it — irreversible, so they take `confirm: true`. These six need the API release with the
+`PATCH`/`DELETE` structure routes; an older deployment answers that it has no such route yet.
 
 ---
 
@@ -394,7 +482,7 @@ funnel first and send the full array back. Pixels and webhooks are linked by id
 
 ---
 
-### Billing (10 tools)
+### Billing (11 tools)
 
 **Example prompts:**
 - "What's my current billing balance?"
@@ -421,10 +509,12 @@ funnel first and send the full array back. Pixels and webhooks are linked by id
 
 **Example prompts:**
 - "List my payment gateway tokens"
-- "Add a Stripe token"
+- "Add a PushinPay token"
 - "Remove token abc123"
 
-Supports 26+ gateways: pushinpay, mercadopago, stripe, efibank, amplopay, infinitepay, abacatepay, and more.
+`insert_token` creates only the four types the API accepts: `pushinpay`, `utmify`,
+`emailprovider` and `mercadopago`. The platform processes payments through 25+ gateways, but the
+others are connected from the dashboard, not through this API — asking for one here is refused.
 
 ---
 
@@ -458,12 +548,15 @@ Supports 26+ gateways: pushinpay, mercadopago, stripe, efibank, amplopay, infini
 
 ---
 
-### Rewards / Goals (3 tools)
+### Rewards / Goals (2 tools)
 
 **Example prompts:**
 - "What's my progress on sales milestones?"
-- "Recalculate my reward progress"
 - "Redeem the 10K bracelet reward"
+
+`calculate_rewards` is the only reader: it returns the progress and the milestone list together,
+in reais (`currentRevenueCents` carries the same value in cents). There is no reward catalogue
+endpoint, and a cache miss is rate limited to 10 per hour.
 
 ---
 
@@ -595,6 +688,7 @@ npm install
 ```bash
 GGCHECKOUT_API_KEY=ggck_live_your_key_here
 GGCHECKOUT_API_URL=http://localhost:3000  # optional, defaults to https://ggcheckout.app
+GGCHECKOUT_UPLOAD_ROOT=/path/to/import    # needed by upload_members_area_file, the only folder it reads from
 ```
 
 ### Commands

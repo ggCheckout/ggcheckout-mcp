@@ -177,7 +177,15 @@ export function registerTelegramTools(server: McpServer, service: TelegramServic
   // =====================
 
   server.registerTool('telegram_media_upload', {
-    description: 'Generate a presigned URL for uploading media (images, videos, documents, audio) for use in Telegram flows. Max 500MB.',
+    description:
+      'Step 1 of 2 for Telegram flow media: mint a presigned upload URL. This tool does NOT take the file. '
+      + 'It returns { uploadUrl, filePath, proxyUrl }. Step 2 is yours: PUT the raw bytes to `uploadUrl` with '
+      + 'ONLY the header `Content-Type: <the same fileType>` — no Authorization header, it would break the '
+      + 'signature — and the URL expires in 1 hour. Then store `proxyUrl` in the flow node '
+      + '(`imageUrl` for send_image, `videoUrl` for send_video, `fileUrl` for send_document) via '
+      + 'create_telegram_flow / update_telegram_flow, and deploy. Allowed fileType: image/jpeg, jpg, png, gif, '
+      + 'webp, avif; video/mp4, webm, quicktime, x-msvideo, mpeg; application/pdf, msword, docx, xls, xlsx, zip; '
+      + 'audio/mpeg, wav, ogg, mp4, webm, aac. Over 500MB answers 413.',
     inputSchema: {
       fileName: z.string().min(1).max(255).describe('File name'),
       fileType: z.string().describe('MIME type (e.g. image/jpeg, video/mp4, application/pdf, audio/mpeg)'),

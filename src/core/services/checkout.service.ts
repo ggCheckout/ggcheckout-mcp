@@ -11,6 +11,7 @@ import type {
 import type { Product } from '../types/product.js';
 import { AppError, NotFoundError, ValidationError } from '../../shared/errors.js';
 import { parsePriceToCents } from '../../shared/validation.js';
+import { mergeDeep } from '../../shared/merge.js';
 
 const PRODUCT_HINT =
   'It does not exist or belongs to another seller. Call create_product first and use the '
@@ -108,6 +109,7 @@ export class CheckoutService {
       productId: current.productId,
       price: current.price,
       ...input,
+      ...(input.checkout !== undefined ? { checkout: mergePageSetup(current.checkout, input.checkout) } : {}),
       ...(input.price !== undefined ? { price: parsePriceToCents(input.price) } : {}),
       ...(orderBumps ? { orderBumps } : {}),
     };
@@ -123,4 +125,28 @@ export class CheckoutService {
   async manageTags(id: string, tags: CheckoutTag[]): Promise<{ tags: CheckoutTag[] }> {
     return this.checkoutPort.manageTags(id, tags);
   }
+}
+
+/**
+ * The `checkout` object of an update: the stored page setup with the caller's keys merged in.
+ *
+ * Merged, not replaced: the API stores `checkout` as a whole, and it holds the whole page setup
+ * (timer, coupon, shipping…), so a caller that sets one key (the timer, say) would otherwise wipe the
+ * rest of it.
+ *
+ * `paymentMethods` is the one key never carried over from the read. When the body has no top-level
+ * `paymentMethods`, the API takes the methods from `checkout.paymentMethods` and rewrites them from
+ * it, and the read does not return every stored value of the methods: echoing that copy would rewrite
+ * them with less than what is stored, on an edit that only touched the timer. It travels only when
+ * the caller sends it.
+ *
+ * `shipping` is carried over whole, on purpose: the read returns it complete, and a partial one would
+ * be stored as the whole shipping setup.
+ */
+function mergePageSetup(
+  stored: Record<string, unknown> | undefined,
+  edit: Record<string, unknown>,
+): Record<string, unknown> {
+  const { paymentMethods: _readCopy, ...setup } = stored ?? {};
+  return mergeDeep(setup, edit);
 }

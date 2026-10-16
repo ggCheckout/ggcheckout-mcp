@@ -1,6 +1,6 @@
 import type {
   BalanceResponse, BillingStatusResponse, BillingHistoryEntry,
-  SellerInvoice, BillingCredit, BillingCard,
+  SellerInvoice, BillingCredit, BillingCard, CreditLedgerPage, CreditTopup, PendingCreditTopup,
 } from '../types/billing.js';
 
 export interface BillingPort {
@@ -10,8 +10,16 @@ export interface BillingPort {
   listInvoices(options?: { status?: string; limit?: number }): Promise<{ invoices: SellerInvoice[]; total: number }>;
   getInvoice(id: string): Promise<SellerInvoice>;
   payInvoice(id: string, method: 'pix' | 'card' | 'credits'): Promise<{ success: boolean; qrCode?: string; qrCodeImage?: string }>;
-  listCredits(options?: { status?: string; limit?: number }): Promise<{ credits: BillingCredit[]; total: number }>;
-  addCredit(amountCents: number): Promise<{ success: boolean; creditId: string; qrCode: string; qrCodeImage: string; expiresAt: string }>;
+  listCredits(options?: { status?: string; limit?: number; before?: string }): Promise<{
+    credits: BillingCredit[];
+    total: number;
+    ledger: CreditLedgerPage;
+    /** Set when that side failed; its list above is then empty, not "no data". */
+    creditsError?: string;
+    ledgerError?: string;
+  }>;
+  addCredit(amountCents: number, idempotencyKey?: string): Promise<CreditTopup>;
+  getCreditTopup(): Promise<PendingCreditTopup | null>;
   getCardStatus(): Promise<{ hasCard: boolean; card?: BillingCard; isExpiringSoon: boolean }>;
   removeCard(): Promise<void>;
 }

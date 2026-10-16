@@ -141,13 +141,19 @@ describe('TelegramApiAdapter', () => {
 
   // --- Media ---
 
-  it('uploadMedia POSTs and unwraps data', async () => {
+  // The route is `/presign` — the parent path was renamed and answers 404 — and it does NOT
+  // return a public URL, so the renderable one is derived from filePath.
+  it('uploadMedia POSTs to /presign and derives the proxy URL from filePath', async () => {
     vi.mocked(http.post).mockResolvedValue({
       success: true,
-      data: { uploadUrl: 'https://r2.example.com/upload', filePath: 'videos/abc.mp4', publicUrl: '/api/r2-proxy/videos/abc.mp4' },
+      data: { uploadUrl: 'https://r2.example.com/upload?sig', filePath: 'videos/abc.mp4' },
     });
     const result = await adapter.uploadMedia({ fileName: 'test.mp4', fileType: 'video/mp4', fileSize: 1024 });
-    expect(http.post).toHaveBeenCalledWith('/api/telegram/media-upload', { fileName: 'test.mp4', fileType: 'video/mp4', fileSize: 1024 });
-    expect(result.uploadUrl).toBe('https://r2.example.com/upload');
+    expect(http.post).toHaveBeenCalledWith(
+      '/api/telegram/media-upload/presign',
+      { fileName: 'test.mp4', fileType: 'video/mp4', fileSize: 1024 },
+    );
+    expect(result.uploadUrl).toBe('https://r2.example.com/upload?sig');
+    expect(result.proxyUrl).toBe('/api/r2-proxy/videos/abc.mp4');
   });
 });

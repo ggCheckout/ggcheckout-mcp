@@ -1,4 +1,4 @@
-/** Same test as saas-checkout's deepDefaults: a Date or class instance is replaced, not merged. */
+/** Same test the API's own deep merge uses: a Date or class instance is replaced, not merged. */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null) return false;
   const proto = Object.getPrototypeOf(value);

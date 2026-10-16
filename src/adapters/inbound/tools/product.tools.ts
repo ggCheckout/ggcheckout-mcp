@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ProductService } from '../../../core/services/product.service.js';
-import type { ReorderUpsellItem } from '../../../core/types/product.js';
 import { createToolHandler } from '../tool-handler.js';
+import { isSellerPageUrl } from '../../../shared/external-offer-snippet.js';
 
 export function registerProductTools(server: McpServer, service: ProductService) {
   server.tool(
@@ -63,7 +63,9 @@ export function registerProductTools(server: McpServer, service: ProductService)
     'update_product',
     {
       description:
-        'Update an existing product/delivery. Only provide fields you want to update — the stored product is re-sent with your changes on top.',
+        'Update an existing product/delivery. Only provide fields you want to update; everything else is '
+        + 'kept. Refused with an explanation when the product delivers only stock lines or a file on an '
+        + 'account where the API cannot read them back: pass `url` with the change, or edit it in the dashboard.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
         title: z.string().max(200).optional().describe('Product title'),
@@ -110,19 +112,46 @@ export function registerProductTools(server: McpServer, service: ProductService)
     'upload_deliverable',
     {
       description:
-        'Upload a deliverable file to a product. Provide the file URL, name, and optionally the MIME type.',
+        'Step 1 of 2 to attach a file to a product: mint an upload URL. The file does NOT pass through '
+        + 'this server. Returns { uploadUrl, filePath, contentType }. Step 2 is yours: PUT the raw bytes '
+        + 'to `uploadUrl` with ONLY the header `Content-Type: <fileType>` and NO Authorization header '
+        + '(the signature is in the URL and an extra header breaks it); the URL expires in 1 hour. '
+        + 'Then call attach_deliverable with the same filePath/fileName/fileSize/fileType to confirm the '
+        + 'upload and link it to the product. Max 250MB.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        fileUrl: z.string().url().describe('Public URL of the file to attach as deliverable'),
         fileName: z.string().max(200).describe('File name (e.g., "ebook.pdf")'),
-        fileType: z
-          .string()
-          .optional()
-          .describe('MIME type of the file (e.g., "application/pdf"). Auto-detected if omitted.'),
+        fileType: z.string().describe('MIME type of the file (e.g., "application/pdf")'),
+        fileSize: z.number().int().positive().describe('File size in bytes (max 250MB)'),
       },
     },
     createToolHandler('upload_deliverable', async ({ productId, ...input }) => {
-      const deliverable = await service.uploadDeliverable(productId, input);
+      const presign = await service.presignDeliverable(productId, input);
+      return {
+        ...presign,
+        next: 'PUT the bytes to uploadUrl with only Content-Type set, then call attach_deliverable.',
+      };
+    }),
+  );
+
+  server.registerTool(
+    'attach_deliverable',
+    {
+      description:
+        'Step 2 of 2: confirm an uploaded file exists in storage and attach it to the product as its '
+        + 'deliverable. Call it after PUTting the bytes to the uploadUrl from upload_deliverable, with '
+        + 'the same values. Answers 404 if the bytes never landed. A link (`url`) the product already '
+        + 'has is kept; when both exist, the file is what the buyer receives.',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid)'),
+        filePath: z.string().describe('The filePath returned by upload_deliverable'),
+        fileName: z.string().max(200).describe('File name'),
+        fileType: z.string().describe('MIME type'),
+        fileSize: z.number().int().positive().describe('File size in bytes'),
+      },
+    },
+    createToolHandler('attach_deliverable', async ({ productId, ...input }) => {
+      const deliverable = await service.attachDeliverable(productId, input);
       return { success: true, deliverable };
     }),
   );
@@ -130,14 +159,25 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'delete_deliverable',
     {
-      description: 'Remove the deliverable file from a product',
+      description:
+        'Unlink the deliverable file from a product; a link (`url`) it also has stays. Refused when the '
+        + 'file is the only deliverable, because the API will not save a product with nothing to deliver: '
+        + 'give it a `url` first. Pass `filePath` to also delete the stored bytes; without it the file '
+        + 'stays in storage, unreferenced. If the unlink works and the byte deletion does not, the answer '
+        + 'says so in `fileDeleteError` and the product stays unlinked.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
+        filePath: z.string().optional()
+          .describe('The filePath returned by upload_deliverable (also `deliverableFile.filePath` in '
+            + 'get_product, on accounts whose read carries it), to also delete the bytes. It must be a file '
+            + 'of this product; a file uploaded in the dashboard before the product was saved cannot be '
+            + 'confirmed here, so for those call without filePath (unlink only)'),
       },
     },
-    createToolHandler('delete_deliverable', async ({ productId }) => {
-      await service.deleteDeliverable(productId);
-      return { success: true, message: `Deliverable removed from product ${productId}` };
+    createToolHandler('delete_deliverable', async ({ productId, filePath }) => {
+      const result = await service.deleteDeliverable(productId, filePath);
+      const bytes = result.fileDeleted ? ' and the file deleted' : '';
+      return { success: true, ...result, message: `Deliverable unlinked from product ${productId}${bytes}` };
     }),
   );
 
@@ -204,22 +244,19 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'reorder_upsells',
     {
-      description: 'Reorder upsells for a product by sending the full upsells array in desired order',
+      description:
+        'Reorder the upsells of a product: send every upsell id, in the order you want. Returns the '
+        + 'positions as stored. Ids are taken from list_upsells; an id that does not belong to the '
+        + 'product is refused.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        upsells: z.array(z.object({
-          uid: z.string().describe('Upsell UID'),
-          id: z.string().describe('Upsell ID'),
-          order: z.number().min(0).max(1000).optional().describe('New order position'),
-          upsellProductId: z.string(),
-          title: z.string(),
-          status: z.enum(['active', 'inactive']),
-        }).passthrough()).max(50).describe('Full upsells array in desired order'),
+        upsellIds: z.array(z.string()).min(1).max(50)
+          .describe('All upsell ids, in the desired order'),
       },
     },
-    createToolHandler('reorder_upsells', async ({ productId, upsells }) => {
-      await service.reorderUpsells(productId, upsells as ReorderUpsellItem[]);
-      return { success: true, message: 'Upsells reordered' };
+    createToolHandler('reorder_upsells', async ({ productId, upsellIds }) => {
+      const newOrder = await service.reorderUpsells(productId, upsellIds);
+      return { success: true, newOrder };
     }),
   );
 
@@ -286,15 +323,81 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'reorder_downsells',
     {
-      description: 'Reorder downsells for a product',
+      description:
+        'Reorder the downsells of a product. Returns the positions as stored. An id that does not '
+        + 'belong to the product is refused.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        order: z.array(z.string()).max(100).describe('Ordered list of downsell IDs'),
+        order: z.array(z.string()).min(1).max(100).describe('All downsell ids, in the desired order'),
       },
     },
     createToolHandler('reorder_downsells', async ({ productId, order }) => {
-      await service.reorderDownsells(productId, order);
-      return { success: true, message: 'Downsells reordered' };
+      const newOrder = await service.reorderDownsells(productId, order);
+      return { success: true, newOrder };
+    }),
+  );
+
+  // --- Offers on the seller's page ("Minha página") ---
+
+  // Scheme checked in code: `z.string().url()` alone accepts `javascript:`. http only for localhost
+  // (a development server); the API has the final word.
+  const sellerPageUrl = z.string().url().max(2048)
+    .refine((value) => isSellerPageUrl(value), 'must be an https URL (http only for localhost)');
+  const offerTarget = {
+    productId: z.string()
+      .describe('Product ID (uid) the offer is configured under — for an upsell, the product sold by the checkout'),
+    kind: z.enum(['upsell', 'downsell']).describe('Offer kind'),
+    offerId: z.string().describe('The offer uid, from list_upsells / list_downsells'),
+  };
+
+  server.registerTool(
+    'get_offer_snippets',
+    {
+      description:
+        "Read-only. Every product of an upsell or downsell offer in funnel order, with where it opens "
+        + "(the GG offer page, or the seller's own page) and, for each product on the seller's page, the "
+        + 'HTML to paste there (the same as "Copiar HTML" in the dashboard) and the page it goes on. Use '
+        + "it to have an agent put the buttons on the seller's landing page: paste each `html` where the "
+        + 'buttons should appear on its `pageUrl`, keeping the <script> tag. Each snippet works only for '
+        + 'its own product, when the funnel order reaches it.',
+      inputSchema: offerTarget,
+    },
+    createToolHandler('get_offer_snippets', async ({ productId, kind, offerId }) => {
+      const result = await service.getOfferPages(productId, kind, offerId);
+      return { success: true, ...result };
+    }),
+  );
+
+  server.registerTool(
+    'set_offer_product_page',
+    {
+      description:
+        "Put ONE product of an upsell or downsell offer on the seller's own page (\"Minha página\") "
+        + 'instead of the GG offer page, or back on the GG page with `page: null`. GG and seller pages '
+        + 'can be mixed in the same funnel: the funnel order decides where the buyer goes after '
+        + 'accepting or declining, and each product opens on its own kind of page (there are no '
+        + "per-button destinations). `page.pageUrl` is the seller's page where that product's buttons "
+        + 'are pasted (https; http only for localhost on a development server). Answers every product '
+        + 'of the offer like get_offer_snippets, with the HTML to paste for the products on the '
+        + "seller's page. Back on the GG page keeps the stored page, so nothing is lost.",
+      inputSchema: {
+        ...offerTarget,
+        offeredProductId: z.string()
+          .describe('The offered product (uid) to move: one of the products the offer sells, as listed by get_offer_snippets'),
+        page: z
+          .object({
+            pageUrl: sellerPageUrl.describe("The seller's page where this product's buttons are pasted"),
+            acceptLabel: z.string().trim().min(1).max(160).describe('Text of the accept button'),
+            declineLabel: z.string().trim().min(1).max(160).describe('Text of the decline link'),
+            buttonColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe('Accept button color, #RRGGBB'),
+          })
+          .nullable()
+          .describe("The seller's page of this product, or null to show it on the GG offer page again"),
+      },
+    },
+    createToolHandler('set_offer_product_page', async ({ productId, kind, offerId, offeredProductId, page }) => {
+      const result = await service.setOfferProductPage(productId, kind, offerId, offeredProductId, page);
+      return { success: true, ...result };
     }),
   );
 

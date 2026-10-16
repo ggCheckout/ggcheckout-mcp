@@ -4,6 +4,7 @@ import type {
   WhatsAppDeliverySummary, CreateTemplateInput, SendMessageInput,
 } from '../../core/types/whatsapp.js';
 import { sanitizeWhatsappSession, sanitizeWhatsappDelivery } from '../../shared/sanitizer.js';
+import { ApiError } from '../../shared/errors.js';
 import type { HttpClient } from './http-client.js';
 
 export class WhatsAppApiAdapter implements WhatsAppPort {
@@ -19,9 +20,28 @@ export class WhatsAppApiAdapter implements WhatsAppPort {
     return sanitizeWhatsappSession(session);
   }
 
+  /**
+   * This route blocks API keys deliberately — it is classed as sensitive, and the refusal is
+   * logged as a security event — so it answers 403 and no key will ever work. Listing, deleting
+   * and the pairing code all accept the key; only creating does not.
+   */
   async createSession(sessionName: string): Promise<WhatsAppSession> {
-    const session = await this.http.post<WhatsAppSession>('/api/whatsapp/sessions', { sessionName });
-    return sanitizeWhatsappSession(session);
+    try {
+      const session = await this.http.post<WhatsAppSession>('/api/whatsapp/sessions', { sessionName });
+      return sanitizeWhatsappSession(session);
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 403) {
+        throw new ApiError(
+          403,
+          'Creating a WhatsApp session is blocked for API keys on purpose: the route only accepts a '
+          + 'browser session or a Firebase ID token, and the refusal is logged. Retrying will not help '
+          + 'and no argument changes it. Create the session in the dashboard, then list_whatsapp_sessions, '
+          + 'get_pairing_code and the template tools all work with this API key.',
+          error,
+        );
+      }
+      throw error;
+    }
   }
 
   async deleteSession(sessionId: string): Promise<void> {
@@ -64,7 +84,7 @@ export class WhatsAppApiAdapter implements WhatsAppPort {
 
   async resendDelivery(paymentId: string) {
     return this.http.post<{ success: boolean; message: string }>(
-      `/api/whatsapp/deliveries/${paymentId}/resend`,
+      `/api/whatsapp/deliveries/${encodeURIComponent(paymentId)}/resend`,
     );
   }
 

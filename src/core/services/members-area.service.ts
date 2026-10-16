@@ -5,12 +5,18 @@ import type {
   CreateMembersAreaInput, CreateModuleInput, CreateSectionInput,
   CreateLessonInput, CreateClassInput, AddStudentInput,
   UpdateStudentInput, ImportStudentsInput,
+  AddLessonAttachmentInput, PdfLessonInput, UploadedMembersAreaFile,
+  UpdateModuleInput, UpdateSectionInput, UpdateLessonInput,
 } from '../types/members-area.js';
+import { readLocalFile, type UploadKind } from '../../shared/local-file.js';
+import { ValidationError } from '../../shared/errors.js';
 
 export class MembersAreaService {
   constructor(
     private readonly port: MembersAreaPort,
     private readonly authPort: AuthPort,
+    /** `GGCHECKOUT_UPLOAD_ROOT`: the only folder uploads read from; unset, uploads are refused. */
+    private readonly uploadRoot?: string,
   ) {}
 
   async list() {
@@ -34,6 +40,40 @@ export class MembersAreaService {
   async listLessons(areaId: string, moduleId: string, sectionId: string) { return this.port.listLessons(areaId, moduleId, sectionId); }
   async createLesson(areaId: string, moduleId: string, sectionId: string, input: CreateLessonInput) { return this.port.createLesson(areaId, moduleId, sectionId, input); }
   async reorderLessons(areaId: string, moduleId: string, sectionId: string, lessonIds: string[]) { return this.port.reorderLessons(areaId, moduleId, sectionId, lessonIds); }
+  async updateModule(areaId: string, moduleId: string, input: UpdateModuleInput) { return this.port.updateModule(areaId, moduleId, input); }
+  async deleteModule(areaId: string, moduleId: string) { return this.port.deleteModule(areaId, moduleId); }
+  async updateSection(areaId: string, moduleId: string, sectionId: string, input: UpdateSectionInput) { return this.port.updateSection(areaId, moduleId, sectionId, input); }
+  async deleteSection(areaId: string, moduleId: string, sectionId: string) { return this.port.deleteSection(areaId, moduleId, sectionId); }
+  async updateLesson(areaId: string, moduleId: string, sectionId: string, lessonId: string, input: UpdateLessonInput) { return this.port.updateLesson(areaId, moduleId, sectionId, lessonId, input); }
+  async deleteLesson(areaId: string, moduleId: string, sectionId: string, lessonId: string) { return this.port.deleteLesson(areaId, moduleId, sectionId, lessonId); }
+  async createPdfLessons(areaId: string, moduleId: string, sectionId: string, lessons: PdfLessonInput[]) { return this.port.createPdfLessons(areaId, moduleId, sectionId, lessons); }
+
+  async listLessonAttachments(areaId: string, moduleId: string, sectionId: string, lessonId: string) { return this.port.listLessonAttachments(areaId, moduleId, sectionId, lessonId); }
+  async addLessonAttachment(areaId: string, moduleId: string, sectionId: string, lessonId: string, input: AddLessonAttachmentInput) { return this.port.addLessonAttachment(areaId, moduleId, sectionId, lessonId, input); }
+  async deleteLessonAttachment(areaId: string, moduleId: string, sectionId: string, lessonId: string, attachmentId: string) { return this.port.deleteLessonAttachment(areaId, moduleId, sectionId, lessonId, attachmentId); }
+
+  /**
+   * Uploads a file from the machine that runs this server, the way the dashboard does for each kind:
+   * an image for logos, banners and covers, a lesson video, or a members-area file (PDF, document,
+   * audio) for a PDF lesson or a lesson attachment. Nothing is linked here: the answer carries the
+   * URL (and the storage key) for the tool that uses it.
+   */
+  async uploadFile(input: {
+    localPath: string;
+    kind: UploadKind;
+    areaId?: string;
+    preset?: 'banner';
+  }): Promise<UploadedMembersAreaFile> {
+    if (input.kind === 'file' && !input.areaId) {
+      throw new ValidationError('areaId is required for a file upload: the file is stored under that members area.');
+    }
+    const file = await readLocalFile(input.localPath, input.kind, this.uploadRoot);
+    const described = { kind: input.kind, fileName: file.fileName, fileType: file.fileType, fileSize: file.fileSize };
+
+    if (input.kind === 'image') return { ...described, ...(await this.port.uploadImage(file, input.preset)) };
+    if (input.kind === 'video') return { ...described, ...(await this.port.uploadVideo(file)) };
+    return { ...described, ...(await this.port.uploadAreaFile(input.areaId as string, file)) };
+  }
 
   async listClasses(areaId: string) { return this.port.listClasses(areaId); }
   async createClass(areaId: string, input: CreateClassInput) { return this.port.createClass(areaId, input); }
