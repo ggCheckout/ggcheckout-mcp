@@ -159,8 +159,9 @@ sensitive. It now says so and what to do instead, rather than surfacing a bare "
 - **`User-Agent: ggcheckout-mcp/<version>`** on every request, so the API can tell which release
   is calling and refuse writes from versions it no longer supports, with a message asking to
   update. The header's format must not change; see "Versioning and the API" in the README.
-  Minimum-version decision for this release: none yet; evaluate it before publishing, since
-  0.4.0 changes what several writes send.
+  Minimum-version decision for this release: **0.4.0**. `update_checkout` in 0.3.x resent the
+  whole document it read, and the API now refuses that write from versions below 0.4.0 with a
+  message asking to update; writes that send only what changed are not affected.
 - **Offers on the seller's page:** `set_offer_product_page` puts one product of an upsell or
   downsell on the seller's own page (or back on the GG page), mixed with GG pages in the same
   funnel; `get_offer_snippets` returns, read only, the HTML to paste for each product on the
