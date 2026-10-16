@@ -140,7 +140,6 @@ describe('CheckoutService', () => {
           title: 'Updated Title',
           uuidOwner: 'owner-1',
           price: 5000,
-          paymentMethods: { pix: true },
         }),
       );
     });
@@ -150,7 +149,7 @@ describe('CheckoutService', () => {
 
       const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
       expect(Object.keys(payload).sort()).toEqual(
-        ['orderBumps', 'paymentMethods', 'price', 'productId', 'title', 'uuidOwner'].sort(),
+        ['orderBumps', 'price', 'productId', 'title', 'uuidOwner'].sort(),
       );
     });
 
@@ -158,7 +157,7 @@ describe('CheckoutService', () => {
       await service.update('ck-1', { title: 'Updated Title' });
 
       const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
-      for (const key of ['checkout', 'url', 'fields', 'sellerName', 'currency', 'internationalizeCheckout', 'published', 'createBy']) {
+      for (const key of ['checkout', 'paymentMethods', 'url', 'fields', 'sellerName', 'currency', 'internationalizeCheckout', 'published', 'createBy']) {
         expect(payload).not.toHaveProperty(key);
       }
     });
@@ -169,6 +168,16 @@ describe('CheckoutService', () => {
       expect(mockCheckoutPort.update).toHaveBeenCalledWith(
         'ck-1',
         expect.objectContaining({ url: 'https://pay.example/nova', published: false }),
+      );
+    });
+
+    it('sends paymentMethods only when the caller changes them', async () => {
+      const pix = { gateways: [{ tokenId: 'tok-1', type: 'mercadopago' }] };
+      await service.update('ck-1', { paymentMethods: { pix } });
+
+      expect(mockCheckoutPort.update).toHaveBeenCalledWith(
+        'ck-1',
+        expect.objectContaining({ paymentMethods: { pix } }),
       );
     });
 

@@ -120,10 +120,10 @@ export interface UpdateCheckoutInput {
 /**
  * The body of `PATCH /api/checkouts/{id}`.
  *
- * The API requires `title`, `uuidOwner`, `id` (`productId` here), `price` and
- * `paymentMethods`, and writes every other key under a field mask: a key absent from the
- * body keeps its stored value. Send only the required keys and what changed — never echo
- * the document read back, which is the public view without the stored payment references.
+ * The API requires `title`, `id` (`productId` here) and `price`, and writes every other key
+ * under a field mask: a key absent from the body keeps its stored value. Send only those
+ * keys and what changed — never echo the document read back, which is the public view
+ * without the stored payment references (`paymentMethods` and `checkout` above all).
  */
 export interface UpdateCheckoutPayload {
   title: string;
