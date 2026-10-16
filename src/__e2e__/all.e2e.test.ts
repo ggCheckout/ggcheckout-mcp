@@ -29,7 +29,7 @@ describe('E2E: ggcheckout-mcp', () => {
 
     it('invalid API key returns error', async () => {
       await delay(DELAY);
-      const badHttp = new HttpClient(API_URL, 'ggck_live_invalid_key_000000000000000000000000000000000000000000000000');
+      const badHttp = new HttpClient(API_URL, 'ggck_live_invalid_key_000000000000000000000000000000000000000000000000', 'e2e');
       const badAuth = new AuthApiAdapter(badHttp);
       await expect(badAuth.getMyBusinessId()).rejects.toThrow();
     });

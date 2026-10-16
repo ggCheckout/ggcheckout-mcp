@@ -34,7 +34,7 @@ if (!API_KEY || !API_KEY.startsWith('ggck_live_')) {
   throw new Error('E2E tests require GGCHECKOUT_API_KEY in .env');
 }
 
-const httpClient = new HttpClient(API_URL, API_KEY);
+const httpClient = new HttpClient(API_URL, API_KEY, 'e2e');
 const authAdapter = new AuthApiAdapter(httpClient);
 
 export const adapters = {

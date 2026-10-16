@@ -35,16 +35,22 @@ describe('HttpClient', () => {
   });
 
   it('creates axios instance with correct baseURL and timeout', () => {
-    new HttpClient('https://api.test.com', 'test-key');
+    new HttpClient('https://api.test.com', 'test-key', '9.8.7');
     expect(axios.create).toHaveBeenCalledWith({
       baseURL: 'https://api.test.com',
       timeout: 15000,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'ggcheckout-mcp/9.8.7' },
     });
   });
 
+  it('identifies the package version on every call with a User-Agent', () => {
+    new HttpClient('https://api.test.com', 'k', '0.4.0');
+    const created = vi.mocked(axios.create).mock.calls.at(-1)![0] as any;
+    expect(created.headers['User-Agent']).toBe('ggcheckout-mcp/0.4.0');
+  });
+
   it('registers request interceptor for Bearer auth', () => {
-    new HttpClient('https://api.test.com', 'my-api-key');
+    new HttpClient('https://api.test.com', 'my-api-key', '1.0.0');
     expect(mockAxiosInstance.interceptors.request.use).toHaveBeenCalledOnce();
 
     const requestInterceptor = mockAxiosInstance.interceptors.request.use.mock.calls[0][0];
@@ -54,7 +60,7 @@ describe('HttpClient', () => {
   });
 
   it('registers response error interceptor that maps 401 to AuthenticationError', () => {
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
@@ -66,7 +72,7 @@ describe('HttpClient', () => {
   });
 
   it('maps 429 to RateLimitError', () => {
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
@@ -79,7 +85,7 @@ describe('HttpClient', () => {
 
   it('includes Retry-After seconds in RateLimitError message when header is present', () => {
     expect.assertions(2);
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
@@ -101,7 +107,7 @@ describe('HttpClient', () => {
 
   it('omits retry seconds from RateLimitError message when header is absent', () => {
     expect.assertions(2);
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
@@ -118,7 +124,7 @@ describe('HttpClient', () => {
   });
 
   it('maps other errors to ApiError', () => {
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
@@ -130,7 +136,7 @@ describe('HttpClient', () => {
   });
 
   it('uses safe fallback message when API returns no error string', () => {
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
@@ -150,7 +156,7 @@ describe('HttpClient', () => {
   // 503 is the rate limiter failing closed, not a rejection on the merits, and the wait comes in
   // the body as `retry_after` — the header is dropped when the answer is forwarded.
   it('turns 503 into a retryable error and puts retry_after from the body in the message', () => {
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
@@ -175,7 +181,7 @@ describe('HttpClient', () => {
   // A 502 on a write is ambiguous: the service behind the API may have applied it before the
   // answer was lost, so a blind retry can repeat it (a second PIX charge, for one).
   it('turns 502 into an error that says to check a write before repeating it', () => {
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
@@ -194,7 +200,7 @@ describe('HttpClient', () => {
   });
 
   it('treats a 504 like a 502 and only suggests waiting once the write was checked', () => {
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     try {
@@ -212,7 +218,7 @@ describe('HttpClient', () => {
   // A bare "Request failed with status 409" told the caller nothing; the refusal explains itself
   // in `code`, beside the message.
   it('surfaces the code beside the error message', () => {
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
@@ -235,7 +241,7 @@ describe('HttpClient', () => {
   });
 
   it('reads message field as fallback when error field is missing', () => {
-    new HttpClient('https://api.test.com', 'key');
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
     const axiosError = {
@@ -252,7 +258,7 @@ describe('HttpClient', () => {
   });
 
   it('get() calls axios.get and returns data', async () => {
-    const client = new HttpClient('https://api.test.com', 'key');
+    const client = new HttpClient('https://api.test.com', 'key', '1.0.0');
     mockAxiosInstance.get.mockResolvedValue({ data: { products: [] } });
 
     const result = await client.get('/api/products');
@@ -261,7 +267,7 @@ describe('HttpClient', () => {
   });
 
   it('post() calls axios.post and returns data', async () => {
-    const client = new HttpClient('https://api.test.com', 'key');
+    const client = new HttpClient('https://api.test.com', 'key', '1.0.0');
     mockAxiosInstance.post.mockResolvedValue({ data: { success: true } });
 
     const result = await client.post('/api/products', { title: 'Test' });
@@ -270,7 +276,7 @@ describe('HttpClient', () => {
   });
 
   it('delete() passes data in config', async () => {
-    const client = new HttpClient('https://api.test.com', 'key');
+    const client = new HttpClient('https://api.test.com', 'key', '1.0.0');
     mockAxiosInstance.delete.mockResolvedValue({ data: { success: true } });
 
     await client.delete('/api/checkouts/123', { uuidOwner: 'owner-1' });
