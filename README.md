@@ -191,10 +191,9 @@ instead of silently vanishing from the page.
 
 #### `update_checkout`
 
-Auto-merges with current data — only provide fields you want to change. The API
-resets any field missing from the body rather than merging, so the whole document
-is re-sent on your behalf; edits made outside the MCP between the read and the
-write are the one thing this cannot preserve.
+Only provide the fields you want to change. The API keeps every field missing from
+the body as stored, so the tool sends the checkout's identity (title, owner, product,
+price) plus your changes and nothing else from the stored document.
 
 **Example prompt:** "Update checkout abc123 price to R$79.90 and unpublish it"
 
