@@ -12,17 +12,17 @@ also against production.
 
 ### Release requirement — do not publish before the API has these changes
 
-Eight tools depend on open pull requests of the API. Published before them, the install
-(unpinned) reaches everyone: the six members-area tools answer 404/405 (reported as "this API has
-no such route yet", not as a missing item), and the two seller-page tools write a model the API
-does not read yet:
+Two tools depend on an open pull request of the API. Published before it, the install (unpinned)
+reaches everyone, and they write a model the API does not read yet:
 
 - `set_offer_product_page` and `get_offer_snippets` need the per-product seller page model of
   ggCheckout/saas-checkout#1681 (`productOverrides[product].displayMode` + `externalFlow.pageUrl`).
   Against an API without it, the write is saved but the buyer never reaches the seller's page.
-- `update_module`, `update_section`, `update_lesson`, `delete_module`, `delete_section`,
-  `delete_lesson` need the `PATCH`/`DELETE` routes under `/api/members-area/{areaId}/modules/…`
-  (ggCheckout/saas-checkout#1685).
+
+`update_module`, `update_section`, `update_lesson`, `delete_module`, `delete_section` and
+`delete_lesson` need the `PATCH`/`DELETE` routes under `/api/members-area/{areaId}/modules/…` of
+ggCheckout/saas-checkout#1685, merged on 2026-10-13. Against an API without them they answer
+"this API has no such route yet", not as a missing item.
 
 ### Breaking
 
