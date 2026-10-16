@@ -118,7 +118,8 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
         price: z.number().min(0).optional().describe('Price in Brazilian Reais — converted to cents before it is sent'),
         paymentMethods: paymentMethodsSchema.optional().describe('Payment methods configuration'),
         checkout: z.record(z.string(), z.unknown()).optional()
-          .describe('Checkout page configuration, merged into the stored one (send only the keys to change)'),
+          .describe('Checkout page configuration, merged into the stored one (send only the keys to change). '
+            + 'Payment methods are changed through `paymentMethods`; the stored ones are never re-sent from here'),
         url: z.string().url().optional()
           .describe('Where the buyer goes after the post-purchase funnel (upsells and downsells), or right after the '
             + "purchase when there is none. The offers on the seller's own page are set per product with "

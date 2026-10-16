@@ -58,7 +58,9 @@ breaking release, and with the unpinned install it reaches everyone on the next 
   `validate_coupon` takes `orderValue` as integer cents.
 - **`update_checkout` merges the `checkout` object instead of replacing it.** Send only the keys
   to change. An array still replaces the stored one, and a key can no longer be removed by leaving
-  it out; set it to `null` instead.
+  it out; set it to `null` instead. The stored `checkout.paymentMethods` is not part of the merge:
+  the read does not return every stored value of the methods, so re-sending it could rewrite them
+  with less than what is stored. Payment methods change only when the call sends them.
 - **`upload_deliverable` requires `fileType`.**
 - **Empty lists are refused** where the API would do nothing with them: `events` in
   `create_webhook` / `update_webhook` and `order` in `reorder_downsells` need at least one item.

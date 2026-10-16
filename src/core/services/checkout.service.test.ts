@@ -114,7 +114,14 @@ describe('CheckoutService', () => {
       uuidOwner: 'owner-1',
       price: 5000,
       paymentMethods: { pix: true },
-      checkout: { theme: 'dark' },
+      checkout: {
+        theme: 'dark',
+        timerEnabled: false,
+        coupon: { enabled: true, code: 'VOLTA10' },
+        shipping: { type: 'fixed', enabled: true, fixedValue: 1500, fixedLabel: 'Frete' },
+        // The copy of the methods the read nests inside `checkout`.
+        paymentMethods: { pix: { type: 'mercadopago' }, installments: 12 },
+      },
       orderBumps: [JSON.stringify({ uid: 'bump-1', id: 'bump-1', title: 'Bump', price: 990 })],
       orderBumpsOriginalPrice: { 'bump-1': 1990 },
       orderBumpsButtonText: { 'bump-1': 'Quero' },
@@ -173,13 +180,34 @@ describe('CheckoutService', () => {
 
     // `checkout` is the whole page setup. Replacing it with the one key a caller sets would wipe the
     // timer, the coupon and the rest with a 200.
-    it('merges a partial checkout object into the stored one', async () => {
+    it('merges a partial checkout object into the stored one, keeping coupon and shipping', async () => {
+      await service.update('ck-1', { checkout: { timerEnabled: true, shipping: { fixedValue: 990 } } });
+
+      const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
+      expect(payload.checkout).toEqual({
+        theme: 'dark',
+        timerEnabled: true,
+        coupon: { enabled: true, code: 'VOLTA10' },
+        shipping: { type: 'fixed', enabled: true, fixedValue: 990, fixedLabel: 'Frete' },
+      });
+    });
+
+    // Without a top-level `paymentMethods` the API rewrites the methods from `checkout.paymentMethods`,
+    // and the read's copy of them is not everything that is stored.
+    it('does not carry the stored checkout.paymentMethods along with an edit of the timer', async () => {
       await service.update('ck-1', { checkout: { timerEnabled: true } });
 
-      expect(mockCheckoutPort.update).toHaveBeenCalledWith(
-        'ck-1',
-        expect.objectContaining({ checkout: { theme: 'dark', timerEnabled: true } }),
-      );
+      const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
+      expect(payload.checkout).not.toHaveProperty('paymentMethods');
+      expect(payload).not.toHaveProperty('paymentMethods');
+    });
+
+    it('still sends checkout.paymentMethods when the caller sets it, as the caller sent it', async () => {
+      const methods = { credit_card: { token: 'tok-9', type: 'stripe' } };
+      await service.update('ck-1', { checkout: { paymentMethods: methods } });
+
+      const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
+      expect(payload.checkout?.paymentMethods).toEqual(methods);
     });
 
     it('sends order bumps only when the caller changes them, as the snapshots the page parses', async () => {
