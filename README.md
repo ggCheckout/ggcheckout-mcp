@@ -79,8 +79,10 @@ export GGCHECKOUT_API_URL="https://your-staging.example.com"
 
 ### Upload folder
 
-`upload_members_area_file` reads files from the machine running this server. Set this to accept
-files only from one folder (symbolic links are always refused):
+`upload_members_area_file` reads files from the machine running this server, and only from the
+folder named here. Without it the tool refuses every upload: what an agent reads (a page, a PDF) can
+carry instructions, so the server never reads an arbitrary path. A file that is itself a symbolic
+link is refused, and a path that leads outside the folder through a link is too.
 
 ```bash
 export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
@@ -436,7 +438,8 @@ funnel first and send the full array back. Pixels and webhooks are linked by id
 - "Block student abc123"
 
 **Files the seller sends.** `upload_members_area_file` uploads a file that is already on the machine
-running this server (an absolute path) and returns the URL to pass on:
+running this server (an absolute path inside `GGCHECKOUT_UPLOAD_ROOT`, see "Upload folder") and
+returns the URL to pass on:
 
 | `kind` | Accepts | Use the `url` in |
 |---|---|---|
@@ -685,7 +688,7 @@ npm install
 ```bash
 GGCHECKOUT_API_KEY=ggck_live_your_key_here
 GGCHECKOUT_API_URL=http://localhost:3000  # optional, defaults to https://ggcheckout.app
-GGCHECKOUT_UPLOAD_ROOT=/path/to/import    # optional, the only folder uploads may read from
+GGCHECKOUT_UPLOAD_ROOT=/path/to/import    # needed by upload_members_area_file, the only folder it reads from
 ```
 
 ### Commands

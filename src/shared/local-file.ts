@@ -60,13 +60,23 @@ export function acceptedExtensions(kind: UploadKind): string[] {
  *
  * The path comes from an agent, and what the agent reads (a page, a PDF) can carry instructions, so
  * the extension is not the only gate:
+ * - nothing uploads until the seller names the folder uploads may read from (`root`, from
+ *   `GGCHECKOUT_UPLOAD_ROOT`), and only files under it upload. Its real path is compared, so a link
+ *   inside it that points elsewhere is outside it;
  * - relative paths are refused, since the server's working directory is not the caller's;
- * - symbolic links are refused, the file itself and any directory on the way (`/tmp/x.pdf` pointing
- *   at a secrets file would otherwise pass the extension check and land in the seller's bucket);
- * - with `root` (`GGCHECKOUT_UPLOAD_ROOT`), only files under that folder upload at all;
+ * - the file itself must not be a symbolic link (`x.pdf` pointing at a secrets file would otherwise
+ *   pass the extension check). Links in the folders above it are fine: the system ones (`/tmp` on
+ *   macOS, the temporary folder) are links, and the root check already sees where a path really is;
  * - the size is capped per kind.
  */
-export async function readLocalFile(path: string, kind: UploadKind, root?: string): Promise<LocalFile> {
+export async function readLocalFile(path: string, kind: UploadKind, root: string | undefined): Promise<LocalFile> {
+  if (!root) {
+    throw new ValidationError(
+      'Uploads from this machine are off until the seller names the folder they may read from: set '
+      + 'GGCHECKOUT_UPLOAD_ROOT in the MCP server configuration to that folder, restart the server, and '
+      + 'put the files there.',
+    );
+  }
   if (!isAbsolute(path)) {
     throw new ValidationError(`localPath must be an absolute path on the machine running this server, got "${path}".`);
   }
@@ -83,10 +93,8 @@ export async function readLocalFile(path: string, kind: UploadKind, root?: strin
   if (!info.isFile()) throw new ValidationError(`No file at ${path}.`);
 
   const real = await realpath(path);
-  if (!samePath(real, resolve(path))) {
-    throw new ValidationError(`${path} goes through a symbolic link (it resolves to ${real}); use the real path.`);
-  }
-  if (root && !isInside(real, await realpath(root).catch(() => resolve(root)))) {
+  const realRoot = await realpath(root).catch(() => resolve(root));
+  if (!isInside(real, realRoot)) {
     throw new ValidationError(`${path} is outside the upload folder ${root} (GGCHECKOUT_UPLOAD_ROOT).`);
   }
 
@@ -97,11 +105,6 @@ export async function readLocalFile(path: string, kind: UploadKind, root?: strin
   }
 
   return { path: real, fileName: basename(path), fileType, fileSize: info.size };
-}
-
-/** Windows paths compare case-insensitively. */
-function samePath(a: string, b: string): boolean {
-  return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
 }
 
 function isInside(path: string, folder: string): boolean {

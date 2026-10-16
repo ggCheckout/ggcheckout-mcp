@@ -152,7 +152,8 @@ sensitive. It now says so and what to do instead, rather than surfacing a bare "
   seller's page. `update_checkout` now merges the `checkout` object, so setting one key keeps the
   rest of the page setup.
 - **Members-area files:** `upload_members_area_file` uploads an image, a lesson video or a file
-  (PDF, document, audio) from the machine running the server and returns the URL to use.
+  (PDF, document, audio) from the machine running the server and returns the URL to use. It reads
+  only from the folder set in `GGCHECKOUT_UPLOAD_ROOT` and refuses every upload while that is unset.
   `create_pdf_lessons` creates a batch of PDF lessons; `list_lesson_attachments`,
   `add_lesson_attachment` and `delete_lesson_attachment` manage a lesson's complementary files.
 - **Editing and deleting the course structure:** `update_module`, `update_section`, `update_lesson`,

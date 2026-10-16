@@ -471,7 +471,8 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
   server.registerTool('upload_members_area_file', {
     description:
       'Upload a file from the machine running this MCP server for a members area. The file must already be '
-      + 'on disk (the seller sends it; nothing is downloaded from another platform). Returns `url` (and '
+      + 'on disk (the seller sends it; nothing is downloaded from another platform), inside the folder set in '
+      + 'GGCHECKOUT_UPLOAD_ROOT; while that is unset every upload is refused. Returns `url` (and '
       + '`filePath` for video and file) to pass on:\n'
       + '- kind "image" (' + acceptedExtensions('image').join(' ') + '): update_members_area branding '
       + '(logoUrl, heroBannerUrl, favicon…), create_module imageUrl, create_section / create_lesson thumbnailUrl. '
@@ -482,7 +483,7 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
       + 'create_pdf_lessons (pass its `filePath` too), create_lesson content.fileUrl, or '
       + 'add_lesson_attachment (with `filePath`).',
     inputSchema: {
-      localPath: z.string().min(1).describe('Absolute path of the file on the machine running this server'),
+      localPath: z.string().min(1).describe('Absolute path of the file, inside GGCHECKOUT_UPLOAD_ROOT, on the machine running this server'),
       kind: z.enum(['image', 'video', 'file']).describe('What the file is for'),
       areaId: z.string().optional().describe('Members area ID; required for kind "file"'),
       preset: z.enum(['banner']).optional().describe('Image processing preset for tall banners (kind "image")'),

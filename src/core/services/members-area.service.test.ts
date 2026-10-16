@@ -95,7 +95,7 @@ describe('MembersAreaService.uploadFile', () => {
 
   it('sends each kind to its own route and describes the file', async () => {
     const p = port();
-    const service = new MembersAreaService(p as any, {} as any);
+    const service = new MembersAreaService(p as any, {} as any, dir);
 
     expect(await service.uploadFile({ localPath: join(dir, 'logo.png'), kind: 'image', preset: 'banner' })).toEqual({
       kind: 'image', fileName: 'logo.png', fileType: 'image/png', fileSize: 3, url: '/api/r2-proxy/uploads/u/logo.webp',
@@ -113,15 +113,26 @@ describe('MembersAreaService.uploadFile', () => {
   // A file is stored under its members area, so there is nowhere to put it without one.
   it('refuses a file upload without areaId before touching the disk or the API', async () => {
     const p = port();
-    const service = new MembersAreaService(p as any, {} as any);
+    const service = new MembersAreaService(p as any, {} as any, dir);
 
     await expect(service.uploadFile({ localPath: join(dir, 'apostila.pdf'), kind: 'file' })).rejects.toThrow(/areaId/);
     expect(p.uploadAreaFile).not.toHaveBeenCalled();
   });
 
-  it('refuses a file of the wrong kind before uploading anything', async () => {
+  // What an agent reads can carry instructions; without a folder the seller chose, nothing on the
+  // machine is reachable through this tool.
+  it('refuses every upload while no upload folder is configured', async () => {
     const p = port();
     const service = new MembersAreaService(p as any, {} as any);
+
+    await expect(service.uploadFile({ localPath: join(dir, 'logo.png'), kind: 'image' }))
+      .rejects.toThrow(/GGCHECKOUT_UPLOAD_ROOT/);
+    expect(p.uploadImage).not.toHaveBeenCalled();
+  });
+
+  it('refuses a file of the wrong kind before uploading anything', async () => {
+    const p = port();
+    const service = new MembersAreaService(p as any, {} as any, dir);
 
     await expect(service.uploadFile({ localPath: join(dir, 'apostila.pdf'), kind: 'video' })).rejects.toThrow(/\.mp4/);
     expect(p.uploadVideo).not.toHaveBeenCalled();

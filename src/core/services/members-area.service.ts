@@ -15,7 +15,7 @@ export class MembersAreaService {
   constructor(
     private readonly port: MembersAreaPort,
     private readonly authPort: AuthPort,
-    /** `GGCHECKOUT_UPLOAD_ROOT`: when set, only files under this folder can be uploaded. */
+    /** `GGCHECKOUT_UPLOAD_ROOT`: the only folder uploads read from; unset, uploads are refused. */
     private readonly uploadRoot?: string,
   ) {}
 
