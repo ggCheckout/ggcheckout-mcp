@@ -1,6 +1,6 @@
 # Changelog
 
-This package is published to npm and the README installs it as `npx -y ggcheckout-mcp`,
+This package is published to npm and the README installs it as `npx -y ggcheckout-mcp@latest`,
 which is unpinned — a new version reaches every existing installation on its next start.
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
@@ -148,6 +148,19 @@ sensitive. It now says so and what to do instead, rather than surfacing a bare "
 
 ### Added
 
+- **Installs stay on the latest version.** The README configuration now uses
+  `npx -y ggcheckout-mcp@latest`; plain `npx -y ggcheckout-mcp` reuses the cached copy and can
+  leave an installation on an old version. To stay on a version, pin it (`ggcheckout-mcp@0.4.0`)
+  and update it by hand.
+- **Update notice.** On startup the server checks the npm registry once, in the background (2 s
+  limit, any failure is silent). While a newer version is published, tool responses (successes
+  and errors) carry a short `update:` line so the assistant can tell the user to restart their
+  client.
+- **`User-Agent: ggcheckout-mcp/<version>`** on every request, so the API can tell which release
+  is calling and refuse writes from versions it no longer supports, with a message asking to
+  update. The header's format must not change; see "Versioning and the API" in the README.
+  Minimum-version decision for this release: none yet; evaluate it before publishing, since
+  0.4.0 changes what several writes send.
 - **Offers on the seller's page:** `set_offer_product_page` puts one product of an upsell or
   downsell on the seller's own page (or back on the GG page), mixed with GG pages in the same
   funnel; `get_offer_snippets` returns, read only, the HTML to paste for each product on the
