@@ -140,7 +140,9 @@ sensitive. It now says so and what to do instead, rather than surfacing a bare "
 
 ### Packaging
 
-- Compiled tests no longer ship in the published package (560 files down to 428).
+- Compiled tests and source maps no longer ship, and the build clears `dist/` first so no
+  leftover output from an older build is packed (560 files and 1.0 MB unpacked down to 222
+  files and 512 kB).
 - `dotenv` is loaded quietly: version 17 announces itself on stdout, which is the MCP protocol
   channel over stdio, and a strict client reads that line as a malformed frame.
 
