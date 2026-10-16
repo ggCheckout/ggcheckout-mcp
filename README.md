@@ -16,7 +16,7 @@ The GG Checkout MCP server enables AI agents (Claude Code, Cursor, Claude Deskto
 ### NPX (Recommended)
 
 ```bash
-npx ggcheckout-mcp
+npx -y ggcheckout-mcp@latest
 ```
 
 ### Global Install
@@ -36,20 +36,20 @@ npm install -g ggcheckout-mcp
 
 ### Claude Code
 
-> **Upgrading?** The snippet below is unpinned: `npx -y ggcheckout-mcp` picks up
-> **every** new version on the next start — minor releases included, not just
-> majors. 0.3.0 carries two breaking changes: `create_checkout` takes
-> `productId` instead of `id`, and checkout reads (`list_checkouts`,
-> `get_checkout`, `update_checkout`) return that pointer as `productId` instead
-> of `id`. Read [CHANGELOG.md](./CHANGELOG.md) first, and pin
-> `ggcheckout-mcp@0.2.4` if this is not the moment.
+> **Upgrading?** Use `ggcheckout-mcp@latest`, as in the snippet below: plain
+> `npx -y ggcheckout-mcp` reuses whatever copy `npx` cached first and can keep you on an
+> old version indefinitely. With `@latest`, restarting your MCP client picks up the newest
+> release. That includes minor releases, which can carry breaking changes (0.3.0 changed
+> `create_checkout` to take `productId` instead of `id`, and checkout reads return
+> `productId` instead of `id`), so read [CHANGELOG.md](./CHANGELOG.md) first. To stay on a
+> version, pin it, for example `ggcheckout-mcp@0.4.0`; you then have to update it by hand.
 
 ```json
 {
   "mcpServers": {
     "ggcheckout": {
       "command": "npx",
-      "args": ["-y", "ggcheckout-mcp"],
+      "args": ["-y", "ggcheckout-mcp@latest"],
       "env": {
         "GGCHECKOUT_API_KEY": "ggck_live_your_key_here"
       }
@@ -87,6 +87,23 @@ link is refused, and a path that leads outside the folder through a link is too.
 ```bash
 export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 ```
+
+### Versioning and the API
+
+- Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>`, so the API
+  knows which release is calling.
+- The API can refuse writes from versions below the minimum it supports. The refusal says so
+  and asks you to update.
+- On startup the server makes one quick, optional check of the npm registry. If a newer version
+  is published, tool responses carry a short `update:` line so your assistant can suggest
+  restarting the client. If the check fails or times out, nothing happens.
+
+**For maintainers**
+
+- Never remove or change the format of the `User-Agent` header: the API's version check reads it.
+- Every release that changes what a write sends to the API must be considered as the new
+  minimum supported version on the server, and that decision is recorded in the release's
+  CHANGELOG entry.
 
 ---
 

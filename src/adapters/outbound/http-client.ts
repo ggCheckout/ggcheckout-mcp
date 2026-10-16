@@ -25,11 +25,19 @@ export function explainMissingRoute(error: unknown, requirement: string): unknow
 export class HttpClient {
   private client: AxiosInstance;
 
-  constructor(baseURL: string, apiKey: string) {
+  /**
+   * `version` is the package version; it goes out as `User-Agent: ggcheckout-mcp/<version>` on
+   * every call so the API can tell which release is calling. Do not drop or reshape this header:
+   * the API's minimum-version check reads it.
+   */
+  constructor(baseURL: string, apiKey: string, version: string) {
     this.client = axios.create({
       baseURL,
       timeout: 15000,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': `ggcheckout-mcp/${version}`,
+      },
     });
 
     this.client.interceptors.request.use((config) => {

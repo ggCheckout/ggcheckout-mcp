@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as logger from './shared/logger.js';
+import { checkForUpdate } from './shared/update-notice.js';
 
 // Outbound adapters
 import { HttpClient } from './adapters/outbound/http-client.js';
@@ -105,7 +106,7 @@ logger.info('STARTUP', `API URL: ${API_URL}`);
 // --- Composition Root ---
 
 // Infrastructure
-const httpClient = new HttpClient(API_URL, API_KEY);
+const httpClient = new HttpClient(API_URL, API_KEY, pkg.version);
 
 // Outbound adapters (driven)
 const authAdapter = new AuthApiAdapter(httpClient);
@@ -188,6 +189,9 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 
 logger.info('STARTUP', 'Server started successfully');
+
+// Not awaited: the server is already serving, and a failed check changes nothing.
+void checkForUpdate(pkg.version);
 
 async function shutdown(signal: string) {
   logger.info('SHUTDOWN', `Received ${signal}, shutting down gracefully`);
