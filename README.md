@@ -89,6 +89,9 @@ export GG_PAYMENTS_API_KEY="ggpk_test_your_key_here"   # ggpk_test_ = simulated,
 export GG_PAYMENTS_API_URL="https://api.ggcheckout.app/v1"   # optional, this is the default
 ```
 
+The URL must be `https` (plain `http` is accepted only for `localhost` / `127.0.0.1`); the server
+refuses to start otherwise.
+
 ### Upload folder
 
 `upload_members_area_file` reads files from the machine running this server, and only from the
@@ -110,7 +113,8 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
   is published, tool responses carry a short `update:` line so your assistant can suggest
   restarting the client. If the check fails or times out, nothing happens.
 - Both APIs also tell an outdated install so in their response headers; the tool result then ends
-  with a `⚠️ ggcheckout-mcp desatualizado (<current> → <latest>)` line with the command to run.
+  with a `⚠️ ggcheckout-mcp desatualizado (<current> → <latest>)` line. The version must be a newer
+  semver and the command is always `npx -y ggcheckout-mcp@latest`: no header text is shown.
 
 **For maintainers**
 
@@ -639,7 +643,7 @@ Requires `GG_PAYMENTS_API_KEY` (see Configuration). PIX only.
 
 **Example prompts:**
 - "List my wallets"
-- "Create a R$ 49,90 PIX charge on wallet wal_8f3kQ2 for Maria Souza (maria@example.com, CPF 123.456.789-09)"
+- "Create a R$ 49,90 PIX charge on wallet wal_8f3kQ2 for Maria Souza (maria@example.com, CPF 123.456.789-09, phone 11987654321)"
 - "Did the charge for order 1234 get paid?"
 
 ---

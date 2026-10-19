@@ -17,11 +17,16 @@ Additive: nothing an existing call sends or returns changes, and no tool is remo
   - `create_pix_charge` creates a **real** charge with a live key and a simulated one with
     `ggpk_test_`; the result's `livemode` says which ran. Each call sends a fresh
     `Idempotency-Key` UUID; pass `idempotency_key` only to repeat a call that timed out.
-  - Errors show `type/code: message | param | request_id` (and `Retry-After` on 429).
+  - `buyer_phone` is required (10 to 15 digits), as the API requires it.
+  - Errors show `type/code: message | param | request_id` (and `Retry-After` on 429). A network
+    error or 5xx on a create also carries `idempotency_key=<uuid>` so the call can be repeated
+    without a second charge.
+  - `GG_PAYMENTS_API_URL` must be https (http only for localhost); the server exits otherwise.
 - **Version notice from the API.** Both APIs now answer `X-GG-MCP-Latest` / `X-GG-MCP-Update`; when
   both are present the tool result ends with one warning line
   (`⚠️ ggcheckout-mcp desatualizado (<current> → <latest>). Peça ao usuário para rodar ...`).
-  It replaces the registry `update:` line while it is shown. Every request (both APIs) now also
+  It replaces the registry `update:` line while it is shown. `X-GG-MCP-Latest` must be a newer
+  semver, and the command is always `npx -y ggcheckout-mcp@latest` (header text is never shown). Every request (both APIs) now also
   sends `X-GG-MCP-Version: <version>`, which the API needs to decide the update header;
   `User-Agent` is unchanged.
 - Minimum-version decision for this release: unchanged (**0.4.0**).
