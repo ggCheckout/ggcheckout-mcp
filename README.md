@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 189 tools across 19 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 194 tools across 20 domains.
 
 ## Overview
 
@@ -77,6 +77,18 @@ export GGCHECKOUT_API_KEY="ggck_live_your_key_here"
 export GGCHECKOUT_API_URL="https://your-staging.example.com"
 ```
 
+### Payments API (PIX charges)
+
+The five payments-API tools (`list_wallets`, `create_pix_charge`, `get_payment_intent`,
+`list_payment_intents`, `cancel_payment_intent`) use their own secret key, created in
+**My wallet → API**. They are only registered when it is set, and `GGCHECKOUT_API_KEY` is never
+used for them.
+
+```bash
+export GG_PAYMENTS_API_KEY="ggpk_test_your_key_here"   # ggpk_test_ = simulated, ggpk_live_ = real money
+export GG_PAYMENTS_API_URL="https://api.ggcheckout.app/v1"   # optional, this is the default
+```
+
 ### Upload folder
 
 `upload_members_area_file` reads files from the machine running this server, and only from the
@@ -90,13 +102,15 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 
 ### Versioning and the API
 
-- Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>`, so the API
-  knows which release is calling.
+- Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>` and
+  `X-GG-MCP-Version: <version>`, so the API knows which release is calling.
 - The API can refuse writes from versions below the minimum it supports. The refusal says so
   and asks you to update.
 - On startup the server makes one quick, optional check of the npm registry. If a newer version
   is published, tool responses carry a short `update:` line so your assistant can suggest
   restarting the client. If the check fails or times out, nothing happens.
+- Both APIs also tell an outdated install so in their response headers; the tool result then ends
+  with a `⚠️ ggcheckout-mcp desatualizado (<current> → <latest>)` line with the command to run.
 
 **For maintainers**
 
@@ -107,7 +121,7 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 
 ---
 
-## Available Tools (189)
+## Available Tools (194)
 
 ### Products (18 tools)
 
@@ -607,6 +621,26 @@ Bots (`list_telegram_bots`, `get_telegram_bot`, `create_telegram_bot`, `update_t
 - "List my Telegram bots"
 - "Create a basic flow for bot abc123 and deploy it"
 - "Show the qualified leads of bot abc123"
+
+---
+
+### Payments API (5 tools)
+
+Requires `GG_PAYMENTS_API_KEY` (see Configuration). PIX only.
+
+`list_wallets`, `create_pix_charge`, `get_payment_intent`, `list_payment_intents` (filters:
+`status`, `external_reference`, `starting_after`, `limit`) and `cancel_payment_intent`.
+
+`create_pix_charge` takes the wallet id (`wal_…`), the amount **in cents** (`4990` = R$ 49,90),
+`description`, `external_reference`, `metadata` and the buyer (`buyer_name`, `buyer_email`,
+`buyer_document`, `buyer_phone`). With a `ggpk_live_` key it creates a **real** charge; with
+`ggpk_test_` a simulated one. The response says which with `livemode` and carries the PIX in
+`pix.copy_paste` / `pix.qr_base64`.
+
+**Example prompts:**
+- "List my wallets"
+- "Create a R$ 49,90 PIX charge on wallet wal_8f3kQ2 for Maria Souza (maria@example.com, CPF 123.456.789-09)"
+- "Did the charge for order 1234 get paid?"
 
 ---
 

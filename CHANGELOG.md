@@ -5,6 +5,27 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## 0.5.0
+
+Additive: nothing an existing call sends or returns changes, and no tool is removed.
+
+- **Payments API tools (PIX).** `list_wallets`, `create_pix_charge`, `get_payment_intent`,
+  `list_payment_intents` and `cancel_payment_intent` call the public payments API
+  (`https://api.ggcheckout.app/v1`). They are registered **only when `GG_PAYMENTS_API_KEY` is set**
+  (a `ggpk_live_` or `ggpk_test_` secret key, separate from `GGCHECKOUT_API_KEY`, which is never
+  sent there). `GG_PAYMENTS_API_URL` overrides the base URL.
+  - `create_pix_charge` creates a **real** charge with a live key and a simulated one with
+    `ggpk_test_`; the result's `livemode` says which ran. Each call sends a fresh
+    `Idempotency-Key` UUID; pass `idempotency_key` only to repeat a call that timed out.
+  - Errors show `type/code: message | param | request_id` (and `Retry-After` on 429).
+- **Version notice from the API.** Both APIs now answer `X-GG-MCP-Latest` / `X-GG-MCP-Update`; when
+  both are present the tool result ends with one warning line
+  (`⚠️ ggcheckout-mcp desatualizado (<current> → <latest>). Peça ao usuário para rodar ...`).
+  It replaces the registry `update:` line while it is shown. Every request (both APIs) now also
+  sends `X-GG-MCP-Version: <version>`, which the API needs to decide the update header;
+  `User-Agent` is unchanged.
+- Minimum-version decision for this release: unchanged (**0.4.0**).
+
 ## 0.4.0
 
 Checked end to end against a QA account on the Postgres (v2) data path, and product edits
