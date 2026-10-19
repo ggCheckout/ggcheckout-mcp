@@ -4,6 +4,7 @@ const LATEST_URL = 'https://registry.npmjs.org/ggcheckout-mcp/latest';
 const CHECK_TIMEOUT_MS = 2000;
 
 let notice: string | undefined;
+let headerWarning: string | undefined;
 
 /** Parses `major.minor.patch` (a pre-release suffix is ignored); undefined when it is not one. */
 function parseVersion(version: string): [number, number, number] | undefined {
@@ -20,6 +21,27 @@ export function isNewerVersion(latest: string, current: string): boolean {
     if (a[i] !== b[i]) return a[i] > b[i];
   }
   return false;
+}
+
+/**
+ * Reads the API's version headers off a response (both APIs send them). `X-GG-MCP-Update` is only
+ * present when the API saw this install announce an older `X-GG-MCP-Version`, and it holds the command
+ * to run. The warning is kept for the rest of the session: only a restart can fix it.
+ */
+export function observeVersionHeaders(
+  get: (name: string) => string | null | undefined,
+  currentVersion: string,
+): void {
+  const latest = get('x-gg-mcp-latest');
+  const update = get('x-gg-mcp-update');
+  if (!latest || !update) return;
+  headerWarning = `⚠️ ggcheckout-mcp desatualizado (${currentVersion} → ${latest}). `
+    + `Peça ao usuário para rodar \`${update}\` e reiniciar o cliente.`;
+}
+
+/** The one-line pt-BR warning built from the API's version headers, while this install is behind. */
+export function getVersionWarning(): string | undefined {
+  return headerWarning;
 }
 
 /** The short line tool responses carry while this install is behind the published version. */
@@ -57,4 +79,5 @@ export async function checkForUpdate(
 /** Test seam: forgets the notice. */
 export function resetUpdateNotice(): void {
   notice = undefined;
+  headerWarning = undefined;
 }

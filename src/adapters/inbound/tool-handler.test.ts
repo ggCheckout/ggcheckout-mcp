@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createToolHandler } from './tool-handler.js';
-import { checkForUpdate, resetUpdateNotice } from '../../shared/update-notice.js';
+import { checkForUpdate, observeVersionHeaders, resetUpdateNotice } from '../../shared/update-notice.js';
 
 vi.mock('../../shared/logger.js', () => ({
   info: vi.fn(),
@@ -66,6 +66,23 @@ describe('createToolHandler', () => {
     it('adds nothing when the install is current', async () => {
       const result = await createToolHandler('test_tool', async () => ({ ok: true }))({});
       expect(result.content).toHaveLength(1);
+    });
+
+    it('prefers the API version warning over the registry line, one line only', async () => {
+      await checkForUpdate('0.4.0', newerRegistry as unknown as typeof fetch);
+      const h: Record<string, string> = { 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'npx -y ggcheckout-mcp@latest' };
+      observeVersionHeaders((n) => h[n], '0.4.0');
+      const result = await createToolHandler('test_tool', async () => ({ ok: true }))({});
+
+      expect(result.content).toHaveLength(2);
+      expect(result.content[1].text).toBe(
+        '⚠️ ggcheckout-mcp desatualizado (0.4.0 → 0.5.0). Peça ao usuário para rodar `npx -y ggcheckout-mcp@latest` e reiniciar o cliente.',
+      );
+    });
+
+    it('stays silent when only X-GG-MCP-Latest is sent (the install is current)', () => {
+      observeVersionHeaders((n) => ({ 'x-gg-mcp-latest': '0.5.0' } as Record<string, string>)[n], '0.5.0');
+      return createToolHandler('test_tool', async () => ({ ok: true }))({}).then((r) => expect(r.content).toHaveLength(1));
     });
   });
 });

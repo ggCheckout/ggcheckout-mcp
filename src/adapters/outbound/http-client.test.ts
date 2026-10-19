@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
 import { HttpClient } from './http-client.js';
+import { getVersionWarning, resetUpdateNotice } from '../../shared/update-notice.js';
 import {
   AuthenticationError,
   RateLimitError,
@@ -39,7 +40,11 @@ describe('HttpClient', () => {
     expect(axios.create).toHaveBeenCalledWith({
       baseURL: 'https://api.test.com',
       timeout: 15000,
-      headers: { 'Content-Type': 'application/json', 'User-Agent': 'ggcheckout-mcp/9.8.7' },
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'ggcheckout-mcp/9.8.7',
+        'X-GG-MCP-Version': '9.8.7',
+      },
     });
   });
 
@@ -281,5 +286,26 @@ describe('HttpClient', () => {
 
     await client.delete('/api/checkouts/123', { uuidOwner: 'owner-1' });
     expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/api/checkouts/123', { data: { uuidOwner: 'owner-1' } });
+  });
+
+  describe('version headers', () => {
+    afterEach(() => resetUpdateNotice());
+
+    it('reads X-GG-MCP-Latest / X-GG-MCP-Update off a success', () => {
+      new HttpClient('https://api.test.com', 'k', '0.4.0');
+      const ok = mockAxiosInstance.interceptors.response.use.mock.calls[0][0];
+      const response = { data: {}, headers: { 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'npx -y ggcheckout-mcp@latest' } };
+      expect(ok(response)).toBe(response);
+      expect(getVersionWarning()).toContain('(0.4.0 → 0.5.0)');
+    });
+
+    it('reads them off an error response too', () => {
+      new HttpClient('https://api.test.com', 'k', '0.4.0');
+      const fail = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+      expect(() => fail({
+        response: { status: 409, data: { error: 'x' }, headers: { 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'upd' } },
+      })).toThrow(ApiError);
+      expect(getVersionWarning()).toContain('`upd`');
+    });
   });
 });
