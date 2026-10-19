@@ -24,8 +24,9 @@ export function registerPaymentsApiToolsFromEnv(
 export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiClient) {
   server.registerTool('list_wallets', {
     description:
-      'List the wallets the payments API key may charge (id `wal_…`, name, whether it has PIX). '
-      + 'Use the id as `wallet` in create_pix_charge.',
+      'List the wallets the payments API key may charge: `public_id` (`wal_…`), `name` and '
+      + '`active_pix_count` (active PIX gateways; 0 means create_pix_charge fails with wallet_has_no_pix). '
+      + 'Use `public_id` as `wallet` in create_pix_charge.',
     inputSchema: {},
   }, createToolHandler('list_wallets', async () => client.listWallets()));
 
@@ -36,7 +37,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       + 'charge that charges nobody. The result carries `livemode`: say which mode ran. The PIX is in '
       + '`pix.copy_paste` and `pix.qr_base64`. Confirm amount and buyer with the user before calling it.',
     inputSchema: {
-      wallet: z.string().describe('Wallet id (`wal_…`), from list_wallets'),
+      wallet: z.string().describe('Wallet `public_id` (`wal_…`), from list_wallets'),
       amount: z.number().int().min(100).describe('Amount in cents (BRL): 4990 is R$ 49,90. Minimum 100'),
       description: z.string().optional().describe('What is being charged for'),
       external_reference: z.string().optional()

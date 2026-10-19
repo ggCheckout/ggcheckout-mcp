@@ -27,6 +27,14 @@ describe('registerPaymentsApiTools', () => {
     expect(d).toMatch(/livemode/);
   });
 
+  it('describes list_wallets with the fields the API returns', () => {
+    const server = new McpServer({ name: 't', version: '0' });
+    registerPaymentsApiTools(server, {} as PaymentsApiClient);
+    const d: string = registered(server).list_wallets.description;
+    expect(d).toContain('public_id');
+    expect(d).toContain('active_pix_count');
+  });
+
   it('maps the flat buyer_* arguments into the API body', async () => {
     const client = { createPixCharge: vi.fn().mockResolvedValue({ id: 'pi_1', livemode: false }) };
     const server = new McpServer({ name: 't', version: '0' });
