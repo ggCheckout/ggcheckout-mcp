@@ -13,7 +13,7 @@ export interface CreatePixChargeInput {
   description?: string;
   external_reference?: string;
   metadata?: Record<string, string>;
-  buyer: { name: string; email: string; document: string; phone?: string };
+  buyer: { name: string; email: string; document: string; phone: string };
 }
 
 export interface ListPaymentIntentsInput {
@@ -36,6 +36,11 @@ export class PaymentsApiClient {
     private readonly version: string,
     private readonly fetchImpl: typeof fetch = fetch,
   ) {
+    const { protocol, hostname } = new URL(baseUrl);
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+    if (protocol !== 'https:' && !(protocol === 'http:' && local)) {
+      throw new Error(`GG_PAYMENTS_API_URL must be https (http is only allowed for localhost): ${baseUrl}`);
+    }
     this.baseUrl = baseUrl.replace(/\/+$/, '');
   }
 
@@ -78,8 +83,15 @@ export class PaymentsApiClient {
     if (opts.body) headers['Content-Type'] = 'application/json';
     if (opts.idempotencyKey) headers['Idempotency-Key'] = opts.idempotencyKey;
 
+    // A repeat of a write that may have landed must reuse the same key, so the errors that leave that
+    // open carry it where the model can read it.
+    const retryHint = opts.idempotencyKey
+      ? ` Repita com idempotency_key=${opts.idempotencyKey}; a cobrança pode ter sido criada.`
+      : '';
+
     logger.info('PAYMENTS_API', `${method} ${path}`);
     let response: Response;
+    let text: string;
     try {
       response = await this.fetchImpl(url, {
         method,
@@ -87,6 +99,8 @@ export class PaymentsApiClient {
         body: opts.body ? JSON.stringify(opts.body) : undefined,
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
+      observeVersionHeaders((name) => response.headers.get(name), this.version);
+      text = await response.text();
     } catch (err: any) {
       const timedOut = err?.name === 'TimeoutError' || err?.name === 'AbortError';
       throw new NetworkError(
@@ -95,14 +109,11 @@ export class PaymentsApiClient {
           ? 'request timed out, and a charge may still have been created, so list payment intents by '
             + 'external_reference before repeating it'
           : `could not reach the API (${err?.cause?.code ?? err?.message})`)
-        + '. Check your network and the GG_PAYMENTS_API_URL setting.',
+        + `. Check your network and the GG_PAYMENTS_API_URL setting.${retryHint}`,
         err,
       );
     }
 
-    observeVersionHeaders((name) => response.headers.get(name), this.version);
-
-    const text = await response.text();
     let body: any;
     try {
       body = text ? JSON.parse(text) : undefined;
@@ -110,14 +121,14 @@ export class PaymentsApiClient {
       body = undefined;
     }
 
-    if (!response.ok) throw this.toError(response, body);
+    if (!response.ok) throw this.toError(response, body, response.status >= 500 ? retryHint : '');
     return body;
   }
 
-  private toError(response: Response, body: any): ApiError {
+  private toError(response: Response, body: any, hint: string): ApiError {
     const e = body?.error;
     if (!e || typeof e !== 'object') {
-      return new ApiError(response.status, `Payments API request failed with status ${response.status}`);
+      return new ApiError(response.status, `Payments API request failed with status ${response.status}.${hint}`);
     }
     const requestId = e.request_id ?? response.headers.get('request-id');
     const retry = response.headers.get('retry-after');
@@ -125,6 +136,6 @@ export class PaymentsApiClient {
     if (e.param) parts.push(`param: ${e.param}`);
     if (requestId) parts.push(`request_id: ${requestId}`);
     if (retry && /^\d+$/.test(retry)) parts.push(`retry after ${retry}s`);
-    return new ApiError(response.status, parts.join(' | '));
+    return new ApiError(response.status, parts.join(' | ') + hint);
   }
 }

@@ -35,7 +35,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       'Create a PIX charge on a wallet through the payments API. WITH A LIVE KEY (ggpk_live_) THIS CREATES '
       + 'A REAL CHARGE a buyer can pay with real money; with a test key (ggpk_test_) it creates a SIMULATED '
       + 'charge that charges nobody. The result carries `livemode`: say which mode ran. The PIX is in '
-      + '`pix.copy_paste` and `pix.qr_base64`. Confirm amount and buyer with the user before calling it.',
+      + '`pix.copy_paste` and `pix.qr_base64`. Confirm amount and buyer (name, email, CPF/CNPJ, phone) with the user before calling it.',
     inputSchema: {
       wallet: z.string().describe('Wallet `public_id` (`wal_…`), from list_wallets'),
       amount: z.number().int().min(100).describe('Amount in cents (BRL): 4990 is R$ 49,90. Minimum 100'),
@@ -46,7 +46,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       buyer_name: z.string().describe('Buyer full name'),
       buyer_email: z.string().describe('Buyer email'),
       buyer_document: z.string().describe('Buyer CPF or CNPJ, digits or formatted'),
-      buyer_phone: z.string().optional().describe('Buyer phone'),
+      buyer_phone: z.string().describe('Buyer phone, 10 to 15 digits (required by the API)'),
       idempotency_key: z.string().min(1).max(255).optional()
         .describe('Only to repeat a call that timed out or failed with 5xx: pass the SAME value so no second charge is made. Leave empty otherwise'),
     },

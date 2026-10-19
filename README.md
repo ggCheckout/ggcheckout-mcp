@@ -633,7 +633,7 @@ Requires `GG_PAYMENTS_API_KEY` (see Configuration). PIX only.
 
 `create_pix_charge` takes the wallet id (`wal_…`), the amount **in cents** (`4990` = R$ 49,90),
 `description`, `external_reference`, `metadata` and the buyer (`buyer_name`, `buyer_email`,
-`buyer_document`, `buyer_phone`). With a `ggpk_live_` key it creates a **real** charge; with
+`buyer_document`, `buyer_phone`: all four are required, the phone with 10 to 15 digits). With a `ggpk_live_` key it creates a **real** charge; with
 `ggpk_test_` a simulated one. The response says which with `livemode` and carries the PIX in
 `pix.copy_paste` / `pix.qr_base64`.
 

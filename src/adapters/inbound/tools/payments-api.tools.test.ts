@@ -40,11 +40,11 @@ describe('registerPaymentsApiTools', () => {
     const server = new McpServer({ name: 't', version: '0' });
     registerPaymentsApiTools(server, client as unknown as PaymentsApiClient);
     const result = await registered(server).create_pix_charge.handler({
-      wallet: 'wal_1', amount: 4990, buyer_name: 'Maria', buyer_email: 'm@e.com', buyer_document: '123',
+      wallet: 'wal_1', amount: 4990, buyer_name: 'Maria', buyer_email: 'm@e.com', buyer_document: '123', buyer_phone: '11987654321',
     }, {});
     expect(client.createPixCharge).toHaveBeenCalledWith({
       wallet: 'wal_1', amount: 4990, description: undefined, external_reference: undefined, metadata: undefined,
-      buyer: { name: 'Maria', email: 'm@e.com', document: '123', phone: undefined },
+      buyer: { name: 'Maria', email: 'm@e.com', document: '123', phone: '11987654321' },
     }, undefined);
     expect(JSON.parse(result.content[0].text).livemode).toBe(false);
   });
@@ -67,6 +67,12 @@ describe('registerPaymentsApiTools', () => {
       await registered(server).list_wallets.handler({}, {});
       expect(String(f.mock.calls[0][0])).toBe('https://api.ggcheckout.app/v1/wallets');
       expect(f.mock.calls[0][1].headers.Authorization).toBe('Bearer ggpk_test_k');
+    });
+
+    it('refuses an insecure GG_PAYMENTS_API_URL', () => {
+      const server = new McpServer({ name: 't', version: '0' });
+      expect(() => registerPaymentsApiToolsFromEnv(
+        server, { GG_PAYMENTS_API_KEY: 'k', GG_PAYMENTS_API_URL: 'http://evil.example/v1' }, '0.5.0')).toThrow(/https/);
     });
 
     it('honors GG_PAYMENTS_API_URL', () => {

@@ -23,20 +23,24 @@ export function isNewerVersion(latest: string, current: string): boolean {
   return false;
 }
 
+/** The only command the warning names: header text is never put into tool output. */
+const UPDATE_COMMAND = 'npx -y ggcheckout-mcp@latest';
+
 /**
  * Reads the API's version headers off a response (both APIs send them). `X-GG-MCP-Update` is only
- * present when the API saw this install announce an older `X-GG-MCP-Version`, and it holds the command
- * to run. The warning is kept for the rest of the session: only a restart can fix it.
+ * present when the API saw this install announce an older `X-GG-MCP-Version`; its value is ignored
+ * (it is remote text) and `X-GG-MCP-Latest` must be a version newer than the running one. The warning
+ * is kept for the rest of the session: only a restart can fix it.
  */
 export function observeVersionHeaders(
   get: (name: string) => string | null | undefined,
   currentVersion: string,
 ): void {
-  const latest = get('x-gg-mcp-latest');
-  const update = get('x-gg-mcp-update');
-  if (!latest || !update) return;
+  const latest = get('x-gg-mcp-latest')?.trim();
+  if (!latest || !get('x-gg-mcp-update')) return;
+  if (!/^v?\d+\.\d+\.\d+$/.test(latest) || !isNewerVersion(latest, currentVersion)) return;
   headerWarning = `⚠️ ggcheckout-mcp desatualizado (${currentVersion} → ${latest}). `
-    + `Peça ao usuário para rodar \`${update}\` e reiniciar o cliente.`;
+    + `Peça ao usuário para rodar \`${UPDATE_COMMAND}\` e reiniciar o cliente.`;
 }
 
 /** The one-line pt-BR warning built from the API's version headers, while this install is behind. */

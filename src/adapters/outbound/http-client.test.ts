@@ -305,7 +305,8 @@ describe('HttpClient', () => {
       expect(() => fail({
         response: { status: 409, data: { error: 'x' }, headers: { 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'upd' } },
       })).toThrow(ApiError);
-      expect(getVersionWarning()).toContain('`upd`');
+      expect(getVersionWarning()).toContain('`npx -y ggcheckout-mcp@latest`');
+      expect(getVersionWarning()).not.toContain('upd');
     });
   });
 });

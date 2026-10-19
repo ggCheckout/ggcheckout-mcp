@@ -183,7 +183,13 @@ registerProfileTools(server, profileService);
 registerPushTools(server, pushService);
 registerTelegramTools(server, telegramService);
 
-const paymentsUrl = registerPaymentsApiToolsFromEnv(server, process.env, pkg.version);
+let paymentsUrl: string | undefined;
+try {
+  paymentsUrl = registerPaymentsApiToolsFromEnv(server, process.env, pkg.version);
+} catch (err: any) {
+  console.error(`[MCP] Error: ${err.message}`);
+  process.exit(1);
+}
 if (paymentsUrl) logger.info('STARTUP', `Payments API tools enabled (${paymentsUrl})`);
 
 logger.info('STARTUP', 'All tools registered');
