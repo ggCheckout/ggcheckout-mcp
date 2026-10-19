@@ -52,6 +52,7 @@ import { TelegramService } from './core/services/telegram.service.js';
 
 // Inbound adapters (MCP tools)
 import { registerProductTools } from './adapters/inbound/tools/product.tools.js';
+import { registerPaymentsApiToolsFromEnv } from './adapters/inbound/tools/payments-api.tools.js';
 import { registerPaymentTools } from './adapters/inbound/tools/payment.tools.js';
 import { registerCheckoutTools } from './adapters/inbound/tools/checkout.tools.js';
 import { registerWebhookTools } from './adapters/inbound/tools/webhook.tools.js';
@@ -181,6 +182,9 @@ registerRewardsTools(server, rewardsService);
 registerProfileTools(server, profileService);
 registerPushTools(server, pushService);
 registerTelegramTools(server, telegramService);
+
+const paymentsUrl = registerPaymentsApiToolsFromEnv(server, process.env, pkg.version);
+if (paymentsUrl) logger.info('STARTUP', `Payments API tools enabled (${paymentsUrl})`);
 
 logger.info('STARTUP', 'All tools registered');
 
