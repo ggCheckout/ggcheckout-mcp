@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as logger from './shared/logger.js';
-import { checkForUpdate } from './shared/update-notice.js';
 
 // Outbound adapters
 import { HttpClient } from './adapters/outbound/http-client.js';
@@ -199,9 +198,6 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 
 logger.info('STARTUP', 'Server started successfully');
-
-// Not awaited: the server is already serving, and a failed check changes nothing.
-void checkForUpdate(pkg.version);
 
 async function shutdown(signal: string) {
   logger.info('SHUTDOWN', `Received ${signal}, shutting down gracefully`);

@@ -78,7 +78,6 @@ export class PaymentsApiClient {
       Authorization: `Bearer ${this.apiKey}`,
       Accept: 'application/json',
       'User-Agent': `ggcheckout-mcp/${this.version}`,
-      'X-GG-MCP-Version': this.version,
     };
     if (opts.body) headers['Content-Type'] = 'application/json';
     if (opts.idempotencyKey) headers['Idempotency-Key'] = opts.idempotencyKey;
@@ -86,7 +85,7 @@ export class PaymentsApiClient {
     // A repeat of a write that may have landed must reuse the same key, so the errors that leave that
     // open carry it where the model can read it.
     const retryHint = opts.idempotencyKey
-      ? ` Repita com idempotency_key=${opts.idempotencyKey}; a cobrança pode ter sido criada.`
+      ? ` The charge may have been created: repeat the call with idempotency_key=${opts.idempotencyKey}.`
       : '';
 
     logger.info('PAYMENTS_API', `${method} ${path}`);
@@ -106,8 +105,7 @@ export class PaymentsApiClient {
       throw new NetworkError(
         `Cannot connect to the GG Checkout payments API at ${this.baseUrl}: `
         + (timedOut
-          ? 'request timed out, and a charge may still have been created, so list payment intents by '
-            + 'external_reference before repeating it'
+          ? 'request timed out'
           : `could not reach the API (${err?.cause?.code ?? err?.message})`)
         + `. Check your network and the GG_PAYMENTS_API_URL setting.${retryHint}`,
         err,

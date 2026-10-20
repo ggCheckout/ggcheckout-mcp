@@ -1,5 +1,5 @@
 import * as logger from '../../shared/logger.js';
-import { getUpdateNotice, getVersionWarning } from '../../shared/update-notice.js';
+import { getUpdateNotice } from '../../shared/update-notice.js';
 
 type ToolResult = {
   [key: string]: unknown;
@@ -11,11 +11,8 @@ type ToolResult = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- handlers return domain types that vary per tool
 /** While this install is behind the published version, every response ends with a short update line. */
 function withUpdateNotice(result: ToolResult): ToolResult {
-  // The API's own warning (it knows the minimum and the command) wins over the registry hint: one line only.
-  const warning = getVersionWarning();
   const update = getUpdateNotice();
-  const line = warning ?? (update ? `update: ${update}` : undefined);
-  return line ? { ...result, content: [...result.content, { type: 'text' as const, text: line }] } : result;
+  return update ? { ...result, content: [...result.content, { type: 'text' as const, text: `update: ${update}` }] } : result;
 }
 
 export function createToolHandler<TArgs = Record<string, unknown>>(

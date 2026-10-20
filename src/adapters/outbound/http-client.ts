@@ -38,8 +38,6 @@ export class HttpClient {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': `ggcheckout-mcp/${version}`,
-        // The API answers with X-GG-MCP-Update only when it sees this header.
-        'X-GG-MCP-Version': version,
       },
     });
 

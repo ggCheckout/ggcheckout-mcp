@@ -25,7 +25,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
   server.registerTool('list_wallets', {
     description:
       'List the wallets the payments API key may charge: `public_id` (`wal_…`), `name` and '
-      + '`active_pix_count` (active PIX gateways; 0 means create_pix_charge fails with wallet_has_no_pix). '
+      + '`active_pix_count` (active PIX gateways; 0 means create_pix_charge fails with wallet_has_no_active_pix). '
       + 'Use `public_id` as `wallet` in create_pix_charge.',
     inputSchema: {},
   }, createToolHandler('list_wallets', async () => client.listWallets()));
@@ -69,7 +69,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       'List payment intents, newest first, only of the key\'s mode (live or test). Page with '
       + '`next_cursor` as `starting_after` while `has_more` is true.',
     inputSchema: {
-      status: z.enum(['requires_action', 'succeeded', 'expired', 'canceled', 'failed']).optional(),
+      status: z.enum(['processing', 'requires_action', 'succeeded', 'expired', 'canceled', 'failed']).optional(),
       external_reference: z.string().optional().describe('Find the charge of one order'),
       starting_after: z.string().optional().describe('The `next_cursor` of the previous page'),
       limit: z.number().int().min(1).max(100).optional().describe('Page size, 1-100 (default 20)'),

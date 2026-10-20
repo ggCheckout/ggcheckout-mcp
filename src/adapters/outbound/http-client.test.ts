@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
 import { HttpClient } from './http-client.js';
-import { getVersionWarning, resetUpdateNotice } from '../../shared/update-notice.js';
+import { getUpdateNotice, resetUpdateNotice } from '../../shared/update-notice.js';
 import {
   AuthenticationError,
   RateLimitError,
@@ -43,7 +43,6 @@ describe('HttpClient', () => {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'ggcheckout-mcp/9.8.7',
-        'X-GG-MCP-Version': '9.8.7',
       },
     });
   });
@@ -296,7 +295,7 @@ describe('HttpClient', () => {
       const ok = mockAxiosInstance.interceptors.response.use.mock.calls[0][0];
       const response = { data: {}, headers: { 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'npx -y ggcheckout-mcp@latest' } };
       expect(ok(response)).toBe(response);
-      expect(getVersionWarning()).toContain('(0.4.0 → 0.5.0)');
+      expect(getUpdateNotice()).toContain('0.5.0 is available (running 0.4.0)');
     });
 
     it('reads them off an error response too', () => {
@@ -305,8 +304,8 @@ describe('HttpClient', () => {
       expect(() => fail({
         response: { status: 409, data: { error: 'x' }, headers: { 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'upd' } },
       })).toThrow(ApiError);
-      expect(getVersionWarning()).toContain('`npx -y ggcheckout-mcp@latest`');
-      expect(getVersionWarning()).not.toContain('upd');
+      expect(getUpdateNotice()).toContain('`npx -y ggcheckout-mcp@latest`');
+      expect(getUpdateNotice()).not.toContain('upd');
     });
   });
 });

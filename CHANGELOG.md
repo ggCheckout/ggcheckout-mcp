@@ -22,13 +22,13 @@ Additive: nothing an existing call sends or returns changes, and no tool is remo
     error or 5xx on a create also carries `idempotency_key=<uuid>` so the call can be repeated
     without a second charge.
   - `GG_PAYMENTS_API_URL` must be https (http only for localhost); the server exits otherwise.
-- **Version notice from the API.** Both APIs now answer `X-GG-MCP-Latest` / `X-GG-MCP-Update`; when
-  both are present the tool result ends with one warning line
-  (`⚠️ ggcheckout-mcp desatualizado (<current> → <latest>). Peça ao usuário para rodar ...`).
-  It replaces the registry `update:` line while it is shown. `X-GG-MCP-Latest` must be a newer
-  semver, and the command is always `npx -y ggcheckout-mcp@latest` (header text is never shown). Every request (both APIs) now also
-  sends `X-GG-MCP-Version: <version>`, which the API needs to decide the update header;
-  `User-Agent` is unchanged.
+- **Version notice from the API.** Both APIs answer `X-GG-MCP-Latest` / `X-GG-MCP-Update` (the API
+  reads the version from the `User-Agent`, which is unchanged). When both are present and the
+  latest is a newer semver, the tool result ends with one `update:` line telling the assistant to
+  run `npx -y ggcheckout-mcp@latest` and restart the client; header text is never shown.
+- **The npm registry check on startup is gone.** The headers cover every install that makes a
+  call, so the separate poll was a second source of "latest" and was removed.
+- `list_payment_intents` accepts `status=processing`, which a create that timed out leaves behind.
 - Minimum-version decision for this release: unchanged (**0.4.0**).
 
 ## 0.4.0

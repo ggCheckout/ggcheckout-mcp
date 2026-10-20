@@ -89,7 +89,7 @@ export GG_PAYMENTS_API_KEY="ggpk_test_your_key_here"   # ggpk_test_ = simulated,
 export GG_PAYMENTS_API_URL="https://api.ggcheckout.app/v1"   # optional, this is the default
 ```
 
-The URL must be `https` (plain `http` is accepted only for `localhost` / `127.0.0.1`); the server
+The value includes the `/v1` base path. The URL must be `https` (plain `http` is accepted only for `localhost` / `127.0.0.1`); the server
 refuses to start otherwise.
 
 ### Upload folder
@@ -105,16 +105,14 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 
 ### Versioning and the API
 
-- Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>` and
-  `X-GG-MCP-Version: <version>`, so the API knows which release is calling.
+- Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>`, so the API
+  knows which release is calling.
 - The API can refuse writes from versions below the minimum it supports. The refusal says so
   and asks you to update.
-- On startup the server makes one quick, optional check of the npm registry. If a newer version
-  is published, tool responses carry a short `update:` line so your assistant can suggest
-  restarting the client. If the check fails or times out, nothing happens.
-- Both APIs also tell an outdated install so in their response headers; the tool result then ends
-  with a `⚠️ ggcheckout-mcp desatualizado (<current> → <latest>)` line. The version must be a newer
-  semver and the command is always `npx -y ggcheckout-mcp@latest`: no header text is shown.
+- Both APIs tell an outdated install so in their response headers (`X-GG-MCP-Latest` and
+  `X-GG-MCP-Update`); the tool result then ends with a short `update:` line so your assistant can
+  suggest restarting the client. The version must be a newer semver and the command is always
+  `npx -y ggcheckout-mcp@latest`: no header text is shown. There is no npm registry check.
 
 **For maintainers**
 
