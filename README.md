@@ -256,6 +256,11 @@ checkout is created.
 shape the checkout page reads, so a uid that does not exist fails the call
 instead of silently vanishing from the page.
 
+PIX and card charge through a **wallet** of the seller: `paymentMethods.pix` and
+`paymentMethods.credit_card` take `{ "routeId": "<wallet id>" }`, with the id from `list_wallets`.
+The wallet decides the gateways, the PIX fallback order and the card that charges; a checkout no
+longer lists its own gateways.
+
 **Example prompt:** "Create a checkout page for my React Course priced at R$99.90"
 
 #### `update_checkout`
@@ -522,16 +527,21 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 
 ---
 
-### Gateway Tokens (4 tools)
+### Gateway Tokens and Wallets (5 tools)
 
 **Example prompts:**
 - "List my payment gateway tokens"
+- "Which wallets do I have, and which gateways charge PIX in each?"
 - "Add a PushinPay token"
 - "Remove token abc123"
 
 `insert_token` creates only the four types the API accepts: `pushinpay`, `utmify`,
 `emailprovider` and `mercadopago`. The platform processes payments through 25+ gateways, but the
 others are connected from the dashboard, not through this API — asking for one here is refused.
+
+`list_wallets` lists the seller's wallets (payment routes): the gateways that charge PIX, in
+fallback order, and card. Checkouts charge PIX and card only through a wallet. Wallets are created
+and edited in the dashboard.
 
 ---
 

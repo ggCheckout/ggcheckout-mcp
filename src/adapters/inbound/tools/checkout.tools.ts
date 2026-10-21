@@ -8,26 +8,19 @@ const paymentMethodConfigSchema = z.object({
   type: z.string(),
 }).nullable().optional();
 
-const pixGatewayEntrySchema = z.object({
-  tokenId: z.string().describe('Gateway token ID'),
-  type: z.string().describe('Gateway type (e.g., amplopay, efibank, mercadopago)'),
-});
-
-const pixFallbackSchema = z.union([
-  z.object({
-    token: z.string(),
-    type: z.string(),
-  }),
-  z.object({
-    gateways: z.array(pixGatewayEntrySchema).min(1).max(5)
-      .describe('Ordered list of PIX gateways for fallback chain (max 5). First gateway has highest priority.'),
-  }),
-]).nullable().optional()
-  .describe('PIX config: legacy single gateway {token, type} or fallback chain {gateways: [{tokenId, type}]}');
+/**
+ * PIX and card charge through a wallet (a payment route) of the seller: its gateways, order and
+ * fallback live in the wallet, not in the checkout. `list_wallets` gives the ids.
+ */
+const walletMethodSchema = z.object({
+  routeId: z.string().uuid().describe('Wallet id, from list_wallets'),
+}).nullable().optional();
 
 const paymentMethodsSchema = z.object({
-  credit_card: paymentMethodConfigSchema,
-  pix: pixFallbackSchema,
+  credit_card: walletMethodSchema
+    .describe("Card through a wallet: {routeId}. The wallet's card charges. null turns card off"),
+  pix: walletMethodSchema
+    .describe("PIX through a wallet: {routeId}. The wallet's PIX chain charges, in its order. null turns PIX off"),
   bank_slip: paymentMethodConfigSchema,
   installments: z.number().min(1).max(24).optional(),
   showInstallmentsOnPrice: z.boolean().optional(),

@@ -5,6 +5,22 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## Unreleased
+
+### Breaking
+
+- `create_checkout` and `update_checkout`: `paymentMethods.pix` and `paymentMethods.credit_card`
+  take only a wallet, `{ routeId }`. The own gateway list (`{ token, type }` and
+  `{ gateways: [...] }`) is gone: the platform charges PIX and card only through a wallet.
+  Release requirement: the API must expand a bare `{ routeId }` before its write gates
+  (ggCheckout/saas-checkout, branch `feat/wizard-wallet-seasons`), or the checkout is saved as a
+  draft.
+
+### Added
+
+- `list_wallets`: the seller's wallets, with the gateways that charge PIX and card. Needs the API
+  to accept an API key on `GET /api/payment-routes` (same saas branch).
+
 ## 0.4.0
 
 Checked end to end against a QA account on the Postgres (v2) data path, and product edits
