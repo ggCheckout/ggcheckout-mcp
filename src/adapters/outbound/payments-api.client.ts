@@ -120,6 +120,11 @@ export class PaymentsApiClient {
     }
 
     if (!response.ok) throw this.toError(response, body, response.status >= 500 ? retryHint : '');
+    // Every success of this API has a JSON body. Without one the write may still have landed, so the
+    // caller gets the key to repeat it with instead of an empty result.
+    if (body === undefined) {
+      throw new ApiError(response.status, `The payments API answered ${response.status} with an unreadable body.${retryHint}`);
+    }
     return body;
   }
 

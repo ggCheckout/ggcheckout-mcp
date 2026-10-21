@@ -90,6 +90,19 @@ describe('PaymentsApiClient', () => {
     expect(generated.message).toMatch(/idempotency_key=[0-9a-f-]{36}/);
   });
 
+  it('turns a 2xx with an empty or truncated body into an error that carries the key', async () => {
+    for (const text of ['', '{"id":"pi_1",']) {
+      const f = vi.fn().mockImplementation(async () => new Response(text, { status: 201 }));
+      const err = await client(f).createPixCharge(charge, 'k-5').catch((e) => e);
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err.message).toContain('unreadable body');
+      expect(err.message).toContain('idempotency_key=k-5');
+    }
+    const read = await client(vi.fn().mockImplementation(async () => new Response('', { status: 200 }))).listWallets().catch((e) => e);
+    expect(read).toBeInstanceOf(ApiError);
+    expect(read.message).not.toContain('idempotency_key');
+  });
+
   it('does not put a key in a 4xx or in a read', async () => {
     const bad = await client(reply(409, { error: { type: 'invalid_request', code: 'external_reference_taken', message: 'x' } }))
       .createPixCharge(charge, 'k-3').catch((e) => e);
