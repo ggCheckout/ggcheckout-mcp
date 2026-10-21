@@ -15,6 +15,8 @@ right now.
   Release requirement: the API must expand a bare `{ routeId }` before its write gates
   (ggCheckout/saas-checkout, branch `feat/wizard-wallet-seasons`), or the checkout is saved as a
   draft.
+- `update_store`: `paymentMethods.pix` / `credit_card` take only `enabled`; the gateways come from
+  the store's wallet, set with the new `paymentRouteId`. Same saas branch.
 
 ### Added
 

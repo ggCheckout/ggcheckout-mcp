@@ -397,8 +397,10 @@ const isValid = sig === incomingHeader.replace('sha256=', '');
 categories with `list_store_categories`, `create_store_category`, `update_store_category`,
 `delete_store_category`; review moderation with `list_store_reviews`, `create_store_review`,
 `update_store_review`, `delete_store_review`. `update_store` merges objects into the stored
-config and replaces lists (`productOrder`, gateways, a category's `productIds`). Creating or
-publishing a store requires a seller with verified email and phone.
+config and replaces lists (`productOrder`, a category's `productIds`). PIX and card charge
+through a wallet: set `paymentRouteId` (from `list_wallets`) and switch the methods on in
+`paymentMethods`; the gateways are the wallet's. Creating or publishing a store requires a
+seller with verified email and phone.
 
 **Store builder:** `get_store_layout`, `update_store_layout`, `publish_store_layout`,
 `list_store_layout_history`, `restore_store_layout_version`, `get_store_theme`.
@@ -414,7 +416,7 @@ Store integrations, store upsells/downsells, video, sales notifications and cust
 are dashboard-only.
 
 **Example prompts:**
-- "Create a store called 'Loja Teste', turn on PIX with my AmploPay gateway and publish it"
+- "Create a store called 'Loja Teste', charge it through my 'Principal' wallet with PIX on and publish it"
 - "Create a 'Cursos' category with products abc and def"
 - "Approve all pending reviews of my store"
 - "List my stores"
