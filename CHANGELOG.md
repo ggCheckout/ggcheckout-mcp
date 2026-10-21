@@ -13,15 +13,15 @@ right now.
   take only a wallet, `{ routeId }`. The own gateway list (`{ token, type }` and
   `{ gateways: [...] }`) is gone: the platform charges PIX and card only through a wallet.
   Release requirement: the API must expand a bare `{ routeId }` before its write gates
-  (ggCheckout/saas-checkout, branch `feat/wizard-wallet-seasons`), or the checkout is saved as a
-  draft.
+  (ggCheckout/saas-checkout#1936), or the checkout is saved as a draft.
 - `update_store`: `paymentMethods.pix` / `credit_card` take only `enabled`; the gateways come from
-  the store's wallet, set with the new `paymentRouteId`. Same saas branch.
+  the store's wallet, set with the new `paymentRouteId`. Needs ggCheckout/saas-checkout#1936 and
+  ggCheckout/ggcheckout-core#646 (the core stores the store's wallet).
 
 ### Added
 
 - `list_wallets`: the seller's wallets, with the gateways that charge PIX and card. Needs the API
-  to accept an API key on `GET /api/payment-routes` (same saas branch).
+  to accept an API key on `GET /api/payment-routes` (ggCheckout/saas-checkout#1936).
 
 ## 0.4.0
 
