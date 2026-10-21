@@ -109,7 +109,9 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
         checkoutId: z.string().describe('Checkout ID (uid)'),
         title: z.string().max(200).optional().describe('Checkout page title'),
         price: z.number().min(0).optional().describe('Price in Brazilian Reais — converted to cents before it is sent'),
-        paymentMethods: paymentMethodsSchema.optional().describe('Payment methods configuration'),
+        paymentMethods: paymentMethodsSchema.optional()
+          .describe('Payment methods configuration. Replaces the stored methods as a whole: send every method to keep '
+            + '(e.g. pix and credit_card with their {routeId}), not only the one that changes'),
         checkout: z.record(z.string(), z.unknown()).optional()
           .describe('Checkout page configuration, merged into the stored one (send only the keys to change). '
             + 'Payment methods are changed through `paymentMethods`; the stored ones are never re-sent from here'),
