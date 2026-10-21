@@ -24,6 +24,13 @@ describe('GatewayApiAdapter', () => {
     expect(http.get).toHaveBeenCalledWith('/api/user/tokens');
   });
 
+  it('listWallets GETs /api/payment-routes and returns the routes', async () => {
+    const wallet = { id: 'w1', name: 'Principal', mode: 'manual', metric: 'reliability', pix: [], card: [] };
+    vi.mocked(http.get).mockResolvedValue({ routes: [wallet] });
+    expect(await adapter.listWallets()).toEqual([wallet]);
+    expect(http.get).toHaveBeenCalledWith('/api/payment-routes');
+  });
+
   it('listTokens passes type filter', async () => {
     vi.mocked(http.get).mockResolvedValue({ tokens: [], count: 0 });
     await adapter.listTokens({ type: 'mercadopago' });

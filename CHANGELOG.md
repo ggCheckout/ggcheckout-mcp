@@ -5,6 +5,26 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## Unreleased
+
+### Breaking
+
+- `create_checkout` and `update_checkout`: `paymentMethods.pix` and `paymentMethods.credit_card`
+  take only a wallet, `{ routeId }`. The own gateway list (`{ token, type }` and
+  `{ gateways: [...] }`) is gone: the platform charges PIX and card only through a wallet.
+  Release requirement: the API must expand a bare `{ routeId }` before its write gates
+  (ggCheckout/saas-checkout#1878), or the checkout is saved as a draft.
+- `update_store`: `paymentMethods.pix` / `credit_card` take only `enabled`; the gateways come from
+  the store's wallet, set with the new `paymentRouteId`. Needs ggCheckout/saas-checkout#1878 and
+  ggCheckout/ggcheckout-core#605 (the core stores the store's wallet).
+
+### Added
+
+- `list_checkout_wallets`: the seller's wallets, with the gateways that charge PIX and card, and
+  the id that `routeId` / `paymentRouteId` take. Needs the API to accept an API key on
+  `GET /api/payment-routes` (ggCheckout/saas-checkout#1878). Not the payments API's `list_wallets`
+  (`wal_…` ids for `create_pix_charge`), which lists the same wallets by their public id.
+
 ## 0.5.0
 
 Additive: nothing an existing call sends or returns changes, and no tool is removed.
