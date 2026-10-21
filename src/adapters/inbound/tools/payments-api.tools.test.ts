@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerPaymentsApiTools, registerPaymentsApiToolsFromEnv } from './payments-api.tools.js';
 import type { PaymentsApiClient } from '../../outbound/payments-api.client.js';
@@ -14,13 +15,47 @@ function registered(server: McpServer): Record<string, any> {
 describe('registerPaymentsApiTools', () => {
   it('registers the five payments API tools', () => {
     const server = new McpServer({ name: 't', version: '0' });
-    registerPaymentsApiTools(server, {} as PaymentsApiClient);
+    registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
     expect(Object.keys(registered(server)).sort()).toEqual([...NAMES].sort());
+  });
+
+  it('says which key mode is active in the create_pix_charge description', () => {
+    const desc = (mode: 'live' | 'test') => {
+      const server = new McpServer({ name: 't', version: '0' });
+      registerPaymentsApiTools(server, {} as PaymentsApiClient, mode);
+      return registered(server).create_pix_charge.description as string;
+    };
+    expect(desc('live')).toMatch(/^THE KEY IN USE IS LIVE/);
+    expect(desc('test')).toMatch(/^The key in use is a TEST key/);
+  });
+
+  it('only accepts well-formed ids, so an argument cannot pick another route', () => {
+    const server = new McpServer({ name: 't', version: '0' });
+    registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
+    const tools = registered(server);
+    const id = (tool: string, v: string) => z.object(tools[tool].inputSchema.shape ?? tools[tool].inputSchema).safeParse({ id: v }).success;
+    for (const tool of ['get_payment_intent', 'cancel_payment_intent']) {
+      expect(id(tool, 'pi_' + 'a'.repeat(24))).toBe(true);
+      for (const bad of ['..', 'pi_1', 'pi_' + 'a'.repeat(23), 'pi_' + 'a'.repeat(25), 'pi_../cancel', 'x'.repeat(27)]) {
+        expect(id(tool, bad)).toBe(false);
+      }
+    }
+    const wallet = (v: string) =>
+      z.object(tools.create_pix_charge.inputSchema.shape ?? tools.create_pix_charge.inputSchema).shape.wallet.safeParse(v).success;
+    expect(wallet('wal_8f3kQ2')).toBe(true);
+    expect(wallet('..')).toBe(false);
+    expect(wallet('wal_a/b')).toBe(false);
+  });
+
+  it('asks for confirmation before cancel_payment_intent', () => {
+    const server = new McpServer({ name: 't', version: '0' });
+    registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
+    expect(registered(server).cancel_payment_intent.description).toContain('Confirm with the user');
   });
 
   it('says create_pix_charge is real with a live key and simulated with a test key', () => {
     const server = new McpServer({ name: 't', version: '0' });
-    registerPaymentsApiTools(server, {} as PaymentsApiClient);
+    registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
     const d: string = registered(server).create_pix_charge.description;
     expect(d).toMatch(/REAL CHARGE/);
     expect(d).toMatch(/ggpk_test_/);
@@ -29,7 +64,7 @@ describe('registerPaymentsApiTools', () => {
 
   it('describes list_wallets with the fields the API returns', () => {
     const server = new McpServer({ name: 't', version: '0' });
-    registerPaymentsApiTools(server, {} as PaymentsApiClient);
+    registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
     const d: string = registered(server).list_wallets.description;
     expect(d).toContain('public_id');
     expect(d).toContain('active_pix_count');
@@ -38,7 +73,7 @@ describe('registerPaymentsApiTools', () => {
   it('maps the flat buyer_* arguments into the API body', async () => {
     const client = { createPixCharge: vi.fn().mockResolvedValue({ id: 'pi_1', livemode: false }) };
     const server = new McpServer({ name: 't', version: '0' });
-    registerPaymentsApiTools(server, client as unknown as PaymentsApiClient);
+    registerPaymentsApiTools(server, client as unknown as PaymentsApiClient, 'test');
     const result = await registered(server).create_pix_charge.handler({
       wallet: 'wal_1', amount: 4990, buyer_name: 'Maria', buyer_email: 'm@e.com', buyer_document: '123', buyer_phone: '11987654321',
     }, {});
@@ -72,13 +107,21 @@ describe('registerPaymentsApiTools', () => {
     it('refuses an insecure GG_PAYMENTS_API_URL', () => {
       const server = new McpServer({ name: 't', version: '0' });
       expect(() => registerPaymentsApiToolsFromEnv(
-        server, { GG_PAYMENTS_API_KEY: 'k', GG_PAYMENTS_API_URL: 'http://evil.example/v1' }, '0.5.0')).toThrow(/https/);
+        server, { GG_PAYMENTS_API_KEY: 'ggpk_test_k', GG_PAYMENTS_API_URL: 'http://evil.example/v1' }, '0.5.0')).toThrow(/https/);
+    });
+
+    it('refuses a key that is not ggpk_live_ / ggpk_test_ (never the ggck_ key)', () => {
+      for (const bad of ['k', 'ggck_live_abc']) {
+        const server = new McpServer({ name: 't', version: '0' });
+        expect(() => registerPaymentsApiToolsFromEnv(server, { GG_PAYMENTS_API_KEY: bad }, '0.5.0')).toThrow(/ggpk_live_ or ggpk_test_/);
+        expect(Object.keys(registered(server))).toEqual([]);
+      }
     });
 
     it('honors GG_PAYMENTS_API_URL', () => {
       const server = new McpServer({ name: 't', version: '0' });
       expect(registerPaymentsApiToolsFromEnv(
-        server, { GG_PAYMENTS_API_KEY: 'k', GG_PAYMENTS_API_URL: 'https://stg/v1' }, '0.5.0')).toBe('https://stg/v1');
+        server, { GG_PAYMENTS_API_KEY: 'ggpk_test_k', GG_PAYMENTS_API_URL: 'https://stg/v1' }, '0.5.0')).toBe('https://stg/v1');
     });
   });
 });

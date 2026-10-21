@@ -85,7 +85,14 @@ export class PaymentsApiClient {
     // A repeat of a write that may have landed must reuse the same key, so the errors that leave that
     // open carry it where the model can read it.
     const retryHint = opts.idempotencyKey
-      ? ` The charge may have been created: repeat the call with idempotency_key=${opts.idempotencyKey}.`
+      ? ` The charge may have been created: repeat the call with exactly the same arguments and idempotency_key=${opts.idempotencyKey}.`
+      : '';
+    // The API keys idempotency on path + body, so a repeat that changes any argument is refused. Reading
+    // that as a failure and creating again without the key would charge the buyer twice.
+    const reusedHint = opts.idempotencyKey
+      ? ' The key was already used with different arguments. If the earlier create may have landed, repeat it with exactly '
+        + `the original arguments and idempotency_key=${opts.idempotencyKey}, or check list_payment_intents; `
+        + 'do not create again without the key.'
       : '';
 
     logger.info('PAYMENTS_API', `${method} ${path}`);
@@ -119,7 +126,12 @@ export class PaymentsApiClient {
       body = undefined;
     }
 
-    if (!response.ok) throw this.toError(response, body, response.status >= 500 ? retryHint : '');
+    if (!response.ok) {
+      const hint = response.status >= 500
+        ? retryHint
+        : body?.error?.code === 'idempotency_key_reused' ? reusedHint : '';
+      throw this.toError(response, body, hint);
+    }
     // Every success of this API has a JSON body. Without one the write may still have landed, so the
     // caller gets the key to repeat it with instead of an empty result.
     if (body === undefined) {

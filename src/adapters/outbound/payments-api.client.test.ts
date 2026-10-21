@@ -103,6 +103,18 @@ describe('PaymentsApiClient', () => {
     expect(read.message).not.toContain('idempotency_key');
   });
 
+  it('asks for the same arguments on a retry and guides a 409 idempotency_key_reused', async () => {
+    const net = await client(vi.fn().mockRejectedValue(new TypeError('fetch failed'))).createPixCharge(charge, 'k-6').catch((e) => e);
+    expect(net.message).toContain('exactly the same arguments and idempotency_key=k-6');
+    const f = reply(409, { error: { type: 'idempotency', code: 'idempotency_key_reused', message: 'reused' } });
+    const err = await client(f).createPixCharge(charge, 'k-6').catch((e) => e);
+    expect(err.statusCode).toBe(409);
+    expect(err.message).toContain('idempotency/idempotency_key_reused: reused');
+    expect(err.message).toContain('different arguments');
+    expect(err.message).toContain('exactly the original arguments and idempotency_key=k-6');
+    expect(err.message).toContain('do not create again without the key');
+  });
+
   it('does not put a key in a 4xx or in a read', async () => {
     const bad = await client(reply(409, { error: { type: 'invalid_request', code: 'external_reference_taken', message: 'x' } }))
       .createPixCharge(charge, 'k-3').catch((e) => e);

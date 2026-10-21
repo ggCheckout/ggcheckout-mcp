@@ -15,13 +15,22 @@ export function registerPaymentsApiToolsFromEnv(
 ): string | undefined {
   const key = env.GG_PAYMENTS_API_KEY;
   if (!key) return undefined;
+  const mode = key.startsWith('ggpk_live_') ? 'live' : key.startsWith('ggpk_test_') ? 'test' : undefined;
+  if (!mode) throw new Error('GG_PAYMENTS_API_KEY must start with ggpk_live_ or ggpk_test_');
   const url = env.GG_PAYMENTS_API_URL || DEFAULT_PAYMENTS_API_URL;
-  registerPaymentsApiTools(server, new PaymentsApiClient(url, key, version, fetchImpl));
+  registerPaymentsApiTools(server, new PaymentsApiClient(url, key, version, fetchImpl), mode);
   return url;
 }
 
 /** Registered only when GG_PAYMENTS_API_KEY is set (see index.ts): these tools never use the ggck_live_ key. */
-export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiClient) {
+const WALLET_ID = /^wal_[A-Za-z0-9]+$/;
+// `pi_` + 24 base62 characters, the shape the API mints. It picks the route, so nothing else (`..`) gets in.
+const INTENT_ID = /^pi_[A-Za-z0-9]{24}$/;
+
+export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiClient, mode: 'live' | 'test') {
+  const active = mode === 'live'
+    ? 'THE KEY IN USE IS LIVE (ggpk_live_): THIS CREATES A REAL CHARGE. '
+    : 'The key in use is a TEST key (ggpk_test_): the charge is simulated and charges nobody. ';
   server.registerTool('list_wallets', {
     description:
       'List the wallets the payments API key may charge: `public_id` (`wal_…`), `name` and '
@@ -32,12 +41,12 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
 
   server.registerTool('create_pix_charge', {
     description:
-      'Create a PIX charge on a wallet through the payments API. WITH A LIVE KEY (ggpk_live_) THIS CREATES '
+      active + 'Create a PIX charge on a wallet through the payments API. WITH A LIVE KEY (ggpk_live_) THIS CREATES '
       + 'A REAL CHARGE a buyer can pay with real money; with a test key (ggpk_test_) it creates a SIMULATED '
       + 'charge that charges nobody. The result carries `livemode`: say which mode ran. The PIX is in '
       + '`pix.copy_paste` and `pix.qr_base64`. Confirm amount and buyer (name, email, CPF/CNPJ, phone) with the user before calling it.',
     inputSchema: {
-      wallet: z.string().describe('Wallet `public_id` (`wal_…`), from list_wallets'),
+      wallet: z.string().regex(WALLET_ID).describe('Wallet `public_id` (`wal_…`), from list_wallets'),
       amount: z.number().int().min(100).describe('Amount in cents (BRL): 4990 is R$ 49,90. Minimum 100'),
       description: z.string().optional().describe('What is being charged for'),
       external_reference: z.string().optional()
@@ -61,7 +70,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
 
   server.registerTool('get_payment_intent', {
     description: 'Get a payment intent (PIX charge) by id (`pi_…`): status, amount, PIX and timestamps.',
-    inputSchema: { id: z.string().describe('Payment intent id (`pi_…`)') },
+    inputSchema: { id: z.string().regex(INTENT_ID).describe('Payment intent id (`pi_…`)') },
   }, createToolHandler('get_payment_intent', async ({ id }) => client.getPaymentIntent(id)));
 
   server.registerTool('list_payment_intents', {
@@ -80,7 +89,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
     description:
       'Cancel a payment intent that has not been paid yet. Fails with intent_not_cancelable once it succeeded, '
       + 'failed or expired. A PIX paid after the cancel still enters the wallet (the API then sends '
-      + '`payment_intent.succeeded_after_cancel`).',
-    inputSchema: { id: z.string().describe('Payment intent id (`pi_…`)') },
+      + '`payment_intent.succeeded_after_cancel`). Confirm with the user before calling it.',
+    inputSchema: { id: z.string().regex(INTENT_ID).describe('Payment intent id (`pi_…`)') },
   }, createToolHandler('cancel_payment_intent', async ({ id }) => client.cancelPaymentIntent(id)));
 }

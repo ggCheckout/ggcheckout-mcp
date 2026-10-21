@@ -89,7 +89,7 @@ export GG_PAYMENTS_API_KEY="ggpk_test_your_key_here"   # ggpk_test_ = simulated,
 export GG_PAYMENTS_API_URL="https://api.ggcheckout.app/v1"   # optional, this is the default
 ```
 
-The value includes the `/v1` base path. The URL must be `https` (plain `http` is accepted only for `localhost` / `127.0.0.1`); the server
+The key must start with `ggpk_live_` or `ggpk_test_`. The value of the URL includes the `/v1` base path. The URL must be `https` (plain `http` is accepted only for `localhost` / `127.0.0.1`); the server
 refuses to start otherwise.
 
 ### Upload folder

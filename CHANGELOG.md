@@ -21,7 +21,13 @@ Additive: nothing an existing call sends or returns changes, and no tool is remo
   - Errors show `type/code: message | param | request_id` (and `Retry-After` on 429). A network
     error or 5xx on a create also carries `idempotency_key=<uuid>` so the call can be repeated
     without a second charge.
-  - `GG_PAYMENTS_API_URL` must be https (http only for localhost); the server exits otherwise.
+  - `GG_PAYMENTS_API_URL` must be https (http only for localhost), and `GG_PAYMENTS_API_KEY` must start
+    with `ggpk_live_` or `ggpk_test_`; the server exits otherwise. `create_pix_charge`'s description
+    says which mode the key in use is.
+  - Ids are checked before they reach the URL (`pi_` + 24 characters, `wal_…`), and
+    `cancel_payment_intent` asks the assistant to confirm with the user first.
+  - A retry hint asks for exactly the same arguments, and a 409 `idempotency_key_reused` says not to
+    create again without the key.
 - **Version notice from the API.** Both APIs answer `X-GG-MCP-Latest` / `X-GG-MCP-Update` (the API
   reads the version from the `User-Agent`, which is unchanged). When both are present and the
   latest is a newer semver, the tool result ends with one `update:` line telling the assistant to
