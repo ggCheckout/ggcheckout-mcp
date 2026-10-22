@@ -29,6 +29,15 @@ describe('registerPaymentsApiTools', () => {
     expect(desc('test')).toMatch(/^The key in use is a TEST key/);
   });
 
+  it('steers the model to external_reference and a reused idempotency_key against double charges', () => {
+    const server = new McpServer({ name: 't', version: '0' });
+    registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
+    const d: string = registered(server).create_pix_charge.description;
+    expect(d).toContain('Always set `external_reference`');
+    expect(d).toContain('external_reference_taken');
+    expect(d).toContain('reuse the same `idempotency_key`');
+  });
+
   it('only accepts well-formed ids, so an argument cannot pick another route', () => {
     const server = new McpServer({ name: 't', version: '0' });
     registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');

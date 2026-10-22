@@ -41,7 +41,9 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
   server.registerTool('create_pix_charge', {
     description:
       active + 'Create a PIX charge on a wallet through the payments API. The result carries `livemode`: say which mode ran. The PIX is in '
-      + '`pix.copy_paste` and `pix.qr_base64`. Confirm amount and buyer (name, email, CPF/CNPJ, phone) with the user before calling it.',
+      + '`pix.copy_paste` and `pix.qr_base64`. Confirm amount and buyer (name, email, CPF/CNPJ, phone) with the user before calling it. '
+      + 'Always set `external_reference` (e.g. the order id): an accidental repeat then fails with external_reference_taken instead of charging twice. '
+      + 'To retry the same charge, reuse the same `idempotency_key`.',
     inputSchema: {
       wallet: z.string().regex(WALLET_ID).describe('Wallet `public_id` (`wal_…`), from list_wallets'),
       amount: z.number().int().min(100).describe('Amount in cents (BRL): 4990 is R$ 49,90. Minimum 100'),
