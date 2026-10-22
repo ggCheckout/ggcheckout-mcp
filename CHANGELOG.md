@@ -5,7 +5,7 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
-## Unreleased
+## 0.5.0
 
 ### Breaking
 
@@ -24,11 +24,6 @@ right now.
   the id that `routeId` / `paymentRouteId` take. Needs the API to accept an API key on
   `GET /api/payment-routes` (ggCheckout/saas-checkout#1878). Not the payments API's `list_wallets`
   (`wal_…` ids for `create_pix_charge`), which lists the same wallets by their public id.
-
-## 0.5.0
-
-Additive: nothing an existing call sends or returns changes, and no tool is removed.
-
 - **Payments API tools (PIX).** `list_wallets`, `create_pix_charge`, `get_payment_intent`,
   `list_payment_intents` and `cancel_payment_intent` call the public payments API
   (`https://api.ggcheckout.app/v1`). They are registered **only when `GG_PAYMENTS_API_KEY` is set**
@@ -55,7 +50,10 @@ Additive: nothing an existing call sends or returns changes, and no tool is remo
 - **The npm registry check on startup is gone.** The headers cover every install that makes a
   call, so the separate poll was a second source of "latest" and was removed.
 - `list_payment_intents` accepts `status=processing`, which a create that timed out leaves behind.
-- Minimum-version decision for this release: unchanged (**0.4.0**).
+
+- Minimum-version decision for this release: raise the API's minimum to **0.5.0** when
+  ggCheckout/saas-checkout#1878 ships. 0.4.0 still sends the removed own-gateway shape, which that
+  API no longer accepts; the check lives in the API (it reads the `User-Agent`), not in this package.
 
 ## 0.4.0
 

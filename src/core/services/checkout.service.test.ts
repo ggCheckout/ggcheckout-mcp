@@ -236,13 +236,8 @@ describe('CheckoutService', () => {
       expect(mockCheckoutPort.update).not.toHaveBeenCalled();
     });
 
-    it('preserves PIX fallback gateways format', async () => {
-      const newPixConfig = {
-        gateways: [
-          { tokenId: 'tok-3', type: 'mercadopago' },
-          { tokenId: 'tok-1', type: 'amplopay' },
-        ],
-      };
+    it('passes the pix wallet { routeId } through', async () => {
+      const newPixConfig = { routeId: '3f2b8c1e-5d4a-4e6f-9a7b-1c2d3e4f5a6b' };
       await service.update('ck-1', { paymentMethods: { pix: newPixConfig } });
 
       expect(mockCheckoutPort.update).toHaveBeenCalledWith(

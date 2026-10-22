@@ -20,7 +20,7 @@ const charge = {
 afterEach(() => resetUpdateNotice());
 
 describe('PaymentsApiClient', () => {
-  it('sends the key, User-Agent and version header; strips the trailing slash from the base', async () => {
+  it('sends the key and User-Agent; strips the trailing slash from the base', async () => {
     const f = reply(200, { object: 'list', data: [] });
     await client(f).listWallets();
     const [url, init] = f.mock.calls[0];

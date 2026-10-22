@@ -42,24 +42,16 @@ describe('registerPaymentsApiTools', () => {
     }
     const wallet = (v: string) =>
       z.object(tools.create_pix_charge.inputSchema.shape ?? tools.create_pix_charge.inputSchema).shape.wallet.safeParse(v).success;
-    expect(wallet('wal_8f3kQ2')).toBe(true);
+    expect(wallet('wal_8f3kQ2mN7xR4tY9pL6aBcD')).toBe(true);
     expect(wallet('..')).toBe(false);
-    expect(wallet('wal_a/b')).toBe(false);
+    expect(wallet('wal_8f3kQ2')).toBe(false);
+    expect(wallet('wal_8f3kQ2mN7xR4tY9pL6a/b')).toBe(false);
   });
 
   it('asks for confirmation before cancel_payment_intent', () => {
     const server = new McpServer({ name: 't', version: '0' });
     registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
     expect(registered(server).cancel_payment_intent.description).toContain('Confirm with the user');
-  });
-
-  it('says create_pix_charge is real with a live key and simulated with a test key', () => {
-    const server = new McpServer({ name: 't', version: '0' });
-    registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
-    const d: string = registered(server).create_pix_charge.description;
-    expect(d).toMatch(/REAL CHARGE/);
-    expect(d).toMatch(/ggpk_test_/);
-    expect(d).toMatch(/livemode/);
   });
 
   it('describes list_wallets with the fields the API returns', () => {

@@ -51,7 +51,7 @@ export function registerGatewayTools(server: McpServer, service: GatewayService)
     'list_checkout_wallets',
     'List the seller\'s wallets (payment routes). A wallet holds the gateways that charge PIX (in '
     + 'fallback order) and card. Checkouts and stores charge PIX and card only through a wallet: '
-    + 'pass its `id` as `routeId` in create_checkout / update_checkout `paymentMethods`. Wallets are '
+    + 'pass its `id` as `routeId` in create_checkout / update_checkout `paymentMethods`, or as `paymentRouteId` in update_store. Wallets are '
     + 'created and edited in the dashboard (Settings → Gateways → Wallets).',
     createToolHandler('list_checkout_wallets', async () => ({ wallets: await service.listWallets() })),
   );

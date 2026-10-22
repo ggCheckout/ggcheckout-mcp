@@ -123,7 +123,7 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 
 ---
 
-## Available Tools (194)
+## Available Tools (195)
 
 ### Products (18 tools)
 
@@ -655,7 +655,7 @@ Requires `GG_PAYMENTS_API_KEY` (see Configuration). PIX only.
 
 **Example prompts:**
 - "List my wallets"
-- "Create a R$ 49,90 PIX charge on wallet wal_8f3kQ2 for Maria Souza (maria@example.com, CPF 123.456.789-09, phone 11987654321)"
+- "Create a R$ 49,90 PIX charge on wallet wal_8f3kQ2mN7xR4tY9pL6aBcD for Maria Souza (maria@example.com, CPF 123.456.789-09, phone 11987654321)"
 - "Did the charge for order 1234 get paid?"
 
 ---

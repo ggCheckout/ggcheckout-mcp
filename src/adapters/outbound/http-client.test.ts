@@ -40,10 +40,7 @@ describe('HttpClient', () => {
     expect(axios.create).toHaveBeenCalledWith({
       baseURL: 'https://api.test.com',
       timeout: 15000,
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'ggcheckout-mcp/9.8.7',
-      },
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'ggcheckout-mcp/9.8.7' },
     });
   });
 

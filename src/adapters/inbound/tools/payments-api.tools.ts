@@ -22,8 +22,7 @@ export function registerPaymentsApiToolsFromEnv(
   return url;
 }
 
-/** Registered only when GG_PAYMENTS_API_KEY is set (see index.ts): these tools never use the ggck_live_ key. */
-const WALLET_ID = /^wal_[A-Za-z0-9]+$/;
+const WALLET_ID = /^wal_[A-Za-z0-9]{22}$/;
 // `pi_` + 24 base62 characters, the shape the API mints. It picks the route, so nothing else (`..`) gets in.
 const INTENT_ID = /^pi_[A-Za-z0-9]{24}$/;
 
@@ -41,9 +40,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
 
   server.registerTool('create_pix_charge', {
     description:
-      active + 'Create a PIX charge on a wallet through the payments API. WITH A LIVE KEY (ggpk_live_) THIS CREATES '
-      + 'A REAL CHARGE a buyer can pay with real money; with a test key (ggpk_test_) it creates a SIMULATED '
-      + 'charge that charges nobody. The result carries `livemode`: say which mode ran. The PIX is in '
+      active + 'Create a PIX charge on a wallet through the payments API. The result carries `livemode`: say which mode ran. The PIX is in '
       + '`pix.copy_paste` and `pix.qr_base64`. Confirm amount and buyer (name, email, CPF/CNPJ, phone) with the user before calling it.',
     inputSchema: {
       wallet: z.string().regex(WALLET_ID).describe('Wallet `public_id` (`wal_…`), from list_wallets'),
