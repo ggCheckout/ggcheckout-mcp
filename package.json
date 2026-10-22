@@ -59,5 +59,6 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "mcpName": "io.github.ggCheckout/ggcheckout-mcp"
 }
