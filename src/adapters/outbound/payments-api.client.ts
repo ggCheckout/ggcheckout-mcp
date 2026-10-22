@@ -5,6 +5,9 @@ import { observeVersionHeaders } from '../../shared/update-notice.js';
 
 export const DEFAULT_PAYMENTS_API_URL = 'https://api.ggcheckout.app/v1';
 const TIMEOUT_MS = 15_000;
+// Creating a charge waits on core's create, which core gives 75s (CHAIN_TIMEOUT_SECS) over a 60s payments
+// chain. A shorter client timeout reports a charge that succeeds slowly as "timed out".
+const CREATE_TIMEOUT_MS = 90_000;
 
 export interface CreatePixChargeInput {
   wallet: string;
@@ -50,7 +53,7 @@ export class PaymentsApiClient {
 
   /** `idempotencyKey` is only passed to repeat a call that may have landed; each call gets a fresh one otherwise. */
   createPixCharge(input: CreatePixChargeInput, idempotencyKey: string = randomUUID()) {
-    return this.request('POST', '/payment_intents', { body: input, idempotencyKey });
+    return this.request('POST', '/payment_intents', { body: input, idempotencyKey, timeoutMs: CREATE_TIMEOUT_MS });
   }
 
   getPaymentIntent(id: string) {
@@ -68,7 +71,7 @@ export class PaymentsApiClient {
   private async request(
     method: 'GET' | 'POST',
     path: string,
-    opts: { query?: object; body?: object; idempotencyKey?: string } = {},
+    opts: { query?: object; body?: object; idempotencyKey?: string; timeoutMs?: number } = {},
   ): Promise<any> {
     const url = new URL(this.baseUrl + path);
     for (const [k, v] of Object.entries(opts.query ?? {})) {
@@ -103,7 +106,7 @@ export class PaymentsApiClient {
         method,
         headers,
         body: opts.body ? JSON.stringify(opts.body) : undefined,
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        signal: AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS),
       });
       observeVersionHeaders((name) => response.headers.get(name), this.version);
       text = await response.text();
@@ -129,7 +132,10 @@ export class PaymentsApiClient {
     if (!response.ok) {
       const hint = response.status >= 500
         ? retryHint
-        : body?.error?.code === 'idempotency_key_reused' ? reusedHint : '';
+        : body?.error?.code === 'idempotency_key_reused' ? reusedHint
+        // The first request may still hold the lease, and its charge may already exist: wait and repeat.
+        : body?.error?.code === 'request_in_progress' ? retryHint
+        : '';
       throw this.toError(response, body, hint);
     }
     // Every success of this API has a JSON body. Without one the write may still have landed, so the

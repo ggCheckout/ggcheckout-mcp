@@ -115,6 +115,22 @@ describe('PaymentsApiClient', () => {
     expect(err.message).toContain('do not create again without the key');
   });
 
+  it('tells the model to repeat with the same key on a 409 request_in_progress', async () => {
+    const f = reply(409, { error: { type: 'idempotency', code: 'request_in_progress', message: 'busy' } });
+    const err = await client(f).createPixCharge(charge, 'key-1').catch((e) => e);
+    expect(err.message).toContain('idempotency/request_in_progress: busy');
+    expect(err.message).toContain('idempotency_key=key-1');
+  });
+
+  it('gives the create call a longer timeout than reads', async () => {
+    const spy = vi.spyOn(AbortSignal, 'timeout');
+    const c = client(reply(200, { object: 'list', data: [] }));
+    await c.listWallets();
+    await c.createPixCharge(charge);
+    expect(spy.mock.calls.map(([ms]) => ms)).toEqual([15_000, 90_000]);
+    spy.mockRestore();
+  });
+
   it('does not put a key in a 4xx or in a read', async () => {
     const bad = await client(reply(409, { error: { type: 'invalid_request', code: 'external_reference_taken', message: 'x' } }))
       .createPixCharge(charge, 'k-3').catch((e) => e);
