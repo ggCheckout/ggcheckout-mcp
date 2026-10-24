@@ -62,12 +62,10 @@ right now.
   call, so the separate poll was a second source of "latest" and was removed.
 - `list_payment_intents` accepts `status=processing`, which a create that timed out leaves behind.
 
-- What happens to 0.4.x: it keeps writing its own gateway list until the core's wallet-only lock is
-  switched on (`WALLET_ONLY_WRITES=true`, ggCheckout/ggcheckout-core#605, off by default). From then
-  on its writes get `400 wallet_required`. The "update ggcheckout-mcp" message on that 400 needs the
-  API's minimum version (`MIN_SUPPORTED_GGCHECKOUT_MCP_VERSION`, ggCheckout/saas-checkout#1878) at
-  **0.5.0**; at 0.4.0 the 0.4.x client gets the bare 400. The check lives in the API (it reads the
-  `User-Agent`), not in this package.
+- Minimum-version decision for this release: the API's minimum stays at **0.4.0**, and 0.4.x keeps
+  being accepted. The own gateway list it still sends (`{ token, type }`, `gateways`) is ignored by
+  the wallet-only write path, without a refusal. There is no "update ggcheckout-mcp" message for
+  0.4.x.
 
 ## 0.4.0
 
