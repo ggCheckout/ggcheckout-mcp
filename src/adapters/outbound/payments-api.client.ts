@@ -30,6 +30,10 @@ export interface ListPaymentIntentsInput {
  * The public payments API (`/v1`, `ggpk_` keys). It is a different API from the one HttpClient talks
  * to: its own host, its own key, and its errors are `{error: {type, code, message, param, request_id}}`.
  */
+const takenHint = (ref = '…') =>
+  ` The charge for this reference already exists: get it with list_payment_intents(external_reference=${ref}). `
+  + 'Do not create again with a different reference.';
+
 export class PaymentsApiClient {
   private readonly baseUrl: string;
 
@@ -116,7 +120,8 @@ export class PaymentsApiClient {
         `Cannot connect to the GG Checkout payments API at ${this.baseUrl}: `
         + (timedOut
           ? 'request timed out'
-          : `could not reach the API (${err?.cause?.code ?? err?.message})`)
+          // Never `err.message`: a header the fetch refuses (a key with a CR/LF in it) is quoted whole there.
+          : `could not reach the API (${err?.cause?.code ?? 'network error'})`)
         + `. Check your network and the GG_PAYMENTS_API_URL setting.${retryHint}`,
         err,
       );
@@ -135,6 +140,8 @@ export class PaymentsApiClient {
         : body?.error?.code === 'idempotency_key_reused' ? reusedHint
         // The first request may still hold the lease, and its charge may already exist: wait and repeat.
         : body?.error?.code === 'request_in_progress' ? retryHint
+        // Read as "bad reference", it leads to a create with another reference: the double charge it blocks.
+        : body?.error?.code === 'external_reference_taken' ? takenHint((opts.body as { external_reference?: string } | undefined)?.external_reference)
         : '';
       throw this.toError(response, body, hint);
     }

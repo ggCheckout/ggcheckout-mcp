@@ -16,7 +16,10 @@ right now.
   (ggCheckout/saas-checkout#1878), or the checkout is saved as a draft.
 - `update_store`: `paymentMethods.pix` / `credit_card` take only `enabled`; the gateways come from
   the store's wallet, set with the new `paymentRouteId`. Needs ggCheckout/saas-checkout#1878 and
-  ggCheckout/ggcheckout-core#605 (the core stores the store's wallet).
+  ggCheckout/ggcheckout-core#605 (the core stores the store's wallet). The 0.4.x `gateways` list is
+  refused with a message pointing to `paymentRouteId`, instead of being dropped and reported as saved.
+- `create_checkout` and `update_checkout` refuse `paymentMethods` inside `checkout`: it was a second
+  way into the stored methods that took the own gateway list. Methods go through the top-level field.
 
 ### Added
 
@@ -33,11 +36,19 @@ right now.
     `ggpk_test_`; the result's `livemode` says which ran. Each call sends a fresh
     `Idempotency-Key` UUID; pass `idempotency_key` only to repeat a call that timed out.
   - `buyer_phone` is required (10 to 15 digits), as the API requires it.
+  - `external_reference` is required on `create_pix_charge`. A host that gives up on a tool call at
+    60 s (the MCP SDK default) never shows the `idempotency_key` of a slow create (the create waits up
+    to 90 s); the reference is what turns the repeat into `external_reference_taken`, and that 409
+    tells the assistant to look the charge up with `list_payment_intents` instead of changing the
+    reference.
+  - `get_payment_intent` and `list_payment_intents` start with a line saying the buyer's name,
+    `description` and `metadata` are third-party data and not instructions.
   - Errors show `type/code: message | param | request_id` (and `Retry-After` on 429). A network
     error or 5xx on a create also carries `idempotency_key=<uuid>` so the call can be repeated
     without a second charge.
-  - `GG_PAYMENTS_API_URL` must be https (http only for localhost), and `GG_PAYMENTS_API_KEY` must start
-    with `ggpk_live_` or `ggpk_test_`; the server exits otherwise. `create_pix_charge`'s description
+  - `GG_PAYMENTS_API_URL` must be https (http only for localhost), and `GG_PAYMENTS_API_KEY` must be
+    `ggpk_live_` or `ggpk_test_` followed by letters and digits only (a key with a line break in the
+    middle is refused); the server exits otherwise. A network error never quotes the key. `create_pix_charge`'s description
     says which mode the key in use is.
   - Ids are checked before they reach the URL (`pi_` + 24 characters, `wal_…`), and
     `cancel_payment_intent` asks the assistant to confirm with the user first.
@@ -51,9 +62,12 @@ right now.
   call, so the separate poll was a second source of "latest" and was removed.
 - `list_payment_intents` accepts `status=processing`, which a create that timed out leaves behind.
 
-- Minimum-version decision for this release: raise the API's minimum to **0.5.0** when
-  ggCheckout/saas-checkout#1878 ships. 0.4.0 still sends the removed own-gateway shape, which that
-  API no longer accepts; the check lives in the API (it reads the `User-Agent`), not in this package.
+- What happens to 0.4.x: it keeps writing its own gateway list until the core's wallet-only lock is
+  switched on (`WALLET_ONLY_WRITES=true`, ggCheckout/ggcheckout-core#605, off by default). From then
+  on its writes get `400 wallet_required`. The "update ggcheckout-mcp" message on that 400 needs the
+  API's minimum version (`MIN_SUPPORTED_GGCHECKOUT_MCP_VERSION`, ggCheckout/saas-checkout#1878) at
+  **0.5.0**; at 0.4.0 the 0.4.x client gets the bare 400. The check lives in the API (it reads the
+  `User-Agent`), not in this package.
 
 ## 0.4.0
 

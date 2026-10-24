@@ -122,6 +122,24 @@ describe('PaymentsApiClient', () => {
     expect(err.message).toContain('idempotency_key=key-1');
   });
 
+  it('on a 409 external_reference_taken points to the existing charge instead of a new reference', async () => {
+    const f = reply(409, { error: { type: 'invalid_request', code: 'external_reference_taken', message: 'taken' } });
+    const err = await client(f).createPixCharge({ ...charge, external_reference: 'order-9' }).catch((e) => e);
+    expect(err.message).toContain('invalid_request/external_reference_taken: taken');
+    expect(err.message).toContain('list_payment_intents(external_reference=order-9)');
+    expect(err.message).toContain('Do not create again with a different reference');
+  });
+
+  it('never quotes the fetch error message, which can carry the Authorization header', async () => {
+    const leak = new TypeError('Headers.append: "Bearer ggpk_live_secret\nx" is an invalid header value.');
+    const err = await client(vi.fn().mockRejectedValue(leak)).listWallets().catch((e) => e);
+    expect(err).toBeInstanceOf(NetworkError);
+    expect(err.message).not.toContain('ggpk_live_secret');
+    expect(err.message).toContain('could not reach the API (network error)');
+    const dns = Object.assign(new TypeError('fetch failed'), { cause: { code: 'ENOTFOUND' } });
+    expect((await client(vi.fn().mockRejectedValue(dns)).listWallets().catch((e) => e)).message).toContain('(ENOTFOUND)');
+  });
+
   it('gives the create call a longer timeout than reads', async () => {
     const spy = vi.spyOn(AbortSignal, 'timeout');
     const c = client(reply(200, { object: 'list', data: [] }));

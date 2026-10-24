@@ -89,7 +89,7 @@ export GG_PAYMENTS_API_KEY="ggpk_test_your_key_here"   # ggpk_test_ = simulated,
 export GG_PAYMENTS_API_URL="https://api.ggcheckout.app/v1"   # optional, this is the default
 ```
 
-The key must start with `ggpk_live_` or `ggpk_test_`. The value of the URL includes the `/v1` base path. The URL must be `https` (plain `http` is accepted only for `localhost` / `127.0.0.1`); the server
+The key must be `ggpk_live_` or `ggpk_test_` followed by letters and digits only. The value of the URL includes the `/v1` base path. The URL must be `https` (plain `http` is accepted only for `localhost` / `127.0.0.1`); the server
 refuses to start otherwise.
 
 ### Upload folder
@@ -648,14 +648,20 @@ Requires `GG_PAYMENTS_API_KEY` (see Configuration). PIX only.
 `status`, `external_reference`, `starting_after`, `limit`) and `cancel_payment_intent`.
 
 `create_pix_charge` takes the wallet id (`wal_…`), the amount **in cents** (`4990` = R$ 49,90),
-`description`, `external_reference`, `metadata` and the buyer (`buyer_name`, `buyer_email`,
+`external_reference` (required, e.g. the order id: a repeat with the same one fails instead of
+charging twice), `description`, `metadata` and the buyer (`buyer_name`, `buyer_email`,
 `buyer_document`, `buyer_phone`: all four are required, the phone with 10 to 15 digits). With a `ggpk_live_` key it creates a **real** charge; with
 `ggpk_test_` a simulated one. The response says which with `livemode` and carries the PIX in
 `pix.copy_paste` / `pix.qr_base64`.
 
+Keep `create_pix_charge` and `cancel_payment_intent` on **manual approval** in your MCP client (no
+auto-approve). The buyer's name, `description` and `metadata` that come back in the results are
+written by third parties, and the approval prompt is what stops a text there from turning into a
+charge or a cancel.
+
 **Example prompts:**
 - "List my wallets"
-- "Create a R$ 49,90 PIX charge on wallet wal_8f3kQ2mN7xR4tY9pL6aBcD for Maria Souza (maria@example.com, CPF 123.456.789-09, phone 11987654321)"
+- "Create a R$ 49,90 PIX charge for order 1234 on wallet wal_8f3kQ2mN7xR4tY9pL6aBcD for Maria Souza (maria@example.com, CPF 123.456.789-09, phone 11987654321)"
 - "Did the charge for order 1234 get paid?"
 
 ---

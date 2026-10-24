@@ -25,6 +25,14 @@ describe('wallet schemas', () => {
     expect(pm.safeParse({ credit_card: { routeId: 'not-a-uuid' } }).success).toBe(false);
   });
 
+  it('update_store refuses the 0.4.x gateways list instead of dropping it', () => {
+    const pm = shapeOf((s) => registerStoreTools(s, {} as any), 'update_store').paymentMethods;
+    expect(pm.safeParse({ pix: { enabled: true } }).success).toBe(true);
+    const r = pm.safeParse({ pix: { enabled: true, gateways: ['tok'] } });
+    expect(r.success).toBe(false);
+    expect(r.error.issues[0].message).toContain('paymentRouteId');
+  });
+
   it('update_store accepts paymentRouteId null and refuses a non-uuid', () => {
     const f = shapeOf((s) => registerStoreTools(s, {} as any), 'update_store').paymentRouteId;
     expect(f.safeParse(null).success).toBe(true);
