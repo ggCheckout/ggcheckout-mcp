@@ -241,6 +241,20 @@ describe('HttpClient', () => {
     }
   });
 
+  it('passes the API refusal of an outdated MCP to the user with its update command', () => {
+    new HttpClient('https://api.test.com', 'key', '0.4.0');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+    const refusal = 'Nada foi salvo: esta versão do ggcheckout-mcp é anterior à 0.5.0. Atualize o ggcheckout-mcp: rode `npx -y ggcheckout-mcp@latest` e reinicie o cliente.';
+    let thrown: any;
+    try {
+      errorHandler({ response: { status: 426, data: { error: refusal, code: 'mcp_outdated' }, headers: {} }, message: 'x' });
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(ApiError);
+    expect(thrown.message).toContain(`${refusal} (mcp_outdated)`);
+  });
+
   it('reads message field as fallback when error field is missing', () => {
     new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];

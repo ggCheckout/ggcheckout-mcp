@@ -62,10 +62,14 @@ right now.
   call, so the separate poll was a second source of "latest" and was removed.
 - `list_payment_intents` accepts `status=processing`, which a create that timed out leaves behind.
 
-- Minimum-version decision for this release: the API's minimum stays at **0.4.0**, and 0.4.x keeps
-  being accepted. The own gateway list it still sends (`{ token, type }`, `gateways`) is ignored by
-  the wallet-only write path, without a refusal. There is no "update ggcheckout-mcp" message for
-  0.4.x.
+- Minimum-version decision for this release: **0.5.0**. From 0.5.0 on, both APIs refuse 0.4.x by
+  version (read from the `User-Agent`) and tell the user to update with `npx -y ggcheckout-mcp@latest`:
+  ggCheckout/saas-checkout#1878 raises its minimum to 0.5.0 and refuses every request of an older
+  `ggcheckout-mcp/<v>`, and the payments API of ggCheckout/ggcheckout-core#605 refuses it with
+  `mcp_outdated`. The reason is the wallet-only model: the own gateway list 0.4.x sends would be
+  ignored, so its writes would look saved and change nothing. 0.4.0 already shows the API's `error`
+  text, so the refusal and the command reach the user; from 0.5.0 an `mcp_outdated` without the
+  command in its message gets it appended.
 
 ## 0.4.0
 

@@ -18,7 +18,7 @@ export function isNewerVersion(latest: string, current: string): boolean {
 }
 
 /** The only command the notice names: header text is never put into tool output. */
-const UPDATE_COMMAND = 'npx -y ggcheckout-mcp@latest';
+export const UPDATE_COMMAND = 'npx -y ggcheckout-mcp@latest';
 
 /**
  * Reads the API's version headers off a response (both APIs send them). `X-GG-MCP-Update` is only

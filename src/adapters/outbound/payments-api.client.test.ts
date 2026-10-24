@@ -140,6 +140,16 @@ describe('PaymentsApiClient', () => {
     expect((await client(vi.fn().mockRejectedValue(dns)).listWallets().catch((e) => e)).message).toContain('(ENOTFOUND)');
   });
 
+  it('shows the update command on a 426 mcp_outdated, once, whether or not the API wrote it', async () => {
+    const bare = reply(426, { error: { type: 'invalid_request', code: 'mcp_outdated', message: 'This ggcheckout-mcp is too old.' } });
+    const e1 = await client(bare).listWallets().catch((e) => e);
+    expect(e1.message).toContain('invalid_request/mcp_outdated: This ggcheckout-mcp is too old.');
+    expect(e1.message).toContain('run `npx -y ggcheckout-mcp@latest` and restart the MCP client');
+    const full = reply(426, { error: { type: 'invalid_request', code: 'mcp_outdated', message: 'Run npx -y ggcheckout-mcp@latest.' } });
+    const e2 = await client(full).createPixCharge(charge).catch((e) => e);
+    expect(e2.message.split('npx -y ggcheckout-mcp@latest')).toHaveLength(2);
+  });
+
   it('gives the create call a longer timeout than reads', async () => {
     const spy = vi.spyOn(AbortSignal, 'timeout');
     const c = client(reply(200, { object: 'list', data: [] }));
