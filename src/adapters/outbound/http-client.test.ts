@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
 import { HttpClient } from './http-client.js';
+import { getUpdateNotice, resetUpdateNotice } from '../../shared/update-notice.js';
 import {
   AuthenticationError,
   RateLimitError,
@@ -240,6 +241,20 @@ describe('HttpClient', () => {
     }
   });
 
+  it('passes the API refusal of an outdated MCP to the user with its update command', () => {
+    new HttpClient('https://api.test.com', 'key', '0.4.0');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+    const refusal = 'Nada foi salvo: esta versão do ggcheckout-mcp é anterior à 0.5.0. Atualize o ggcheckout-mcp: rode `npx -y ggcheckout-mcp@latest` e reinicie o cliente.';
+    let thrown: any;
+    try {
+      errorHandler({ response: { status: 426, data: { error: refusal, code: 'mcp_outdated' }, headers: {} }, message: 'x' });
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(ApiError);
+    expect(thrown.message).toContain(`${refusal} (mcp_outdated)`);
+  });
+
   it('reads message field as fallback when error field is missing', () => {
     new HttpClient('https://api.test.com', 'key', '1.0.0');
     const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
@@ -281,5 +296,27 @@ describe('HttpClient', () => {
 
     await client.delete('/api/checkouts/123', { uuidOwner: 'owner-1' });
     expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/api/checkouts/123', { data: { uuidOwner: 'owner-1' } });
+  });
+
+  describe('version headers', () => {
+    afterEach(() => resetUpdateNotice());
+
+    it('reads X-GG-MCP-Latest / X-GG-MCP-Update off a success', () => {
+      new HttpClient('https://api.test.com', 'k', '0.4.0');
+      const ok = mockAxiosInstance.interceptors.response.use.mock.calls[0][0];
+      const response = { data: {}, headers: { 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'npx -y ggcheckout-mcp@latest' } };
+      expect(ok(response)).toBe(response);
+      expect(getUpdateNotice()).toContain('0.5.0 is available (running 0.4.0)');
+    });
+
+    it('reads them off an error response too', () => {
+      new HttpClient('https://api.test.com', 'k', '0.4.0');
+      const fail = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+      expect(() => fail({
+        response: { status: 409, data: { error: 'x' }, headers: { 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'upd' } },
+      })).toThrow(ApiError);
+      expect(getUpdateNotice()).toContain('`npx -y ggcheckout-mcp@latest`');
+      expect(getUpdateNotice()).not.toContain('upd');
+    });
   });
 });

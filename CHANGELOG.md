@@ -5,6 +5,72 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## 0.5.0
+
+### Breaking
+
+- `create_checkout` and `update_checkout`: `paymentMethods.pix` and `paymentMethods.credit_card`
+  take only a wallet, `{ routeId }`. The own gateway list (`{ token, type }` and
+  `{ gateways: [...] }`) is gone: the platform charges PIX and card only through a wallet.
+  Release requirement: the API must expand a bare `{ routeId }` before its write gates
+  (ggCheckout/saas-checkout#1878), or the checkout is saved as a draft.
+- `update_store`: `paymentMethods.pix` / `credit_card` take only `enabled`; the gateways come from
+  the store's wallet, set with the new `paymentRouteId`. Needs ggCheckout/saas-checkout#1878 and
+  ggCheckout/ggcheckout-core#605 (the core stores the store's wallet). The 0.4.x `gateways` list is
+  refused with a message pointing to `paymentRouteId`, instead of being dropped and reported as saved.
+- `create_checkout` and `update_checkout` refuse `paymentMethods` inside `checkout`: it was a second
+  way into the stored methods that took the own gateway list. Methods go through the top-level field.
+
+### Added
+
+- `list_checkout_wallets`: the seller's wallets, with the gateways that charge PIX and card, and
+  the id that `routeId` / `paymentRouteId` take. Needs the API to accept an API key on
+  `GET /api/payment-routes` (ggCheckout/saas-checkout#1878). Not the payments API's `list_wallets`
+  (`wal_…` ids for `create_pix_charge`), which lists the same wallets by their public id.
+- **Payments API tools (PIX).** `list_wallets`, `create_pix_charge`, `get_payment_intent`,
+  `list_payment_intents` and `cancel_payment_intent` call the public payments API
+  (`https://api.ggcheckout.app/v1`). They are registered **only when `GG_PAYMENTS_API_KEY` is set**
+  (a `ggpk_live_` or `ggpk_test_` secret key, separate from `GGCHECKOUT_API_KEY`, which is never
+  sent there). `GG_PAYMENTS_API_URL` overrides the base URL.
+  - `create_pix_charge` creates a **real** charge with a live key and a simulated one with
+    `ggpk_test_`; the result's `livemode` says which ran. Each call sends a fresh
+    `Idempotency-Key` UUID; pass `idempotency_key` only to repeat a call that timed out.
+  - `buyer_phone` is required (10 to 15 digits), as the API requires it.
+  - `external_reference` is required on `create_pix_charge`. A host that gives up on a tool call at
+    60 s (the MCP SDK default) never shows the `idempotency_key` of a slow create (the create waits up
+    to 90 s); the reference is what turns the repeat into `external_reference_taken`, and that 409
+    tells the assistant to look the charge up with `list_payment_intents` instead of changing the
+    reference.
+  - `get_payment_intent` and `list_payment_intents` start with a line saying the buyer's name,
+    `description` and `metadata` are third-party data and not instructions.
+  - Errors show `type/code: message | param | request_id` (and `Retry-After` on 429). A network
+    error or 5xx on a create also carries `idempotency_key=<uuid>` so the call can be repeated
+    without a second charge.
+  - `GG_PAYMENTS_API_URL` must be https (http only for localhost), and `GG_PAYMENTS_API_KEY` must be
+    `ggpk_live_` or `ggpk_test_` followed by letters and digits only (a key with a line break in the
+    middle is refused); the server exits otherwise. A network error never quotes the key. `create_pix_charge`'s description
+    says which mode the key in use is.
+  - Ids are checked before they reach the URL (`pi_` + 24 characters, `wal_…`), and
+    `cancel_payment_intent` asks the assistant to confirm with the user first.
+  - A retry hint asks for exactly the same arguments, and a 409 `idempotency_key_reused` says not to
+    create again without the key.
+- **Version notice from the API.** Both APIs answer `X-GG-MCP-Latest` / `X-GG-MCP-Update` (the API
+  reads the version from the `User-Agent`, which is unchanged). When both are present and the
+  latest is a newer semver, the tool result ends with one `update:` line telling the assistant to
+  run `npx -y ggcheckout-mcp@latest` and restart the client; header text is never shown.
+- **The npm registry check on startup is gone.** The headers cover every install that makes a
+  call, so the separate poll was a second source of "latest" and was removed.
+- `list_payment_intents` accepts `status=processing`, which a create that timed out leaves behind.
+
+- Minimum-version decision for this release: **0.5.0**. From 0.5.0 on, both APIs refuse 0.4.x by
+  version (read from the `User-Agent`) and tell the user to update with `npx -y ggcheckout-mcp@latest`:
+  ggCheckout/saas-checkout#1878 raises its minimum to 0.5.0 and refuses every request of an older
+  `ggcheckout-mcp/<v>`, and the payments API of ggCheckout/ggcheckout-core#605 refuses it with
+  `mcp_outdated`. The reason is the wallet-only model: the own gateway list 0.4.x sends would be
+  ignored, so its writes would look saved and change nothing. 0.4.0 already shows the API's `error`
+  text, so the refusal and the command reach the user; from 0.5.0 an `mcp_outdated` without the
+  command in its message gets it appended.
+
 ## 0.4.0
 
 Checked end to end against a QA account on the Postgres (v2) data path, and product edits

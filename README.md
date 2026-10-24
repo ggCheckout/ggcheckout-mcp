@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 189 tools across 19 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 195 tools across 20 domains.
 
 ## Overview
 
@@ -77,6 +77,21 @@ export GGCHECKOUT_API_KEY="ggck_live_your_key_here"
 export GGCHECKOUT_API_URL="https://your-staging.example.com"
 ```
 
+### Payments API (PIX charges)
+
+The five payments-API tools (`list_wallets`, `create_pix_charge`, `get_payment_intent`,
+`list_payment_intents`, `cancel_payment_intent`) use their own secret key, created in
+**My wallet → API**. They are only registered when it is set, and `GGCHECKOUT_API_KEY` is never
+used for them.
+
+```bash
+export GG_PAYMENTS_API_KEY="ggpk_test_your_key_here"   # ggpk_test_ = simulated, ggpk_live_ = real money
+export GG_PAYMENTS_API_URL="https://api.ggcheckout.app/v1"   # optional, this is the default
+```
+
+The key must be `ggpk_live_` or `ggpk_test_` followed by letters and digits only. The value of the URL includes the `/v1` base path. The URL must be `https` (plain `http` is accepted only for `localhost` / `127.0.0.1`); the server
+refuses to start otherwise.
+
 ### Upload folder
 
 `upload_members_area_file` reads files from the machine running this server, and only from the
@@ -94,9 +109,10 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
   knows which release is calling.
 - The API can refuse writes from versions below the minimum it supports. The refusal says so
   and asks you to update.
-- On startup the server makes one quick, optional check of the npm registry. If a newer version
-  is published, tool responses carry a short `update:` line so your assistant can suggest
-  restarting the client. If the check fails or times out, nothing happens.
+- Both APIs tell an outdated install so in their response headers (`X-GG-MCP-Latest` and
+  `X-GG-MCP-Update`); the tool result then ends with a short `update:` line so your assistant can
+  suggest restarting the client. The version must be a newer semver and the command is always
+  `npx -y ggcheckout-mcp@latest`: no header text is shown. There is no npm registry check.
 
 **For maintainers**
 
@@ -107,7 +123,7 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 
 ---
 
-## Available Tools (189)
+## Available Tools (195)
 
 ### Products (18 tools)
 
@@ -256,6 +272,11 @@ checkout is created.
 shape the checkout page reads, so a uid that does not exist fails the call
 instead of silently vanishing from the page.
 
+PIX and card charge through a **wallet** of the seller: `paymentMethods.pix` and
+`paymentMethods.credit_card` take `{ "routeId": "<wallet id>" }`, with the id from `list_checkout_wallets`.
+The wallet decides the gateways, the PIX fallback order and the card that charges; a checkout no
+longer lists its own gateways.
+
 **Example prompt:** "Create a checkout page for my React Course priced at R$99.90"
 
 #### `update_checkout`
@@ -392,8 +413,10 @@ const isValid = sig === incomingHeader.replace('sha256=', '');
 categories with `list_store_categories`, `create_store_category`, `update_store_category`,
 `delete_store_category`; review moderation with `list_store_reviews`, `create_store_review`,
 `update_store_review`, `delete_store_review`. `update_store` merges objects into the stored
-config and replaces lists (`productOrder`, gateways, a category's `productIds`). Creating or
-publishing a store requires a seller with verified email and phone.
+config and replaces lists (`productOrder`, a category's `productIds`). PIX and card charge
+through a wallet: set `paymentRouteId` (from `list_checkout_wallets`) and switch the methods on in
+`paymentMethods`; the gateways are the wallet's. Creating or publishing a store requires a
+seller with verified email and phone.
 
 **Store builder:** `get_store_layout`, `update_store_layout`, `publish_store_layout`,
 `list_store_layout_history`, `restore_store_layout_version`, `get_store_theme`.
@@ -409,7 +432,7 @@ Store integrations, store upsells/downsells, video, sales notifications and cust
 are dashboard-only.
 
 **Example prompts:**
-- "Create a store called 'Loja Teste', turn on PIX with my AmploPay gateway and publish it"
+- "Create a store called 'Loja Teste', charge it through my 'Principal' wallet with PIX on and publish it"
 - "Create a 'Cursos' category with products abc and def"
 - "Approve all pending reviews of my store"
 - "List my stores"
@@ -522,16 +545,23 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 
 ---
 
-### Gateway Tokens (4 tools)
+### Gateway Tokens and Wallets (5 tools)
 
 **Example prompts:**
 - "List my payment gateway tokens"
+- "Which wallets do I have, and which gateways charge PIX in each?"
 - "Add a PushinPay token"
 - "Remove token abc123"
 
 `insert_token` creates only the four types the API accepts: `pushinpay`, `utmify`,
 `emailprovider` and `mercadopago`. The platform processes payments through 25+ gateways, but the
 others are connected from the dashboard, not through this API — asking for one here is refused.
+
+`list_checkout_wallets` lists the seller's wallets (payment routes): the gateways that charge PIX,
+in fallback order, and card, and the id that `routeId` / `paymentRouteId` take. Checkouts and
+stores charge PIX and card only through a wallet. Wallets are created and edited in the dashboard.
+The payments API's `list_wallets` lists the same wallets by their public id (`wal_…`), for
+`create_pix_charge`.
 
 ---
 
@@ -607,6 +637,32 @@ Bots (`list_telegram_bots`, `get_telegram_bot`, `create_telegram_bot`, `update_t
 - "List my Telegram bots"
 - "Create a basic flow for bot abc123 and deploy it"
 - "Show the qualified leads of bot abc123"
+
+---
+
+### Payments API (5 tools)
+
+Requires `GG_PAYMENTS_API_KEY` (see Configuration). PIX only.
+
+`list_wallets`, `create_pix_charge`, `get_payment_intent`, `list_payment_intents` (filters:
+`status`, `external_reference`, `starting_after`, `limit`) and `cancel_payment_intent`.
+
+`create_pix_charge` takes the wallet id (`wal_…`), the amount **in cents** (`4990` = R$ 49,90),
+`external_reference` (required, e.g. the order id: a repeat with the same one fails instead of
+charging twice), `description`, `metadata` and the buyer (`buyer_name`, `buyer_email`,
+`buyer_document`, `buyer_phone`: all four are required, the phone with 10 to 15 digits). With a `ggpk_live_` key it creates a **real** charge; with
+`ggpk_test_` a simulated one. The response says which with `livemode` and carries the PIX in
+`pix.copy_paste` / `pix.qr_base64`.
+
+Keep `create_pix_charge` and `cancel_payment_intent` on **manual approval** in your MCP client (no
+auto-approve). The buyer's name, `description` and `metadata` that come back in the results are
+written by third parties, and the approval prompt is what stops a text there from turning into a
+charge or a cancel.
+
+**Example prompts:**
+- "List my wallets"
+- "Create a R$ 49,90 PIX charge for order 1234 on wallet wal_8f3kQ2mN7xR4tY9pL6aBcD for Maria Souza (maria@example.com, CPF 123.456.789-09, phone 11987654321)"
+- "Did the charge for order 1234 get paid?"
 
 ---
 

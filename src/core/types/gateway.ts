@@ -31,3 +31,25 @@ export interface GatewayFallbackStats {
   stats: Record<string, GatewayStatEntry>;
   cachedAt: number | null;
 }
+
+export interface WalletEntry {
+  credentialId: string;
+  gateway: string;
+  label: string | null;
+  active: boolean;
+  favorite: boolean;
+}
+
+/**
+ * A wallet (payment route): the gateways that charge PIX (in fallback order) and card for every
+ * checkout and store that points to it.
+ */
+export interface Wallet {
+  id: string;
+  name: string;
+  mode: string;
+  metric: string;
+  pix: WalletEntry[];
+  card: WalletEntry[];
+  checkoutCount?: number;
+}
