@@ -40,7 +40,13 @@ const THIRD_PARTY_NOTICE =
 function asThirdPartyData<TArgs>(handler: (args: TArgs) => Promise<ToolResult>) {
   return async (args: TArgs): Promise<ToolResult> => {
     const result = await handler(args);
-    return result.isError ? result : { ...result, content: [{ type: 'text', text: THIRD_PARTY_NOTICE }, ...result.content] };
+    if (result.isError) return result;
+    // A host may give the model `structuredContent` instead of the text, so the notice goes in both.
+    return {
+      ...result,
+      content: [{ type: 'text', text: THIRD_PARTY_NOTICE }, ...result.content],
+      ...(result.structuredContent ? { structuredContent: { _notice: THIRD_PARTY_NOTICE, ...result.structuredContent } } : {}),
+    };
   };
 }
 
@@ -61,6 +67,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       active + 'Create a PIX charge on a wallet through the payments API. The result carries `livemode`: say which mode ran. The PIX is in '
       + '`pix.copy_paste` and `pix.qr_base64`. Confirm amount and buyer (name, email, CPF/CNPJ, phone) with the user before calling it. '
       + '`external_reference` is required (e.g. the order id): an accidental repeat then fails with external_reference_taken instead of charging twice. '
+      + 'Without an order id, ask the user for one; on a repeat after a timeout, reuse exactly the same reference. '
       + 'To retry the same charge, reuse the same `idempotency_key`.',
     inputSchema: {
       wallet: z.string().regex(WALLET_ID).describe('Wallet `public_id` (`wal_…`), from list_wallets'),
@@ -110,5 +117,5 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       + 'failed or expired. A PIX paid after the cancel still enters the wallet (the API then sends '
       + '`payment_intent.succeeded_after_cancel`). Confirm with the user before calling it.',
     inputSchema: { id: z.string().regex(INTENT_ID).describe('Payment intent id (`pi_…`)') },
-  }, createToolHandler('cancel_payment_intent', async ({ id }) => client.cancelPaymentIntent(id)));
+  }, asThirdPartyData(createToolHandler('cancel_payment_intent', async ({ id }) => client.cancelPaymentIntent(id))));
 }

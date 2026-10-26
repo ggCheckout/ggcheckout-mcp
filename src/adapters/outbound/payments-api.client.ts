@@ -14,7 +14,7 @@ export interface CreatePixChargeInput {
   /** Integer cents, BRL. Minimum 100. */
   amount: number;
   description?: string;
-  external_reference?: string;
+  external_reference: string;
   metadata?: Record<string, string>;
   buyer: { name: string; email: string; document: string; phone: string };
 }
@@ -26,14 +26,18 @@ export interface ListPaymentIntentsInput {
   limit?: number;
 }
 
+// The reference is unique per seller across test and live, while list_payment_intents shows only the key's mode
+// and key: the charge holding it may not be listable from here.
+const takenHint = (ref = '…') =>
+  ` The charge for this reference already exists: get it with list_payment_intents(external_reference=${ref}). `
+  + 'If that finds nothing, the reference is held by a charge of the other mode (test/live) or of another key: '
+  + 'cancel that one with its key, or ask the user before using another reference. '
+  + 'Do not create again with a different reference on your own.';
+
 /**
  * The public payments API (`/v1`, `ggpk_` keys). It is a different API from the one HttpClient talks
  * to: its own host, its own key, and its errors are `{error: {type, code, message, param, request_id}}`.
  */
-const takenHint = (ref = '…') =>
-  ` The charge for this reference already exists: get it with list_payment_intents(external_reference=${ref}). `
-  + 'Do not create again with a different reference.';
-
 export class PaymentsApiClient {
   private readonly baseUrl: string;
 
@@ -140,11 +144,11 @@ export class PaymentsApiClient {
         : body?.error?.code === 'idempotency_key_reused' ? reusedHint
         // The first request may still hold the lease, and its charge may already exist: wait and repeat.
         : body?.error?.code === 'request_in_progress' ? retryHint
-        // Read as "bad reference", it leads to a create with another reference: the double charge it blocks.
         // The API refuses an install below its minimum version; the command must reach the user even if
         // the message the API wrote does not carry it.
         : body?.error?.code === 'mcp_outdated' && !String(body.error.message ?? '').includes(UPDATE_COMMAND)
           ? ` Update ggcheckout-mcp: run \`${UPDATE_COMMAND}\` and restart the MCP client.`
+        // Read as "bad reference", it leads to a create with another reference: the double charge it blocks.
         : body?.error?.code === 'external_reference_taken' ? takenHint((opts.body as { external_reference?: string } | undefined)?.external_reference)
         : '';
       throw this.toError(response, body, hint);

@@ -128,6 +128,8 @@ describe('PaymentsApiClient', () => {
     expect(err.message).toContain('invalid_request/external_reference_taken: taken');
     expect(err.message).toContain('list_payment_intents(external_reference=order-9)');
     expect(err.message).toContain('Do not create again with a different reference');
+    // The reference is held across test/live, but the list shows only this key's mode.
+    expect(err.message).toContain('other mode (test/live) or of another key');
   });
 
   it('never quotes the fetch error message, which can carry the Authorization header', async () => {
