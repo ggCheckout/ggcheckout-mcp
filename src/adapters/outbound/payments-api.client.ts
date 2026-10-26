@@ -30,9 +30,9 @@ export interface ListPaymentIntentsInput {
 // and key: the charge holding it may not be listable from here.
 const takenHint = (ref = '…') =>
   ` The charge for this reference already exists: get it with list_payment_intents(external_reference=${ref}). `
-  + 'If that finds nothing, the reference is held by a charge of the other mode (test/live) or of another key: '
-  + 'cancel that one with its key, or ask the user before using another reference. '
-  + 'Do not create again with a different reference on your own.';
+  + 'If that finds nothing, the reference is held by a charge of the other mode (test/live) or of another key, '
+  + 'possibly already paid: tell the user. Never cancel a live charge to free a test reference; '
+  + 'a different reference only with the user\'s approval.';
 
 /**
  * The public payments API (`/v1`, `ggpk_` keys). It is a different API from the one HttpClient talks

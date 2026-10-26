@@ -127,9 +127,11 @@ describe('PaymentsApiClient', () => {
     const err = await client(f).createPixCharge({ ...charge, external_reference: 'order-9' }).catch((e) => e);
     expect(err.message).toContain('invalid_request/external_reference_taken: taken');
     expect(err.message).toContain('list_payment_intents(external_reference=order-9)');
-    expect(err.message).toContain('Do not create again with a different reference');
+    expect(err.message).toContain("a different reference only with the user's approval");
     // The reference is held across test/live, but the list shows only this key's mode.
     expect(err.message).toContain('other mode (test/live) or of another key');
+    expect(err.message).toContain('Never cancel a live charge to free a test reference');
+    expect(err.message).not.toContain('cancel that one');
   });
 
   it('never quotes the fetch error message, which can carry the Authorization header', async () => {
