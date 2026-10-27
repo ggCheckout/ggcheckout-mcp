@@ -14,6 +14,7 @@ const client = (fetchMock: unknown, base = 'https://api.test/v1/') =>
 const charge = {
   wallet: 'wal_1',
   amount: 4990,
+  external_reference: 'order-1',
   buyer: { name: 'Maria', email: 'm@e.com', document: '123', phone: '11987654321' },
 };
 
