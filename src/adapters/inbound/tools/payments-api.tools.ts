@@ -56,9 +56,9 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
     : 'The key in use is a TEST key (ggpk_test_): the charge is simulated and charges nobody. ';
   server.registerTool('list_wallets', {
     description:
-      'List the wallets the payments API key may charge: `public_id` (`wal_…`), `name` and '
+      'List the wallets the payments API key may charge: `id` (`wal_…`), `name` and '
       + '`active_pix_count` (active PIX gateways; 0 means create_pix_charge fails with wallet_has_no_active_pix). '
-      + 'Use `public_id` as `wallet` in create_pix_charge.',
+      + 'Use `id` as `wallet` in create_pix_charge.',
     inputSchema: {},
   }, createToolHandler('list_wallets', async () => client.listWallets()));
 
@@ -70,7 +70,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       + 'Without an order id, ask the user for one; on a repeat after a timeout, reuse exactly the same reference. '
       + 'To retry the same charge, reuse the same `idempotency_key`.',
     inputSchema: {
-      wallet: z.string().regex(WALLET_ID).describe('Wallet `public_id` (`wal_…`), from list_wallets'),
+      wallet: z.string().regex(WALLET_ID).describe('Wallet `id` (`wal_…`), from list_wallets'),
       amount: z.number().int().min(100).describe('Amount in cents (BRL): 4990 is R$ 49,90. Minimum 100'),
       description: z.string().optional().describe('What is being charged for'),
       // Required: a host that gives up at 60s (the SDK default) hides the idempotency_key hint of a slow create, and

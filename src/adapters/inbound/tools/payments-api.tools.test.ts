@@ -68,7 +68,7 @@ describe('registerPaymentsApiTools', () => {
     const server = new McpServer({ name: 't', version: '0' });
     registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
     const d: string = registered(server).list_wallets.description;
-    expect(d).toContain('public_id');
+    expect(d).toContain('`id` (`wal_…`)');
     expect(d).toContain('active_pix_count');
   });
 
