@@ -42,7 +42,7 @@ npm install -g ggcheckout-mcp
 > release. That includes minor releases, which can carry breaking changes (0.3.0 changed
 > `create_checkout` to take `productId` instead of `id`, and checkout reads return
 > `productId` instead of `id`), so read [CHANGELOG.md](./CHANGELOG.md) first. To stay on a
-> version, pin it, for example `ggcheckout-mcp@0.4.0`; you then have to update it by hand.
+> version, pin it, for example `ggcheckout-mcp@0.5.0`; you then have to update it by hand.
 
 ```json
 {
@@ -107,8 +107,8 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 
 - Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>`, so the API
   knows which release is calling.
-- The API can refuse writes from versions below the minimum it supports. The refusal says so
-  and asks you to update.
+- The API refuses every request from versions below the minimum it supports (0.5.0 from this
+  release). The refusal says so and asks you to update.
 - Both APIs tell an outdated install so in their response headers (`X-GG-MCP-Latest` and
   `X-GG-MCP-Update`); the tool result then ends with a short `update:` line so your assistant can
   suggest restarting the client. The version must be a newer semver and the command is always
