@@ -2,9 +2,25 @@ import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { registerMembersAreaTools } from './members-area.tools.js';
-import { registerTelegramTools } from './telegram.tools.js';
+import { registerBillingTools } from './billing.tools.js';
+import { registerCheckoutTools } from './checkout.tools.js';
+import { registerCustomDomainTools } from './custom-domain.tools.js';
+import { registerDashboardTools } from './dashboard.tools.js';
+import { registerDiscordTools } from './discord.tools.js';
+import { registerDiscountTools } from './discount.tools.js';
 import { registerFunnelTools } from './funnel.tools.js';
+import { registerGatewayTools } from './gateway.tools.js';
+import { registerMembersAreaTools } from './members-area.tools.js';
+import { registerPaymentTools } from './payment.tools.js';
+import { registerProductTools } from './product.tools.js';
+import { registerProfileTools } from './profile.tools.js';
+import { registerPushTools } from './push.tools.js';
+import { registerRewardsTools } from './rewards.tools.js';
+import { registerShippingTools } from './shipping.tools.js';
+import { registerStoreTools } from './store.tools.js';
+import { registerTelegramTools } from './telegram.tools.js';
+import { registerWebhookTools } from './webhook.tools.js';
+import { registerWhatsAppTools } from './whatsapp.tools.js';
 
 vi.mock('../../../shared/logger.js', () => ({
   info: vi.fn(),
@@ -38,11 +54,19 @@ describe('collection size limits', () => {
   let client: Client;
   const services = { membersArea: spyService(), telegram: spyService(), funnel: spyService() };
 
+  // Every tool family is registered, as in index.ts: one schema zod's toJSONSchema cannot
+  // convert makes tools/list fail for the whole server.
   beforeAll(async () => {
     const server = new McpServer({ name: 'test', version: '0.0.1' });
     registerMembersAreaTools(server, services.membersArea);
     registerTelegramTools(server, services.telegram);
     registerFunnelTools(server, services.funnel);
+    for (const register of [
+      registerBillingTools, registerCheckoutTools, registerCustomDomainTools, registerDashboardTools,
+      registerDiscordTools, registerDiscountTools, registerGatewayTools, registerPaymentTools,
+      registerProductTools, registerProfileTools, registerPushTools, registerRewardsTools,
+      registerShippingTools, registerStoreTools, registerWebhookTools, registerWhatsAppTools,
+    ]) register(server, spyService());
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await server.connect(serverTransport);
     client = new Client({ name: 'test-client', version: '0.0.1' });
@@ -65,7 +89,8 @@ describe('collection size limits', () => {
     expect(message).toMatch(/Input validation error/);
     expect(message).toMatch(new RegExp(`too_big|<=${max}`));
     // The size check runs before the elements are walked: no per-element issue is reported.
-    expect(message).not.toMatch(/invalid_type/);
+    // Every element is a number, so a per-element issue would read "received number".
+    expect(message).not.toMatch(/received number/);
     for (const service of Object.values(services)) {
       for (const spy of Object.values(service)) expect(spy).not.toHaveBeenCalled();
     }
@@ -77,7 +102,7 @@ describe('collection size limits', () => {
     const message = await rejection('update_funnel', { funnelId: 'f', steps: [step] });
 
     expect(message).toMatch(/too_big|<=100/);
-    expect(message).not.toMatch(/invalid_type/);
+    expect(message).not.toMatch(/received number/);
     expect(services.funnel.update).not.toHaveBeenCalled();
   });
 
@@ -88,6 +113,15 @@ describe('collection size limits', () => {
 
     expect(result.isError).toBeFalsy();
     expect(services.membersArea.reorderModules).toHaveBeenCalledWith('a', moduleIds);
+  });
+
+  it('lists every tool family without a schema conversion error', async () => {
+    const { tools } = await client.listTools();
+
+    for (const name of ['create_product', 'create_store', 'create_webhook', 'update_funnel', 'import_students']) {
+      expect(tools.map((t) => t.name)).toContain(name);
+    }
+    for (const tool of tools) expect(tool.inputSchema.type).toBe('object');
   });
 
   it('advertises the limits in the listed JSON schemas', async () => {
