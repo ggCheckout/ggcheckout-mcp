@@ -21,6 +21,17 @@ right now.
 - `create_checkout` and `update_checkout` refuse `paymentMethods` inside `checkout`: it was a second
   way into the stored methods that took the own gateway list. Methods go through the top-level field.
 
+### Security
+
+- `zod` is upgraded from 3.25.76 to 4.6.6 (GHSA-mrhx-c7xc-m3w5): an oversized array is now
+  rejected by its size limit before its elements are validated.
+- Tool inputs that accepted lists of any length are now capped, so one call cannot make the
+  server validate an unbounded collection: `reorder_modules`, `reorder_sections` and
+  `reorder_lessons` take at most 200 ids (the API already refuses more), `import_students` at
+  most 100 students (the API's own limit), `update_telegram_flow` at most 500 nodes, 1000 edges
+  and 100 variables, and each `update_funnel` step at most 100 components. A call above a cap
+  fails with an input validation error and sends nothing.
+
 ### Added
 
 - `list_checkout_wallets`: the seller's wallets, with the gateways that charge PIX and card, and

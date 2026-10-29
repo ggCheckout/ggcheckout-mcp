@@ -77,7 +77,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       // the reference is then what stops the repeat from making a second charge.
       external_reference: z.string().min(1)
         .describe('Your own reference (e.g. order id). Unique per account: reusing it fails with external_reference_taken'),
-      metadata: z.record(z.string()).optional().describe('String-to-string map stored with the charge'),
+      metadata: z.record(z.string(), z.string()).optional().describe('String-to-string map stored with the charge'),
       buyer_name: z.string().describe('Buyer full name'),
       buyer_email: z.string().describe('Buyer email'),
       buyer_document: z.string().describe('Buyer CPF or CNPJ, digits or formatted'),

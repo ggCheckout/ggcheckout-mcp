@@ -39,7 +39,7 @@ const stepSchema = z.object({
     type: componentTypeSchema.describe('Component type'),
     order: z.number(),
     props: z.record(z.string(), z.unknown()).describe('Component properties'),
-  }).passthrough()),
+  }).passthrough()).max(100),
   position: z.object({ x: z.number(), y: z.number() }),
   loadingScreen: loadingScreenSchema.optional().describe('Per-step loading screen override'),
   showLogo: z.boolean().optional().describe('Omit to follow design.header'),

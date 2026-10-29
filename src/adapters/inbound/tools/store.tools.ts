@@ -303,9 +303,11 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
   const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Use #RRGGBB');
   // The gateways come from the store's wallet (`paymentRouteId`); a method is only switched on/off. Strict, so
   // the 0.4.x `gateways` list is refused instead of stripped and reported as saved.
-  const paymentMethod = z.object({ enabled: z.boolean() }).partial().strict(
-    'A payment method only takes `enabled`: the gateways come from the wallet, set them with `paymentRouteId`',
-  );
+  const paymentMethod = z.strictObject({ enabled: z.boolean() }, {
+    error: (issue) => issue.code === 'unrecognized_keys'
+      ? 'A payment method only takes `enabled`: the gateways come from the wallet, set them with `paymentRouteId`'
+      : undefined,
+  }).partial();
 
   server.registerTool(
     'update_store',
