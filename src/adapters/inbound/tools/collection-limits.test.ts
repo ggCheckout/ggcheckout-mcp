@@ -12,6 +12,7 @@ import { registerFunnelTools } from './funnel.tools.js';
 import { registerGatewayTools } from './gateway.tools.js';
 import { registerMembersAreaTools } from './members-area.tools.js';
 import { registerPaymentTools } from './payment.tools.js';
+import { registerPaymentsApiTools } from './payments-api.tools.js';
 import { registerProductTools } from './product.tools.js';
 import { registerProfileTools } from './profile.tools.js';
 import { registerPushTools } from './push.tools.js';
@@ -61,6 +62,7 @@ describe('collection size limits', () => {
     registerMembersAreaTools(server, services.membersArea);
     registerTelegramTools(server, services.telegram);
     registerFunnelTools(server, services.funnel);
+    registerPaymentsApiTools(server, spyService(), 'test');
     for (const register of [
       registerBillingTools, registerCheckoutTools, registerCustomDomainTools, registerDashboardTools,
       registerDiscordTools, registerDiscountTools, registerGatewayTools, registerPaymentTools,
@@ -118,7 +120,7 @@ describe('collection size limits', () => {
   it('lists every tool family without a schema conversion error', async () => {
     const { tools } = await client.listTools();
 
-    for (const name of ['create_product', 'create_store', 'create_webhook', 'update_funnel', 'import_students']) {
+    for (const name of ['create_product', 'create_store', 'create_webhook', 'update_funnel', 'import_students', 'create_pix_charge']) {
       expect(tools.map((t) => t.name)).toContain(name);
     }
     for (const tool of tools) expect(tool.inputSchema.type).toBe('object');
