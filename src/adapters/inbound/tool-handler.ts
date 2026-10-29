@@ -1,7 +1,7 @@
 import * as logger from '../../shared/logger.js';
 import { getUpdateNotice } from '../../shared/update-notice.js';
 
-type ToolResult = {
+export type ToolResult = {
   [key: string]: unknown;
   content: { type: 'text'; text: string }[];
   structuredContent?: { [key: string]: unknown };

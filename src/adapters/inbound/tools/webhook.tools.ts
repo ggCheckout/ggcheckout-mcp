@@ -121,7 +121,7 @@ export function registerWebhookTools(server: McpServer, service: WebhookService)
           .enum(TESTABLE_WEBHOOK_EVENTS)
           .describe(`Event type to simulate: ${TESTABLE_WEBHOOK_EVENTS.join(' | ')}`),
         overrides: z
-          .record(z.unknown())
+          .record(z.string(), z.unknown())
           .optional()
           .describe(
             'Optional fields to override in the generated payload (shallow merge at top level, e.g. { "payment": { "id": "pay_custom_001" } })',

@@ -274,7 +274,8 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
     {
       description:
         'Create a store. It starts unpublished, with the default theme and no categories or gateways. Returns its storeId. '
-        + 'Requires a seller with verified email and phone. Then configure it with update_store (gateways in paymentMethods) and publish it.',
+        + 'Requires a seller with verified email and phone. Then configure it with update_store (a wallet in paymentRouteId, '
+        + 'PIX/card switched on in paymentMethods) and publish it.',
       inputSchema: {
         title: z.string().trim().min(1).max(120).optional().describe('Store title (default: "Nova Loja")'),
       },
@@ -300,17 +301,22 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
   );
 
   const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Use #RRGGBB');
-  const paymentMethod = z.object({
-    enabled: z.boolean(),
-    gateways: z.array(z.string()).max(20).describe('Gateway token ids from list_tokens (replaces the list)'),
+  // The gateways come from the store's wallet (`paymentRouteId`); a method is only switched on/off. Strict, so
+  // the 0.4.x `gateways` list is refused instead of stripped and reported as saved.
+  const paymentMethod = z.strictObject({ enabled: z.boolean() }, {
+    error: (issue) => issue.code === 'unrecognized_keys'
+      ? 'A payment method only takes `enabled`: the gateways come from the wallet, set them with `paymentRouteId`'
+      : undefined,
   }).partial();
 
   server.registerTool(
     'update_store',
     {
       description:
-        'Update store configuration. Send only what changes: objects are merged into the stored ones, lists (productOrder, gateways, productIds) '
-        + 'replace the stored list. `published: true` makes the store public (requires a verified seller). '
+        'Update store configuration. Send only what changes: objects are merged into the stored ones, lists (productOrder, productIds) '
+        + 'replace the stored list. PIX and card charge through a wallet: set `paymentRouteId` (from list_checkout_wallets) and switch the '
+        + 'methods on in `paymentMethods`; the gateways and their order are the wallet\'s. '
+        + '`published: true` makes the store public (requires a verified seller). '
         + 'Integrations, store upsells/downsells, video and sales notifications are dashboard-only.',
       inputSchema: {
         storeId: storeIdSchema,
@@ -323,7 +329,10 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
           logo: z.string().max(2048).describe('http(s) URL, or "" to remove'),
           favicon: z.string().max(2048).describe('http(s) URL, or "" to remove'),
         }).partial().optional(),
-        paymentMethods: z.object({ pix: paymentMethod, credit_card: paymentMethod }).partial().optional(),
+        paymentRouteId: z.string().uuid().nullable().optional()
+          .describe('Wallet id from list_checkout_wallets: the gateways PIX and card charge through'),
+        paymentMethods: z.object({ pix: paymentMethod, credit_card: paymentMethod }).partial().optional()
+          .describe('Switch PIX / card on or off. A method the wallet cannot charge stays off'),
         socialLinks: z.object({
           facebook: z.string().max(500), instagram: z.string().max(500), twitter: z.string().max(500),
           youtube: z.string().max(500), discord: z.string().max(500), telegram: z.string().max(500),

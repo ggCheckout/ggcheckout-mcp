@@ -8,26 +8,19 @@ const paymentMethodConfigSchema = z.object({
   type: z.string(),
 }).nullable().optional();
 
-const pixGatewayEntrySchema = z.object({
-  tokenId: z.string().describe('Gateway token ID'),
-  type: z.string().describe('Gateway type (e.g., amplopay, efibank, mercadopago)'),
-});
-
-const pixFallbackSchema = z.union([
-  z.object({
-    token: z.string(),
-    type: z.string(),
-  }),
-  z.object({
-    gateways: z.array(pixGatewayEntrySchema).min(1).max(5)
-      .describe('Ordered list of PIX gateways for fallback chain (max 5). First gateway has highest priority.'),
-  }),
-]).nullable().optional()
-  .describe('PIX config: legacy single gateway {token, type} or fallback chain {gateways: [{tokenId, type}]}');
+/**
+ * PIX and card charge through a wallet (a payment route) of the seller: its gateways, order and
+ * fallback live in the wallet, not in the checkout. `list_checkout_wallets` gives the ids.
+ */
+const walletMethodSchema = z.object({
+  routeId: z.string().uuid().describe('Wallet id, from list_checkout_wallets'),
+}).nullable().optional();
 
 const paymentMethodsSchema = z.object({
-  credit_card: paymentMethodConfigSchema,
-  pix: pixFallbackSchema,
+  credit_card: walletMethodSchema
+    .describe("Card through a wallet: {routeId}. The wallet's card charges. null turns card off"),
+  pix: walletMethodSchema
+    .describe("PIX through a wallet: {routeId}. The wallet's PIX chain charges, in its order. null turns PIX off"),
   bank_slip: paymentMethodConfigSchema,
   installments: z.number().min(1).max(24).optional(),
   showInstallmentsOnPrice: z.boolean().optional(),
@@ -116,7 +109,9 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
         checkoutId: z.string().describe('Checkout ID (uid)'),
         title: z.string().max(200).optional().describe('Checkout page title'),
         price: z.number().min(0).optional().describe('Price in Brazilian Reais — converted to cents before it is sent'),
-        paymentMethods: paymentMethodsSchema.optional().describe('Payment methods configuration'),
+        paymentMethods: paymentMethodsSchema.optional()
+          .describe('Payment methods configuration. Replaces the stored methods as a whole: send every method to keep '
+            + '(e.g. pix and credit_card with their {routeId}), not only the one that changes'),
         checkout: z.record(z.string(), z.unknown()).optional()
           .describe('Checkout page configuration, merged into the stored one (send only the keys to change). '
             + 'Payment methods are changed through `paymentMethods`; the stored ones are never re-sent from here'),
