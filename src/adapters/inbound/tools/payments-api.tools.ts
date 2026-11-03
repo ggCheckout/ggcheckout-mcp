@@ -57,7 +57,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
   server.registerTool('list_wallets', {
     description:
       'List the wallets the payments API key may charge: `id` (`wal_…`), `name` and '
-      + '`active_pix_count` (active PIX gateways; 0 means create_pix_charge fails with wallet_has_no_active_pix). '
+      + '`active_pix_count` (active PIX gateways; 0 means create_pix_charge fails with wallet_has_no_active_pix on a live key; a test key simulates without checking it). '
       + 'Use `id` as `wallet` in create_pix_charge.',
     inputSchema: {},
   }, createToolHandler('list_wallets', async () => client.listWallets()));
@@ -66,7 +66,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
     description:
       active + 'Create a PIX charge on a wallet through the payments API. The result carries `livemode`: say which mode ran. The PIX is in '
       + '`pix.copy_paste` and `pix.qr_base64`. Confirm amount and buyer (name, email, CPF/CNPJ, phone) with the user before calling it. '
-      + '`external_reference` is required (e.g. the order id): an accidental repeat then fails with external_reference_taken instead of charging twice. '
+      + '`external_reference` is required (e.g. the order id): an accidental repeat while the first charge holds it then fails with external_reference_taken instead of charging twice. '
       + 'Without an order id, ask the user for one; on a repeat after a timeout, reuse exactly the same reference. '
       + 'To retry the same charge, reuse the same `idempotency_key`.',
     inputSchema: {
@@ -76,7 +76,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       // Required: a host that gives up at 60s (the SDK default) hides the idempotency_key hint of a slow create, and
       // the reference is then what stops the repeat from making a second charge.
       external_reference: z.string().min(1)
-        .describe('Your own reference (e.g. order id). Unique per account: reusing it fails with external_reference_taken'),
+        .describe('Your own reference (e.g. order id). Unique among charges that hold it: open, or paid before being canceled or expired. A failed, expired or canceled charge releases it, and its PIX may still be paid. Reusing a held one fails with external_reference_taken'),
       metadata: z.record(z.string(), z.string()).optional().describe('String-to-string map stored with the charge'),
       buyer_name: z.string().describe('Buyer full name'),
       buyer_email: z.string().describe('Buyer email'),

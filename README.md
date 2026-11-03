@@ -653,12 +653,18 @@ Bots (`list_telegram_bots`, `get_telegram_bot`, `create_telegram_bot`, `update_t
 
 Requires `GG_PAYMENTS_API_KEY` (see Configuration). PIX only.
 
+Its own rate limits, not the ones in [Rate Limits](#rate-limits): a `ggpk_test_` key creates at most 10
+charges per minute (cancels 10, reads 60); a `ggpk_live_` key defaults to 60 creates, 60 cancels and 300
+reads per minute. A 429 carries `Retry-After`.
+
 `list_wallets`, `create_pix_charge`, `get_payment_intent`, `list_payment_intents` (filters:
 `status`, `external_reference`, `starting_after`, `limit`) and `cancel_payment_intent`.
 
 `create_pix_charge` takes the wallet id (`wal_…`), the amount **in cents** (`4990` = R$ 49,90),
 `external_reference` (required, e.g. the order id: a repeat with the same one fails instead of
-charging twice), `description`, `metadata` and the buyer (`buyer_name`, `buyer_email`,
+charging twice while the first charge holds it. It is unique among charges that hold it: open, or
+paid before being canceled or expired. A failed, expired or canceled charge releases it, and its PIX
+may still be paid), `description`, `metadata` and the buyer (`buyer_name`, `buyer_email`,
 `buyer_document`, `buyer_phone`: all four are required, the phone with 10 to 15 digits). With a `ggpk_live_` key it creates a **real** charge; with
 `ggpk_test_` a simulated one. The response says which with `livemode` and carries the PIX in
 `pix.copy_paste` / `pix.qr_base64`.
@@ -699,6 +705,8 @@ All prices are stored internally in cents.
 ---
 
 ## Rate Limits
+
+These cover the `ggck_live_` API only. The Payments API has its own limits (see [Payments API](#payments-api-5-tools)).
 
 | Limit | Value |
 |-------|-------|
