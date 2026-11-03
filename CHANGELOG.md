@@ -14,6 +14,11 @@ right now.
   `{ gateways: [...] }`) is gone: the platform charges PIX and card only through a wallet.
   Release requirement: the API must expand a bare `{ routeId }` before its write gates
   (ggCheckout/saas-checkout#1878), or the checkout is saved as a draft.
+- `create_checkout` and `update_checkout`: `paymentMethods` takes `paypal` (`{ token, type: 'paypal' }`,
+  outside the wallet, or `null`) and refuses an unknown key instead of dropping it. `update_checkout`
+  refuses a `paymentMethods` that leaves out a stored method (an edit of `installments` alone, say):
+  the map replaces the stored methods as a whole, so the API would delete it and could unpublish the
+  checkout. Resend each stored method or send it as `null`.
 - `update_store`: `paymentMethods.pix` / `credit_card` take only `enabled`; the gateways come from
   the store's wallet, set with the new `paymentRouteId`. Needs ggCheckout/saas-checkout#1878 and
   ggCheckout/ggcheckout-core#605 (the core stores the store's wallet). The 0.4.x `gateways` list is

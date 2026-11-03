@@ -25,6 +25,14 @@ describe('wallet schemas', () => {
     expect(pm.safeParse({ credit_card: { routeId: 'not-a-uuid' } }).success).toBe(false);
   });
 
+  it.each(['create_checkout', 'update_checkout'])('%s takes paypal and refuses an unknown method instead of dropping it', (tool) => {
+    const pm = checkout(tool).paymentMethods;
+    expect(pm.safeParse({ paypal: { token: 'tok', type: 'paypal' } }).success).toBe(true);
+    expect(pm.safeParse({ paypal: null }).success).toBe(true);
+    expect(pm.safeParse({ paypal: { token: 'tok', type: 'stripe' } }).success).toBe(false);
+    expect(pm.safeParse({ pix: { routeId: UUID }, boleto: { token: 't' } }).success).toBe(false);
+  });
+
   it('update_store refuses the 0.4.x gateways list instead of dropping it', () => {
     const pm = shapeOf((s) => registerStoreTools(s, {} as any), 'update_store').paymentMethods;
     expect(pm.safeParse({ pix: { enabled: true } }).success).toBe(true);

@@ -17,6 +17,8 @@ export interface CheckoutPaymentMethods {
   credit_card?: CheckoutWalletMethod | null;
   pix?: CheckoutWalletMethod | null;
   bank_slip?: CheckoutPaymentMethodConfig | null;
+  /** Per checkout, outside the wallet: the PayPal credential id from `list_tokens`. */
+  paypal?: { token: string; type: 'paypal' } | null;
   installments?: number;
   showInstallmentsOnPrice?: boolean;
   primaryPaymentMethod?: 'pix' | 'credit_card';

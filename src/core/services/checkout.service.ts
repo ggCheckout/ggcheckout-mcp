@@ -3,6 +3,7 @@ import type { CheckoutPort } from '../ports/checkout.port.js';
 import type { ProductPort } from '../ports/product.port.js';
 import type {
   Checkout,
+  CheckoutPaymentMethods,
   CheckoutTag,
   CreateCheckoutInput,
   UpdateCheckoutInput,
@@ -98,6 +99,7 @@ export class CheckoutService {
         + 'Recreate the offer with create_checkout against the product it sells.',
       );
     }
+    if (input.paymentMethods) refuseDroppedMethods(id, current.paymentMethods, input.paymentMethods);
     const orderBumps = await this.serializeOrderBumps(input.orderBumps);
     // The write keeps every key absent from the body as stored (field mask), so only the
     // checkout's identity (title, owner, product, price, re-sent unchanged) and what the caller
@@ -163,4 +165,30 @@ function refuseNestedPaymentMethods(setup: Record<string, unknown> | undefined):
       'Payment methods are not set inside `checkout`: use the top-level `paymentMethods` with each method\'s wallet `{ routeId }`.',
     );
   }
+}
+
+const METHODS = ['pix', 'credit_card', 'bank_slip', 'paypal'] as const;
+
+/**
+ * The body's `paymentMethods` replaces the stored methods as a whole: a stored method absent from it is
+ * deleted, and the API still answers success (with no method left, it also unpublishes the checkout). So
+ * every method the read shows has to come back, as a value or as an explicit `null`. This also covers
+ * an edit of `installments` alone, which travels in the same map.
+ *
+ * ponytail: guards what the read shows. A method the API flags `chargeable: false` is hidden from the
+ * read, so it is still dropped silently; closing that needs the API to expose it (or refuse the drop).
+ */
+function refuseDroppedMethods(
+  id: string,
+  stored: CheckoutPaymentMethods | undefined,
+  sent: CheckoutPaymentMethods,
+): void {
+  const dropped = METHODS.filter((m) => stored?.[m] && !(m in sent));
+  if (dropped.length === 0) return;
+  throw new ValidationError(
+    `paymentMethods replaces the stored methods as a whole, and checkout ${id} has ${dropped.join(', ')} `
+    + 'that this body leaves out, which would delete them. Resend every stored method (pix and credit_card '
+    + 'with their wallet {routeId} from get_checkout, bank_slip and paypal with their credential id from '
+    + 'list_tokens), or send null for the ones to turn off.',
+  );
 }

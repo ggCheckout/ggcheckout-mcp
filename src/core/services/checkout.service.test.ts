@@ -242,6 +242,26 @@ describe('CheckoutService', () => {
       expect(mockCheckoutPort.update).not.toHaveBeenCalled();
     });
 
+    it('refuses an installments-only edit, which would delete the stored methods', async () => {
+      await expect(service.update('ck-1', { paymentMethods: { installments: 6 } })).rejects.toThrow(/pix/);
+      await expect(service.update('ck-1', { paymentMethods: {} })).rejects.toThrow(ValidationError);
+      expect(mockCheckoutPort.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses a wallet change that leaves the stored PayPal out, and accepts it resent or null', async () => {
+      vi.mocked(mockCheckoutPort.getById).mockResolvedValue({
+        ...currentCheckout, paymentMethods: { pix: { routeId: 'r' }, paypal: { type: 'paypal' } },
+      } as any);
+      const pix = { routeId: '3f2b8c1e-5d4a-4e6f-9a7b-1c2d3e4f5a6b' };
+
+      await expect(service.update('ck-1', { paymentMethods: { pix } })).rejects.toThrow(/paypal/);
+      expect(mockCheckoutPort.update).not.toHaveBeenCalled();
+
+      await service.update('ck-1', { paymentMethods: { pix, paypal: null } });
+      await service.update('ck-1', { paymentMethods: { pix, paypal: { token: 'tok', type: 'paypal' } } });
+      expect(mockCheckoutPort.update).toHaveBeenCalledTimes(2);
+    });
+
     it('passes the pix wallet { routeId } through', async () => {
       const newPixConfig = { routeId: '3f2b8c1e-5d4a-4e6f-9a7b-1c2d3e4f5a6b' };
       await service.update('ck-1', { paymentMethods: { pix: newPixConfig } });

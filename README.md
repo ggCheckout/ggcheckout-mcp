@@ -275,7 +275,9 @@ instead of silently vanishing from the page.
 PIX and card charge through a **wallet** of the seller: `paymentMethods.pix` and
 `paymentMethods.credit_card` take `{ "routeId": "<wallet id>" }`, with the id from `list_checkout_wallets`.
 The wallet decides the gateways, the PIX fallback order and the card that charges; a checkout no
-longer lists its own gateways.
+longer lists its own gateways. PayPal stays per checkout, outside the wallet:
+`paymentMethods.paypal` takes `{ "token": "<PayPal credential id from list_tokens>", "type": "paypal" }`,
+and `null` turns it off. An unknown method key is refused instead of being dropped.
 
 **Example prompt:** "Create a checkout page for my React Course priced at R$99.90"
 
@@ -284,6 +286,13 @@ longer lists its own gateways.
 Only provide the fields you want to change. The API keeps every field missing from
 the body as stored, so the tool sends the checkout's identity (title, owner, product,
 price) plus your changes and nothing else from the stored document.
+
+`paymentMethods` is the exception: it replaces the stored methods as a whole, and `installments`,
+`showInstallmentsOnPrice` and `primaryPaymentMethod` travel in the same map. So every stored method
+(`pix`, `credit_card`, `bank_slip`, `paypal`) has to come back in it, or be sent as `null` to turn it
+off; a body that leaves one of them out (an edit of `installments` alone, say) is refused before the
+write, since the API would delete that method and could unpublish the checkout. A method the API hides
+from the read (flagged `chargeable: false`) is not covered by that check.
 
 **Example prompt:** "Update checkout abc123 price to R$79.90 and unpublish it"
 
