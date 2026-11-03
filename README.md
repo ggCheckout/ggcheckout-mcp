@@ -460,7 +460,9 @@ A quiz is a funnel: `question` components with options and scores, `result` comp
 into the stored ones; `steps`, `flow` and `scoring` replace the stored value, so read the
 funnel first and send the full array back. Pixels and webhooks are linked by id
 (`settings.pixelTokenIds` from `list_tokens`, `settings.webhookIds` from `list_webhooks`).
-`list_funnel_checkouts` gives the checkouts and gateways a `pix` component can use.
+`list_funnel_checkouts` gives the checkouts and gateways a `pix` component can use. The component
+links to a checkout by its uid and charges through that checkout's wallet: the gateway is not chosen
+in the component (a `gatewayId` in its props is ignored).
 
 **Example prompts:**
 - "List all my funnels"

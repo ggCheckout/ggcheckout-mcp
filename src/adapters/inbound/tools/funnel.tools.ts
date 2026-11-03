@@ -177,7 +177,9 @@ export function registerFunnelTools(server: McpServer, service: FunnelService) {
     'list_funnel_checkouts',
     {
       description:
-        'List the checkouts and payment gateways a funnel `pix` component can use (checkout uid, price, order bumps; gateway id, type, name). Use the ids in the component props.',
+        'List the checkouts and payment gateways a funnel `pix` component can use (checkout uid, price, order bumps; gateway id, type, name). '
+        + 'The component links to a checkout by its uid and charges through that checkout\'s wallet: the gateway is not chosen in the '
+        + 'component (a `gatewayId` in its props is ignored), so the gateway list is informational.',
       inputSchema: {
         method: z.enum(['pix', 'credit_card']).optional().describe('Payment method the gateways must support (default: pix)'),
       },
