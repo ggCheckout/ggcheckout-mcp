@@ -149,7 +149,7 @@ describe('PaymentsApiClient', () => {
     const bare = reply(426, { error: { type: 'invalid_request', code: 'mcp_outdated', message: 'This ggcheckout-mcp is too old.' } });
     const e1 = await client(bare).listWallets().catch((e) => e);
     expect(e1.message).toContain('invalid_request/mcp_outdated: This ggcheckout-mcp is too old.');
-    expect(e1.message).toContain('run `npx -y ggcheckout-mcp@latest` and restart the MCP client');
+    expect(e1.message).toContain('run `npm i -g ggcheckout-mcp@latest` and restart');
     const full = reply(426, { error: { type: 'invalid_request', code: 'mcp_outdated', message: 'Run npx -y ggcheckout-mcp@latest.' } });
     const e2 = await client(full).createPixCharge(charge).catch((e) => e);
     expect(e2.message.split('npx -y ggcheckout-mcp@latest')).toHaveLength(2);
@@ -221,7 +221,7 @@ describe('PaymentsApiClient', () => {
     resetUpdateNotice();
     await client(reply(404, { error: { type: 'invalid_request', code: 'intent_not_found', message: 'x' } }, h))
       .getPaymentIntent('pi_x').catch(() => undefined);
-    expect(getUpdateNotice()).toContain('`npx -y ggcheckout-mcp@latest`');
+    expect(getUpdateNotice()).toContain('`npm i -g ggcheckout-mcp@latest`');
   });
 
   it('gives no warning when the API only sends X-GG-MCP-Latest', async () => {

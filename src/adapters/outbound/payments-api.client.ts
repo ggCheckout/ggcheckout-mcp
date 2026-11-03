@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import * as logger from '../../shared/logger.js';
 import { ApiError, NetworkError } from '../../shared/errors.js';
-import { observeVersionHeaders, UPDATE_COMMAND } from '../../shared/update-notice.js';
+import { observeVersionHeaders, UPDATE_COMMAND, UPDATE_STEPS } from '../../shared/update-notice.js';
 
 export const DEFAULT_PAYMENTS_API_URL = 'https://api.ggcheckout.app/v1';
 const TIMEOUT_MS = 15_000;
@@ -147,7 +147,7 @@ export class PaymentsApiClient {
         // The API refuses an install below its minimum version; the command must reach the user even if
         // the message the API wrote does not carry it.
         : body?.error?.code === 'mcp_outdated' && !String(body.error.message ?? '').includes(UPDATE_COMMAND)
-          ? ` Update ggcheckout-mcp: run \`${UPDATE_COMMAND}\` and restart the MCP client.`
+          ? ` Update ggcheckout-mcp: ${UPDATE_STEPS}`
         // Read as "bad reference", it leads to a create with another reference: the double charge it blocks.
         : body?.error?.code === 'external_reference_taken' ? takenHint((opts.body as { external_reference?: string } | undefined)?.external_reference)
         : '';

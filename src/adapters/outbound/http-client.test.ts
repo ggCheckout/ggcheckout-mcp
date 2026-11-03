@@ -320,10 +320,10 @@ describe('HttpClient', () => {
       new HttpClient('https://api.test.com', 'k', '0.4.0');
       const fail = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
       expect(() => fail({
-        response: { status: 409, data: { error: 'x' }, headers: { 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'upd' } },
+        response: { status: 409, data: { error: 'x' }, headers: { 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'header-text' } },
       })).toThrow(ApiError);
-      expect(getUpdateNotice()).toContain('`npx -y ggcheckout-mcp@latest`');
-      expect(getUpdateNotice()).not.toContain('upd');
+      expect(getUpdateNotice()).toContain('`npm i -g ggcheckout-mcp@latest`');
+      expect(getUpdateNotice()).not.toContain('header-text');
     });
   });
 });

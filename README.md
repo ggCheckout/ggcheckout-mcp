@@ -111,12 +111,17 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
   release). The refusal says so and asks you to update.
 - Both APIs tell an outdated install so in their response headers (`X-GG-MCP-Latest` and
   `X-GG-MCP-Update`); the tool result then ends with a short `update:` line so your assistant can
-  suggest restarting the client. The version must be a newer semver and the command is always
-  `npx -y ggcheckout-mcp@latest`: no header text is shown. There is no npm registry check.
+  suggest updating. The version must be a newer semver and the text is fixed (with `@latest` in the
+  config, restart the client; a global install runs `npm i -g ggcheckout-mcp@latest`; a pinned version
+  is changed in the config): no header text is shown. There is no npm registry check.
 
 **For maintainers**
 
 - Never remove or change the format of the `User-Agent` header: the API's version check reads it.
+- Every release: raise `LATEST_GGCHECKOUT_MCP_VERSION` in ggCheckout/saas-checkout
+  (`lib/apiKeys/ggcheckoutMcpVersion.ts`) and `DEFAULT_MCP_LATEST_VERSION` in ggCheckout/ggcheckout-core
+  (`crates/ggcheckout-http-public-api/src/config.rs`). The `update:` notice comes only from them: with
+  no registry poll, a release nobody announces there reaches no install, with no error anywhere.
 - Every release that changes what a write sends to the API must be considered as the new
   minimum supported version on the server, and that decision is recorded in the release's
   CHANGELOG entry.

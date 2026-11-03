@@ -52,7 +52,7 @@ describe('createToolHandler', () => {
       expect(result.content).toHaveLength(2);
       expect(JSON.parse(result.content[0].text)).toEqual({ ok: true });
       expect(result.content[1].text).toMatch(/^update: ggcheckout-mcp 0\.5\.0 is available \(running 0\.4\.0\)/);
-      expect(result.content[1].text).toContain('`npx -y ggcheckout-mcp@latest`');
+      expect(result.content[1].text).toContain('`npm i -g ggcheckout-mcp@latest`');
       expect(result.structuredContent).toEqual({ ok: true });
     });
 

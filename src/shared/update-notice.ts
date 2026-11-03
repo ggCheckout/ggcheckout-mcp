@@ -17,8 +17,16 @@ export function isNewerVersion(latest: string, current: string): boolean {
   return false;
 }
 
-/** The only command the notice names: header text is never put into tool output. */
-export const UPDATE_COMMAND = 'npx -y ggcheckout-mcp@latest';
+/** The package spec every update path ends on. */
+export const UPDATE_COMMAND = 'ggcheckout-mcp@latest';
+
+/**
+ * How to update, per install kind: `npx -y ggcheckout-mcp@latest` alone touches neither a global
+ * install nor a version pinned in the config. Header text is never put into tool output, only this.
+ */
+export const UPDATE_STEPS = 'with `ggcheckout-mcp@latest` in the MCP config, restart the client; '
+  + 'with a global install, run `npm i -g ggcheckout-mcp@latest` and restart; '
+  + 'with a pinned version, change it in the config and restart.';
 
 /**
  * Reads the API's version headers off a response (both APIs send them). `X-GG-MCP-Update` is only
@@ -34,7 +42,7 @@ export function observeVersionHeaders(
   if (!latest || !get('x-gg-mcp-update')) return;
   if (!/^v?\d+\.\d+\.\d+$/.test(latest) || !isNewerVersion(latest, currentVersion)) return;
   notice = `ggcheckout-mcp ${latest} is available (running ${currentVersion}). `
-    + `Ask the user to run \`${UPDATE_COMMAND}\` and restart their MCP client.`;
+    + `Tell the user how to update: ${UPDATE_STEPS}`;
 }
 
 /** The short line tool responses carry while the API says this install is behind. */

@@ -25,7 +25,9 @@ describe('observeVersionHeaders', () => {
     observe({ 'x-gg-mcp-latest': '0.5.0', 'x-gg-mcp-update': 'anything' });
     expect(getUpdateNotice()).toBe(
       'ggcheckout-mcp 0.5.0 is available (running 0.4.0). '
-      + 'Ask the user to run `npx -y ggcheckout-mcp@latest` and restart their MCP client.',
+      + 'Tell the user how to update: with `ggcheckout-mcp@latest` in the MCP config, restart the client; '
+      + 'with a global install, run `npm i -g ggcheckout-mcp@latest` and restart; '
+      + 'with a pinned version, change it in the config and restart.',
     );
   });
 
