@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 195 tools across 20 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 196 tools across 20 domains.
 
 ## Overview
 
@@ -123,9 +123,9 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 
 ---
 
-## Available Tools (195)
+## Available Tools (196)
 
-### Products (18 tools)
+### Products (19 tools)
 
 #### `list_products`
 
