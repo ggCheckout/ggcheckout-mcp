@@ -81,7 +81,7 @@ export GGCHECKOUT_API_URL="https://your-staging.example.com"
 
 The five payments-API tools (`list_wallets`, `create_pix_charge`, `get_payment_intent`,
 `list_payment_intents`, `cancel_payment_intent`) use their own secret key, created in
-**My wallet → API**. They are only registered when it is set, and `GGCHECKOUT_API_KEY` is never
+**Tools → Gateways → Payments API** (Ferramentas › Gateways › API de pagamentos). They are only registered when it is set, and `GGCHECKOUT_API_KEY` is never
 used for them.
 
 ```bash
