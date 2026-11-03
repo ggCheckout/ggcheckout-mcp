@@ -82,7 +82,8 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       buyer_email: z.string().describe('Buyer email'),
       buyer_document: z.string().describe('Buyer CPF or CNPJ, digits or formatted'),
       buyer_phone: z.string().describe('Buyer phone, 10 to 15 digits (required by the API)'),
-      idempotency_key: z.string().min(1).max(255).optional()
+      // The core takes 1 to 255 printable ASCII characters; anything else never leaves fetch (an invalid header).
+      idempotency_key: z.string().regex(/^[\x21-\x7e]{1,255}$/, 'idempotency_key must be 1 to 255 printable ASCII characters, no spaces').optional()
         .describe('Only to repeat a call that timed out or failed with 5xx: pass the SAME value so no second charge is made. Leave empty otherwise'),
     },
   }, createToolHandler('create_pix_charge', async (a) => client.createPixCharge({
