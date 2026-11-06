@@ -52,7 +52,9 @@ right now.
   sent there). `GG_PAYMENTS_API_URL` overrides the base URL.
   - `create_pix_charge` creates a **real** charge with a live key and a simulated one with
     `ggpk_test_`; the result's `livemode` says which ran. Each call sends a fresh
-    `Idempotency-Key` UUID; pass `idempotency_key` only to repeat a call that timed out.
+    `Idempotency-Key` UUID; pass `idempotency_key` only to repeat a call that timed out, and omit it
+    otherwise. It takes 1 to 255 printable ASCII characters (the core's limit), so a key with a line
+    break, a space or an accent is refused before any request.
   - `buyer_phone` is required (10 to 15 digits), as the API requires it.
   - `external_reference` is required on `create_pix_charge`. A host that gives up on a tool call at
     60 s (the MCP SDK default) never shows the `idempotency_key` of a slow create (the create waits up

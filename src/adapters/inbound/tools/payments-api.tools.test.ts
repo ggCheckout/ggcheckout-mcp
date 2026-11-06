@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { registerPaymentsApiTools, registerPaymentsApiToolsFromEnv } from './payments-api.tools.js';
 import type { PaymentsApiClient } from '../../outbound/payments-api.client.js';
 
@@ -103,6 +105,60 @@ describe('registerPaymentsApiTools', () => {
     client.getPaymentIntent.mockRejectedValueOnce(new Error('boom'));
     const failed = await registered(server).get_payment_intent.handler({ id: 'pi_1' }, {});
     expect(failed.content[0].text).toBe('Error: boom');
+  });
+
+  describe('idempotency_key', () => {
+    const args = {
+      wallet: 'wal_8f3kQ2mN7xR4tY9pL6aBcD', amount: 4990, external_reference: 'order-1',
+      buyer_name: 'Maria', buyer_email: 'm@e.com', buyer_document: '123', buyer_phone: '11987654321',
+    };
+
+    async function connect() {
+      const createPixCharge = vi.fn().mockResolvedValue({ id: 'pi_1', livemode: false });
+      const server = new McpServer({ name: 't', version: '0' });
+      registerPaymentsApiTools(server, { createPixCharge } as unknown as PaymentsApiClient, 'test');
+      const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+      const client = new Client({ name: 'c', version: '0' });
+      await Promise.all([server.connect(serverSide), client.connect(clientSide)]);
+      return { client, createPixCharge };
+    }
+
+    // Through the real MCP call path: the SDK validates the arguments, so a refused key never reaches the client.
+    it.each([
+      ['CR/LF', 'retry-1\r\nX-Injected: 1'],
+      ['LF', 'retry-1\n'],
+      ['a space', 'retry 1'],
+      ['Latin-1', 'pedido-é'],
+      ['a character above U+00FF', 'retry-\u{1F600}'],
+      ['nothing (empty)', ''],
+      ['256 characters', 'k'.repeat(256)],
+    ])('refuses a key with %s and never calls the payments API', async (_label, key) => {
+      const { client, createPixCharge } = await connect();
+      const result = await client.callTool({ name: 'create_pix_charge', arguments: { ...args, idempotency_key: key } });
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).toContain('idempotency_key');
+      expect(createPixCharge).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['255 characters', 'k'.repeat(255)],
+      ['one character', 'k'],
+      ['printable ASCII punctuation', 'order-1234_retry.2:~!'],
+    ])('passes a key with %s through to the payments API', async (_label, key) => {
+      const { client, createPixCharge } = await connect();
+      const result = await client.callTool({ name: 'create_pix_charge', arguments: { ...args, idempotency_key: key } });
+      expect(result.isError).toBeFalsy();
+      expect(createPixCharge).toHaveBeenCalledWith(expect.objectContaining({ external_reference: 'order-1' }), key);
+    });
+
+    it('tells the model to omit the key on a first create, since "" is refused', async () => {
+      const { client, createPixCharge } = await connect();
+      const { tools } = await client.listTools();
+      const props = tools.find((t) => t.name === 'create_pix_charge')!.inputSchema.properties as Record<string, { description: string }>;
+      expect(props.idempotency_key.description).toContain('Omit this field otherwise');
+      await client.callTool({ name: 'create_pix_charge', arguments: args });
+      expect(createPixCharge).toHaveBeenCalledWith(expect.anything(), undefined);
+    });
   });
 
   it('maps the flat buyer_* arguments into the API body', async () => {

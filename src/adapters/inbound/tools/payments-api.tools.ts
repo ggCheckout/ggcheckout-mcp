@@ -82,9 +82,11 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       buyer_email: z.string().describe('Buyer email'),
       buyer_document: z.string().describe('Buyer CPF or CNPJ, digits or formatted'),
       buyer_phone: z.string().describe('Buyer phone, 10 to 15 digits (required by the API)'),
-      // The core takes 1 to 255 printable ASCII characters; anything else never leaves fetch (an invalid header).
+      // The limit is the core's contract (1 to 255 printable ASCII characters, http/middleware.rs), checked here so a
+      // bad key fails before any request. Only CR/LF and characters above U+00FF would also make fetch refuse the
+      // header; the rest (empty, space, Latin-1, 256+ characters) would reach the core and get a 400.
       idempotency_key: z.string().regex(/^[\x21-\x7e]{1,255}$/, 'idempotency_key must be 1 to 255 printable ASCII characters, no spaces').optional()
-        .describe('Only to repeat a call that timed out or failed with 5xx: pass the SAME value so no second charge is made. Leave empty otherwise'),
+        .describe('Only to repeat a call that timed out or failed with 5xx: pass the SAME value so no second charge is made. Omit this field otherwise (an empty string is refused)'),
     },
   }, createToolHandler('create_pix_charge', async (a) => client.createPixCharge({
     wallet: a.wallet,
