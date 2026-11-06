@@ -162,7 +162,9 @@ function mergePageSetup(
 function refuseNestedPaymentMethods(setup: Record<string, unknown> | undefined): void {
   if (setup && 'paymentMethods' in setup) {
     throw new ValidationError(
-      'Payment methods are not set inside `checkout`: use the top-level `paymentMethods` with each method\'s wallet `{ routeId }`.',
+      'Payment methods are not set inside `checkout`: use the top-level `paymentMethods`. PIX and card take a wallet '
+      + '`{ routeId }` (from list_checkout_wallets); bank slip takes `{ token, type }` and PayPal `{ token, type: \'paypal\' }`, '
+      + 'the credential id from list_tokens.',
     );
   }
 }

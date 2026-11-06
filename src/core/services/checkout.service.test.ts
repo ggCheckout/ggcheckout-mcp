@@ -216,6 +216,14 @@ describe('CheckoutService', () => {
       expect(mockCheckoutPort.update).not.toHaveBeenCalled();
     });
 
+    // Only PIX and card go through a wallet: the hint must not send bank slip or PayPal to `{ routeId }`.
+    it('gives each method the shape the top-level field takes when refusing checkout.paymentMethods', async () => {
+      const methods = { paypal: { token: 'tok-pp', type: 'paypal' } };
+      const refusal = service.update('ck-1', { checkout: { paymentMethods: methods } });
+      await expect(refusal).rejects.toThrow(/PIX and card take a wallet `\{ routeId \}`/);
+      await expect(refusal).rejects.toThrow(/bank slip takes `\{ token, type \}` and PayPal `\{ token, type: 'paypal' \}`/);
+    });
+
     it('sends order bumps only when the caller changes them, as the snapshots the page parses', async () => {
       await service.update('ck-1', { orderBumps: ['prod-1'] });
 
