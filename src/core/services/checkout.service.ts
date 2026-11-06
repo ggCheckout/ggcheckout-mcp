@@ -177,8 +177,9 @@ const METHODS = ['pix', 'credit_card', 'bank_slip', 'paypal'] as const;
  * every method the read shows has to come back, as a value or as an explicit `null`. This also covers
  * an edit of `installments` alone, which travels in the same map.
  *
- * ponytail: guards what the read shows. A method the API flags `chargeable: false` is hidden from the
- * read, so it is still dropped silently; closing that needs the API to expose it (or refuse the drop).
+ * Guards what the read shows. A method the API hides from the read (it cannot charge today) is the
+ * API's to guard: the PATCH refuses a body that leaves it out with `HIDDEN_PAYMENT_METHOD_OMITTED`
+ * (ggCheckout/saas-checkout#2183), and its message reaches the user as is.
  */
 function refuseDroppedMethods(
   id: string,

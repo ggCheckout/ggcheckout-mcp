@@ -298,7 +298,8 @@ price) plus your changes and nothing else from the stored document.
 (`pix`, `credit_card`, `bank_slip`, `paypal`) has to come back in it, or be sent as `null` to turn it
 off; a body that leaves one of them out (an edit of `installments` alone, say) is refused before the
 write, since the API would delete that method and could unpublish the checkout. A method the API hides
-from the read (flagged `chargeable: false`) is not covered by that check.
+from the read (one that cannot charge today) is not visible here; the API refuses a body that leaves
+it out (`HIDDEN_PAYMENT_METHOD_OMITTED`, ggCheckout/saas-checkout#2183), and `null` turns it off.
 
 **Example prompt:** "Update checkout abc123 price to R$79.90 and unpublish it"
 
