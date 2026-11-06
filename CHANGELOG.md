@@ -77,8 +77,10 @@ right now.
     create again without the key.
 - **Version notice from the API.** Both APIs answer `X-GG-MCP-Latest` / `X-GG-MCP-Update` (the API
   reads the version from the `User-Agent`, which is unchanged). When both are present and the
-  latest is a newer semver, the tool result ends with one `update:` line telling the assistant to
-  run `npx -y ggcheckout-mcp@latest` and restart the client; header text is never shown.
+  latest is a newer semver, the tool result ends with one `update:` line telling the assistant how to
+  update for each kind of install: with `ggcheckout-mcp@latest` in the MCP config, restart the client;
+  with a global install, run `npm i -g ggcheckout-mcp@latest` and restart; with a pinned version,
+  change it in the config and restart. Header text is never shown.
 - **The npm registry check on startup is gone.** The headers cover every install that makes a
   call, so the separate poll was a second source of "latest" and was removed.
 - `list_payment_intents` accepts `status=processing`, which a create that timed out leaves behind.

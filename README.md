@@ -121,7 +121,8 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 - Every release: raise `LATEST_GGCHECKOUT_MCP_VERSION` in ggCheckout/saas-checkout
   (`lib/apiKeys/ggcheckoutMcpVersion.ts`) and `DEFAULT_MCP_LATEST_VERSION` in ggCheckout/ggcheckout-core
   (`crates/ggcheckout-http-public-api/src/config.rs`). The `update:` notice comes only from them: with
-  no registry poll, a release nobody announces there reaches no install, with no error anywhere.
+  no registry poll, a release nobody announces there shows the notice to no install, with no error
+  anywhere (an install with `@latest` in its config still gets the release when the client restarts).
 - Every release that changes what a write sends to the API must be considered as the new
   minimum supported version on the server, and that decision is recorded in the release's
   CHANGELOG entry.
