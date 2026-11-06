@@ -41,6 +41,17 @@ describe('wallet schemas', () => {
     expect(r.error.issues[0].message).toContain('paymentRouteId');
   });
 
+  it.each([
+    [{ pix: { enabled: true }, bank_slip: { enabled: false } }, 'bank_slip'],
+    [{ pix: { enabled: true }, creditCard: { enabled: true } }, 'creditCard'],
+  ])('update_store refuses an unknown method next to a valid one instead of dropping it (%#)', (body, key) => {
+    const pm = shapeOf((s) => registerStoreTools(s, {} as any), 'update_store').paymentMethods;
+    const r = pm.safeParse(body);
+    expect(r.success).toBe(false);
+    expect(r.error.issues[0].message).toContain(key);
+    expect(pm.safeParse({ pix: { enabled: true }, credit_card: { enabled: false } }).success).toBe(true);
+  });
+
   it('update_store accepts paymentRouteId null and refuses a non-uuid', () => {
     const f = shapeOf((s) => registerStoreTools(s, {} as any), 'update_store').paymentRouteId;
     expect(f.safeParse(null).success).toBe(true);

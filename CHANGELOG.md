@@ -23,6 +23,8 @@ right now.
   the store's wallet, set with the new `paymentRouteId`. Needs ggCheckout/saas-checkout#1878 and
   ggCheckout/ggcheckout-core#605 (the core stores the store's wallet). The 0.4.x `gateways` list is
   refused with a message pointing to `paymentRouteId`, instead of being dropped and reported as saved.
+  `paymentMethods` takes only `pix` and `credit_card`: any other key (`bank_slip`, `creditCard`) is
+  refused instead of being dropped while the call answers success.
 - `create_checkout` and `update_checkout` refuse `paymentMethods` inside `checkout`: it was a second
   way into the stored methods that took the own gateway list. Methods go through the top-level field.
 

@@ -429,7 +429,8 @@ categories with `list_store_categories`, `create_store_category`, `update_store_
 `update_store_review`, `delete_store_review`. `update_store` merges objects into the stored
 config and replaces lists (`productOrder`, a category's `productIds`). PIX and card charge
 through a wallet: set `paymentRouteId` (from `list_checkout_wallets`) and switch the methods on in
-`paymentMethods`; the gateways are the wallet's. Creating or publishing a store requires a
+`paymentMethods` (only `pix` and `credit_card`; any other key is refused); the gateways are the
+wallet's. Creating or publishing a store requires a
 seller with verified email and phone.
 
 **Store builder:** `get_store_layout`, `update_store_layout`, `publish_store_layout`,

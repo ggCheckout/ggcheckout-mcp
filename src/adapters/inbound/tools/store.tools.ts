@@ -308,6 +308,13 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
       ? 'A payment method only takes `enabled`: the gateways come from the wallet, set them with `paymentRouteId`'
       : undefined,
   }).partial();
+  // Strict too: a store only charges PIX and card, so any other key (`bank_slip`, `creditCard`) is refused
+  // instead of being stripped while the call still answers success.
+  const storePaymentMethods = z.strictObject({ pix: paymentMethod, credit_card: paymentMethod }, {
+    error: (issue) => issue.code === 'unrecognized_keys'
+      ? `A store only takes \`pix\` and \`credit_card\`, not: ${issue.keys.join(', ')}`
+      : undefined,
+  }).partial();
 
   server.registerTool(
     'update_store',
@@ -331,7 +338,7 @@ export function registerStoreTools(server: McpServer, service: StoreService) {
         }).partial().optional(),
         paymentRouteId: z.string().uuid().nullable().optional()
           .describe('Wallet id from list_checkout_wallets: the gateways PIX and card charge through'),
-        paymentMethods: z.object({ pix: paymentMethod, credit_card: paymentMethod }).partial().optional()
+        paymentMethods: storePaymentMethods.optional()
           .describe('Switch PIX / card on or off. A method the wallet cannot charge stays off'),
         socialLinks: z.object({
           facebook: z.string().max(500), instagram: z.string().max(500), twitter: z.string().max(500),
