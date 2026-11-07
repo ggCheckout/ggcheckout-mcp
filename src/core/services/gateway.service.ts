@@ -1,5 +1,5 @@
 import type { GatewayPort } from '../ports/gateway.port.js';
-import type { InsertTokenInput, GatewayFallbackStats } from '../types/gateway.js';
+import type { InsertTokenInput, GatewayFallbackStats, Wallet } from '../types/gateway.js';
 
 export class GatewayService {
   constructor(private readonly port: GatewayPort) {}
@@ -7,4 +7,5 @@ export class GatewayService {
   async insertToken(input: InsertTokenInput) { return this.port.insertToken(input); }
   async deleteToken(tokenId: string, target: string, token: string, type: string) { return this.port.deleteToken(tokenId, target, token, type); }
   async getFallbackStats(): Promise<GatewayFallbackStats> { return this.port.getFallbackStats(); }
+  async listWallets(): Promise<Wallet[]> { return this.port.listWallets(); }
 }

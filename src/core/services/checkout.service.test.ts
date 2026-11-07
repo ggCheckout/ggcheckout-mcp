@@ -55,6 +55,12 @@ describe('CheckoutService', () => {
     );
   });
 
+  it('create refuses checkout.paymentMethods, which would bypass the wallet', async () => {
+    await expect(service.create({ ...baseInput, checkout: { paymentMethods: { pix: { gateways: [{ tokenId: 't', type: 'x' }] } } } }))
+      .rejects.toThrow(/top-level `paymentMethods`/);
+    expect(mockCheckoutPort.create).not.toHaveBeenCalled();
+  });
+
   it('create converts the price from reais to the cents the API stores', async () => {
     await service.create({ ...baseInput, price: 99.9 });
 
@@ -202,12 +208,20 @@ describe('CheckoutService', () => {
       expect(payload).not.toHaveProperty('paymentMethods');
     });
 
-    it('still sends checkout.paymentMethods when the caller sets it, as the caller sent it', async () => {
+    // The nested copy takes an own-gateway list, which the wallet-only top-level field refuses.
+    it('refuses checkout.paymentMethods and points to the top-level field', async () => {
       const methods = { credit_card: { token: 'tok-9', type: 'stripe' } };
-      await service.update('ck-1', { checkout: { paymentMethods: methods } });
+      await expect(service.update('ck-1', { checkout: { paymentMethods: methods } }))
+        .rejects.toThrow(/top-level `paymentMethods`/);
+      expect(mockCheckoutPort.update).not.toHaveBeenCalled();
+    });
 
-      const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
-      expect(payload.checkout?.paymentMethods).toEqual(methods);
+    // Only PIX and card go through a wallet: the hint must not send bank slip or PayPal to `{ routeId }`.
+    it('gives each method the shape the top-level field takes when refusing checkout.paymentMethods', async () => {
+      const methods = { paypal: { token: 'tok-pp', type: 'paypal' } };
+      const refusal = service.update('ck-1', { checkout: { paymentMethods: methods } });
+      await expect(refusal).rejects.toThrow(/PIX and card take a wallet `\{ routeId \}`/);
+      await expect(refusal).rejects.toThrow(/bank slip takes `\{ token, type \}` and PayPal `\{ token, type: 'paypal' \}`/);
     });
 
     it('sends order bumps only when the caller changes them, as the snapshots the page parses', async () => {
@@ -236,13 +250,28 @@ describe('CheckoutService', () => {
       expect(mockCheckoutPort.update).not.toHaveBeenCalled();
     });
 
-    it('preserves PIX fallback gateways format', async () => {
-      const newPixConfig = {
-        gateways: [
-          { tokenId: 'tok-3', type: 'mercadopago' },
-          { tokenId: 'tok-1', type: 'amplopay' },
-        ],
-      };
+    it('refuses an installments-only edit, which would delete the stored methods', async () => {
+      await expect(service.update('ck-1', { paymentMethods: { installments: 6 } })).rejects.toThrow(/pix/);
+      await expect(service.update('ck-1', { paymentMethods: {} })).rejects.toThrow(ValidationError);
+      expect(mockCheckoutPort.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses a wallet change that leaves the stored PayPal out, and accepts it resent or null', async () => {
+      vi.mocked(mockCheckoutPort.getById).mockResolvedValue({
+        ...currentCheckout, paymentMethods: { pix: { routeId: 'r' }, paypal: { type: 'paypal' } },
+      } as any);
+      const pix = { routeId: '3f2b8c1e-5d4a-4e6f-9a7b-1c2d3e4f5a6b' };
+
+      await expect(service.update('ck-1', { paymentMethods: { pix } })).rejects.toThrow(/paypal/);
+      expect(mockCheckoutPort.update).not.toHaveBeenCalled();
+
+      await service.update('ck-1', { paymentMethods: { pix, paypal: null } });
+      await service.update('ck-1', { paymentMethods: { pix, paypal: { token: 'tok', type: 'paypal' } } });
+      expect(mockCheckoutPort.update).toHaveBeenCalledTimes(2);
+    });
+
+    it('passes the pix wallet { routeId } through', async () => {
+      const newPixConfig = { routeId: '3f2b8c1e-5d4a-4e6f-9a7b-1c2d3e4f5a6b' };
       await service.update('ck-1', { paymentMethods: { pix: newPixConfig } });
 
       expect(mockCheckoutPort.update).toHaveBeenCalledWith(

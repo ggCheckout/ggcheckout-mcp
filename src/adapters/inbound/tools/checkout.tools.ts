@@ -8,30 +8,37 @@ const paymentMethodConfigSchema = z.object({
   type: z.string(),
 }).nullable().optional();
 
-const pixGatewayEntrySchema = z.object({
-  tokenId: z.string().describe('Gateway token ID'),
-  type: z.string().describe('Gateway type (e.g., amplopay, efibank, mercadopago)'),
-});
+/**
+ * PIX and card charge through a wallet (a payment route) of the seller: its gateways, order and
+ * fallback live in the wallet, not in the checkout. `list_checkout_wallets` gives the ids.
+ */
+const walletMethodSchema = z.object({
+  routeId: z.string().uuid().describe('Wallet id, from list_checkout_wallets'),
+}).nullable().optional();
 
-const pixFallbackSchema = z.union([
-  z.object({
-    token: z.string(),
-    type: z.string(),
-  }),
-  z.object({
-    gateways: z.array(pixGatewayEntrySchema).min(1).max(5)
-      .describe('Ordered list of PIX gateways for fallback chain (max 5). First gateway has highest priority.'),
-  }),
-]).nullable().optional()
-  .describe('PIX config: legacy single gateway {token, type} or fallback chain {gateways: [{tokenId, type}]}');
+/** PayPal stays per checkout (outside the wallet): its own credential, by id. */
+const paypalMethodSchema = z.object({
+  token: z.string().min(1).describe('Id of the PayPal credential, from list_tokens'),
+  type: z.literal('paypal'),
+}).nullable().optional();
 
-const paymentMethodsSchema = z.object({
-  credit_card: paymentMethodConfigSchema,
-  pix: pixFallbackSchema,
-  bank_slip: paymentMethodConfigSchema,
-  installments: z.number().min(1).max(24).optional(),
-  showInstallmentsOnPrice: z.boolean().optional(),
-  primaryPaymentMethod: z.enum(['pix', 'credit_card']).optional(),
+// Strict: an unknown key (a method this schema does not know) fails instead of being dropped, since a
+// dropped method is a deleted one (the map replaces the stored methods as a whole).
+const paymentMethodsSchema = z.strictObject({
+  credit_card: walletMethodSchema
+    .describe("Card through a wallet: {routeId}. The wallet's card charges. null turns card off"),
+  pix: walletMethodSchema
+    .describe("PIX through a wallet: {routeId}. The wallet's PIX chain charges, in its order. null turns PIX off"),
+  bank_slip: paymentMethodConfigSchema
+    .describe('Bank slip: {token, type}, the credential id from list_tokens. null turns bank slip off'),
+  paypal: paypalMethodSchema
+    .describe("PayPal, outside the wallet: {token, type: 'paypal'}, the credential id from list_tokens. null turns PayPal off"),
+  installments: z.number().min(1).max(24).optional()
+    .describe('Max card installments. Travels in this same map: send it with every stored method, never alone'),
+  showInstallmentsOnPrice: z.boolean().optional()
+    .describe('Show the installment value next to the price. Same rule as installments'),
+  primaryPaymentMethod: z.enum(['pix', 'credit_card']).optional()
+    .describe('Method selected first on the page. Same rule as installments'),
 });
 
 const socialCardSchema = z.array(z.object({
@@ -88,7 +95,7 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
           + 'value creates an orphan checkout the seller cannot open in the dashboard.',
         ),
         price: z.number().min(0).describe('Price in Brazilian Reais (e.g., 99.90) — converted to cents before it is sent'),
-        paymentMethods: paymentMethodsSchema.describe('Payment methods configuration (credit_card, pix, bank_slip)'),
+        paymentMethods: paymentMethodsSchema.describe('Payment methods configuration (credit_card, pix, bank_slip, paypal)'),
         checkout: z.record(z.string(), z.unknown()).describe('Checkout page styling/configuration'),
         url: z.string().url().optional().describe('Checkout URL (optional)'),
         bannerUrl: z.string().url().optional().describe('Banner image URL (optional)'),
@@ -116,7 +123,12 @@ export function registerCheckoutTools(server: McpServer, service: CheckoutServic
         checkoutId: z.string().describe('Checkout ID (uid)'),
         title: z.string().max(200).optional().describe('Checkout page title'),
         price: z.number().min(0).optional().describe('Price in Brazilian Reais — converted to cents before it is sent'),
-        paymentMethods: paymentMethodsSchema.optional().describe('Payment methods configuration'),
+        paymentMethods: paymentMethodsSchema.optional()
+          .describe('Payment methods configuration. Replaces the stored methods as a whole: send every stored method '
+            + '(pix and credit_card with their {routeId}, bank_slip and paypal with their credential id from list_tokens), '
+            + 'not only the one that changes, and null for one to turn off. installments and the other settings travel '
+            + 'in this map too, so changing only them still means resending every method. A stored method left out '
+            + 'is refused'),
         checkout: z.record(z.string(), z.unknown()).optional()
           .describe('Checkout page configuration, merged into the stored one (send only the keys to change). '
             + 'Payment methods are changed through `paymentMethods`; the stored ones are never re-sent from here'),

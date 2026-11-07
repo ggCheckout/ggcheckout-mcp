@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as logger from '../../shared/logger.js';
+import { observeVersionHeaders } from '../../shared/update-notice.js';
 import {
   ApiError,
   AuthenticationError,
@@ -45,9 +46,15 @@ export class HttpClient {
       return config;
     });
 
+    const observe = (headers: any) => observeVersionHeaders((name) => headers?.[name], version);
+
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        observe(response.headers);
+        return response;
+      },
       (error: AxiosError) => {
+        observe(error.response?.headers);
         // No response means the request never reached the API (DNS failure,
         // connection refused, wrong base URL, or timeout). Surface a clear,
         // actionable message instead of failing silently / opaquely.

@@ -1,5 +1,5 @@
 import type { GatewayPort } from '../../core/ports/gateway.port.js';
-import type { GatewayToken, InsertTokenInput, GatewayFallbackStats } from '../../core/types/gateway.js';
+import type { GatewayToken, InsertTokenInput, GatewayFallbackStats, Wallet } from '../../core/types/gateway.js';
 import type { HttpClient } from './http-client.js';
 import type { AuthPort } from '../../core/ports/auth.port.js';
 import { sanitizeGatewayToken } from '../../shared/sanitizer.js';
@@ -24,5 +24,9 @@ export class GatewayApiAdapter implements GatewayPort {
   }
   async getFallbackStats(): Promise<GatewayFallbackStats> {
     return this.http.get<GatewayFallbackStats>('/api/user/gateway-stats');
+  }
+  async listWallets(): Promise<Wallet[]> {
+    const data = await this.http.get<{ routes: Wallet[] }>('/api/payment-routes');
+    return data.routes;
   }
 }

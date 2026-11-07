@@ -3,6 +3,7 @@ import type { CheckoutPort } from '../ports/checkout.port.js';
 import type { ProductPort } from '../ports/product.port.js';
 import type {
   Checkout,
+  CheckoutPaymentMethods,
   CheckoutTag,
   CreateCheckoutInput,
   UpdateCheckoutInput,
@@ -34,6 +35,7 @@ export class CheckoutService {
   }
 
   async create(input: Omit<CreateCheckoutInput, 'uuidOwner'>): Promise<Checkout> {
+    refuseNestedPaymentMethods(input.checkout);
     // Independent lookups: the product resolution needs only the input, the business id
     // needs nothing from it.
     const [, businessId, orderBumps] = await Promise.all([
@@ -89,6 +91,7 @@ export class CheckoutService {
   }
 
   async update(id: string, input: UpdateCheckoutInput): Promise<Checkout> {
+    refuseNestedPaymentMethods(input.checkout);
     const current = await this.checkoutPort.getById(id);
     if (!current.productId) {
       throw new ValidationError(
@@ -96,6 +99,7 @@ export class CheckoutService {
         + 'Recreate the offer with create_checkout against the product it sells.',
       );
     }
+    if (input.paymentMethods) refuseDroppedMethods(id, current.paymentMethods, input.paymentMethods);
     const orderBumps = await this.serializeOrderBumps(input.orderBumps);
     // The write keeps every key absent from the body as stored (field mask), so only the
     // checkout's identity (title, owner, product, price, re-sent unchanged) and what the caller
@@ -137,8 +141,8 @@ export class CheckoutService {
  * `paymentMethods` is the one key never carried over from the read. When the body has no top-level
  * `paymentMethods`, the API takes the methods from `checkout.paymentMethods` and rewrites them from
  * it, and the read does not return every stored value of the methods: echoing that copy would rewrite
- * them with less than what is stored, on an edit that only touched the timer. It travels only when
- * the caller sends it.
+ * them with less than what is stored, on an edit that only touched the timer. A caller cannot send it
+ * either (`refuseNestedPaymentMethods`).
  *
  * `shipping` is carried over whole, on purpose: the read returns it complete, and a partial one would
  * be stored as the whole shipping setup.
@@ -149,4 +153,45 @@ function mergePageSetup(
 ): Record<string, unknown> {
   const { paymentMethods: _readCopy, ...setup } = stored ?? {};
   return mergeDeep(setup, edit);
+}
+
+/**
+ * `checkout.paymentMethods` is a second way into the stored methods, and it takes the own-gateway list
+ * (`{ token, type }`) the wallet-only top-level `paymentMethods` refuses. Methods go only through the top level.
+ */
+function refuseNestedPaymentMethods(setup: Record<string, unknown> | undefined): void {
+  if (setup && 'paymentMethods' in setup) {
+    throw new ValidationError(
+      'Payment methods are not set inside `checkout`: use the top-level `paymentMethods`. PIX and card take a wallet '
+      + '`{ routeId }` (from list_checkout_wallets); bank slip takes `{ token, type }` and PayPal `{ token, type: \'paypal\' }`, '
+      + 'the credential id from list_tokens.',
+    );
+  }
+}
+
+const METHODS = ['pix', 'credit_card', 'bank_slip', 'paypal'] as const;
+
+/**
+ * The body's `paymentMethods` replaces the stored methods as a whole: a stored method absent from it is
+ * deleted, and the API still answers success (with no method left, it also unpublishes the checkout). So
+ * every method the read shows has to come back, as a value or as an explicit `null`. This also covers
+ * an edit of `installments` alone, which travels in the same map.
+ *
+ * Guards what the read shows. A method the API hides from the read (it cannot charge today) is the
+ * API's to guard: the PATCH refuses a body that leaves it out with `HIDDEN_PAYMENT_METHOD_OMITTED`
+ * (ggCheckout/saas-checkout#2183), and its message reaches the user as is.
+ */
+function refuseDroppedMethods(
+  id: string,
+  stored: CheckoutPaymentMethods | undefined,
+  sent: CheckoutPaymentMethods,
+): void {
+  const dropped = METHODS.filter((m) => stored?.[m] && !(m in sent));
+  if (dropped.length === 0) return;
+  throw new ValidationError(
+    `paymentMethods replaces the stored methods as a whole, and checkout ${id} has ${dropped.join(', ')} `
+    + 'that this body leaves out, which would delete them. Resend every stored method (pix and credit_card '
+    + 'with their wallet {routeId} from get_checkout, bank_slip and paypal with their credential id from '
+    + 'list_tokens), or send null for the ones to turn off.',
+  );
 }

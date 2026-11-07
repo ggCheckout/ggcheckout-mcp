@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as logger from './shared/logger.js';
-import { checkForUpdate } from './shared/update-notice.js';
 
 // Outbound adapters
 import { HttpClient } from './adapters/outbound/http-client.js';
@@ -52,6 +51,7 @@ import { TelegramService } from './core/services/telegram.service.js';
 
 // Inbound adapters (MCP tools)
 import { registerProductTools } from './adapters/inbound/tools/product.tools.js';
+import { registerPaymentsApiToolsFromEnv } from './adapters/inbound/tools/payments-api.tools.js';
 import { registerPaymentTools } from './adapters/inbound/tools/payment.tools.js';
 import { registerCheckoutTools } from './adapters/inbound/tools/checkout.tools.js';
 import { registerWebhookTools } from './adapters/inbound/tools/webhook.tools.js';
@@ -182,6 +182,15 @@ registerProfileTools(server, profileService);
 registerPushTools(server, pushService);
 registerTelegramTools(server, telegramService);
 
+let paymentsUrl: string | undefined;
+try {
+  paymentsUrl = registerPaymentsApiToolsFromEnv(server, process.env, pkg.version);
+} catch (err: any) {
+  console.error(`[MCP] Error: ${err.message}`);
+  process.exit(1);
+}
+if (paymentsUrl) logger.info('STARTUP', `Payments API tools enabled (${paymentsUrl})`);
+
 logger.info('STARTUP', 'All tools registered');
 
 // Transport
@@ -189,9 +198,6 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 
 logger.info('STARTUP', 'Server started successfully');
-
-// Not awaited: the server is already serving, and a failed check changes nothing.
-void checkForUpdate(pkg.version);
 
 async function shutdown(signal: string) {
   logger.info('SHUTDOWN', `Received ${signal}, shutting down gracefully`);

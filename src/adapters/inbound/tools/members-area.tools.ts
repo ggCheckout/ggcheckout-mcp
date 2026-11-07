@@ -187,7 +187,7 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
     description: 'Reorder modules in a members area',
     inputSchema: {
       areaId: z.string().describe('Members area ID'),
-      moduleIds: z.array(z.string()).describe('Module IDs in desired order'),
+      moduleIds: z.array(z.string()).max(200).describe('Module IDs in desired order'),
     },
   }, createToolHandler('reorder_modules', async ({ areaId, moduleIds }) => {
     const result = await service.reorderModules(areaId, moduleIds);
@@ -230,7 +230,7 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
     inputSchema: {
       areaId: z.string().describe('Members area ID'),
       moduleId: z.string().describe('Module ID'),
-      sectionIds: z.array(z.string()).describe('Section IDs in desired order'),
+      sectionIds: z.array(z.string()).max(200).describe('Section IDs in desired order'),
     },
   }, createToolHandler('reorder_sections', async ({ areaId, moduleId, sectionIds }) => {
     const result = await service.reorderSections(areaId, moduleId, sectionIds);
@@ -281,7 +281,7 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
       areaId: z.string().describe('Members area ID'),
       moduleId: z.string().describe('Module ID'),
       sectionId: z.string().describe('Section ID'),
-      lessonIds: z.array(z.string()).describe('Lesson IDs in desired order'),
+      lessonIds: z.array(z.string()).max(200).describe('Lesson IDs in desired order'),
     },
   }, createToolHandler('reorder_lessons', async ({ areaId, moduleId, sectionId, lessonIds }) => {
     const result = await service.reorderLessons(areaId, moduleId, sectionId, lessonIds);
@@ -576,7 +576,7 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
         name: z.string().optional().describe('Student name'),
         email: z.string().describe('Student email'),
         phone: z.string().optional().describe('Student phone'),
-      })).describe('List of students to import (max 100)'),
+      })).max(100).describe('List of students to import (max 100)'),
       classId: z.string().optional().describe('Class ID to enroll all imported students'),
     },
   }, createToolHandler('import_students', async ({ areaId, ...input }) => {

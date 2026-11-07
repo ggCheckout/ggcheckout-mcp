@@ -112,7 +112,7 @@ export function registerTelegramTools(server: McpServer, service: TelegramServic
       botId: z.string().describe('Bot ID this flow belongs to'),
       name: z.string().min(1).max(100).describe('Flow name'),
       mode: z.enum(['basic', 'visual']).optional().describe('Flow mode (default: visual)'),
-      basicConfig: z.record(z.any()).optional().describe('Basic flow config (for mode=basic)'),
+      basicConfig: z.record(z.string(), z.any()).optional().describe('Basic flow config (for mode=basic)'),
     },
   }, createToolHandler('create_telegram_flow', async ({ botId, name, mode, basicConfig }) => {
     return service.createFlow({ botId, name, mode, basicConfig });
@@ -128,22 +128,22 @@ export function registerTelegramTools(server: McpServer, service: TelegramServic
         id: z.string(),
         type: z.string(),
         position: z.object({ x: z.number(), y: z.number() }),
-        data: z.record(z.any()),
-      })).optional().describe('Flow nodes'),
+        data: z.record(z.string(), z.any()),
+      })).max(500).optional().describe('Flow nodes'),
       edges: z.array(z.object({
         id: z.string(),
         source: z.string(),
         target: z.string(),
         sourceHandle: z.string().optional(),
         label: z.string().optional(),
-      })).optional().describe('Flow edges'),
+      })).max(1000).optional().describe('Flow edges'),
       variables: z.array(z.object({
         name: z.string(),
         type: z.enum(['string', 'number', 'boolean']),
         defaultValue: z.string().optional(),
-      })).optional().describe('Flow variables'),
+      })).max(100).optional().describe('Flow variables'),
       published: z.boolean().optional().describe('Publish state'),
-      basicConfig: z.record(z.any()).optional().describe('Basic flow config'),
+      basicConfig: z.record(z.string(), z.any()).optional().describe('Basic flow config'),
     },
   }, createToolHandler('update_telegram_flow', async ({ flowId, ...input }) => {
     return service.updateFlow(flowId, input);
