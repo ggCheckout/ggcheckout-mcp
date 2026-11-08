@@ -129,6 +129,34 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 
 ---
 
+## Example prompts / Exemplos de pedidos
+
+Ask in Portuguese or English; the assistant picks the tools. Each prompt below uses only the tools
+listed next to it. Tools that create something act on your real account; the PIX charge in the last
+row is simulated with a test key (see the note after the table).
+
+Peça em português ou em inglês; o assistente escolhe as ferramentas. Cada pedido abaixo usa só as
+ferramentas listadas ao lado. As que criam algo agem na sua conta de verdade; a cobrança PIX da
+última linha é simulada com uma chave de teste (veja a nota depois da tabela).
+
+| Português | English | Tools |
+|---|---|---|
+| "Liste todos os meus produtos" | "Show me all my products" | `list_products` |
+| "Crie o produto 'Curso de Excel': descrição 'Do básico ao avançado', R$ 97,00, sem desconto, entrega em https://exemplo.com/excel" | "Create the product 'Excel Course': description 'From basics to advanced', R$97.00, no discount, delivered at https://example.com/excel" | `create_product` |
+| "Crie um checkout para o produto 'Curso de Excel' a R$ 97,00, cobrando PIX e cartão pela carteira 'Principal'" | "Create a checkout for the 'Excel Course' product at R$97.00, charging PIX and card through my 'Principal' wallet" | `list_products`, `list_checkout_wallets`, `create_checkout` |
+| "Quanto eu vendi hoje?" | "How much did I sell today?" | `get_dashboard_stats` |
+| "Mostre os últimos 20 pagamentos aprovados deste mês" | "Show the last 20 paid payments from this month" | `get_my_business_id`, `get_payments_paginated` |
+| "Procure os pagamentos do e-mail maria@exemplo.com" | "Find the payments from maria@example.com" | `get_my_business_id`, `get_payments_paginated` |
+| "Crie o cupom BEMVINDO10 com 10% de desconto em todos os produtos" | "Create the coupon WELCOME10 with 10% off all products" | `create_discount` |
+| "Crie um webhook em https://meusite.com/webhook para os eventos pix.paid e card.paid" | "Create a webhook at https://mysite.com/webhook for the pix.paid and card.paid events" | `create_webhook` |
+| "Crie uma cobrança PIX de R$ 49,90 do pedido 1234 na carteira 'Loja' para Maria Souza (maria@exemplo.com, CPF 123.456.789-09, telefone 11987654321)" | "Create a R$49.90 PIX charge for order 1234 on my 'Loja' wallet for Maria Souza (maria@example.com, CPF 123.456.789-09, phone 11987654321)" | `list_wallets`, `create_pix_charge` |
+
+The last one needs `GG_PAYMENTS_API_KEY` ([Payments API](#payments-api-pix-charges)); a `ggpk_test_`
+key creates a simulated charge, a `ggpk_live_` key a real one. / O último precisa da
+`GG_PAYMENTS_API_KEY` ([Payments API](#payments-api-pix-charges)): com uma chave `ggpk_test_` a cobrança é simulada; com `ggpk_live_`, é real.
+
+---
+
 ## Available Tools (196)
 
 ### Products (19 tools)

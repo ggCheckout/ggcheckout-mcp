@@ -5,6 +5,15 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## Unreleased
+
+### Docs
+
+- `package.json`: `homepage` points to https://www.ggcheckout.com (`repository` and `bugs` stay on
+  GitHub), and the keywords gain `brazilian`, `pix` and `infoproduct`. npm shows them from the next
+  published version.
+- README: a section of example prompts in Portuguese and English, each with the tools it uses.
+
 ## 0.5.0
 
 ### Breaking
