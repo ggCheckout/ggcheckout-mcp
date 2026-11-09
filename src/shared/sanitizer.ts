@@ -49,10 +49,19 @@ export function stripCredentials<T extends Record<string, any>>(obj: T, fieldsTo
 
 // --- P1: PII sanitization for common shapes ---
 
+/**
+ * The payment detail route answers with the encrypted copies of the customer data next to the
+ * masked ones (`phoneEnc`, `cpfEnc`: `iv:tag:ciphertext`). They are useless to a model and are
+ * still the customer's data, so every `*Enc` key is left out.
+ */
+function withoutEncrypted<T extends Record<string, any>>(record: T): T {
+  return Object.fromEntries(Object.entries(record).filter(([key]) => !/^[a-z][A-Za-z]*Enc$/.test(key))) as T;
+}
+
 export function sanitizePayment<T extends Record<string, any>>(payment: T): T {
   if (!payment) return payment;
   return {
-    ...payment,
+    ...withoutEncrypted(payment),
     cpf: maskCpf(payment.cpf),
     phone: maskPhone(payment.phone),
     email: maskEmail(payment.email),

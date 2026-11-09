@@ -89,6 +89,13 @@ describe('sanitizePayment', () => {
     expect(result.address.street).toBeUndefined();
     expect(result.address.city).toBe('SP');
   });
+
+  it('leaves out the encrypted copies of the customer data', () => {
+    const result = sanitizePayment({ id: 'p1', phone: '11999887766', phoneEnc: 'iv:tag:ct', cpfEnc: 'iv:tag:ct' });
+    expect(result).not.toHaveProperty('phoneEnc');
+    expect(result).not.toHaveProperty('cpfEnc');
+    expect(result.phone).toContain('****');
+  });
 });
 
 describe('sanitizeWebhook', () => {

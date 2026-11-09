@@ -35,6 +35,11 @@ right now.
 - Funnel view on `get_funnel_lead_stats` and `get_funnel_lead_analytics`, as the funnel editor's
   Leads tab: the lead cards, or the conversion bar per step colored by its drop-off.
 
+### Fixed
+
+- `get_payment` no longer returns the buyer's encrypted CPF and phone (`cpfEnc`, `phoneEnc`) next to
+  the masked ones: every `*Enc` field is dropped from payment answers.
+
 ## 0.5.0
 
 ### Breaking
