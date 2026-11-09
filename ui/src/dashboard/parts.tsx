@@ -38,3 +38,16 @@ export function Kpi({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+/** The view header: the GG eyebrow, an optional title and, on the right, the view's controls. */
+export function ViewHeader({ title, children }: { title?: string; children?: ReactNode }) {
+  return (
+    <div className="head">
+      <div>
+        <p className="eyebrow brand">GG Checkout</p>
+        {title && <h1 className="display">{title}</h1>}
+      </div>
+      {children}
+    </div>
+  );
+}

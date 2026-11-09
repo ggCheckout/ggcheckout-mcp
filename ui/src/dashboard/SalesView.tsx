@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import './dashboard.css';
+import '../styles/dashboard.css';
 import type { Host, HostSnapshot } from '../host';
 import { formatCents, formatInt, formatPercent } from '../lib/format';
 import { ApprovalRate } from './ApprovalRate';
 import { DASHBOARD_RANGES, summarizeCharts, summarizeStats, type ChartsSummary, type DashboardRange } from './model';
-import { Kpi } from './parts';
+import { Kpi, ViewHeader } from './parts';
 import { SalesByProduct } from './SalesByProduct';
 import { SalesByState } from './SalesByState';
 import { SalesChart } from './SalesChart';
@@ -103,13 +103,9 @@ export function SalesView({ host, state }: { host: Host; state: HostSnapshot }) 
   };
 
   return (
-    <div className="sales-view">
-      <div className="head">
-        <div>
-          <p className="eyebrow brand">GG Checkout</p>
-          {/* A focused answer is one dashboard card, which carries its own title. */}
-          {!charts?.focus && <h1 className="display">{`Vendas · ${rangeLabel(period)}`}</h1>}
-        </div>
+    <div className="dashboard">
+      {/* A focused answer is one dashboard card, which carries its own title. */}
+      <ViewHeader title={charts?.focus ? undefined : `Vendas · ${rangeLabel(period)}`}>
         {state.canCallTools && (
           <div className="ranges" role="group" aria-label="Período">
             {DASHBOARD_RANGES.map((r) => (
@@ -119,7 +115,7 @@ export function SalesView({ host, state }: { host: Host; state: HostSnapshot }) 
             ))}
           </div>
         )}
-      </div>
+      </ViewHeader>
       {failure && <p className="state" data-tone="error" role="alert">{failure}</p>}
       <div id="content" aria-busy={busy || undefined}>
         {stats ? <StatsCards stats={stats} period={period} /> : charts?.focus ? <Focus s={charts} /> : <FullPanel s={charts!} timezone={timezone} />}

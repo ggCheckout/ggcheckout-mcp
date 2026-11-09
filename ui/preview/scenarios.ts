@@ -1,4 +1,4 @@
-import { charts, chartsFor, creditTopup, paymentIntent, statsFor } from './fixtures';
+import { charts, chartsFor, creditTopup, funnelAnalytics, funnelStats, paymentIntent, statsFor } from './fixtures';
 
 export interface Scenario {
   id: string;
@@ -19,6 +19,8 @@ export const SCENARIOS: Scenario[] = [
   { id: 'states', question: 'De quais estados vêm as vendas?', tool: 'get_dashboard_charts', args: { range: 'week', focus: 'states' }, result: focus('states') },
   { id: 'refunds', question: 'Quantos reembolsos tive?', tool: 'get_dashboard_charts', args: { range: 'week', focus: 'refunds' }, result: focus('refunds') },
   { id: 'panel', question: 'Me mostra o painel completo', tool: 'get_dashboard_charts', args: { range: 'week' }, result: charts },
+  { id: 'funnel-stats', question: 'Como estão os leads do meu quiz?', tool: 'get_funnel_lead_stats', args: { funnelId: 'fn_preview' }, result: funnelStats },
+  { id: 'funnel', question: 'Onde as pessoas desistem do quiz?', tool: 'get_funnel_lead_analytics', args: { funnelId: 'fn_preview' }, result: funnelAnalytics },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-card', question: 'Paga a fatura no cartão', tool: 'pay_invoice', args: { invoiceId: 'inv_42', method: 'card' }, result: { success: true } },

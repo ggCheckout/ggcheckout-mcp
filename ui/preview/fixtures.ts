@@ -72,3 +72,19 @@ export const creditTopup = {
   creditId: 'cr_preview', via: 'topup', amountCents: 10000, pixCode: '00020126580014br.gov.bcb.pix0136preview-credit',
   pixQrBase64: QR, expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
 };
+
+const step = (stepId: string, title: string, visitors: number, exits: number, dropOffRate: number) => ({ stepId, title, visitors, exits, dropOffRate });
+
+export const funnelAnalytics = {
+  funnelTitle: 'Quiz do perfil de investidor',
+  steps: [
+    step('st1', 'Boas-vindas', 320, 64, 20), step('st2', 'Objetivo', 256, 31, 12),
+    step('st3', 'Experiência', 225, 81, 36), step('st4', 'Seus dados', 144, 72, 50),
+    step('st5', 'Resultado', 72, 0, 0),
+  ],
+  totalVisitors: 320,
+  totalCompleted: 72,
+  overallConversionRate: 23,
+};
+
+export const funnelStats = { stats: { visitors: 320, leads: 144, interactionRate: 80, qualified: 96, completed: 72 } };

@@ -1,12 +1,15 @@
 import { summarizeCharts, summarizeStats } from './dashboard/model';
+import { summarizeFunnelConversion, summarizeFunnelStats } from './funnel/model';
 import { normalizePix } from './pix/model';
 
-export type ViewName = 'sales' | 'pix';
+export type ViewName = 'sales' | 'funnel' | 'pix';
 
 /** Tools with a view (their `_meta.ui.resourceUri` is ui://ggcheckout/app.html) and the view each draws. */
 export const TOOL_VIEWS: Record<string, ViewName> = {
   get_dashboard_stats: 'sales',
   get_dashboard_charts: 'sales',
+  get_funnel_lead_stats: 'funnel',
+  get_funnel_lead_analytics: 'funnel',
   create_pix_charge: 'pix',
   get_payment_intent: 'pix',
   add_credit: 'pix',
@@ -21,6 +24,7 @@ export const TOOL_VIEWS: Record<string, ViewName> = {
 export function pickView(toolName: string | undefined, payload: unknown, args: Record<string, unknown>): ViewName | null {
   if (toolName && TOOL_VIEWS[toolName]) return TOOL_VIEWS[toolName];
   if (summarizeStats(payload) || summarizeCharts(payload)) return 'sales';
+  if (summarizeFunnelStats(payload) || summarizeFunnelConversion(payload)) return 'funnel';
   if (normalizePix(payload, args)) return 'pix';
   return null;
 }

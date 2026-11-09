@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type { Host } from './host';
 import { pickView } from './views';
 import { SalesView } from './dashboard/SalesView';
+import { FunnelView } from './funnel/FunnelView';
 import { PixView } from './pix/PixView';
 
 export function GgApp({ host }: { host: Host }) {
@@ -13,6 +14,8 @@ export function GgApp({ host }: { host: Host }) {
   switch (pickView(state.toolName, state.payload, state.args)) {
     case 'sales':
       return <SalesView key={state.generation} host={host} state={state} />;
+    case 'funnel':
+      return <FunnelView key={state.generation} host={host} state={state} />;
     case 'pix':
       return <PixView key={state.generation} host={host} state={state} />;
     default:

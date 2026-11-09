@@ -30,6 +30,10 @@ right now.
   `@modelcontextprotocol/ext-apps` client), served as `ui://ggcheckout/app.html` for every tool
   with a view, with the dashboard's Urbanist font bundled. `npm run dev -w ui` opens a preview
   host with invented data.
+- `get_funnel_lead_analytics` names each step by its title in the funnel (`title`, "Etapa N" when it
+  has none) and carries the funnel's `funnelTitle`; before, a step was only its id.
+- Funnel view on `get_funnel_lead_stats` and `get_funnel_lead_analytics`, as the funnel editor's
+  Leads tab: the lead cards, or the conversion bar per step colored by its drop-off.
 
 ## 0.5.0
 
