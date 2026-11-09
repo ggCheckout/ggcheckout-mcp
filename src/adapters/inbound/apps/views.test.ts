@@ -13,7 +13,7 @@ const charts = {
   approvalRate: { pix: { total: 4, approved: 3 }, card: { total: 0, approved: 0 }, boleto: { total: 1, approved: 0 } },
   byMethod: { pix: 3 },
   byProduct: [{ productId: 'a', name: 'Curso A', count: 1 }, { productId: 'b', name: 'Curso B', count: 2 }],
-  byOrderBump: [],
+  byOrderBump: [{ productId: 'ob', name: 'Planilha', count: 4 }],
   conversion: { ordersGenerated: 6, paymentsCompleted: 3 },
   refunds: { chargeback: 1, med: 0, refund: 2 },
   byState: [{ state: 'mg', count: 2, revenue: 9980 }, { state: 'sp', count: 1, revenue: 4990 }],
@@ -33,6 +33,7 @@ describe('summarizeDashboard', () => {
     expect(s.averageTicket).toBe(4990);
     expect(s.conversion).toBe(0.5);
     expect(s.products.map((p: any) => [p.name, Math.round(p.percentage)])).toEqual([['Curso B', 67], ['Curso A', 33]]);
+    expect(s.orderBumps).toEqual([{ name: 'Planilha', count: 4, percentage: 100 }]);
     expect(s.states[0]).toEqual({ state: 'MG', count: 2, revenue: 9980 });
     expect(s.series.map((p: any) => p.label)).toEqual(['01/11', '02/11', '03/11']);
     expect(s.refundsTotal).toBe(3);

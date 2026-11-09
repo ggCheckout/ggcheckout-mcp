@@ -16,6 +16,20 @@ const dayMonth = (date) => {
   const parts = String(date ?? '').split('-');
   return parts.length === 3 ? `${parts[2]}/${parts[1]}` : null;
 };
+/**
+ * As the dashboard maps products and order bumps (dashboardChartsMapping `toProductShares`): each
+ * item's share of the approved sales, most sold first. The view shows five until "Ver mais".
+ */
+function productShares(items) {
+  const rows = (Array.isArray(items) ? items : [])
+    .map((p) => ({ name: String(p.name ?? 'Produto'), count: count(p.count) }))
+    .filter((p) => p.count > 0);
+  const total = rows.reduce((sum, p) => sum + p.count, 0);
+  return rows
+    .map((p) => ({ ...p, percentage: total > 0 ? (p.count / total) * 100 : 0 }))
+    .sort((a, b) => b.count - a.count);
+}
+
 const count = (n) => (Number.isFinite(n) ? n : 0);
 const ratio = (part, whole) => (whole > 0 ? part / whole : null);
 
@@ -64,13 +78,8 @@ export function summarizeDashboard(data) {
 
   // As the dashboard maps it (components/dashboard/index.tsx): every product, its share of the
   // approved sales, most sold first. The view shows the first five until "Ver mais".
-  const productRows = (data.byProduct ?? [])
-    .map((p) => ({ name: String(p.name ?? 'Produto'), count: count(p.count) }))
-    .filter((p) => p.count > 0);
-  const productTotal = productRows.reduce((sum, p) => sum + p.count, 0);
-  const products = productRows
-    .map((p) => ({ ...p, percentage: productTotal > 0 ? (p.count / productTotal) * 100 : 0 }))
-    .sort((a, b) => b.count - a.count);
+  const products = productShares(data.byProduct);
+  const orderBumps = productShares(data.byOrderBump);
 
   // SalesByState ranks by sales count, not revenue.
   const states = (data.byState ?? [])
@@ -95,6 +104,7 @@ export function summarizeDashboard(data) {
     conversion,
     approval,
     products,
+    orderBumps,
     states,
     refunds,
     refundsTotal: refunds.refund + refunds.chargeback + refunds.med,

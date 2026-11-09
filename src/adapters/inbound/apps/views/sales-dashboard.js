@@ -254,7 +254,7 @@ function approvalPanel(s) {
 
 const BAR_COLORS = ['#3b82f6', '#22d3ee', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#6366f1', '#84cc16'];
 const VISIBLE_LIMIT = 5;
-const productState = { expanded: false, query: '', order: 'desc', selected: new Set() };
+const productState = { tab: 'products', expanded: false, query: '', order: 'desc', selected: new Set() };
 
 function rankedRows(items) {
   const sorted = [...items].sort((a, b) => (productState.order === 'desc' ? b.count - a.count : a.count - b.count));
@@ -266,22 +266,29 @@ function rankedRows(items) {
 function productsPanel(s) {
   const card = panel('insight list-card art-sales-by-product');
   const draw = () => {
-    const rows = rankedRows(s.products);
-    const max = Math.max(1, ...s.products.map((p) => p.count));
+    const items = productState.tab === 'bumps' && s.orderBumps.length ? s.orderBumps : s.products;
+    const rows = rankedRows(items);
+    const max = Math.max(1, ...items.map((p) => p.count));
     const visible = productState.expanded ? rows : rows.slice(0, VISIBLE_LIMIT);
-    const picked = s.products.filter((p) => productState.selected.has(p.name));
-    const total = (picked.length ? picked : s.products).reduce((sum, p) => sum + p.count, 0);
+    const picked = items.filter((p) => productState.selected.has(p.name));
+    const total = (picked.length ? picked : items).reduce((sum, p) => sum + p.count, 0);
     const search = el('input', {
       class: 'search', type: 'search', placeholder: 'Buscar produto...', value: productState.query, 'aria-label': 'Buscar produto',
       oninput: (event) => { productState.query = event.target.value; draw(); card.querySelector('.search')?.focus(); },
     });
+    const tabs = [['products', 'Produtos'], ...(s.orderBumps.length ? [['bumps', 'Order Bumps']] : [])];
     card.replaceChildren(
       el('header', { class: 'list-head' },
         el('div', { class: 'list-title' },
           el('h3', { class: 'card-title' }, 'Vendas por Produto'),
           infoTip('Distribuição de vendas aprovadas por produto no período selecionado.')),
-        s.products.length ? el('div', { class: 'tools' },
-          el('label', { class: 'search-box' }, search),
+        segmented(tabs, productState.tab, (next) => {
+          Object.assign(productState, { tab: next, expanded: false, query: '' });
+          productState.selected.clear();
+          draw();
+        }, 'tabs'),
+        items.length ? el('div', { class: 'tools' },
+          el('label', { class: 'search-box' }, icon('search', 14), search),
           el('button', {
             type: 'button', class: 'icon-btn', title: productState.order === 'desc' ? 'Maior para menor' : 'Menor para maior',
             'aria-label': productState.order === 'desc' ? 'Maior para menor' : 'Menor para maior',
@@ -291,7 +298,7 @@ function productsPanel(s) {
             type: 'button', class: 'chip', onclick: () => { productState.selected.clear(); draw(); },
           }, `${productState.selected.size} selecionados ×`) : null) : null),
       el('div', { class: 'list-body' },
-        s.products.length ? el('div', { class: productState.expanded ? 'ranked expanded' : 'ranked' }, visible.map((p) => el('button', {
+        items.length ? el('div', { class: productState.expanded ? 'ranked expanded' : 'ranked' }, visible.map((p) => el('button', {
           type: 'button', class: productState.selected.has(p.name) ? 'rank-row selected' : 'rank-row',
           'aria-pressed': String(productState.selected.has(p.name)),
           onclick: () => { productState.selected.has(p.name) ? productState.selected.delete(p.name) : productState.selected.add(p.name); draw(); },
@@ -304,7 +311,7 @@ function productsPanel(s) {
             el('span', { class: 'rank-pct' }, `${p.percentage.toFixed(0)}%`)),
           el('span', { class: 'rank-track' }, el('span', { style: `width: ${(p.count / max) * 100}%; background: ${p.color}` })))))
           : el('p', { class: 'empty' }, 'Nenhuma venda no período'),
-        s.products.length ? el('div', { class: 'list-foot' },
+        items.length ? el('div', { class: 'list-foot' },
           el('span', {}, picked.length ? `Selecionados: ${picked.length} (${total} vendas)` : `Total: ${total} vendas`),
           rows.length > VISIBLE_LIMIT ? el('button', {
             type: 'button', class: 'more', onclick: () => { productState.expanded = !productState.expanded; draw(); },

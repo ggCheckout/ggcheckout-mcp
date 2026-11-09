@@ -130,7 +130,9 @@
 
   /* SalesByProduct: search, sort and the ranked list. */
   .tools { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-  .search-box { flex: 1; min-width: 0; }
+  .segmented.tabs { margin-top: 8px; }
+  .search-box { position: relative; flex: 1; min-width: 0; }
+  .search-box svg { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--d-muted); pointer-events: none; }
   .search, .icon-btn {
     height: 32px; border-radius: 6px; border: 1px solid var(--d-line); background: var(--d-bg); color: var(--d-fg); font-size: 12px;
   }
