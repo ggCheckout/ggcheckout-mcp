@@ -838,8 +838,8 @@ network), talking to the host through the official `@modelcontextprotocol/ext-ap
 
 - `src/GgApp.tsx` picks the view; `src/views.ts` maps each tool to its view, and a server test
   checks that this list matches the tools whose `_meta.ui` points to the app.
-- `src/dashboard/` and `src/pix/` hold each view, its pure model (`model.ts`, unit tested) and
-  its stylesheet, scoped to the view's root class.
+- `src/dashboard/`, `src/funnel/`, `src/payments/` and `src/pix/` hold each view, its pure model
+  (`model.ts`, unit tested) and its stylesheet, scoped to the view's root class.
 - The look follows the seller dashboard of saas-checkout (Seasons tokens, the dashboard cards);
   colors and assets are copied from there and say where from.
 - `preview/` is a real MCP Apps host (`AppBridge`) over invented fixtures, light and dark side by

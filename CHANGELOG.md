@@ -19,7 +19,7 @@ right now.
   the period's numbers against the previous period.
 - The approval view follows the dashboard's ApprovalRate card: each method opens into its gateways,
   with the gateway logos. In a client that draws the views (it announces
-  `io.modelcontextprotocol/ui` in `initialize`), the seven tools with a view start their answer with
+  `io.modelcontextprotocol/ui` in `initialize`), every tool with a view starts its answer with
   a note asking the model not to restate the card as text. Text-only clients get the same answer
   as before.
 - The sales view mirrors the seller dashboard cards one to one: `get_dashboard_stats` as StatsCards
