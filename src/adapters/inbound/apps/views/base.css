@@ -1,0 +1,84 @@
+/* Fallbacks for the MCP Apps standard variables: a host that sends its own overrides these on :root.
+   The accent is GG Checkout's CTA blue (#0e51f2), lifted in dark mode to keep 3:1 on the surface. */
+:root {
+  color-scheme: light dark;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f6f7f9;
+  --color-text-primary: #14171f;
+  --color-text-secondary: #5b6170;
+  --color-text-tertiary: #8a909c;
+  --color-border-primary: #e3e6eb;
+  --color-text-success: #0f7a3d;
+  --color-text-danger: #c42b2b;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --border-radius-md: 10px;
+  --border-radius-lg: 14px;
+  --gg-accent: #0e51f2;
+  --gg-accent-soft: rgba(14, 81, 242, 0.12);
+  --gg-on-accent: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-background-primary: #16181d;
+    --color-background-secondary: #1e2128;
+    --color-text-primary: #f2f3f5;
+    --color-text-secondary: #a3a8b3;
+    --color-text-tertiary: #737987;
+    --color-border-primary: #2c3039;
+    --color-text-success: #4cc27e;
+    --color-text-danger: #f06a6a;
+    --gg-accent: #5b8cff;
+    --gg-accent-soft: rgba(91, 140, 255, 0.16);
+    --gg-on-accent: #0b1430;
+  }
+}
+:root[data-theme='dark'] {
+  --color-background-primary: #16181d;
+  --color-background-secondary: #1e2128;
+  --color-text-primary: #f2f3f5;
+  --color-text-secondary: #a3a8b3;
+  --color-text-tertiary: #737987;
+  --color-border-primary: #2c3039;
+  --color-text-success: #4cc27e;
+  --color-text-danger: #f06a6a;
+  --gg-accent: #5b8cff;
+  --gg-accent-soft: rgba(91, 140, 255, 0.16);
+  --gg-on-accent: #0b1430;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  font: 14px/1.45 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  padding: 16px;
+}
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--color-text-secondary); }
+.faint { color: var(--color-text-tertiary); }
+.eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+.state {
+  padding: 28px 8px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+.state[data-tone='error'] { color: var(--color-text-danger); }
+.skeleton {
+  border-radius: var(--border-radius-md);
+  background: linear-gradient(90deg, var(--color-background-secondary), var(--color-border-primary), var(--color-background-secondary));
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 2px solid var(--gg-accent); outline-offset: 2px; }
+[hidden] { display: none !important; }

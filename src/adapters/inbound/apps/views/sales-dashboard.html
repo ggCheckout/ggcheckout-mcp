@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de vendas</title>
+<!-- include:base.css -->
+<style>
+  .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .ranges { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--color-background-secondary); }
+  .ranges button {
+    border: 0; background: transparent; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+    font-size: 12px; font-weight: 500; color: var(--color-text-secondary);
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  .ranges button:hover { color: var(--color-text-primary); }
+  .ranges button[aria-pressed='true'] { background: var(--gg-accent); color: var(--gg-on-accent); }
+  .ranges button:disabled { cursor: default; }
+  .hero { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 28px; margin-bottom: 6px; }
+  .hero-value { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; margin: 2px 0 0; }
+  .kpi-value { font-size: 17px; font-weight: 600; margin: 2px 0 0; }
+  .chart { position: relative; margin: 10px 0 4px; height: 180px; }
+  .chart svg { display: block; overflow: visible; }
+  .chart .grid { stroke: var(--color-border-primary); stroke-width: 1; }
+  .chart .axis { fill: var(--color-text-tertiary); font-size: 11px; }
+  .chart .line { fill: none; stroke: var(--gg-accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart .area { fill: var(--gg-accent-soft); }
+  .chart .cross { stroke: var(--color-text-tertiary); stroke-width: 1; stroke-dasharray: 3 3; }
+  .chart .dot { fill: var(--gg-accent); stroke: var(--color-background-primary); stroke-width: 2; }
+  .tip {
+    position: absolute; top: 0; pointer-events: none; white-space: nowrap; z-index: 1;
+    padding: 7px 10px; border-radius: var(--border-radius-md); font-size: 12px;
+    background: var(--color-background-primary); border: 1px solid var(--color-border-primary);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  }
+  .tip strong { display: block; font-size: 13px; }
+  .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 18px 24px; margin-top: 18px; }
+  .panel h3 { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin: 0 0 10px; }
+  .bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; margin-bottom: 9px; font-size: 13px; }
+  .bar-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-row .track { grid-column: 1 / -1; height: 6px; border-radius: 4px; background: var(--color-background-secondary); }
+  .bar-row .fill { height: 100%; border-radius: 4px; background: var(--gg-accent); min-width: 4px; }
+  .empty-panel { font-size: 13px; color: var(--color-text-tertiary); margin: 0; }
+  .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--color-border-primary); font-size: 12px; }
+  details summary { cursor: pointer; color: var(--color-text-secondary); }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+  th, td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--color-border-primary); }
+  th:first-child, td:first-child { text-align: left; }
+  #content[aria-busy='true'] { opacity: 0.55; transition: opacity 150ms ease; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <p class="eyebrow" id="title">Vendas</p>
+    <div class="ranges" id="ranges" role="group" aria-label="Período" hidden></div>
+  </div>
+  <div id="content">
+    <div class="skeleton" style="height: 34px; width: 46%; margin-bottom: 14px"></div>
+    <div class="skeleton" style="height: 180px"></div>
+  </div>
+<!-- include:format.js dashboard-model.js bridge.js sales-dashboard.js -->
+</body>
+</html>

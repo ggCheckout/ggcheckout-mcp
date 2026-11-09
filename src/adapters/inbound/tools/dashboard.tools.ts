@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { DashboardService } from '../../../core/services/dashboard.service.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, SALES_DASHBOARD_URI } from '../apps/apps.js';
 
 export function registerDashboardTools(server: McpServer, service: DashboardService) {
   server.registerTool('get_dashboard_stats', {
@@ -17,6 +18,7 @@ export function registerDashboardTools(server: McpServer, service: DashboardServ
       range: z.enum(['today', 'yesterday', 'week', 'month', 'year', 'all']).optional().describe('Time range (default: week)'),
       tz: z.string().optional().describe('Timezone (default: America/Sao_Paulo)'),
     },
+    _meta: appMeta(SALES_DASHBOARD_URI),
   }, createToolHandler('get_dashboard_charts', async ({ range, tz }) => service.getCharts(range, tz)));
 
   server.tool('invalidate_dashboard_cache', 'Force refresh of dashboard cache',

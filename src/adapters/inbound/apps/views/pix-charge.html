@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cobrança PIX</title>
+<!-- include:base.css -->
+<style>
+  .pix { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  .qr {
+    flex: 0 0 auto; width: 184px; height: 184px; padding: 10px; border-radius: var(--border-radius-lg);
+    background: #ffffff; border: 1px solid var(--color-border-primary); display: grid; place-items: center;
+    transition: opacity 200ms ease, filter 200ms ease;
+  }
+  .qr img { width: 100%; height: 100%; image-rendering: pixelated; }
+  .qr[data-dim] { opacity: 0.35; filter: grayscale(1); }
+  .info { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  .amount { font-size: 28px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; margin: 2px 0 0; }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: var(--color-background-secondary); color: var(--color-text-secondary); }
+  .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .pill[data-status='pending'] { color: var(--gg-accent); background: var(--gg-accent-soft); }
+  .pill[data-status='pending']::before { animation: pulse 1.6s ease-in-out infinite; }
+  .pill[data-status='paid'] { color: var(--color-text-success); }
+  .pill[data-status='expired'], .pill[data-status='canceled'], .pill[data-status='failed'] { color: var(--color-text-danger); }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+  @media (prefers-reduced-motion: reduce) { .pill::before { animation: none !important; } }
+  .badge { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px dashed var(--color-text-tertiary); color: var(--color-text-secondary); }
+  .code {
+    display: block; width: 100%; padding: 9px 11px; border-radius: var(--border-radius-md);
+    border: 1px solid var(--color-border-primary); background: var(--color-background-secondary); color: var(--color-text-primary);
+    font: 12px/1.4 var(--font-mono); resize: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .copy {
+    align-self: flex-start; border: 0; cursor: pointer; padding: 10px 18px; border-radius: var(--border-radius-md);
+    background: var(--gg-accent); color: var(--gg-on-accent); font-weight: 600; font-size: 14px;
+    transition: transform 120ms ease, filter 150ms ease;
+  }
+  .copy:hover { filter: brightness(1.08); }
+  .copy:active { transform: scale(0.98); }
+  .done { display: flex; align-items: center; gap: 14px; padding: 6px 0; }
+  .done svg { flex: 0 0 auto; color: var(--color-text-success); }
+  .done h2 { margin: 0; font-size: 18px; }
+  .note { font-size: 12px; margin: 0; }
+</style>
+</head>
+<body>
+  <div id="content">
+    <div class="pix">
+      <div class="skeleton" style="width: 184px; height: 184px"></div>
+      <div class="info">
+        <div class="skeleton" style="height: 14px; width: 40%"></div>
+        <div class="skeleton" style="height: 30px; width: 60%"></div>
+        <div class="skeleton" style="height: 38px"></div>
+      </div>
+    </div>
+  </div>
+<!-- include:format.js pix-model.js bridge.js pix-charge.js -->
+</body>
+</html>

@@ -70,6 +70,7 @@ import { registerRewardsTools } from './adapters/inbound/tools/rewards.tools.js'
 import { registerProfileTools } from './adapters/inbound/tools/profile.tools.js';
 import { registerPushTools } from './adapters/inbound/tools/push.tools.js';
 import { registerTelegramTools } from './adapters/inbound/tools/telegram.tools.js';
+import { registerAppViews } from './adapters/inbound/apps/apps.js';
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -181,6 +182,7 @@ registerRewardsTools(server, rewardsService);
 registerProfileTools(server, profileService);
 registerPushTools(server, pushService);
 registerTelegramTools(server, telegramService);
+registerAppViews(server);
 
 let paymentsUrl: string | undefined;
 try {
