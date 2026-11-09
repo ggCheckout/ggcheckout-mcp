@@ -103,6 +103,21 @@ link is refused, and a path that leads outside the folder through a link is too.
 export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 ```
 
+### Inline views (MCP Apps)
+
+In a client that supports [MCP Apps](https://modelcontextprotocol.io/extensions/apps) (Claude
+Desktop and claude.ai, among others), some tools also draw their answer inside the chat. Nothing
+needs configuring, and clients without MCP Apps (Claude Code, Cursor) keep receiving the same text
+answer as before.
+
+| View | Tools | What it shows |
+|------|-------|---------------|
+| Sales panel | `get_dashboard_charts` | Revenue over time with a hover tooltip, sales, average ticket, conversion, approval per method, top products and states, refunds. The period buttons call the tool again. |
+| PIX | `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup`, `pay_invoice` | QR code, copy-and-paste button, time left, and the status, polled every 5 s through `get_payment_intent`, `get_credit_topup`, `list_credits` or `get_invoice` until it is paid or expires. |
+
+The views run in the client's sandbox with no network access: their data only arrives through
+the client, from the tool result or from the tool calls listed above.
+
 ### Versioning and the API
 
 - Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>`, so the API

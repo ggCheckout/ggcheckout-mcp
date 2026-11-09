@@ -5,6 +5,17 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## Unreleased
+
+### Added
+
+- Inline views (MCP Apps, spec 2026-01-26) for clients that draw them: a sales panel on
+  `get_dashboard_charts`, and a PIX view (QR, copy-and-paste, time left, live status) on
+  `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup` and `pay_invoice`.
+  Served as the `ui://ggcheckout/sales-dashboard.html` and `ui://ggcheckout/pix-charge.html`
+  resources. The tools' arguments and text answers are unchanged, so clients without MCP Apps see
+  no difference, and the minimum supported version does not need to move.
+
 ## 0.5.0
 
 ### Breaking
