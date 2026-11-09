@@ -12,8 +12,7 @@ right now.
 - Inline views (MCP Apps, spec 2026-01-26) for clients that draw them: a sales panel on
   `get_dashboard_charts`, and a PIX view (QR, copy-and-paste, time left, live status) on
   `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup` and `pay_invoice`.
-  Served as the `ui://ggcheckout/sales-dashboard.html` and `ui://ggcheckout/pix-charge.html`
-  resources. The minimum supported version does not need to move: no write changed.
+  The minimum supported version does not need to move: no write changed.
 - `get_dashboard_charts` takes an optional `focus` (`revenue`, `approval`, `products`, `states`,
   `refunds`): the answer carries only that part, and the sales view draws only it. Without `focus`
   the answer is the whole payload, as before. `get_dashboard_stats` is drawn by the same view, as
@@ -25,9 +24,12 @@ right now.
   as before.
 - The sales view mirrors the seller dashboard cards one to one: `get_dashboard_stats` as StatsCards
   (sales, revenue, pending and expired, with the change against the previous period), the revenue
-  as SalesChart, products as SalesByProduct (search, sort, selection, "Ver mais") and states as
-  SalesByState (map and list). The built views ship in the package as `ggcheckout-mcp/views/*.html`,
-  so the dashboard Storybook can show each view next to the component it copies.
+  as SalesChart, products and order bumps as SalesByProduct (search, sort, selection, "Ver mais")
+  and states as SalesByState (map and list).
+- The views are one React app in the `ui/` workspace (Vite, single-file build, the official
+  `@modelcontextprotocol/ext-apps` client), served as `ui://ggcheckout/app.html` for every tool
+  with a view, with the dashboard's Urbanist font bundled. `npm run dev -w ui` opens a preview
+  host with invented data.
 
 ## 0.5.0
 

@@ -1,0 +1,34 @@
+.pix-view .pix { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+/* The QR stays black on white in both themes, so any banking app reads it. */
+.pix-view .qr {
+  flex: 0 0 auto; width: 188px; height: 188px; padding: 10px; border-radius: var(--radius);
+  background: #ffffff; border: 1px solid var(--qr-ring); display: grid; place-items: center;
+  transition: opacity 200ms ease, filter 200ms ease;
+}
+.pix-view .qr img { width: 100%; height: 100%; image-rendering: pixelated; }
+.pix-view .qr[data-dim] { opacity: 0.35; filter: grayscale(1); }
+.pix-view .info { flex: 1 1 230px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.pix-view .amount { font-size: 32px; line-height: 1.05; margin: 6px 0 0; }
+.pix-view .description { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.pix-view .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
+.pix-view .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--row); border: 1px solid var(--row-border); color: var(--muted); }
+.pix-view .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pix-view .pill[data-status='pending'] { color: var(--selected-fg); background: var(--selected-bg); border-color: transparent; }
+.pix-view .pill[data-status='pending']::before { animation: pulse 1.6s ease-in-out infinite; }
+.pix-view .pill[data-status='paid'] { color: var(--success); }
+.pix-view .pill[data-status='expired'], .pix-view .pill[data-status='canceled'], .pix-view .pill[data-status='failed'] { color: var(--danger); }
+@keyframes pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) {
+.pix-view .pill::before { animation: none !important; }
+}
+.pix-view .badge { padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; border: 1px dashed var(--faint); color: var(--muted); }
+.pix-view .code {
+  display: block; width: 100%; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--row-border); background: var(--row); color: var(--ink);
+  font: 12px/1.4 var(--font-mono); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.pix-view .cta { align-self: flex-start; }
+.pix-view .done { display: flex; align-items: center; gap: 14px; }
+.pix-view .done svg { flex: 0 0 auto; color: var(--success); }
+.pix-view .done h2 { margin: 0; font-size: 20px; }
+.pix-view .note { font-size: 12px; margin: 0; }

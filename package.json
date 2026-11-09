@@ -5,7 +5,6 @@
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
-    "./views/*": "./dist/views/*",
     "./package.json": "./package.json"
   },
   "type": "module",
@@ -14,13 +13,14 @@
   },
   "scripts": {
     "prebuild": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
-    "build": "tsc && node -e \"require('fs').cpSync('src/adapters/inbound/apps/views', 'dist/adapters/inbound/apps/views', { recursive: true })\" && node dist/adapters/inbound/apps/export-views.js",
+    "build": "npm run build -w ui && tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "prepublishOnly": "npm run build",
-    "test": "vitest run",
+    "test": "vitest run && npm test -w ui",
     "test:watch": "vitest",
-    "test:e2e": "vitest run --config vitest.e2e.config.ts"
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "pretest": "npm run build -w ui"
   },
   "keywords": [
     "mcp",
@@ -65,5 +65,8 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "mcpName": "io.github.ggCheckout/ggcheckout-mcp"
+  "mcpName": "io.github.ggCheckout/ggcheckout-mcp",
+  "workspaces": [
+    "ui"
+  ]
 }

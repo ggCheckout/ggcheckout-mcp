@@ -1,7 +1,7 @@
 // The state boxes of SalesByState (saas-checkout components/dashboard/analytics/sales-by-state,
 // `BRAZIL_STATES`), copied unchanged: a schematic map, one rectangle per state, viewBox 50 20 400 440.
 
-export const BRAZIL_STATES = {
+export const BRAZIL_STATES: Record<string, { name: string; path: string; labelX: number; labelY: number }> = {
   AC: { name: 'Acre', path: 'M62,185 L85,185 L85,210 L62,210 Z', labelX: 73, labelY: 200 },
   AL: { name: 'Alagoas', path: 'M395,195 L415,195 L415,210 L395,210 Z', labelX: 405, labelY: 205 },
   AP: { name: 'Amapá', path: 'M270,45 L295,45 L295,80 L270,80 Z', labelX: 282, labelY: 65 },

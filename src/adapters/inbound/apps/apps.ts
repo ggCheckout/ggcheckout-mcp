@@ -10,53 +10,29 @@ import type { ToolResult } from '../tool-handler.js';
  */
 export const APP_MIME_TYPE = 'text/html;profile=mcp-app';
 
-export const SALES_DASHBOARD_URI = 'ui://ggcheckout/sales-dashboard.html';
-export const PIX_CHARGE_URI = 'ui://ggcheckout/pix-charge.html';
+/** Every view lives in one app (ui/, built to dist/views/app.html); it picks the view by tool. */
+export const APP_URI = 'ui://ggcheckout/app.html';
 
-/** The tool `_meta` that tells an MCP Apps host which view draws its result. */
-export function appMeta(resourceUri: string) {
-  return { ui: { resourceUri } };
+/** The tool `_meta` that tells an MCP Apps host to draw the result with the app. */
+export function appMeta() {
+  return { ui: { resourceUri: APP_URI } };
 }
-
-const VIEWS_DIR = new URL('./views/', import.meta.url);
-const INCLUDE = /<!-- include:([\w.\- ]+) -->/g;
-const ART = /'art:([\w.-]+\.avif)'/g;
 
 /**
- * A view is one self-contained HTML document: the host loads it in a sandboxed iframe with no
- * network (the default CSP), so the shared CSS and scripts are inlined where the page says
- * `<!-- include:a.css b.js -->`. The scripts become ONE module, in the listed order, so they share
- * a scope without imports; the model files keep their `export`s for the unit tests.
- * `'art:name.avif'`, in the CSS or the scripts, becomes a `data:` image from `views/art/` (the CSP allows those).
+ * The built app, read once. The same relative path resolves from src/ (tsx) and from dist/ (the
+ * published package), because both sit four levels under the package root.
  */
-export function buildView(page: string): string {
-  const read = (file: string) => readFileSync(new URL(file, VIEWS_DIR), 'utf-8');
-  const art = (file: string) => readFileSync(new URL(`art/${file}`, VIEWS_DIR)).toString('base64');
-  return read(page).replace(INCLUDE, (_, list: string) => {
-    const files = list.trim().split(/\s+/);
-    const styles = files.filter((f) => f.endsWith('.css')).map(read).join('\n');
-    const scripts = files.filter((f) => f.endsWith('.js')).map(read).join('\n');
-    return [
-      styles && `<style>\n${styles}</style>`,
-      scripts && `<script type="module">\n${scripts}</script>`,
-    ].filter(Boolean).join('\n');
-  }).replace(ART, (_, file: string) => `'data:image/avif;base64,${art(file)}'`);
-}
+const APP_FILE = new URL('../../../../dist/views/app.html', import.meta.url);
+let appHtml: string | undefined;
 
-export const APP_VIEWS = [
-  {
-    name: 'sales_dashboard',
-    uri: SALES_DASHBOARD_URI,
-    page: 'sales-dashboard.html',
-    description: 'Sales panel: revenue over time, approval per method, top products and states',
-  },
-  {
-    name: 'pix_charge',
-    uri: PIX_CHARGE_URI,
-    page: 'pix-charge.html',
-    description: 'PIX QR code with copy-and-paste, expiry countdown and live payment status',
-  },
-] as const;
+export function loadAppHtml(): string {
+  try {
+    appHtml ??= readFileSync(APP_FILE, 'utf-8');
+  } catch {
+    throw new Error('dist/views/app.html is missing: build the views with `npm run build`');
+  }
+  return appHtml;
+}
 
 const UI_EXTENSION = 'io.modelcontextprotocol/ui';
 
@@ -86,20 +62,17 @@ export function registerAppViews(server: McpServer) {
   server.server.oninitialized = () => {
     logger.info('STARTUP', `Client ${clientDrawsViews(server) ? 'draws' : 'does not draw'} MCP Apps views`);
   };
-  for (const view of APP_VIEWS) {
-    let html: string | undefined;
-    server.registerResource(view.name, view.uri, { mimeType: APP_MIME_TYPE, description: view.description }, async () => {
-      html ??= buildView(view.page);
-      return {
-        contents: [{
-          uri: view.uri,
-          mimeType: APP_MIME_TYPE,
-          text: html,
-          // No csp: the data arrives through the host, so the restrictive default (no network) is
-          // all a view needs. The copy button asks for the clipboard and falls back without it.
-          _meta: { ui: { prefersBorder: true, permissions: { clipboardWrite: {} } } },
-        }],
-      };
-    });
-  }
+  server.registerResource('ggcheckout_app', APP_URI, {
+    mimeType: APP_MIME_TYPE,
+    description: 'GG Checkout views: sales panel (stats and charts) and PIX charges with live status',
+  }, async () => ({
+    contents: [{
+      uri: APP_URI,
+      mimeType: APP_MIME_TYPE,
+      text: loadAppHtml(),
+      // No csp: the data arrives through the host, so the restrictive default (no network) is all
+      // the app needs. The copy button asks for the clipboard and falls back without it.
+      _meta: { ui: { prefersBorder: true, permissions: { clipboardWrite: {} } } },
+    }],
+  }));
 }

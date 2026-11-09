@@ -1,8 +1,27 @@
 // One PIX view for every tool that answers with a PIX: create_pix_charge / get_payment_intent
 // (payments API), add_credit / get_credit_topup (billing credit) and pay_invoice. The answer's shape
-// says which one it is, and `poll` is the tool call that tells whether it was paid. Pure: no DOM.
+// says which one it is, and `poll` is the tool call that tells whether it was paid. Pure.
 
-const INTENT_STATUS = {
+import { isPayload, type Payload } from '../lib/payload';
+
+export type PixStatus = 'pending' | 'paid' | 'expired' | 'canceled' | 'failed' | 'none' | 'requested';
+
+export interface PixCharge {
+  kind: 'intent' | 'topup' | 'invoice';
+  title: string;
+  id: string | null;
+  amountCents: number | null;
+  description?: string | null;
+  code: string | null;
+  qrSrc: string | null;
+  expiresAt: string | null;
+  status: PixStatus;
+  livemode: boolean;
+  method?: string | null;
+  poll: { tool: string; args: Record<string, unknown> } | null;
+}
+
+const INTENT_STATUS: Record<string, PixStatus> = {
   processing: 'pending',
   requires_action: 'pending',
   succeeded: 'paid',
@@ -10,20 +29,19 @@ const INTENT_STATUS = {
   canceled: 'canceled',
   failed: 'failed',
 };
-const TOPUP_STATUS = { pending: 'pending', paid: 'paid', expired: 'expired' };
-const LEGACY_CREDIT_STATUS = { pending: 'pending', confirmed: 'paid', used: 'paid', expired: 'expired' };
+const TOPUP_STATUS: Record<string, PixStatus> = { pending: 'pending', paid: 'paid', expired: 'expired' };
+const LEGACY_CREDIT_STATUS: Record<string, PixStatus> = { pending: 'pending', confirmed: 'paid', used: 'paid', expired: 'expired' };
 
-export const FINAL_STATUSES = new Set(['paid', 'expired', 'canceled', 'failed']);
+export const FINAL_STATUSES = new Set<PixStatus>(['paid', 'expired', 'canceled', 'failed']);
 
 /** An <img> src for the QR: only a base64 image, never a URL the sandbox would try to fetch. */
-export function qrImageSrc(value) {
+export function qrImageSrc(value: unknown): string | null {
   if (typeof value !== 'string' || !value) return null;
   if (value.startsWith('data:')) return /^data:image\/(png|jpeg|gif|svg\+xml|webp);base64,/.test(value) ? value : null;
   return /^[A-Za-z0-9+/=\s]+$/.test(value) ? `data:image/png;base64,${value.replace(/\s/g, '')}` : null;
 }
 
-function fromTopup(t, via) {
-  const status = TOPUP_STATUS[t.status] ?? 'pending';
+function fromTopup(t: Payload, via: string): PixCharge {
   return {
     kind: 'topup',
     title: 'Recarga de créditos',
@@ -32,17 +50,15 @@ function fromTopup(t, via) {
     code: t.pixCode ?? null,
     qrSrc: qrImageSrc(t.pixQrBase64),
     expiresAt: t.expiresAt ?? null,
-    status,
+    status: TOPUP_STATUS[t.status] ?? 'pending',
     livemode: true,
-    poll: via === 'legacy'
-      ? { tool: 'list_credits', args: { limit: 50 } }
-      : { tool: 'get_credit_topup', args: {} },
+    poll: via === 'legacy' ? { tool: 'list_credits', args: { limit: 50 } } : { tool: 'get_credit_topup', args: {} },
   };
 }
 
 /** Null when `data` is no PIX answer this view knows. */
-export function normalizePix(data, args = {}) {
-  if (!data || typeof data !== 'object') return null;
+export function normalizePix(data: unknown, args: Record<string, unknown> = {}): PixCharge | null {
+  if (!isPayload(data)) return null;
 
   if (data.object === 'payment_intent') {
     return {
@@ -65,7 +81,9 @@ export function normalizePix(data, args = {}) {
 
   // get_credit_topup: { topup: {...} | null }
   if ('topup' in data) {
-    if (!data.topup) return { kind: 'topup', title: 'Recarga de créditos', status: 'none', poll: null };
+    if (!data.topup) {
+      return { kind: 'topup', title: 'Recarga de créditos', id: null, amountCents: null, code: null, qrSrc: null, expiresAt: null, status: 'none', livemode: true, poll: null };
+    }
     return fromTopup(data.topup, 'topup');
   }
 
@@ -81,7 +99,7 @@ export function normalizePix(data, args = {}) {
       qrSrc: qrImageSrc(data.qrCodeImage),
       expiresAt: null,
       status: pix ? 'pending' : 'requested',
-      method: args.method ?? null,
+      method: (args.method as string) ?? null,
       livemode: true,
       poll: pix ? { tool: 'get_invoice', args: { invoiceId: String(args.invoiceId) } } : null,
     };
@@ -91,15 +109,15 @@ export function normalizePix(data, args = {}) {
 }
 
 /** The status a poll answer reports for `charge`, or null when it does not mention it. */
-export function polledStatus(charge, data) {
-  if (!data) return null;
+export function polledStatus(charge: PixCharge, data: unknown): PixStatus | null {
+  if (!isPayload(data)) return null;
   switch (charge.poll?.tool) {
     case 'get_payment_intent':
       return data.id === charge.id ? (INTENT_STATUS[data.status] ?? null) : null;
     case 'get_credit_topup':
       return data.topup?.creditId === charge.id ? (TOPUP_STATUS[data.topup.status] ?? null) : null;
     case 'list_credits': {
-      const credit = (data.credits ?? []).find((c) => c.id === charge.id);
+      const credit = (Array.isArray(data.credits) ? data.credits : []).find((c: Payload) => c.id === charge.id);
       return credit ? (LEGACY_CREDIT_STATUS[credit.status] ?? null) : null;
     }
     case 'get_invoice':
@@ -110,7 +128,7 @@ export function polledStatus(charge, data) {
 }
 
 /** "14:59" for the time left, null once past. */
-export function formatRemaining(expiresAt, now = Date.now()) {
+export function formatRemaining(expiresAt: string, now = Date.now()): string | null {
   const end = Date.parse(expiresAt);
   if (!Number.isFinite(end)) return null;
   const seconds = Math.floor((end - now) / 1000);

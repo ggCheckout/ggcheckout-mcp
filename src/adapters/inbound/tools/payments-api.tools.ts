@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { PaymentsApiClient, DEFAULT_PAYMENTS_API_URL } from '../../outbound/payments-api.client.js';
 import { createToolHandler, type ToolResult } from '../tool-handler.js';
-import { appMeta, PIX_CHARGE_URI, withDrawnNote } from '../apps/apps.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 /**
  * The payments API has its own key (ggpk_…). Without GG_PAYMENTS_API_KEY the tools are not offered, and
@@ -89,7 +89,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       idempotency_key: z.string().regex(/^[\x21-\x7e]{1,255}$/, 'idempotency_key must be 1 to 255 printable ASCII characters, no spaces').optional()
         .describe('Only to repeat a call that timed out or failed with 5xx: pass the SAME value so no second charge is made. Omit this field otherwise (an empty string is refused)'),
     },
-    _meta: appMeta(PIX_CHARGE_URI),
+    _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('create_pix_charge', async (a) => client.createPixCharge({
     wallet: a.wallet,
     amount: a.amount,
@@ -102,7 +102,7 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
   server.registerTool('get_payment_intent', {
     description: 'Get a payment intent (PIX charge) by id (`pi_…`): status, amount, PIX and timestamps.',
     inputSchema: { id: z.string().regex(INTENT_ID).describe('Payment intent id (`pi_…`)') },
-    _meta: appMeta(PIX_CHARGE_URI),
+    _meta: appMeta(),
   }, withDrawnNote(server, asThirdPartyData(createToolHandler('get_payment_intent', async ({ id }) => client.getPaymentIntent(id)))));
 
   server.registerTool('list_payment_intents', {

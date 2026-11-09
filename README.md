@@ -116,7 +116,9 @@ answer as before.
 | PIX | `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup`, `pay_invoice` | QR code, copy-and-paste button, time left, and the status, polled every 5 s through `get_payment_intent`, `get_credit_topup`, `list_credits` or `get_invoice` until it is paid or expires. |
 
 The views run in the client's sandbox with no network access: their data only arrives through
-the client, from the tool result or from the tool calls listed above.
+the client, from the tool result or from the tool calls listed above. All of them are one React
+app (`ui/`, built into `dist/views/app.html` and served as the `ui://ggcheckout/app.html`
+resource), which picks the view by the tool that answered.
 
 ### Versioning and the API
 
@@ -811,9 +813,10 @@ GGCHECKOUT_UPLOAD_ROOT=/path/to/import    # needed by upload_members_area_file, 
 
 ```bash
 npm run dev          # Development with hot reload
-npm run build        # TypeScript build
+npm run build        # Views (ui/) and TypeScript build
 npm start            # Run compiled build
-npm test             # Unit tests (173 tests)
+npm test             # Unit tests of the server and of the views
+npm run dev -w ui    # Views preview at http://localhost:6040/preview/index.html
 npm run test:e2e     # E2E against staging (requires .env)
 ```
 
@@ -824,6 +827,23 @@ GGCHECKOUT_API_KEY=ggck_live_... npx @modelcontextprotocol/inspector -- npx tsx 
 ```
 
 Opens a browser UI to test any tool interactively.
+
+### Views (`ui/`)
+
+The inline views are an npm workspace: React, built by Vite into one self-contained HTML
+(`vite-plugin-singlefile`; every script, style, font and image inline, since hosts give it no
+network), talking to the host through the official `@modelcontextprotocol/ext-apps` `App`.
+
+- `src/GgApp.tsx` picks the view; `src/views.ts` maps each tool to its view, and a server test
+  checks that this list matches the tools whose `_meta.ui` points to the app.
+- `src/dashboard/` and `src/pix/` hold each view, its pure model (`model.ts`, unit tested) and
+  its stylesheet, scoped to the view's root class.
+- The look follows the seller dashboard of saas-checkout (Seasons tokens, the dashboard cards);
+  colors and assets are copied from there and say where from.
+- `preview/` is a real MCP Apps host (`AppBridge`) over invented fixtures, light and dark side by
+  side, answering the views' tool calls (period buttons, PIX polling). `?only=<scenario>` and
+  `?theme=light|dark` narrow it.
+- `npm run build -w ui` fails if the HTML would load anything from outside or grow past 1.5 MB.
 
 ---
 

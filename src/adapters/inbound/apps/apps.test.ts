@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { APP_MIME_TYPE, PIX_CHARGE_URI, SALES_DASHBOARD_URI, buildView, registerAppViews } from './apps.js';
+import { APP_MIME_TYPE, APP_URI, registerAppViews } from './apps.js';
+import { TOOL_VIEWS } from '../../../../ui/src/views.js';
 import { registerDashboardTools } from '../tools/dashboard.tools.js';
 import { registerBillingTools } from '../tools/billing.tools.js';
 import { registerPaymentsApiTools } from '../tools/payments-api.tools.js';
@@ -25,29 +26,17 @@ async function connect(drawsViews = false) {
   return client;
 }
 
-describe('buildView', () => {
-  it.each(['sales-dashboard.html', 'pix-charge.html'])('%s is one self-contained document', (page) => {
-    const html = buildView(page);
-    expect(html).toMatch(/^<!doctype html>/);
-    expect(html).not.toContain('<!-- include:');
-    expect(html).not.toContain("'art:");
-    expect(html).toContain("url('data:image/avif;base64,");
+describe('registerAppViews', () => {
+  it('serves the built app as one self-contained MCP App resource', async () => {
+    const client = await connect();
+    const { contents } = await client.readResource({ uri: APP_URI });
+    expect(contents).toHaveLength(1);
+    expect(contents[0]).toMatchObject({ uri: APP_URI, mimeType: APP_MIME_TYPE });
+    const html = String(contents[0].text);
+    expect(html).toMatch(/^<!doctype html>/i);
     // The host's default CSP has no network: anything external would silently fail to load.
     expect(html).not.toMatch(/(src|href)=["']?https?:/i);
-    expect(html.match(/<script type="module">/g)).toHaveLength(1);
-    expect(html).toContain('ui/initialize');
-  });
-});
-
-describe('registerAppViews', () => {
-  it('serves each view as an MCP App resource', async () => {
-    const client = await connect();
-    for (const uri of [SALES_DASHBOARD_URI, PIX_CHARGE_URI]) {
-      const { contents } = await client.readResource({ uri });
-      expect(contents).toHaveLength(1);
-      expect(contents[0]).toMatchObject({ uri, mimeType: APP_MIME_TYPE });
-      expect(String(contents[0].text)).toMatch(/^<!doctype html>/);
-    }
+    expect(html).not.toMatch(/<script[^>]+src=/i);
   });
 
   it('points the tools that answer with a chart or a PIX to their view', async () => {
@@ -55,11 +44,9 @@ describe('registerAppViews', () => {
     const { tools } = await client.listTools();
     const uriOf = (name: string) => (tools.find((t) => t.name === name)?._meta as any)?.ui?.resourceUri;
 
-    expect(uriOf('get_dashboard_charts')).toBe(SALES_DASHBOARD_URI);
-    expect(uriOf('get_dashboard_stats')).toBe(SALES_DASHBOARD_URI);
-    for (const name of ['add_credit', 'get_credit_topup', 'pay_invoice', 'create_pix_charge', 'get_payment_intent']) {
-      expect(uriOf(name), name).toBe(PIX_CHARGE_URI);
-    }
+    // Every tool the app draws points to it, and the app draws every tool that points to it.
+    const drawn = tools.filter((t) => uriOf(t.name) === APP_URI).map((t) => t.name).sort();
+    expect(drawn).toEqual(Object.keys(TOOL_VIEWS).sort());
     // Plain data tools stay without a view.
     expect(uriOf('invalidate_dashboard_cache')).toBeUndefined();
     expect(uriOf('list_credits')).toBeUndefined();

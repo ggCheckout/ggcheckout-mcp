@@ -6,7 +6,7 @@ import {
   type BillingService,
 } from '../../../core/services/billing.service.js';
 import { createToolHandler } from '../tool-handler.js';
-import { appMeta, PIX_CHARGE_URI, withDrawnNote } from '../apps/apps.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 export function registerBillingTools(server: McpServer, service: BillingService) {
   server.tool('get_billing_balance', 'Get current billing balance, credit, usage %, and next charge date',
@@ -47,7 +47,7 @@ export function registerBillingTools(server: McpServer, service: BillingService)
       invoiceId: z.string().describe('Invoice ID'),
       method: z.enum(['pix', 'card', 'credits']).describe('Payment method'),
     },
-    _meta: appMeta(PIX_CHARGE_URI),
+    _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('pay_invoice', async ({ invoiceId, method }) => service.payInvoice(invoiceId, method))));
 
   server.registerTool('list_credits', {
@@ -87,7 +87,7 @@ export function registerBillingTools(server: McpServer, service: BillingService)
           + 'the new billing reads it (without one it dedupes by amount within 2 minutes); the legacy '
           + 'billing ignores it and reuses the PIX already opened for the same amount, for 30 minutes.'),
     },
-    _meta: appMeta(PIX_CHARGE_URI),
+    _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('add_credit', async ({ amountCents, idempotencyKey }) => service.addCredit(amountCents, idempotencyKey))));
 
   server.registerTool('get_credit_topup', {
@@ -95,7 +95,7 @@ export function registerBillingTools(server: McpServer, service: BillingService)
       'The current credit top-up on the new billing: { creditId, amountCents, status (pending, paid, '
       + 'expired), pixCode, pixQrBase64, expiresAt }, or null when there is none. A pending top-up is not '
       + 'in the list_credits ledger until it is paid, so this is where to find one opened by add_credit.',
-    _meta: appMeta(PIX_CHARGE_URI),
+    _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('get_credit_topup', async () => ({ topup: await service.getCreditTopup() }))));
 
   server.tool('get_card_status', 'Get saved card status (validated, brand, last four, expiring soon)',

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { DashboardService } from '../../../core/services/dashboard.service.js';
 import { createToolHandler } from '../tool-handler.js';
-import { appMeta, SALES_DASHBOARD_URI, withDrawnNote } from '../apps/apps.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 export function registerDashboardTools(server: McpServer, service: DashboardService) {
   server.registerTool('get_dashboard_stats', {
@@ -13,7 +13,7 @@ export function registerDashboardTools(server: McpServer, service: DashboardServ
     inputSchema: {
       range: z.enum(['today', 'yesterday', 'week', 'month', 'year', 'all']).optional().describe('Time range (default: week)'),
     },
-    _meta: appMeta(SALES_DASHBOARD_URI),
+    _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('get_dashboard_stats', async ({ range }) => service.getStats(range))));
 
   server.registerTool('get_dashboard_charts', {
@@ -29,7 +29,7 @@ export function registerDashboardTools(server: McpServer, service: DashboardServ
       focus: z.enum(['revenue', 'approval', 'products', 'states', 'refunds']).optional()
         .describe('The part of the dashboard the question is about (default: everything)'),
     },
-    _meta: appMeta(SALES_DASHBOARD_URI),
+    _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('get_dashboard_charts', async ({ range, tz, focus }) => service.getCharts(range, tz, focus))));
 
   server.tool('invalidate_dashboard_cache', 'Force refresh of dashboard cache',

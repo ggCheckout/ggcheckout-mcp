@@ -1,7 +1,7 @@
 /* Seasons identity, as the seller dashboard applies it (saas-checkout: app/globals.css `--season-*`,
    components/dashboard/shared/dashboard-surface, components/seasons/SeasonCta.module.css). The host
    only picks light or dark; its own colors and fonts are not applied, so the view reads as GG.
-   Fonts are local only (the sandbox has no network): Inter when installed, else the system face. */
+   Urbanist, the dashboard's face, is bundled into app.html (the sandbox has no network). */
 :root {
   color-scheme: light;
   --season-black: #010104;
@@ -28,8 +28,8 @@
   --qr-ring: var(--border);
   --chart-line: var(--season-blue);
 
-  --font-ui: 'SeasonsUI', Inter, 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-  --font-display: 'SeasonsEditorial', 'Inter Display', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --font-ui: 'Urbanist Variable', Urbanist, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-display: 'Urbanist Variable', Urbanist, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
   --radius: 12px;
 }
@@ -101,13 +101,13 @@ body {
 .surface > * { position: relative; z-index: 1; }
 
 /* The card's Seasons art (`DASHBOARD_CARD_ART`), copied unchanged from saas-checkout
-   public/images (developer 93a23ada9). Pure black background, so it enters with `screen` and only
+   public/images/dashboard. Pure black background, so it enters with `screen` and only
    the drawing shows. Dark theme only, like the dashboard: these pieces have no light version. */
-.art-sales-chart { --art: url('art:sales-chart-corner.avif'); }
-.art-approval-rate { --art: url('art:approval-rate-corner.avif'); }
-.art-sales-by-product { --art: url('art:sales-by-product-corner.avif'); }
-.art-sales-by-payment { --art: url('art:sales-by-payment-corner.avif'); }
-.art-credit-wallet { --art: url('art:credit-wallet-corner.avif'); }
+.art-sales-chart { --art: url('../art/sales-chart-corner.avif'); }
+.art-approval-rate { --art: url('../art/approval-rate-corner.avif'); }
+.art-sales-by-product { --art: url('../art/sales-by-product-corner.avif'); }
+.art-sales-by-payment { --art: url('../art/sales-by-payment-corner.avif'); }
+.art-credit-wallet { --art: url('../art/credit-wallet-corner.avif'); }
 :root[data-theme='dark'] [class*='art-']::before {
   content: '';
   position: absolute;
