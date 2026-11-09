@@ -131,6 +131,7 @@ async function poll() {
 }
 
 function start() {
+  content.classList.add(charge.kind === 'topup' ? 'art-credit-wallet' : 'art-sales-by-payment');
   render();
   if (charge.status !== 'pending') return;
   tickTimer = setInterval(() => {

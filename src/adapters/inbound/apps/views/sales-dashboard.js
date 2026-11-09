@@ -61,8 +61,8 @@ function barRow(name, value, share) {
     el('div', { class: 'track' }, el('div', { class: 'fill', style: `width: ${Math.max(0, Math.min(1, share)) * 100}%` })));
 }
 
-function panel(heading, rows, emptyText) {
-  return el('section', { class: 'surface' }, el('h3', { class: 'card-title display' }, heading), rows.length ? rows : el('p', { class: 'empty-panel' }, emptyText));
+function panel(heading, rows, emptyText, art) {
+  return el('section', { class: art ? `surface ${art}` : 'surface' }, el('h3', { class: 'card-title display' }, heading), rows.length ? rows : el('p', { class: 'empty-panel' }, emptyText));
 }
 
 function drawChart(box, series) {
@@ -151,12 +151,12 @@ function render() {
       metric('Vendas', formatInt(s.sales)),
       metric('Ticket médio', formatCents(s.averageTicket)),
       metric('Conversão', formatPercent(s.conversion))),
-    el('section', { class: 'surface chart-card' },
+    el('section', { class: 'surface chart-card art-sales-chart' },
       el('h3', { class: 'card-title display' }, SERIES_TITLE[s.granularity] ?? 'Faturamento'),
       chartBox),
     el('div', { class: 'panels' },
-      panel('Aprovação por método', s.approval.map((m) => barRow(m.label, `${formatPercent(m.rate)} · ${formatInt(m.approved)}/${formatInt(m.total)}`, m.rate ?? 0)), 'Nenhuma tentativa no período'),
-      panel('Mais vendidos', s.topProducts.map((p) => barRow(p.name, formatInt(p.count), p.count / maxProduct)), 'Nenhuma venda no período'),
+      panel('Aprovação por método', s.approval.map((m) => barRow(m.label, `${formatPercent(m.rate)} · ${formatInt(m.approved)}/${formatInt(m.total)}`, m.rate ?? 0)), 'Nenhuma tentativa no período', 'art-approval-rate'),
+      panel('Mais vendidos', s.topProducts.map((p) => barRow(p.name, formatInt(p.count), p.count / maxProduct)), 'Nenhuma venda no período', 'art-sales-by-product'),
       panel('Estados', s.topStates.map((st) => barRow(st.state, formatCents(st.revenue), st.revenue / maxState)), 'Sem estado informado')),
     el('div', { class: 'foot' },
       el('span', { class: 'muted num' }, `Reembolsos ${formatInt(s.refunds.refund)} · Chargebacks ${formatInt(s.refunds.chargeback)} · MED ${formatInt(s.refunds.med)}`),

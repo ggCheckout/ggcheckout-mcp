@@ -18,15 +18,18 @@ export function appMeta(resourceUri: string) {
 
 const VIEWS_DIR = new URL('./views/', import.meta.url);
 const INCLUDE = /<!-- include:([\w.\- ]+) -->/g;
+const ART = /url\('art:([\w.-]+\.avif)'\)/g;
 
 /**
  * A view is one self-contained HTML document: the host loads it in a sandboxed iframe with no
  * network (the default CSP), so the shared CSS and scripts are inlined where the page says
  * `<!-- include:a.css b.js -->`. The scripts become ONE module, in the listed order, so they share
  * a scope without imports; the model files keep their `export`s for the unit tests.
+ * `url('art:name.avif')` in the CSS becomes a `data:` image from `views/art/` (the CSP allows those).
  */
 export function buildView(page: string): string {
   const read = (file: string) => readFileSync(new URL(file, VIEWS_DIR), 'utf-8');
+  const art = (file: string) => readFileSync(new URL(`art/${file}`, VIEWS_DIR)).toString('base64');
   return read(page).replace(INCLUDE, (_, list: string) => {
     const files = list.trim().split(/\s+/);
     const styles = files.filter((f) => f.endsWith('.css')).map(read).join('\n');
@@ -35,7 +38,7 @@ export function buildView(page: string): string {
       styles && `<style>\n${styles}</style>`,
       scripts && `<script type="module">\n${scripts}</script>`,
     ].filter(Boolean).join('\n');
-  });
+  }).replace(ART, (_, file: string) => `url('data:image/avif;base64,${art(file)}')`);
 }
 
 const VIEWS = [

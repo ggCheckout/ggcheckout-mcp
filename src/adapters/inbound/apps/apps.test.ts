@@ -29,6 +29,8 @@ describe('buildView', () => {
     const html = buildView(page);
     expect(html).toMatch(/^<!doctype html>/);
     expect(html).not.toContain('<!-- include:');
+    expect(html).not.toContain("url('art:");
+    expect(html).toContain("url('data:image/avif;base64,");
     // The host's default CSP has no network: anything external would silently fail to load.
     expect(html).not.toMatch(/(src|href)=["']?https?:/i);
     expect(html.match(/<script type="module">/g)).toHaveLength(1);

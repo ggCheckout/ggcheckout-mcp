@@ -96,6 +96,31 @@ body {
   border-radius: var(--radius);
   background: linear-gradient(180deg, var(--surface-head), var(--surface) 120px);
   padding: 16px;
+  isolation: isolate;
+}
+.surface > * { position: relative; z-index: 1; }
+
+/* The card's Seasons art (`DASHBOARD_CARD_ART`), copied unchanged from saas-checkout
+   public/images (developer 93a23ada9). Pure black background, so it enters with `screen` and only
+   the drawing shows. Dark theme only, like the dashboard: these pieces have no light version. */
+.art-sales-chart { --art: url('art:sales-chart-corner.avif'); }
+.art-approval-rate { --art: url('art:approval-rate-corner.avif'); }
+.art-sales-by-product { --art: url('art:sales-by-product-corner.avif'); }
+.art-sales-by-payment { --art: url('art:sales-by-payment-corner.avif'); }
+.art-credit-wallet { --art: url('art:credit-wallet-corner.avif'); }
+:root[data-theme='dark'] [class*='art-']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 0;
+  width: min(440px, 70%);
+  aspect-ratio: 3 / 2;
+  max-height: 100%;
+  border-top-right-radius: inherit;
+  pointer-events: none;
+  background: var(--art) center / cover no-repeat;
+  mix-blend-mode: screen;
 }
 
 /* Brand eyebrow: a short red slash (the CTA's red wedge, well under 8% of the view) and caps. */
