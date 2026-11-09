@@ -44,23 +44,11 @@ function updateModelContext(text) {
   request('ui/update-model-context', { content: [{ type: 'text', text }] }).catch(() => {});
 }
 
+// Only the theme is taken from the host. Its style variables and fonts are left out on purpose: the
+// views carry the Seasons identity (base.css), which the host's palette would replace.
 function applyContext(ctx) {
   Object.assign(bridge.context, ctx);
-  const root = document.documentElement;
-  if (ctx.theme) {
-    root.dataset.theme = ctx.theme;
-    root.style.colorScheme = ctx.theme;
-  }
-  for (const [key, value] of Object.entries(ctx.styles?.variables ?? {})) {
-    if (value) root.style.setProperty(key, value);
-  }
-  const fonts = ctx.styles?.css?.fonts;
-  if (fonts && !document.getElementById('host-fonts')) {
-    const style = document.createElement('style');
-    style.id = 'host-fonts';
-    style.textContent = fonts;
-    document.head.append(style);
-  }
+  if (ctx.theme) document.documentElement.dataset.theme = ctx.theme;
 }
 
 window.addEventListener('message', (event) => {

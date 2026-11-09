@@ -6,57 +6,87 @@
 <title>Painel de vendas</title>
 <!-- include:base.css -->
 <style>
-  .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
-  .ranges { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--color-background-secondary); }
+  .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 14px; }
+  .head h1 { margin: 4px 0 0; font-size: 22px; line-height: 1.1; }
+  /* SegmentedTabs with the active tab in the CTA blue, as on the seller dashboard. */
+  .ranges { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 2px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); }
   .ranges button {
-    border: 0; background: transparent; padding: 5px 11px; border-radius: 999px; cursor: pointer;
-    font-size: 12px; font-weight: 500; color: var(--color-text-secondary);
+    border: 0; background: transparent; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    font-size: 12px; font-weight: 600; color: var(--muted);
     transition: background-color 150ms ease, color 150ms ease;
   }
-  .ranges button:hover { color: var(--color-text-primary); }
-  .ranges button[aria-pressed='true'] { background: var(--gg-accent); color: var(--gg-on-accent); }
-  .ranges button:disabled { cursor: default; }
-  .hero { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 28px; margin-bottom: 6px; }
-  .hero-value { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; margin: 2px 0 0; }
-  .kpi-value { font-size: 17px; font-weight: 600; margin: 2px 0 0; }
-  .chart { position: relative; margin: 10px 0 4px; height: 180px; }
+  .ranges button:hover { color: var(--ink); }
+  .ranges button[aria-pressed='true'] { background: var(--season-blue); color: var(--season-white); }
+
+  /* Metric cards (`DashboardSurface` metric variant): electric blue to its deep shade, with the flat
+     diagonal shadow plane. White ink in both themes. */
+  .metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 640px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .metric.lead { grid-column: 1 / -1; } }
+  .metric {
+    position: relative; overflow: hidden; border-radius: var(--radius); padding: 14px 16px 15px;
+    color: #ffffff;
+    background:
+      linear-gradient(125deg, transparent 68%, rgb(0 0 0 / 0.2) 68%),
+      linear-gradient(110deg, var(--season-blue), var(--season-blue-deep));
+  }
+  .metric.lead { grid-column: span 2; }
+  .metric p { margin: 0; }
+  .metric .m-label { font-size: 12px; font-weight: 600; opacity: 0.86; }
+  .metric .m-value { margin-top: 6px; font-size: 22px; line-height: 1.1; }
+  .metric.lead .m-value { font-size: 30px; }
+
+  .surface.chart-card { margin-top: 12px; }
+  .card-title { margin: 0 0 2px; font-size: 15px; }
+  .chart { position: relative; margin: 8px 0 0; height: 190px; }
   .chart svg { display: block; overflow: visible; }
-  .chart .grid { stroke: var(--color-border-primary); stroke-width: 1; }
-  .chart .axis { fill: var(--color-text-tertiary); font-size: 11px; }
-  .chart .line { fill: none; stroke: var(--gg-accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-  .chart .area { fill: var(--gg-accent-soft); }
-  .chart .cross { stroke: var(--color-text-tertiary); stroke-width: 1; stroke-dasharray: 3 3; }
-  .chart .dot { fill: var(--gg-accent); stroke: var(--color-background-primary); stroke-width: 2; }
+  .chart .grid { stroke: var(--border); stroke-width: 1; }
+  .chart .axis { fill: var(--faint); font-size: 11px; }
+  .chart .line { fill: none; stroke: var(--chart-line); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .chart stop { stop-color: var(--chart-line); }
+  .chart .area { fill: url(#area-fill); }
+  .chart .cross { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 3 3; }
+  .chart .dot { fill: var(--chart-line); stroke: var(--page); stroke-width: 2.5; }
   .tip {
     position: absolute; top: 0; pointer-events: none; white-space: nowrap; z-index: 1;
-    padding: 7px 10px; border-radius: var(--border-radius-md); font-size: 12px;
-    background: var(--color-background-primary); border: 1px solid var(--color-border-primary);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    padding: 8px 11px; border-radius: 10px; font-size: 12px;
+    background: var(--row); border: 1px solid var(--row-border);
+    box-shadow: 0 10px 28px rgba(1, 1, 4, 0.18);
   }
-  .tip strong { display: block; font-size: 13px; }
-  .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 18px 24px; margin-top: 18px; }
-  .panel h3 { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin: 0 0 10px; }
-  .bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; margin-bottom: 9px; font-size: 13px; }
-  .bar-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bar-row .track { grid-column: 1 / -1; height: 6px; border-radius: 4px; background: var(--color-background-secondary); }
-  .bar-row .fill { height: 100%; border-radius: 4px; background: var(--gg-accent); min-width: 4px; }
-  .empty-panel { font-size: 13px; color: var(--color-text-tertiary); margin: 0; }
-  .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--color-border-primary); font-size: 12px; }
-  details summary { cursor: pointer; color: var(--color-text-secondary); }
+  .tip strong { display: block; font-size: 14px; font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; }
+
+  .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; align-items: start; }
+  .panels .surface { padding: 14px 14px 6px; }
+  .panels .card-title { margin-bottom: 10px; }
+  /* List rows like `.row` of the dashboard: solid, bordered, the bar inside. */
+  .bar-row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; margin-bottom: 8px;
+    padding: 9px 11px; border-radius: 10px; border: 1px solid var(--row-border); background: var(--row); font-size: 13px;
+  }
+  .bar-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .bar-row .track { grid-column: 1 / -1; height: 5px; border-radius: 4px; background: var(--selected-bg); }
+  .bar-row .fill { height: 100%; border-radius: 4px; background: var(--season-blue); min-width: 4px; }
+  .empty-panel { font-size: 13px; color: var(--faint); margin: 0 0 10px; }
+  .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 12px; font-size: 12px; }
+  details { margin-top: 8px; font-size: 12px; }
+  details summary { cursor: pointer; color: var(--selected-fg); font-weight: 600; }
   table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-  th, td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--color-border-primary); }
+  th, td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
   th:first-child, td:first-child { text-align: left; }
   #content[aria-busy='true'] { opacity: 0.55; transition: opacity 150ms ease; }
 </style>
 </head>
 <body>
   <div class="head">
-    <p class="eyebrow" id="title">Vendas</p>
+    <div>
+      <p class="eyebrow brand">GG Checkout</p>
+      <h1 class="display" id="title">Vendas</h1>
+    </div>
     <div class="ranges" id="ranges" role="group" aria-label="Período" hidden></div>
   </div>
   <div id="content">
-    <div class="skeleton" style="height: 34px; width: 46%; margin-bottom: 14px"></div>
-    <div class="skeleton" style="height: 180px"></div>
+    <div class="skeleton" style="height: 88px; margin-bottom: 12px"></div>
+    <div class="skeleton" style="height: 230px"></div>
   </div>
 <!-- include:format.js dashboard-model.js bridge.js sales-dashboard.js -->
 </body>

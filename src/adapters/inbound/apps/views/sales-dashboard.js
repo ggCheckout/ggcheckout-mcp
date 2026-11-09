@@ -48,8 +48,10 @@ async function switchRange(next) {
   }
 }
 
-function kpi(label, value) {
-  return el('div', {}, el('p', { class: 'eyebrow' }, label), el('p', { class: 'kpi-value num' }, value));
+function metric(label, value, lead = false) {
+  return el('div', { class: lead ? 'metric lead' : 'metric' },
+    el('p', { class: 'm-label' }, label),
+    el('p', { class: 'm-value display num' }, value));
 }
 
 function barRow(name, value, share) {
@@ -60,7 +62,7 @@ function barRow(name, value, share) {
 }
 
 function panel(heading, rows, emptyText) {
-  return el('section', { class: 'panel' }, el('h3', {}, heading), rows.length ? rows : el('p', { class: 'empty-panel' }, emptyText));
+  return el('section', { class: 'surface' }, el('h3', { class: 'card-title display' }, heading), rows.length ? rows : el('p', { class: 'empty-panel' }, emptyText));
 }
 
 function drawChart(box, series) {
@@ -75,6 +77,11 @@ function drawChart(box, series) {
   const y = (v) => pad.top + h - (v / scale.max) * h;
 
   const root = svg('svg', { width, height, role: 'img', 'aria-label': `${SERIES_TITLE[summary.granularity] ?? 'Faturamento'}: total ${formatCents(summary.revenue)}` });
+  const fill = svg('linearGradient', { id: 'area-fill', x1: 0, y1: 0, x2: 0, y2: 1 });
+  fill.append(svg('stop', { offset: '0%', 'stop-opacity': 0.32 }), svg('stop', { offset: '100%', 'stop-opacity': 0.02 }));
+  const defs = svg('defs');
+  defs.append(fill);
+  root.append(defs);
   for (const tick of scale.ticks) {
     root.append(svg('line', { class: 'grid', x1: pad.left, x2: width - pad.right, y1: y(tick), y2: y(tick) }));
     const label = svg('text', { class: 'axis num', x: pad.left - 8, y: y(tick) + 4, 'text-anchor': 'end' });
@@ -139,13 +146,14 @@ function render() {
   const maxState = Math.max(1, ...s.topStates.map((st) => st.revenue));
 
   content.replaceChildren(
-    el('div', { class: 'hero' },
-      el('div', {}, el('p', { class: 'eyebrow' }, 'Faturamento'), el('p', { class: 'hero-value num' }, formatCents(s.revenue))),
-      kpi('Vendas', formatInt(s.sales)),
-      kpi('Ticket médio', formatCents(s.averageTicket)),
-      kpi('Conversão', formatPercent(s.conversion))),
-    el('p', { class: 'eyebrow', style: 'margin-top: 14px' }, SERIES_TITLE[s.granularity] ?? 'Faturamento'),
-    chartBox,
+    el('div', { class: 'metrics' },
+      metric('Faturamento', formatCents(s.revenue), true),
+      metric('Vendas', formatInt(s.sales)),
+      metric('Ticket médio', formatCents(s.averageTicket)),
+      metric('Conversão', formatPercent(s.conversion))),
+    el('section', { class: 'surface chart-card' },
+      el('h3', { class: 'card-title display' }, SERIES_TITLE[s.granularity] ?? 'Faturamento'),
+      chartBox),
     el('div', { class: 'panels' },
       panel('Aprovação por método', s.approval.map((m) => barRow(m.label, `${formatPercent(m.rate)} · ${formatInt(m.approved)}/${formatInt(m.total)}`, m.rate ?? 0)), 'Nenhuma tentativa no período'),
       panel('Mais vendidos', s.topProducts.map((p) => barRow(p.name, formatInt(p.count), p.count / maxProduct)), 'Nenhuma venda no período'),

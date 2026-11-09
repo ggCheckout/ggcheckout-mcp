@@ -1,84 +1,181 @@
-/* Fallbacks for the MCP Apps standard variables: a host that sends its own overrides these on :root.
-   The accent is GG Checkout's CTA blue (#0e51f2), lifted in dark mode to keep 3:1 on the surface. */
+/* Seasons identity, as the seller dashboard applies it (saas-checkout: app/globals.css `--season-*`,
+   components/dashboard/shared/dashboard-surface, components/seasons/SeasonCta.module.css). The host
+   only picks light or dark; its own colors and fonts are not applied, so the view reads as GG.
+   Fonts are local only (the sandbox has no network): Inter when installed, else the system face. */
 :root {
-  color-scheme: light dark;
-  --color-background-primary: #ffffff;
-  --color-background-secondary: #f6f7f9;
-  --color-text-primary: #14171f;
-  --color-text-secondary: #5b6170;
-  --color-text-tertiary: #8a909c;
-  --color-border-primary: #e3e6eb;
-  --color-text-success: #0f7a3d;
-  --color-text-danger: #c42b2b;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+  --season-black: #010104;
+  --season-navy: #020d2a;
+  --season-blue: #0e51f2;
+  --season-blue-deep: #05329d;
+  --season-red: #ed262b;
+  --season-white: #fdfdfe;
+
+  --page: #ffffff;
+  --surface: #f6f6f8;
+  --surface-head: #f6f6f8;
+  --row: #ffffff;
+  --row-border: rgba(226, 228, 233, 0.8);
+  --border: rgba(226, 228, 233, 0.9);
+  --ink: #111827;
+  --muted: #526078;
+  --faint: #7c879b;
+  --selected-fg: var(--season-blue);
+  --selected-bg: color-mix(in srgb, var(--season-blue) 12%, transparent);
+  --focus: var(--season-blue);
+  --success: #067563;
+  --danger: #ce3b4c;
+  --qr-ring: var(--border);
+  --chart-line: var(--season-blue);
+
+  --font-ui: 'SeasonsUI', Inter, 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-display: 'SeasonsEditorial', 'Inter Display', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
-  --border-radius-md: 10px;
-  --border-radius-lg: 14px;
-  --gg-accent: #0e51f2;
-  --gg-accent-soft: rgba(14, 81, 242, 0.12);
-  --gg-on-accent: #ffffff;
+  --radius: 12px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-background-primary: #16181d;
-    --color-background-secondary: #1e2128;
-    --color-text-primary: #f2f3f5;
-    --color-text-secondary: #a3a8b3;
-    --color-text-tertiary: #737987;
-    --color-border-primary: #2c3039;
-    --color-text-success: #4cc27e;
-    --color-text-danger: #f06a6a;
-    --gg-accent: #5b8cff;
-    --gg-accent-soft: rgba(91, 140, 255, 0.16);
-    --gg-on-accent: #0b1430;
+    color-scheme: dark;
+    --page: var(--season-black);
+    --surface: var(--season-black);
+    --surface-head: var(--season-navy);
+    --row: #070b16;
+    --row-border: #1c2740;
+    --border: #222936;
+    --ink: var(--season-white);
+    --muted: #b3bed2;
+    --faint: #7188ab;
+    --selected-fg: #a8c4ff;
+    --selected-bg: color-mix(in srgb, var(--season-blue) 18%, transparent);
+    --focus: #a8c4ff;
+    --success: #34d399;
+    --danger: #f87171;
+    --qr-ring: #25334f;
+    --chart-line: #3a74ff;
   }
 }
 :root[data-theme='dark'] {
-  --color-background-primary: #16181d;
-  --color-background-secondary: #1e2128;
-  --color-text-primary: #f2f3f5;
-  --color-text-secondary: #a3a8b3;
-  --color-text-tertiary: #737987;
-  --color-border-primary: #2c3039;
-  --color-text-success: #4cc27e;
-  --color-text-danger: #f06a6a;
-  --gg-accent: #5b8cff;
-  --gg-accent-soft: rgba(91, 140, 255, 0.16);
-  --gg-on-accent: #0b1430;
+  color-scheme: dark;
+  --page: var(--season-black);
+  --surface: var(--season-black);
+  --surface-head: var(--season-navy);
+  --row: #070b16;
+  --row-border: #1c2740;
+  --border: #222936;
+  --ink: var(--season-white);
+  --muted: #b3bed2;
+  --faint: #7188ab;
+  --selected-fg: #a8c4ff;
+  --selected-bg: color-mix(in srgb, var(--season-blue) 18%, transparent);
+  --focus: #a8c4ff;
+  --success: #34d399;
+  --danger: #f87171;
+  --qr-ring: #25334f;
+  --chart-line: #3a74ff;
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  background: var(--color-background-primary);
-  color: var(--color-text-primary);
-  font: 14px/1.45 var(--font-sans);
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.45 var(--font-ui);
   -webkit-font-smoothing: antialiased;
-  padding: 16px;
+  padding: 14px;
 }
 .num { font-variant-numeric: tabular-nums; }
-.muted { color: var(--color-text-secondary); }
-.faint { color: var(--color-text-tertiary); }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.display { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.025em; }
+
+/* The dashboard card (`DashboardSurface`, analytics variant): flat surface, navy only on its header
+   band in dark mode. */
+.surface {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--surface-head), var(--surface) 120px);
+  padding: 16px;
+}
+
+/* Brand eyebrow: a short red slash (the CTA's red wedge, well under 8% of the view) and caps. */
 .eyebrow {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
-.state {
-  padding: 28px 8px;
-  text-align: center;
-  color: var(--color-text-secondary);
+.eyebrow.brand::before {
+  content: '';
+  width: 4px;
+  height: 13px;
+  background: var(--season-red);
+  transform: skewX(-24deg);
 }
-.state[data-tone='error'] { color: var(--color-text-danger); }
+.label { font-size: 12px; font-weight: 500; color: var(--muted); margin: 0; }
+
+/* The Seasons CTA (`seasonCta.panelCta`): electric-blue pill, red wedge on hover, a light pass. */
+.cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 44px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--season-blue);
+  color: var(--season-white);
+  font: 700 14px/1 var(--font-ui);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow: 0 6px 20px -8px rgb(14 81 242 / 70%);
+  transition: background-color 200ms ease-out, transform 200ms ease-out;
+}
+.cta::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0 auto 0 -12%;
+  width: 26%;
+  background: var(--season-red);
+  transform: skewX(-24deg) translateX(-120%);
+  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 32%, rgb(255 255 255 / 38%) 50%, transparent 68%);
+  transform: translateX(-120%);
+  animation: cta-light 3.5s ease-in-out 0.3s infinite;
+}
+@keyframes cta-light { 0% { transform: translateX(-120%); } 30%, 100% { transform: translateX(120%); } }
+@media (hover: hover) and (pointer: fine) {
+  .cta:hover { background: #2f6bff; transform: translateY(-1px); }
+  .cta:hover::before { transform: skewX(-24deg) translateX(0); }
+}
+.cta:active { transform: scale(0.98); }
+
+.state { padding: 28px 8px; text-align: center; color: var(--muted); }
+.state[data-tone='error'] { color: var(--danger); }
 .skeleton {
-  border-radius: var(--border-radius-md);
-  background: linear-gradient(90deg, var(--color-background-secondary), var(--color-border-primary), var(--color-background-secondary));
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--surface), var(--border), var(--surface));
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
-@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton, .cta::after { animation: none; }
+  .cta, .cta::before { transition: none; }
+}
 button { font: inherit; color: inherit; }
-button:focus-visible { outline: 2px solid var(--gg-accent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 [hidden] { display: none !important; }

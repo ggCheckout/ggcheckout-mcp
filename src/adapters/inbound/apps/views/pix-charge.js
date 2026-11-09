@@ -67,13 +67,13 @@ function render() {
   if (c.status === 'requested') {
     const how = c.method === 'card' ? 'no cartão salvo' : c.method === 'credits' ? 'com os créditos' : '';
     content.replaceChildren(el('div', { class: 'done' }, checkIcon(),
-      el('div', {}, el('h2', {}, 'Pagamento enviado'), el('p', { class: 'note muted' }, `Fatura ${c.id} ${how}`.trim()))));
+      el('div', {}, el('h2', { class: 'display' }, 'Pagamento enviado'), el('p', { class: 'note muted' }, `Fatura ${c.id} ${how}`.trim()))));
     return;
   }
   if (c.status === 'paid') {
     content.replaceChildren(el('div', { class: 'done', role: 'status' }, checkIcon(),
       el('div', {},
-        el('h2', {}, 'Pagamento confirmado'),
+        el('h2', { class: 'display' }, 'Pagamento confirmado'),
         el('p', { class: 'note muted num' }, [c.amountCents != null ? formatCents(c.amountCents) : null, c.title].filter(Boolean).join(' · ')))));
     return;
   }
@@ -87,15 +87,15 @@ function render() {
       c.qrSrc ? el('img', { src: c.qrSrc, alt: 'QR code do PIX' }) : el('span', { class: 'faint note' }, 'QR indisponível')),
     el('div', { class: 'info' },
       el('div', {},
-        el('p', { class: 'eyebrow' }, c.title),
-        c.amountCents != null ? el('p', { class: 'amount num' }, formatCents(c.amountCents)) : null,
-        c.description ? el('p', { class: 'note muted' }, c.description) : null),
+        el('p', { class: 'eyebrow brand' }, c.title),
+        c.amountCents != null ? el('p', { class: 'amount display num' }, formatCents(c.amountCents)) : null,
+        c.description ? el('p', { class: 'description' }, c.description) : null),
       el('div', { class: 'meta', role: 'status' },
         el('span', { class: 'pill', 'data-status': c.status }, STATUS_TEXT[c.status] ?? c.status),
         open && remaining ? el('span', { class: 'muted num', id: 'remaining' }, `expira em ${remaining}`) : null,
         c.livemode ? null : el('span', { class: 'badge' }, 'MODO TESTE')),
       c.code && open ? field : null,
-      c.code && open ? el('button', { class: 'copy', type: 'button', onclick: (e) => copyCode(e.currentTarget, field) }, 'Copiar código PIX') : null,
+      c.code && open ? el('button', { class: 'cta', type: 'button', onclick: (e) => copyCode(e.currentTarget, field) }, 'Copiar código PIX') : null,
       open && !bridge.capabilities.serverTools
         ? el('p', { class: 'note faint' }, 'Peça no chat para conferir se o PIX foi pago.')
         : null)));
