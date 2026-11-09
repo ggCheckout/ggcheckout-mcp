@@ -23,6 +23,11 @@ right now.
   `io.modelcontextprotocol/ui` in `initialize`), the seven tools with a view start their answer with
   a note asking the model not to restate the card as text. Text-only clients get the same answer
   as before.
+- The sales view mirrors the seller dashboard cards one to one: `get_dashboard_stats` as StatsCards
+  (sales, revenue, pending and expired, with the change against the previous period), the revenue
+  as SalesChart, products as SalesByProduct (search, sort, selection, "Ver mais") and states as
+  SalesByState (map and list). The built views ship in the package as `ggcheckout-mcp/views/*.html`,
+  so the dashboard Storybook can show each view next to the component it copies.
 
 ## 0.5.0
 

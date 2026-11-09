@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error -- browser modules in plain JS, inlined into the views; no type declarations
-import { summarizeDashboard, summarizeStats, niceScale } from './views/dashboard-model.js';
+import { summarizeDashboard, summarizeStats, chartTicks, chartTickLabel, percentChange } from './views/dashboard-model.js';
 // @ts-expect-error -- see above
 import { normalizePix, polledStatus, qrImageSrc, formatRemaining } from './views/pix-model.js';
 
@@ -32,8 +32,9 @@ describe('summarizeDashboard', () => {
     expect(s.sales).toBe(3);
     expect(s.averageTicket).toBe(4990);
     expect(s.conversion).toBe(0.5);
-    expect(s.topProducts.map((p: any) => p.name)).toEqual(['Curso B', 'Curso A']);
-    expect(s.topStates[0]).toEqual({ state: 'MG', count: 2, revenue: 9980 });
+    expect(s.products.map((p: any) => [p.name, Math.round(p.percentage)])).toEqual([['Curso B', 67], ['Curso A', 33]]);
+    expect(s.states[0]).toEqual({ state: 'MG', count: 2, revenue: 9980 });
+    expect(s.series.map((p: any) => p.label)).toEqual(['01/11', '02/11', '03/11']);
     expect(s.refundsTotal).toBe(3);
   });
 
@@ -65,7 +66,7 @@ describe('summarizeDashboard', () => {
   it('reads a focused answer, which has no series', () => {
     const s = summarizeDashboard({ focus: 'states', byState: charts.byState, period: 'week' });
     expect(s.focus).toBe('states');
-    expect(s.topStates).toHaveLength(2);
+    expect(s.states).toHaveLength(2);
     expect(s.series).toEqual([]);
     expect(summarizeDashboard({ focus: 'other' })).toBeNull();
   });
@@ -77,16 +78,16 @@ describe('summarizeDashboard', () => {
 });
 
 describe('summarizeStats', () => {
-  it('compares each number with the previous period', () => {
+  it('compares with the previous period as StatsCards does (percent points, 100 from nothing)', () => {
     const s = summarizeStats({
-      totalSales: 132, totalRevenue: 1284872, averageTicket: 9734, previousTotalSales: 120,
-      previousTotalRevenue: 0, previousAverageTicket: 9734, pendingCount: 14, failedCount: 9,
-      expiredCount: 31, cancelledCount: 2, refundedCount: 3, period: 'week',
+      totalSales: 132, totalRevenue: 1284872, previousTotalSales: 120, previousTotalRevenue: 0,
+      pendingCount: 14, previousPendingCount: 20, expiredCount: 31, period: 'week',
     });
-    expect(s.salesChange).toBe(0.1);
-    expect(s.revenueChange).toBeNull();
-    expect(s.ticketChange).toBe(0);
-    expect(s.statuses.map((st: any) => st.count)).toEqual([14, 9, 31, 2, 3]);
+    expect(s).toMatchObject({ sales: 132, revenue: 1284872, pending: 14, expired: 31 });
+    expect(s.salesChange).toBeCloseTo(10);
+    expect(s.revenueChange).toBe(100);
+    expect(s.pendingChange).toBeCloseTo(-30);
+    expect(percentChange(0, 0)).toBe(0);
   });
 
   it('is null for a charts answer', () => {
@@ -94,10 +95,17 @@ describe('summarizeStats', () => {
   });
 });
 
-describe('niceScale', () => {
-  it('rounds the top up to a round step', () => {
-    expect(niceScale(9980)).toEqual({ max: 10000, ticks: [0, 5000, 10000] });
-    expect(niceScale(0)).toEqual({ max: 1, ticks: [0] });
+describe('chart axis', () => {
+  it('rounds the top up at its leading digit and splits it in four, as SalesChart', () => {
+    expect(chartTicks(9980)).toEqual([0, 2500, 5000, 7500, 10000]);
+    expect(chartTicks(152080)).toEqual([0, 50000, 100000, 150000, 200000]);
+    expect(chartTicks(0)).toEqual([0]);
+  });
+
+  it('labels ticks in reais with k above a thousand', () => {
+    expect(chartTickLabel(200000)).toBe('2k');
+    expect(chartTickLabel(150000)).toBe('1.5k');
+    expect(chartTickLabel(75000)).toBe('750');
   });
 });
 

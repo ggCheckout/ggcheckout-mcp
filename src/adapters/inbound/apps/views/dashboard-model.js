@@ -12,6 +12,10 @@ export const DASHBOARD_RANGES = [
 
 const METHOD_LABELS = { pix: 'PIX', card: 'Cartão', boleto: 'Boleto' };
 
+const dayMonth = (date) => {
+  const parts = String(date ?? '').split('-');
+  return parts.length === 3 ? `${parts[2]}/${parts[1]}` : null;
+};
 const count = (n) => (Number.isFinite(n) ? n : 0);
 const ratio = (part, whole) => (whole > 0 ? part / whole : null);
 
@@ -26,8 +30,9 @@ export function summarizeDashboard(data) {
   const focus = DASHBOARD_FOCUSES.includes(data.focus) ? data.focus : null;
   if (!focus && !Array.isArray(data.chartData)) return null;
 
+  // SalesChart labels the x axis DD/MM from the date (dashboard/index.tsx), whatever the granularity.
   const series = (data.chartData ?? []).map((p) => ({
-    label: String(p.label ?? p.date ?? ''),
+    label: dayMonth(p.date) ?? String(p.label ?? p.date ?? ''),
     date: String(p.date ?? ''),
     sales: count(p.sales),
     revenue: count(p.revenue),
@@ -57,17 +62,21 @@ export function summarizeDashboard(data) {
     })
     .filter((m) => m.total > 0);
 
-  const topProducts = (data.byProduct ?? [])
+  // As the dashboard maps it (components/dashboard/index.tsx): every product, its share of the
+  // approved sales, most sold first. The view shows the first five until "Ver mais".
+  const productRows = (data.byProduct ?? [])
     .map((p) => ({ name: String(p.name ?? 'Produto'), count: count(p.count) }))
-    .filter((p) => p.count > 0)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
+    .filter((p) => p.count > 0);
+  const productTotal = productRows.reduce((sum, p) => sum + p.count, 0);
+  const products = productRows
+    .map((p) => ({ ...p, percentage: productTotal > 0 ? (p.count / productTotal) * 100 : 0 }))
+    .sort((a, b) => b.count - a.count);
 
-  const topStates = (data.byState ?? [])
-    .map((s) => ({ state: String(s.state ?? '').toUpperCase() || '–', count: count(s.count), revenue: count(s.revenue) }))
-    .filter((s) => s.revenue > 0 || s.count > 0)
-    .sort((a, b) => b.revenue - a.revenue || b.count - a.count)
-    .slice(0, 5);
+  // SalesByState ranks by sales count, not revenue.
+  const states = (data.byState ?? [])
+    .map((s) => ({ state: String(s.state ?? '').toUpperCase(), count: count(s.count), revenue: count(s.revenue) }))
+    .filter((s) => s.state && (s.count > 0 || s.revenue > 0))
+    .sort((a, b) => b.count - a.count || b.revenue - a.revenue);
 
   const refunds = {
     refund: count(data.refunds?.refund),
@@ -85,47 +94,64 @@ export function summarizeDashboard(data) {
     averageTicket,
     conversion,
     approval,
-    topProducts,
-    topStates,
+    products,
+    states,
     refunds,
     refundsTotal: refunds.refund + refunds.chargeback + refunds.med,
   };
 }
 
-/** "Nice" upper bound and ticks for a y axis that starts at zero. */
-export function niceScale(max, tickCount = 3) {
-  if (!(max > 0)) return { max: 1, ticks: [0] };
-  const rough = max / tickCount;
-  const magnitude = 10 ** Math.floor(Math.log10(rough));
-  const step = [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((s) => s >= rough);
-  const top = step * Math.ceil(max / step);
-  const ticks = [];
-  for (let v = 0; v <= top + step / 2; v += step) ticks.push(v);
-  return { max: top, ticks };
+/**
+ * The y axis of SalesChart: the max rounded up at its leading digit, in four equal steps. Scale-free,
+ * so it works on cents as it does on reais.
+ */
+export function chartTicks(max) {
+  if (!(max > 0)) return [0];
+  const magnitude = 10 ** Math.floor(Math.log10(max));
+  const top = Math.ceil(max / magnitude) * magnitude;
+  const step = top / 4;
+  return [0, step, step * 2, step * 3, top];
 }
 
-/** Change against the previous period as a ratio; null when there is nothing to compare with. */
-export function change(current, previous) {
-  return previous > 0 ? (current - previous) / previous : null;
+/** SalesChart's tick label, from cents: "2k", "1.5k", or the whole reais. */
+export function chartTickLabel(cents) {
+  const reais = cents / 100;
+  if (reais >= 1000) {
+    const k = reais / 1000;
+    return k % 1 === 0 ? `${k}k` : `${k.toFixed(1)}k`;
+  }
+  return String(Math.round(reais));
 }
+
+/** `calcPercentChange` of saas lib/utils: percent points, 100 from nothing, 0 from nothing to nothing. */
+export function percentChange(current, previous) {
+  if (previous > 0) return ((current - previous) / previous) * 100;
+  return current > 0 ? 100 : 0;
+}
+
+/** StatsCards' second line for sales and revenue, by period. */
+export const COMPARISON_LABELS = {
+  all: 'total', today: 'vs. ontem', yesterday: 'vs. dia anterior', week: 'vs. semana anterior',
+  month: 'vs. mês anterior', year: 'vs. ano anterior', custom: 'vs. período anterior',
+};
+
+/** StatsCards' second line for expired sales, by period. */
+export const PERIOD_LABELS = {
+  all: 'total', today: 'hoje', yesterday: 'ontem', week: 'na última semana',
+  month: 'no último mês', year: 'no último ano', custom: 'no período',
+};
 
 /** A get_dashboard_stats answer (`GET /api/dashboard/stats`); null for anything else. */
 export function summarizeStats(data) {
   if (!data || typeof data !== 'object' || !('totalSales' in data) || !('totalRevenue' in data)) return null;
   return {
     period: data.period ?? null,
-    revenue: count(data.totalRevenue),
     sales: count(data.totalSales),
-    averageTicket: count(data.averageTicket),
-    revenueChange: change(count(data.totalRevenue), count(data.previousTotalRevenue)),
-    salesChange: change(count(data.totalSales), count(data.previousTotalSales)),
-    ticketChange: change(count(data.averageTicket), count(data.previousAverageTicket)),
-    statuses: [
-      { key: 'pending', label: 'Pendentes', count: count(data.pendingCount) },
-      { key: 'failed', label: 'Recusadas', count: count(data.failedCount) },
-      { key: 'expired', label: 'Expiradas', count: count(data.expiredCount) },
-      { key: 'cancelled', label: 'Canceladas', count: count(data.cancelledCount) },
-      { key: 'refunded', label: 'Reembolsadas', count: count(data.refundedCount) },
-    ],
+    revenue: count(data.totalRevenue),
+    pending: count(data.pendingCount),
+    expired: count(data.expiredCount),
+    salesChange: percentChange(count(data.totalSales), count(data.previousTotalSales)),
+    revenueChange: percentChange(count(data.totalRevenue), count(data.previousTotalRevenue)),
+    pendingChange: percentChange(count(data.pendingCount), count(data.previousPendingCount)),
   };
 }

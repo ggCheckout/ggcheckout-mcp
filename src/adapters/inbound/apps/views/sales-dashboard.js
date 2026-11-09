@@ -19,8 +19,6 @@ function svg(tag, attrs = {}) {
   return node;
 }
 
-const SERIES_TITLE = { hourly: 'Faturamento por hora', daily: 'Faturamento por dia', weekly: 'Faturamento por semana', monthly: 'Faturamento por mês' };
-
 function rangeLabel(value) {
   return DASHBOARD_RANGES.find((r) => r.value === value)?.label ?? value;
 }
@@ -57,110 +55,164 @@ async function switchRange(next) {
   }
 }
 
-function metric(label, value, lead = false, delta) {
-  const arrow = delta == null ? null : delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
-  return el('div', { class: lead ? 'metric lead' : 'metric' },
-    el('p', { class: 'm-label' }, label),
-    el('p', { class: 'm-value display num' }, value),
-    delta === undefined ? null : el('p', { class: 'm-delta num' },
-      delta == null ? 'sem período anterior' : `${arrow} ${formatPercent(Math.abs(delta))} vs anterior`));
+// KPI tile of the full panel and the refunds focus: the dashboard's `metric` surface, neutral tone.
+function metric(label, value) {
+  return el('div', { class: 'metric neutral kpi' },
+    el('p', { class: 'kpi-label' }, label),
+    el('p', { class: 'kpi-value num' }, value));
 }
 
-function barRow(name, value, share) {
-  return el('div', { class: 'bar-row' },
-    el('span', { class: 'name', title: name }, name),
-    el('span', { class: 'num muted' }, value),
-    el('div', { class: 'track' }, el('div', { class: 'fill', style: `width: ${Math.max(0, Math.min(1, share)) * 100}%` })));
+function panel(className, ...children) {
+  return el('section', { class: `surface ${className}` }, ...children);
 }
 
-// Alone in a focused view the page title already names the panel, so the card drops its own.
-function panel(heading, rows, emptyText, art) {
-  const alone = Boolean(summary?.focus);
-  return el('section', { class: art ? `surface ${art}` : 'surface' },
-    alone ? null : el('h3', { class: 'card-title display' }, heading),
-    rows.length ? rows : el('p', { class: 'empty-panel' }, emptyText));
+function infoTip(text) {
+  return el('span', { class: 'info', title: text, 'aria-label': text, role: 'img' }, icon('info', 16));
 }
+
+function segmented(options, active, onPick, className = '') {
+  return el('div', { class: `row segmented ${className}`, role: 'group' }, options.map(([value, label]) => el('button', {
+    type: 'button',
+    'aria-pressed': String(value === active),
+    onclick: () => value !== active && onPick(value),
+  }, label)));
+}
+
+// ---- StatsCards ------------------------------------------------------------------------------
+
+const formatChange = (value) => (value == null || Number.isNaN(value) ? '--' : `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`);
+
+/** One-line value that shrinks with the card, as `fitOneLineFontSize` does on the dashboard. */
+const fitOneLine = (text, maxRem) => `font-size: max(1rem, min(${maxRem}rem, ${(100 / (String(text).length * 0.62)).toFixed(2)}cqi))`;
+
+function statCard(card) {
+  const value = card.change ?? 0;
+  const good = card.invert ? value <= 0 : value >= 0;
+  return el('div', { class: `metric ${card.tone}`, 'data-metric': card.id },
+    el('div', { class: 'stat-top' },
+      el('p', { class: 'stat-title' }, card.title),
+      el('span', { class: 'stat-icon' }, icon(card.icon, 24))),
+    el('div', { class: 'stat-value-row' }, el('p', { class: 'stat-value', style: fitOneLine(card.value, 1.875) }, card.value)),
+    el('div', { class: 'stat-foot' },
+      card.hideChange ? null : icon(good ? 'trending-up' : 'trending-down', 16),
+      card.hideChange ? null : el('span', { class: 'stat-change' }, formatChange(card.change)),
+      el('span', { class: 'stat-desc' }, card.description)));
+}
+
+function statsCards(s) {
+  const period = s.period ?? range;
+  const comparison = COMPARISON_LABELS[period] ?? COMPARISON_LABELS.custom;
+  return el('div', { class: 'stats' }, [
+    { id: 'sales', title: 'Total de Vendas', icon: 'shopping-cart', tone: 'success', value: String(s.sales), change: s.salesChange, description: comparison },
+    { id: 'revenue', title: 'Receita Total', icon: 'dollar-sign', tone: 'success', value: formatCents(s.revenue), change: s.revenueChange, description: comparison },
+    { id: 'pending', title: 'Vendas Pendentes', icon: 'clock', tone: 'warning', value: String(s.pending), change: s.pendingChange, description: 'aguardando pagamento', invert: true },
+    { id: 'expired', title: 'Vendas Expiradas', icon: 'alert-circle', tone: 'danger', value: String(s.expired), description: PERIOD_LABELS[period] ?? PERIOD_LABELS.custom, hideChange: true },
+  ].map(statCard));
+}
+
+// ---- SalesChart ------------------------------------------------------------------------------
 
 function drawChart(box, series) {
   const width = box.clientWidth;
   const height = box.clientHeight;
-  if (!width || !series.length) return;
-  const pad = { top: 8, right: 8, bottom: 22, left: 58 };
+  if (!width) return;
+  if (!series.length) {
+    box.replaceChildren(el('p', { class: 'chart-empty' }, 'Nenhum dado disponível'));
+    return;
+  }
+  // Recharts AreaChart: margin top 10 right 10, a 45px y axis, the x ticks below the plot.
+  const pad = { top: 10, right: 10, bottom: 30, left: 45 };
   const w = width - pad.left - pad.right;
   const h = height - pad.top - pad.bottom;
-  const scale = niceScale(Math.max(...series.map((p) => p.revenue)));
+  const ticks = chartTicks(Math.max(...series.map((p) => p.revenue)));
+  const top = ticks[ticks.length - 1] || 1;
   const x = (i) => pad.left + (series.length === 1 ? w / 2 : (i / (series.length - 1)) * w);
-  const y = (v) => pad.top + h - (v / scale.max) * h;
+  const y = (v) => pad.top + h - (v / top) * h;
 
-  const root = svg('svg', { width, height, role: 'img', 'aria-label': `${SERIES_TITLE[summary.granularity] ?? 'Faturamento'}: total ${formatCents(summary.revenue)}` });
-  const fill = svg('linearGradient', { id: 'area-fill', x1: 0, y1: 0, x2: 0, y2: 1 });
-  fill.append(svg('stop', { offset: '0%', 'stop-opacity': 0.32 }), svg('stop', { offset: '100%', 'stop-opacity': 0.02 }));
+  const root = svg('svg', { width, height, role: 'img', 'aria-label': `Receita no período: ${formatCents(summary.revenue)}` });
+  const fill = svg('linearGradient', { id: 'colorRevenue', x1: 0, y1: 0, x2: 0, y2: 1 });
+  fill.append(svg('stop', { offset: '5%', 'stop-opacity': 0.3 }), svg('stop', { offset: '95%', 'stop-opacity': 0 }));
   const defs = svg('defs');
   defs.append(fill);
   root.append(defs);
-  for (const tick of scale.ticks) {
-    root.append(svg('line', { class: 'grid', x1: pad.left, x2: width - pad.right, y1: y(tick), y2: y(tick) }));
-    const label = svg('text', { class: 'axis num', x: pad.left - 8, y: y(tick) + 4, 'text-anchor': 'end' });
-    label.textContent = formatCentsCompact(tick);
+  for (const tick of ticks) {
+    const label = svg('text', { class: 'axis', x: pad.left - 5, y: y(tick), 'text-anchor': 'end', 'dominant-baseline': 'middle' });
+    label.textContent = chartTickLabel(tick);
     root.append(label);
   }
-  const every = Math.max(1, Math.ceil(series.length / Math.max(2, Math.floor(w / 72))));
+  // interval="preserveStartEnd": first and last always, the rest as room allows.
+  const every = Math.max(1, Math.ceil(series.length / Math.max(2, Math.floor(w / 48))));
   series.forEach((p, i) => {
-    if (i % every !== 0 && i !== series.length - 1) return;
-    if (i === series.length - 1 && i % every !== 0 && (series.length - 1) % every < every / 2) return;
-    const label = svg('text', { class: 'axis', x: x(i), y: height - 4, 'text-anchor': i === 0 ? 'start' : i === series.length - 1 ? 'end' : 'middle' });
+    const last = i === series.length - 1;
+    if (!last && i % every !== 0) return;
+    if (last && i % every !== 0 && (x(i) - x(i - (i % every))) < 40) return;
+    const label = svg('text', { class: 'axis', x: x(i), y: pad.top + h + 10 + 12, 'text-anchor': 'middle' });
     label.textContent = p.label;
     root.append(label);
   });
 
-  const points = series.map((p, i) => `${x(i)},${y(p.revenue)}`);
-  root.append(svg('path', { class: 'area', d: `M${x(0)},${y(0)} L${points.join(' L')} L${x(series.length - 1)},${y(0)} Z` }));
-  root.append(svg('path', { class: 'line', d: `M${points.join(' L')}` }));
+  // monotone curve through the points (Fritsch-Carlson, the d3 curveMonotoneX Recharts uses).
+  const pts = series.map((p, i) => [x(i), y(p.revenue)]);
+  const line = monotonePath(pts);
+  root.append(svg('path', { class: 'area', d: `${line} L${pts[pts.length - 1][0]},${y(0)} L${pts[0][0]},${y(0)} Z` }));
+  root.append(svg('path', { class: 'line', d: line }));
 
-  const cross = svg('line', { class: 'cross', y1: pad.top, y2: pad.top + h, visibility: 'hidden' });
-  const dot = svg('circle', { class: 'dot', r: 4.5, visibility: 'hidden' });
-  root.append(cross, dot);
+  const dot = svg('circle', { class: 'dot', r: 6, visibility: 'hidden' });
+  root.append(dot);
   const tip = el('div', { class: 'tip', hidden: true });
 
-  const hide = () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.hidden = true; };
+  const hide = () => { dot.setAttribute('visibility', 'hidden'); tip.hidden = true; };
   const hit = svg('rect', { x: pad.left - 6, y: 0, width: w + 12, height, fill: 'transparent' });
   hit.addEventListener('pointermove', (event) => {
-    const box = root.getBoundingClientRect();
-    const rel = (event.clientX - box.left - pad.left) / w;
+    const rect = root.getBoundingClientRect();
+    const rel = (event.clientX - rect.left - pad.left) / w;
     const i = Math.max(0, Math.min(series.length - 1, Math.round(rel * (series.length - 1))));
     const p = series[i];
-    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
     dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(p.revenue)); dot.setAttribute('visibility', 'visible');
-    tip.replaceChildren(
-      el('span', { class: 'muted' }, p.label),
-      el('strong', { class: 'num' }, formatCents(p.revenue)),
-      el('span', { class: 'num muted' }, `${formatInt(p.sales)} ${p.sales === 1 ? 'venda' : 'vendas'}`));
+    tip.replaceChildren(el('p', { class: 'tip-value' }, formatCents(p.revenue)), el('p', { class: 'tip-label' }, p.label));
     tip.hidden = false;
-    const left = Math.min(Math.max(x(i) - tip.offsetWidth / 2, 0), width - tip.offsetWidth);
-    tip.style.left = `${left}px`;
-    tip.style.top = `${Math.max(0, y(p.revenue) - tip.offsetHeight - 12)}px`;
+    const right = x(i) + 12;
+    tip.style.left = `${right + tip.offsetWidth > width ? Math.max(0, x(i) - tip.offsetWidth - 12) : right}px`;
+    tip.style.top = `${Math.max(0, y(p.revenue) - tip.offsetHeight / 2)}px`;
   });
   hit.addEventListener('pointerleave', hide);
   root.append(hit);
   box.replaceChildren(root, tip);
 }
 
-function dataTable(series) {
-  return el('details', {},
-    el('summary', {}, 'Ver dados em tabela'),
-    el('table', {},
-      el('thead', {}, el('tr', {}, el('th', {}, 'Período'), el('th', {}, 'Vendas'), el('th', {}, 'Faturamento'))),
-      el('tbody', {}, series.map((p) => el('tr', {},
-        el('td', {}, p.label), el('td', { class: 'num' }, formatInt(p.sales)), el('td', { class: 'num' }, formatCents(p.revenue)))))));
+function monotonePath(pts) {
+  if (pts.length === 1) return `M${pts[0][0]},${pts[0][1]}`;
+  const n = pts.length;
+  const dx = [], slope = [];
+  for (let i = 0; i < n - 1; i++) {
+    dx[i] = pts[i + 1][0] - pts[i][0];
+    slope[i] = (pts[i + 1][1] - pts[i][1]) / dx[i];
+  }
+  const tangent = [slope[0]];
+  for (let i = 1; i < n - 1; i++) tangent[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (3 * (dx[i - 1] + dx[i])) / ((2 * dx[i] + dx[i - 1]) / slope[i - 1] + (dx[i] + 2 * dx[i - 1]) / slope[i]);
+  tangent[n - 1] = slope[n - 2];
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < n - 1; i++) {
+    const third = dx[i] / 3;
+    d += ` C${pts[i][0] + third},${pts[i][1] + third * tangent[i]} ${pts[i + 1][0] - third},${pts[i + 1][1] - third * tangent[i + 1]} ${pts[i + 1][0]},${pts[i + 1][1]}`;
+  }
+  return d;
 }
 
-const FOCUS_TITLE = {
-  revenue: 'Faturamento',
-  approval: 'Aprovação por método',
-  products: 'Mais vendidos',
-  states: 'Vendas por estado',
-  refunds: 'Reembolsos',
-};
+function salesChart(s, chartBox) {
+  return panel('analytics chart-card art-sales-chart',
+    el('header', { class: 'chart-head' },
+      el('span', { class: 'chart-icon' }, el('img', { src: 'art:icon-sales.avif', alt: '' })),
+      el('div', {},
+        el('h3', { class: 'card-title' }, 'Vendas'),
+        el('p', { class: 'card-sub' }, 'Receita no período selecionado'))),
+    el('div', { class: 'chart-body' },
+      el('div', { class: 'chart-summary' },
+        el('span', { class: 'chart-total num' }, formatCents(s.revenue))),
+      chartBox));
+}
+
+// ---- ApprovalRate (by gateway) --------------------------------------------------------------
 
 function gatewayMark(raw) {
   const logo = gatewayLogo(raw);
@@ -191,48 +243,173 @@ function methodRow(m, open) {
 
 function approvalPanel(s) {
   const open = s.focus === 'approval';
-  return panel('Aprovação por método', s.approval.map((m) => methodRow(m, open)), 'Nenhuma tentativa no período', 'art-approval-rate');
+  return panel('insight list-card art-approval-rate',
+    el('header', { class: 'list-head' }, el('h3', { class: 'card-title' }, 'Taxa de Aprovação')),
+    el('div', { class: 'list-body' }, s.approval.length
+      ? s.approval.map((m) => methodRow(m, open))
+      : el('p', { class: 'empty' }, 'Nenhuma tentativa no período')));
+}
+
+// ---- SalesByProduct (RankedList) --------------------------------------------------------------
+
+const BAR_COLORS = ['#3b82f6', '#22d3ee', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#6366f1', '#84cc16'];
+const VISIBLE_LIMIT = 5;
+const productState = { expanded: false, query: '', order: 'desc', selected: new Set() };
+
+function rankedRows(items) {
+  const sorted = [...items].sort((a, b) => (productState.order === 'desc' ? b.count - a.count : a.count - b.count));
+  const ranked = sorted.map((item, i) => ({ ...item, rank: i + 1, color: BAR_COLORS[i % BAR_COLORS.length] }));
+  const q = productState.query.trim().toLowerCase();
+  return q ? ranked.filter((item) => item.name.toLowerCase().includes(q)) : ranked;
 }
 
 function productsPanel(s) {
-  const max = Math.max(1, ...s.topProducts.map((p) => p.count));
-  return panel('Mais vendidos', s.topProducts.map((p) => barRow(p.name, formatInt(p.count), p.count / max)), 'Nenhuma venda no período', 'art-sales-by-product');
+  const card = panel('insight list-card art-sales-by-product');
+  const draw = () => {
+    const rows = rankedRows(s.products);
+    const max = Math.max(1, ...s.products.map((p) => p.count));
+    const visible = productState.expanded ? rows : rows.slice(0, VISIBLE_LIMIT);
+    const picked = s.products.filter((p) => productState.selected.has(p.name));
+    const total = (picked.length ? picked : s.products).reduce((sum, p) => sum + p.count, 0);
+    const search = el('input', {
+      class: 'search', type: 'search', placeholder: 'Buscar produto...', value: productState.query, 'aria-label': 'Buscar produto',
+      oninput: (event) => { productState.query = event.target.value; draw(); card.querySelector('.search')?.focus(); },
+    });
+    card.replaceChildren(
+      el('header', { class: 'list-head' },
+        el('div', { class: 'list-title' },
+          el('h3', { class: 'card-title' }, 'Vendas por Produto'),
+          infoTip('Distribuição de vendas aprovadas por produto no período selecionado.')),
+        s.products.length ? el('div', { class: 'tools' },
+          el('label', { class: 'search-box' }, search),
+          el('button', {
+            type: 'button', class: 'icon-btn', title: productState.order === 'desc' ? 'Maior para menor' : 'Menor para maior',
+            'aria-label': productState.order === 'desc' ? 'Maior para menor' : 'Menor para maior',
+            onclick: () => { productState.order = productState.order === 'desc' ? 'asc' : 'desc'; draw(); },
+          }, productState.order === 'desc' ? '↓' : '↑'),
+          productState.selected.size ? el('button', {
+            type: 'button', class: 'chip', onclick: () => { productState.selected.clear(); draw(); },
+          }, `${productState.selected.size} selecionados ×`) : null) : null),
+      el('div', { class: 'list-body' },
+        s.products.length ? el('div', { class: productState.expanded ? 'ranked expanded' : 'ranked' }, visible.map((p) => el('button', {
+          type: 'button', class: productState.selected.has(p.name) ? 'rank-row selected' : 'rank-row',
+          'aria-pressed': String(productState.selected.has(p.name)),
+          onclick: () => { productState.selected.has(p.name) ? productState.selected.delete(p.name) : productState.selected.add(p.name); draw(); },
+        },
+          el('span', { class: 'rank-line' },
+            el('span', { class: 'rank-dot', style: `background: ${p.color}` }),
+            el('span', { class: 'rank-n' }, `${p.rank}.`),
+            el('span', { class: 'rank-name', title: p.name }, p.name),
+            el('span', { class: 'rank-count num' }, p.count.toLocaleString('pt-BR')),
+            el('span', { class: 'rank-pct' }, `${p.percentage.toFixed(0)}%`)),
+          el('span', { class: 'rank-track' }, el('span', { style: `width: ${(p.count / max) * 100}%; background: ${p.color}` })))))
+          : el('p', { class: 'empty' }, 'Nenhuma venda no período'),
+        s.products.length ? el('div', { class: 'list-foot' },
+          el('span', {}, picked.length ? `Selecionados: ${picked.length} (${total} vendas)` : `Total: ${total} vendas`),
+          rows.length > VISIBLE_LIMIT ? el('button', {
+            type: 'button', class: 'more', onclick: () => { productState.expanded = !productState.expanded; draw(); },
+          }, productState.expanded ? 'Ver menos' : 'Ver mais') : null) : null));
+  };
+  draw();
+  return card;
+}
+
+// ---- SalesByState ----------------------------------------------------------------------------
+
+const RANK_BADGES = ['#f59e0b', '#9ca3af', '#b45309'];
+let stateView = 'map';
+
+function stateTone(count, max) {
+  if (!count) return 'none';
+  const intensity = count / max;
+  return intensity > 0.8 ? '5' : intensity > 0.6 ? '4' : intensity > 0.4 ? '3' : intensity > 0.2 ? '2' : '1';
+}
+
+function noLocation(withIcon, hint) {
+  return el('div', { class: 'no-location' },
+    withIcon ? el('img', { src: 'art:icon-location.avif', alt: '', width: 32, height: 32 }) : null,
+    el('p', { class: 'no-location-title' }, 'Sem dados de localização'),
+    el('p', { class: 'no-location-hint' }, hint));
+}
+
+function statesMap(s) {
+  const byCode = Object.fromEntries(s.states.map((st) => [st.state, st]));
+  const max = Math.max(1, ...s.states.map((st) => st.count));
+  const total = s.states.reduce((sum, st) => sum + st.count, 0);
+  const popover = el('div', { class: 'state-pop', hidden: true });
+  const map = svg('svg', { viewBox: '50 20 400 440', class: 'brazil', role: 'img', 'aria-label': 'Mapa de vendas por estado' });
+  for (const [code, st] of Object.entries(BRAZIL_STATES)) {
+    const data = byCode[code];
+    const g = svg('g');
+    const path = svg('path', { d: st.path, class: 'uf', 'data-tone': stateTone(data?.count, max) });
+    path.addEventListener('pointerenter', () => {
+      if (!data) return;
+      popover.replaceChildren(el('p', { class: 'pop-name' }, st.name), el('p', { class: 'pop-line' }, `${data.count} vendas • ${formatCents(data.revenue)}`));
+      popover.hidden = false;
+    });
+    path.addEventListener('pointerleave', () => { popover.hidden = true; });
+    const label = svg('text', { x: st.labelX, y: st.labelY, class: 'uf-label', 'text-anchor': 'middle', 'dominant-baseline': 'middle' });
+    label.textContent = code;
+    g.append(path, label);
+    map.append(g);
+  }
+  const top = s.states.slice(0, 3);
+  return el('div', { class: 'map-view' },
+    el('div', { class: 'map-box' }, map, popover),
+    top.length ? el('div', { class: 'top-states' },
+      el('p', { class: 'top-title' }, 'Top Estados'),
+      top.map((st, i) => el('div', { class: 'top-row' },
+        el('span', { class: 'top-left' },
+          el('span', { class: 'badge', style: `background: ${RANK_BADGES[i]}` }, String(i + 1)),
+          el('span', { class: 'top-name' }, BRAZIL_STATES[st.state]?.name ?? st.state)),
+        el('span', { class: 'top-count' }, `${st.count} (${((st.count / total) * 100).toFixed(0)}%)`))))
+      : el('div', { class: 'top-states' }, noLocation(false, 'Habilite frete nos checkouts para coletar endereços')));
+}
+
+function statesList(s) {
+  const total = s.states.reduce((sum, st) => sum + st.count, 0);
+  if (!s.states.length) return noLocation(true, 'Dados disponíveis apenas para vendas com endereço (checkout com frete habilitado)');
+  return el('div', { class: 'state-list' }, s.states.map((st) => el('div', { class: 'state-row' },
+    el('span', { class: 'state-left' },
+      el('img', { src: 'art:icon-location.avif', alt: '', width: 20, height: 20 }),
+      el('span', {}, BRAZIL_STATES[st.state]?.name ?? st.state)),
+    el('span', { class: 'state-right' },
+      el('span', { class: 'state-track' }, el('span', { style: `width: ${total > 0 ? (st.count / total) * 100 : 0}%` })),
+      el('span', { class: 'state-nums' },
+        el('span', { class: 'state-count' }, String(st.count)),
+        el('span', { class: 'state-rev' }, formatCents(st.revenue)))))));
 }
 
 function statesPanel(s) {
-  const max = Math.max(1, ...s.topStates.map((st) => st.revenue));
-  return panel('Estados', s.topStates.map((st) => barRow(st.state, formatCents(st.revenue), st.revenue / max)), 'Sem estado informado');
+  const card = panel('analytics states-card');
+  const draw = () => card.replaceChildren(
+    el('header', { class: 'states-head' },
+      el('div', { class: 'states-title' },
+        el('h3', { class: 'card-title small' }, 'Vendas por Estado'),
+        segmented([['map', 'Mapa'], ['list', 'Lista']], stateView, (next) => { stateView = next; draw(); }, 'tight')),
+      infoTip('Vendas aprovadas com endereço de entrega, por estado.')),
+    el('div', { class: 'states-body' }, stateView === 'map' ? statesMap(s) : statesList(s)));
+  draw();
+  return card;
 }
 
-/** The revenue chart card; `withTotals` puts the period total in its header (the revenue focus). */
-function chartCard(s, chartBox, withTotals) {
-  return el('section', { class: 'surface chart-card art-sales-chart' },
-    el('h3', { class: 'card-title display' }, SERIES_TITLE[s.granularity] ?? 'Faturamento'),
-    withTotals ? el('p', { class: 'chart-total display num' }, formatCents(s.revenue)) : null,
-    withTotals ? el('p', { class: 'muted num chart-sub' },
-      `${formatInt(s.sales)} ${s.sales === 1 ? 'venda' : 'vendas'} · ticket médio ${formatCents(s.averageTicket)} · conversão ${formatPercent(s.conversion)}`) : null,
-    chartBox);
-}
+// ---- Screens ----------------------------------------------------------------------------------
 
-function renderStats(s) {
-  return [
-    el('div', { class: 'metrics metrics-3' },
-      metric('Faturamento', formatCents(s.revenue), true, s.revenueChange),
-      metric('Vendas', formatInt(s.sales), false, s.salesChange),
-      metric('Ticket médio', formatCents(s.averageTicket), false, s.ticketChange)),
-    el('div', { class: 'statuses' }, s.statuses.map((st) => el('div', { class: 'status' },
-      el('span', { class: 'muted' }, st.label),
-      el('strong', { class: 'display num' }, formatInt(st.count))))),
-  ];
-}
+const FOCUS_TITLE = {
+  revenue: 'Faturamento',
+  approval: 'Aprovação por método',
+  products: 'Mais vendidos',
+  states: 'Vendas por estado',
+  refunds: 'Reembolsos',
+};
 
 function renderFocus(s, chartBox) {
   switch (s.focus) {
-    case 'revenue': return [chartCard(s, chartBox, true), dataTable(s.series)];
+    case 'revenue': return [salesChart(s, chartBox)];
     case 'approval': return [approvalPanel(s)];
     case 'products': return [productsPanel(s)];
     case 'states': return [statesPanel(s)];
-    case 'refunds': return [el('div', { class: 'metrics metrics-even' },
+    case 'refunds': return [el('div', { class: 'kpis' },
       metric('Reembolsos', formatInt(s.refunds.refund)),
       metric('Chargebacks', formatInt(s.refunds.chargeback)),
       metric('MED', formatInt(s.refunds.med)))];
@@ -242,17 +419,13 @@ function renderFocus(s, chartBox) {
 
 function renderFull(s, chartBox) {
   return [
-    el('div', { class: 'metrics' },
-      metric('Faturamento', formatCents(s.revenue), true),
-      metric('Vendas', formatInt(s.sales)),
+    el('div', { class: 'kpis' },
       metric('Ticket médio', formatCents(s.averageTicket)),
-      metric('Conversão', formatPercent(s.conversion))),
-    chartCard(s, chartBox, false),
+      metric('Conversão', formatPercent(s.conversion)),
+      metric('Reembolsos', formatInt(s.refundsTotal))),
+    salesChart(s, chartBox),
     el('div', { class: 'panels' }, approvalPanel(s), productsPanel(s), statesPanel(s)),
-    el('div', { class: 'foot' },
-      el('span', { class: 'muted num' }, `Reembolsos ${formatInt(s.refunds.refund)} · Chargebacks ${formatInt(s.refunds.chargeback)} · MED ${formatInt(s.refunds.med)}`),
-      timezone ? el('span', { class: 'faint' }, `Fuso ${timezone}`) : null),
-    dataTable(s.series),
+    timezone ? el('p', { class: 'foot' }, `Fuso ${timezone}`) : null,
   ];
 }
 
@@ -260,8 +433,10 @@ function render() {
   const s = summary;
   const heading = source === 'stats' ? 'Vendas' : FOCUS_TITLE[s.focus] ?? 'Vendas';
   title.textContent = `${heading} · ${rangeLabel(s.period ?? range)}`;
+  // A focused answer is one dashboard card, which carries its own title.
+  title.hidden = source === 'charts' && Boolean(s.focus);
   const chartBox = el('div', { class: 'chart' });
-  content.replaceChildren(...(source === 'stats' ? renderStats(s) : s.focus ? renderFocus(s, chartBox) : renderFull(s, chartBox)));
+  content.replaceChildren(...(source === 'stats' ? [statsCards(s)] : s.focus ? renderFocus(s, chartBox) : renderFull(s, chartBox)));
   content.removeAttribute('aria-busy');
   if (chartBox.isConnected) drawChart(chartBox, s.series);
 }
@@ -275,6 +450,7 @@ function show(data) {
   }
   source = stats ? 'stats' : 'charts';
   summary = next;
+  productState.selected.clear();
   if (DASHBOARD_RANGES.some((r) => r.value === data.period)) range = data.period;
   if (data.timezone) timezone = data.timezone;
   renderRanges();
