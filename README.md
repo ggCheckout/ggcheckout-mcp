@@ -112,7 +112,7 @@ answer as before.
 
 | View | Tools | What it shows |
 |------|-------|---------------|
-| Sales panel | `get_dashboard_charts` | Revenue over time with a hover tooltip, sales, average ticket, conversion, approval per method, top products and states, refunds. The period buttons call the tool again. |
+| Sales | `get_dashboard_stats`, `get_dashboard_charts` | Only the part the user asked about: the period's numbers with the change against the previous one (`get_dashboard_stats`), or the `focus` of `get_dashboard_charts` (`revenue` over time with a hover tooltip, `approval` per method, top `products`, `states`, `refunds`). Without a `focus`, the whole panel. The period buttons call the same tool, with the same focus, again. |
 | PIX | `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup`, `pay_invoice` | QR code, copy-and-paste button, time left, and the status, polled every 5 s through `get_payment_intent`, `get_credit_topup`, `list_credits` or `get_invoice` until it is paid or expires. |
 
 The views run in the client's sandbox with no network access: their data only arrives through
@@ -615,6 +615,7 @@ The payments API's `list_wallets` lists the same wallets by their public id (`wa
 **Example prompts:**
 - "Show me my sales stats for today"
 - "Show me the revenue chart for this month"
+- "Which payment method approves the most this week?" (`focus: approval`)
 - "Refresh my dashboard cache"
 
 ---

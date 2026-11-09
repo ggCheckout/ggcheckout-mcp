@@ -15,11 +15,18 @@ const METHOD_LABELS = { pix: 'PIX', card: 'Cartão', boleto: 'Boleto' };
 const count = (n) => (Number.isFinite(n) ? n : 0);
 const ratio = (part, whole) => (whole > 0 ? part / whole : null);
 
-/** Null when the answer is not a charts payload (an error body, another tool's result). */
-export function summarizeDashboard(data) {
-  if (!data || !Array.isArray(data.chartData)) return null;
+export const DASHBOARD_FOCUSES = ['revenue', 'approval', 'products', 'states', 'refunds'];
 
-  const series = data.chartData.map((p) => ({
+/**
+ * Null when the answer is not a charts payload (an error body, another tool's result). A focused
+ * answer (`focus`) carries only its own part; the rest summarizes as empty and is not drawn.
+ */
+export function summarizeDashboard(data) {
+  if (!data || typeof data !== 'object') return null;
+  const focus = DASHBOARD_FOCUSES.includes(data.focus) ? data.focus : null;
+  if (!focus && !Array.isArray(data.chartData)) return null;
+
+  const series = (data.chartData ?? []).map((p) => ({
     label: String(p.label ?? p.date ?? ''),
     date: String(p.date ?? ''),
     sales: count(p.sales),
@@ -61,6 +68,7 @@ export function summarizeDashboard(data) {
   };
 
   return {
+    focus,
     period: data.period ?? null,
     granularity: data.chartGranularity ?? 'daily',
     series,
@@ -86,4 +94,30 @@ export function niceScale(max, tickCount = 3) {
   const ticks = [];
   for (let v = 0; v <= top + step / 2; v += step) ticks.push(v);
   return { max: top, ticks };
+}
+
+/** Change against the previous period as a ratio; null when there is nothing to compare with. */
+export function change(current, previous) {
+  return previous > 0 ? (current - previous) / previous : null;
+}
+
+/** A get_dashboard_stats answer (`GET /api/dashboard/stats`); null for anything else. */
+export function summarizeStats(data) {
+  if (!data || typeof data !== 'object' || !('totalSales' in data) || !('totalRevenue' in data)) return null;
+  return {
+    period: data.period ?? null,
+    revenue: count(data.totalRevenue),
+    sales: count(data.totalSales),
+    averageTicket: count(data.averageTicket),
+    revenueChange: change(count(data.totalRevenue), count(data.previousTotalRevenue)),
+    salesChange: change(count(data.totalSales), count(data.previousTotalSales)),
+    ticketChange: change(count(data.averageTicket), count(data.previousAverageTicket)),
+    statuses: [
+      { key: 'pending', label: 'Pendentes', count: count(data.pendingCount) },
+      { key: 'failed', label: 'Recusadas', count: count(data.failedCount) },
+      { key: 'expired', label: 'Expiradas', count: count(data.expiredCount) },
+      { key: 'cancelled', label: 'Canceladas', count: count(data.cancelledCount) },
+      { key: 'refunded', label: 'Reembolsadas', count: count(data.refundedCount) },
+    ],
+  };
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error -- browser modules in plain JS, inlined into the views; no type declarations
-import { summarizeDashboard, niceScale } from './views/dashboard-model.js';
+import { summarizeDashboard, summarizeStats, niceScale } from './views/dashboard-model.js';
 // @ts-expect-error -- see above
 import { normalizePix, polledStatus, qrImageSrc, formatRemaining } from './views/pix-model.js';
 
@@ -47,9 +47,35 @@ describe('summarizeDashboard', () => {
     expect(summarizeDashboard({ ...charts, conversion: { ordersGenerated: 0, paymentsCompleted: 0 } }).conversion).toBeNull();
   });
 
+  it('reads a focused answer, which has no series', () => {
+    const s = summarizeDashboard({ focus: 'states', byState: charts.byState, period: 'week' });
+    expect(s.focus).toBe('states');
+    expect(s.topStates).toHaveLength(2);
+    expect(s.series).toEqual([]);
+    expect(summarizeDashboard({ focus: 'other' })).toBeNull();
+  });
+
   it('refuses an answer that is not a charts payload', () => {
     expect(summarizeDashboard({ error: 'Não autorizado' })).toBeNull();
     expect(summarizeDashboard(null)).toBeNull();
+  });
+});
+
+describe('summarizeStats', () => {
+  it('compares each number with the previous period', () => {
+    const s = summarizeStats({
+      totalSales: 132, totalRevenue: 1284872, averageTicket: 9734, previousTotalSales: 120,
+      previousTotalRevenue: 0, previousAverageTicket: 9734, pendingCount: 14, failedCount: 9,
+      expiredCount: 31, cancelledCount: 2, refundedCount: 3, period: 'week',
+    });
+    expect(s.salesChange).toBe(0.1);
+    expect(s.revenueChange).toBeNull();
+    expect(s.ticketChange).toBe(0);
+    expect(s.statuses.map((st: any) => st.count)).toEqual([14, 9, 31, 2, 3]);
+  });
+
+  it('is null for a charts answer', () => {
+    expect(summarizeStats(charts)).toBeNull();
   });
 });
 

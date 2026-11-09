@@ -1,5 +1,6 @@
-// Sales panel view, attached to get_dashboard_charts. The tool result draws it; the period buttons
-// call the same tool again through the host.
+// Sales view, attached to get_dashboard_stats and get_dashboard_charts. It draws what the call
+// answered: the stats as metric cards, one `focus` of the charts (the part the user asked about),
+// or the whole panel. The period buttons call the same tool, with the same focus, through the host.
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const content = document.getElementById('content');
@@ -9,6 +10,8 @@ const title = document.getElementById('title');
 let range = 'week';
 let timezone;
 let summary = null;
+/** Which tool answered: 'charts' or 'stats'. */
+let source = 'charts';
 
 function svg(tag, attrs = {}) {
   const node = document.createElementNS(SVG_NS, tag);
@@ -38,7 +41,13 @@ async function switchRange(next) {
   renderRanges();
   content.setAttribute('aria-busy', 'true');
   try {
-    const data = await callTool('get_dashboard_charts', { range: next, ...(timezone ? { tz: timezone } : {}) });
+    const data = source === 'stats'
+      ? await callTool('get_dashboard_stats', { range: next })
+      : await callTool('get_dashboard_charts', {
+        range: next,
+        ...(timezone ? { tz: timezone } : {}),
+        ...(summary?.focus ? { focus: summary.focus } : {}),
+      });
     show(data);
   } catch (error) {
     range = previous;
@@ -48,10 +57,13 @@ async function switchRange(next) {
   }
 }
 
-function metric(label, value, lead = false) {
+function metric(label, value, lead = false, delta) {
+  const arrow = delta == null ? null : delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
   return el('div', { class: lead ? 'metric lead' : 'metric' },
     el('p', { class: 'm-label' }, label),
-    el('p', { class: 'm-value display num' }, value));
+    el('p', { class: 'm-value display num' }, value),
+    delta === undefined ? null : el('p', { class: 'm-delta num' },
+      delta == null ? 'sem período anterior' : `${arrow} ${formatPercent(Math.abs(delta))} vs anterior`));
 }
 
 function barRow(name, value, share) {
@@ -61,8 +73,12 @@ function barRow(name, value, share) {
     el('div', { class: 'track' }, el('div', { class: 'fill', style: `width: ${Math.max(0, Math.min(1, share)) * 100}%` })));
 }
 
+// Alone in a focused view the page title already names the panel, so the card drops its own.
 function panel(heading, rows, emptyText, art) {
-  return el('section', { class: art ? `surface ${art}` : 'surface' }, el('h3', { class: 'card-title display' }, heading), rows.length ? rows : el('p', { class: 'empty-panel' }, emptyText));
+  const alone = Boolean(summary?.focus);
+  return el('section', { class: art ? `surface ${art}` : 'surface' },
+    alone ? null : el('h3', { class: 'card-title display' }, heading),
+    rows.length ? rows : el('p', { class: 'empty-panel' }, emptyText));
 }
 
 function drawChart(box, series) {
@@ -138,46 +154,105 @@ function dataTable(series) {
         el('td', {}, p.label), el('td', { class: 'num' }, formatInt(p.sales)), el('td', { class: 'num' }, formatCents(p.revenue)))))));
 }
 
-function render() {
-  const s = summary;
-  title.textContent = `Vendas · ${rangeLabel(s.period ?? range)}`;
-  const chartBox = el('div', { class: 'chart' });
-  const maxProduct = Math.max(1, ...s.topProducts.map((p) => p.count));
-  const maxState = Math.max(1, ...s.topStates.map((st) => st.revenue));
+const FOCUS_TITLE = {
+  revenue: 'Faturamento',
+  approval: 'Aprovação por método',
+  products: 'Mais vendidos',
+  states: 'Vendas por estado',
+  refunds: 'Reembolsos',
+};
 
-  content.replaceChildren(
+function approvalPanel(s) {
+  return panel('Aprovação por método', s.approval.map((m) => barRow(m.label, `${formatPercent(m.rate)} · ${formatInt(m.approved)}/${formatInt(m.total)}`, m.rate ?? 0)), 'Nenhuma tentativa no período', 'art-approval-rate');
+}
+
+function productsPanel(s) {
+  const max = Math.max(1, ...s.topProducts.map((p) => p.count));
+  return panel('Mais vendidos', s.topProducts.map((p) => barRow(p.name, formatInt(p.count), p.count / max)), 'Nenhuma venda no período', 'art-sales-by-product');
+}
+
+function statesPanel(s) {
+  const max = Math.max(1, ...s.topStates.map((st) => st.revenue));
+  return panel('Estados', s.topStates.map((st) => barRow(st.state, formatCents(st.revenue), st.revenue / max)), 'Sem estado informado');
+}
+
+/** The revenue chart card; `withTotals` puts the period total in its header (the revenue focus). */
+function chartCard(s, chartBox, withTotals) {
+  return el('section', { class: 'surface chart-card art-sales-chart' },
+    el('h3', { class: 'card-title display' }, SERIES_TITLE[s.granularity] ?? 'Faturamento'),
+    withTotals ? el('p', { class: 'chart-total display num' }, formatCents(s.revenue)) : null,
+    withTotals ? el('p', { class: 'muted num chart-sub' },
+      `${formatInt(s.sales)} ${s.sales === 1 ? 'venda' : 'vendas'} · ticket médio ${formatCents(s.averageTicket)} · conversão ${formatPercent(s.conversion)}`) : null,
+    chartBox);
+}
+
+function renderStats(s) {
+  return [
+    el('div', { class: 'metrics metrics-3' },
+      metric('Faturamento', formatCents(s.revenue), true, s.revenueChange),
+      metric('Vendas', formatInt(s.sales), false, s.salesChange),
+      metric('Ticket médio', formatCents(s.averageTicket), false, s.ticketChange)),
+    el('div', { class: 'statuses' }, s.statuses.map((st) => el('div', { class: 'status' },
+      el('span', { class: 'muted' }, st.label),
+      el('strong', { class: 'display num' }, formatInt(st.count))))),
+  ];
+}
+
+function renderFocus(s, chartBox) {
+  switch (s.focus) {
+    case 'revenue': return [chartCard(s, chartBox, true), dataTable(s.series)];
+    case 'approval': return [approvalPanel(s)];
+    case 'products': return [productsPanel(s)];
+    case 'states': return [statesPanel(s)];
+    case 'refunds': return [el('div', { class: 'metrics metrics-even' },
+      metric('Reembolsos', formatInt(s.refunds.refund)),
+      metric('Chargebacks', formatInt(s.refunds.chargeback)),
+      metric('MED', formatInt(s.refunds.med)))];
+    default: return [];
+  }
+}
+
+function renderFull(s, chartBox) {
+  return [
     el('div', { class: 'metrics' },
       metric('Faturamento', formatCents(s.revenue), true),
       metric('Vendas', formatInt(s.sales)),
       metric('Ticket médio', formatCents(s.averageTicket)),
       metric('Conversão', formatPercent(s.conversion))),
-    el('section', { class: 'surface chart-card art-sales-chart' },
-      el('h3', { class: 'card-title display' }, SERIES_TITLE[s.granularity] ?? 'Faturamento'),
-      chartBox),
-    el('div', { class: 'panels' },
-      panel('Aprovação por método', s.approval.map((m) => barRow(m.label, `${formatPercent(m.rate)} · ${formatInt(m.approved)}/${formatInt(m.total)}`, m.rate ?? 0)), 'Nenhuma tentativa no período', 'art-approval-rate'),
-      panel('Mais vendidos', s.topProducts.map((p) => barRow(p.name, formatInt(p.count), p.count / maxProduct)), 'Nenhuma venda no período', 'art-sales-by-product'),
-      panel('Estados', s.topStates.map((st) => barRow(st.state, formatCents(st.revenue), st.revenue / maxState)), 'Sem estado informado')),
+    chartCard(s, chartBox, false),
+    el('div', { class: 'panels' }, approvalPanel(s), productsPanel(s), statesPanel(s)),
     el('div', { class: 'foot' },
       el('span', { class: 'muted num' }, `Reembolsos ${formatInt(s.refunds.refund)} · Chargebacks ${formatInt(s.refunds.chargeback)} · MED ${formatInt(s.refunds.med)}`),
       timezone ? el('span', { class: 'faint' }, `Fuso ${timezone}`) : null),
-    dataTable(s.series));
+    dataTable(s.series),
+  ];
+}
+
+function render() {
+  const s = summary;
+  const heading = source === 'stats' ? 'Vendas' : FOCUS_TITLE[s.focus] ?? 'Vendas';
+  title.textContent = `${heading} · ${rangeLabel(s.period ?? range)}`;
+  const chartBox = el('div', { class: 'chart' });
+  content.replaceChildren(...(source === 'stats' ? renderStats(s) : s.focus ? renderFocus(s, chartBox) : renderFull(s, chartBox)));
   content.removeAttribute('aria-busy');
-  drawChart(chartBox, s.series);
+  if (chartBox.isConnected) drawChart(chartBox, s.series);
 }
 
 function show(data) {
-  const next = summarizeDashboard(data);
+  const stats = summarizeStats(data);
+  const next = stats ?? summarizeDashboard(data);
   if (!next) {
     content.replaceChildren(el('p', { class: 'state', 'data-tone': 'error' }, 'A resposta não trouxe dados do painel.'));
     return;
   }
+  source = stats ? 'stats' : 'charts';
   summary = next;
-  if (data.period) range = data.period;
+  if (DASHBOARD_RANGES.some((r) => r.value === data.period)) range = data.period;
   if (data.timezone) timezone = data.timezone;
   renderRanges();
   render();
-  updateModelContext(`Painel de vendas aberto em "${rangeLabel(range)}": faturamento ${formatCents(summary.revenue)}, ${summary.sales} vendas.`);
+  const what = source === 'stats' ? 'Vendas' : FOCUS_TITLE[summary.focus] ?? 'Painel de vendas';
+  updateModelContext(`${what} aberto em "${rangeLabel(range)}" na tela do chat.`);
 }
 
 bridge.onToolInput = (args) => {
@@ -198,7 +273,8 @@ new ResizeObserver(() => {
   if (!summary || document.body.clientWidth === lastWidth) return;
   lastWidth = document.body.clientWidth;
   cancelAnimationFrame(resizeFrame);
-  resizeFrame = requestAnimationFrame(() => drawChart(content.querySelector('.chart'), summary.series));
+  const chart = content.querySelector('.chart');
+  if (chart) resizeFrame = requestAnimationFrame(() => drawChart(chart, summary.series));
 }).observe(document.body);
 
 connect('ggcheckout-sales-dashboard').then(renderRanges).catch((error) => {

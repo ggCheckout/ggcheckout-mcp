@@ -13,8 +13,11 @@ right now.
   `get_dashboard_charts`, and a PIX view (QR, copy-and-paste, time left, live status) on
   `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup` and `pay_invoice`.
   Served as the `ui://ggcheckout/sales-dashboard.html` and `ui://ggcheckout/pix-charge.html`
-  resources. The tools' arguments and text answers are unchanged, so clients without MCP Apps see
-  no difference, and the minimum supported version does not need to move.
+  resources. The minimum supported version does not need to move: no write changed.
+- `get_dashboard_charts` takes an optional `focus` (`revenue`, `approval`, `products`, `states`,
+  `refunds`): the answer carries only that part, and the sales view draws only it. Without `focus`
+  the answer is the whole payload, as before. `get_dashboard_stats` is drawn by the same view, as
+  the period's numbers against the previous period.
 
 ## 0.5.0
 

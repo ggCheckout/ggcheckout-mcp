@@ -55,11 +55,12 @@ describe('registerAppViews', () => {
     const uriOf = (name: string) => (tools.find((t) => t.name === name)?._meta as any)?.ui?.resourceUri;
 
     expect(uriOf('get_dashboard_charts')).toBe(SALES_DASHBOARD_URI);
+    expect(uriOf('get_dashboard_stats')).toBe(SALES_DASHBOARD_URI);
     for (const name of ['add_credit', 'get_credit_topup', 'pay_invoice', 'create_pix_charge', 'get_payment_intent']) {
       expect(uriOf(name), name).toBe(PIX_CHARGE_URI);
     }
     // Plain data tools stay without a view.
-    expect(uriOf('get_dashboard_stats')).toBeUndefined();
+    expect(uriOf('invalidate_dashboard_cache')).toBeUndefined();
     expect(uriOf('list_credits')).toBeUndefined();
   });
 });

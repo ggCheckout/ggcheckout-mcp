@@ -16,3 +16,6 @@ export interface DashboardStats {
 }
 
 export type DashboardRange = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all';
+
+/** The part of the charts payload a question is about; without one the whole panel comes back. */
+export type DashboardFocus = 'revenue' | 'approval' | 'products' | 'states' | 'refunds';
