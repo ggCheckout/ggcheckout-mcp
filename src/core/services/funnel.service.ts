@@ -61,8 +61,25 @@ export class FunnelService {
     return this.funnelPort.listLeads(funnelId, options);
   }
 
+  /**
+   * The drop-off report names each step only by id, which neither the model nor the seller can
+   * read; the funnel is read alongside so every step carries its title, as the dashboard's
+   * conversion chart shows it ("Etapa N" for a step without one).
+   */
   async getLeadAnalytics(funnelId: string): Promise<FunnelAnalytics> {
-    return this.funnelPort.getLeadAnalytics(funnelId);
+    const [analytics, funnel] = await Promise.all([
+      this.funnelPort.getLeadAnalytics(funnelId),
+      this.funnelPort.getById(funnelId),
+    ]);
+    const titles = new Map((funnel.steps ?? []).map((step) => [step.id, step.title]));
+    return {
+      ...analytics,
+      funnelTitle: funnel.title,
+      steps: analytics.steps.map((step, index) => ({
+        ...step,
+        title: titles.get(step.stepId) || `Etapa ${index + 1}`,
+      })),
+    };
   }
 
   async getLeadStats(funnelId: string): Promise<FunnelLeadStats> {

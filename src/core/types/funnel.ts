@@ -221,14 +221,20 @@ export interface FunnelLeadStats {
 
 export interface FunnelStepAnalytics {
   stepId: string;
+  /** The step's title in the funnel, added by the service (the API sends only the id). */
+  title?: string;
   visitors: number;
   exits: number;
+  /** Percent points, an integer (33 = 33%). */
   dropOffRate: number;
 }
 
 export interface FunnelAnalytics {
+  /** The funnel's title, added by the service. */
+  funnelTitle?: string;
   steps: FunnelStepAnalytics[];
   totalVisitors: number;
   totalCompleted: number;
+  /** Percent points, an integer. */
   overallConversionRate: number;
 }
