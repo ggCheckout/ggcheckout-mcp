@@ -3,13 +3,18 @@
   "version": "0.5.0",
   "description": "MCP server for GG Checkout - Manage your products via AI agents",
   "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./views/*": "./dist/views/*",
+    "./package.json": "./package.json"
+  },
   "type": "module",
   "bin": {
     "ggcheckout-mcp": "dist/index.js"
   },
   "scripts": {
     "prebuild": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
-    "build": "tsc && node -e \"require('fs').cpSync('src/adapters/inbound/apps/views', 'dist/adapters/inbound/apps/views', { recursive: true })\"",
+    "build": "tsc && node -e \"require('fs').cpSync('src/adapters/inbound/apps/views', 'dist/adapters/inbound/apps/views', { recursive: true })\" && node dist/adapters/inbound/apps/export-views.js",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "prepublishOnly": "npm run build",

@@ -43,7 +43,7 @@ export function buildView(page: string): string {
   }).replace(ART, (_, file: string) => `'data:image/avif;base64,${art(file)}'`);
 }
 
-const VIEWS = [
+export const APP_VIEWS = [
   {
     name: 'sales_dashboard',
     uri: SALES_DASHBOARD_URI,
@@ -86,7 +86,7 @@ export function registerAppViews(server: McpServer) {
   server.server.oninitialized = () => {
     logger.info('STARTUP', `Client ${clientDrawsViews(server) ? 'draws' : 'does not draw'} MCP Apps views`);
   };
-  for (const view of VIEWS) {
+  for (const view of APP_VIEWS) {
     let html: string | undefined;
     server.registerResource(view.name, view.uri, { mimeType: APP_MIME_TYPE, description: view.description }, async () => {
       html ??= buildView(view.page);
