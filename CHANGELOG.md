@@ -18,6 +18,11 @@ right now.
   `refunds`): the answer carries only that part, and the sales view draws only it. Without `focus`
   the answer is the whole payload, as before. `get_dashboard_stats` is drawn by the same view, as
   the period's numbers against the previous period.
+- The approval view follows the dashboard's ApprovalRate card: each method opens into its gateways,
+  with the gateway logos. In a client that draws the views (it announces
+  `io.modelcontextprotocol/ui` in `initialize`), the seven tools with a view start their answer with
+  a note asking the model not to restate the card as text. Text-only clients get the same answer
+  as before.
 
 ## 0.5.0
 

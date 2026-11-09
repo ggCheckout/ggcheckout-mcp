@@ -42,10 +42,18 @@ export function summarizeDashboard(data) {
 
   const conversion = ratio(count(data.conversion?.paymentsCompleted), count(data.conversion?.ordersGenerated));
 
+  // Per gateway, each method's attempts, as ApprovalRate breaks a method down (gatewaySummary only
+  // splits pix and card).
+  const gateways = Array.isArray(data.gatewaySummary) ? data.gatewaySummary : [];
   const approval = Object.entries(METHOD_LABELS)
     .map(([key, label]) => {
       const a = data.approvalRate?.[key] ?? {};
-      return { key, label, approved: count(a.approved), total: count(a.total), rate: ratio(count(a.approved), count(a.total)) };
+      const byGateway = gateways
+        .map((g) => ({ gateway: String(g.gateway ?? ''), approved: count(g[key]?.approved), total: count(g[key]?.total) }))
+        .filter((g) => g.gateway && g.total > 0)
+        .map((g) => ({ ...g, rate: ratio(g.approved, g.total) }))
+        .sort((x, y) => y.total - x.total || y.approved - x.approved);
+      return { key, label, approved: count(a.approved), total: count(a.total), rate: ratio(count(a.approved), count(a.total)), byGateway };
     })
     .filter((m) => m.total > 0);
 

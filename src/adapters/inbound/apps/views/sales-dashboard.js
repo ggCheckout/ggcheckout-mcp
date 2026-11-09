@@ -162,8 +162,36 @@ const FOCUS_TITLE = {
   refunds: 'Reembolsos',
 };
 
+function gatewayMark(raw) {
+  const logo = gatewayLogo(raw);
+  return el('span', { class: 'gw-mark' }, logo
+    ? el('img', { src: logo, alt: '' })
+    : el('span', { class: 'gw-initial' }, gatewayName(raw).charAt(0).toUpperCase()));
+}
+
+// As ApprovalRate on the seller dashboard: one row per method that opens into its gateways. Inside
+// the approval focus the rows start open, since the gateways are the answer.
+function methodRow(m, open) {
+  const rate = m.rate == null ? 'N/A' : formatPercent(m.rate);
+  return el('details', { class: 'method', 'data-method': m.key, open: open && m.byGateway.length > 0 },
+    el('summary', { class: 'method-row' },
+      el('span', { class: 'method-icon' }, el('img', { src: METHOD_ICONS[m.key] ?? METHOD_ICONS.gateway, alt: '' })),
+      el('span', { class: 'method-text' },
+        el('strong', {}, m.label),
+        el('span', { class: 'muted num' }, `${formatInt(m.approved)}/${formatInt(m.total)}`)),
+      el('span', { class: 'method-bar' }, el('span', { style: `width: ${(m.rate ?? 0) * 100}%` })),
+      el('span', { class: 'method-rate num' }, rate),
+      m.byGateway.length ? el('span', { class: 'chevron', 'aria-hidden': 'true' }) : null),
+    m.byGateway.length ? el('div', { class: 'gw-list' }, m.byGateway.map((g) => el('div', { class: 'gw-row' },
+      gatewayMark(g.gateway),
+      el('span', { class: 'gw-name' }, gatewayName(g.gateway)),
+      el('span', { class: 'muted num' }, `${formatInt(g.approved)}/${formatInt(g.total)}`),
+      el('span', { class: 'gw-rate num' }, g.rate == null ? 'N/A' : formatPercent(g.rate))))) : null);
+}
+
 function approvalPanel(s) {
-  return panel('Aprovação por método', s.approval.map((m) => barRow(m.label, `${formatPercent(m.rate)} · ${formatInt(m.approved)}/${formatInt(m.total)}`, m.rate ?? 0)), 'Nenhuma tentativa no período', 'art-approval-rate');
+  const open = s.focus === 'approval';
+  return panel('Aprovação por método', s.approval.map((m) => methodRow(m, open)), 'Nenhuma tentativa no período', 'art-approval-rate');
 }
 
 function productsPanel(s) {

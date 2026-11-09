@@ -37,6 +37,21 @@ describe('summarizeDashboard', () => {
     expect(s.refundsTotal).toBe(3);
   });
 
+  it('breaks each method down by gateway, most attempts first', () => {
+    const s = summarizeDashboard({
+      ...charts,
+      gatewaySummary: [
+        { gateway: 'mercadopago', total: 4, approved: 4, revenue: 550, pix: { total: 4, approved: 4 }, card: { total: 0, approved: 0 } },
+        { gateway: 'appmax', total: 12, approved: 4, revenue: 200, pix: { total: 12, approved: 4 }, card: { total: 0, approved: 0 } },
+      ],
+    });
+    const pix = s.approval.find((m: any) => m.key === 'pix');
+    expect(pix.byGateway.map((g: any) => [g.gateway, g.approved, g.total])).toEqual([['appmax', 4, 12], ['mercadopago', 4, 4]]);
+    expect(pix.byGateway[1].rate).toBe(1);
+    // No card attempt at any gateway: nothing to open.
+    expect(s.approval.find((m: any) => m.key === 'boleto').byGateway).toEqual([]);
+  });
+
   it('leaves out a method with no attempts instead of showing 0%', () => {
     const s = summarizeDashboard(charts);
     expect(s.approval.map((m: any) => m.key)).toEqual(['pix', 'boleto']);

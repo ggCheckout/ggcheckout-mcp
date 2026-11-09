@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import * as logger from '../../../shared/logger.js';
+import type { ToolResult } from '../tool-handler.js';
 
 /**
  * MCP Apps (SEP-1865, spec 2026-01-26): a tool whose `_meta.ui.resourceUri` points to a `ui://`
@@ -18,14 +20,14 @@ export function appMeta(resourceUri: string) {
 
 const VIEWS_DIR = new URL('./views/', import.meta.url);
 const INCLUDE = /<!-- include:([\w.\- ]+) -->/g;
-const ART = /url\('art:([\w.-]+\.avif)'\)/g;
+const ART = /'art:([\w.-]+\.avif)'/g;
 
 /**
  * A view is one self-contained HTML document: the host loads it in a sandboxed iframe with no
  * network (the default CSP), so the shared CSS and scripts are inlined where the page says
  * `<!-- include:a.css b.js -->`. The scripts become ONE module, in the listed order, so they share
  * a scope without imports; the model files keep their `export`s for the unit tests.
- * `url('art:name.avif')` in the CSS becomes a `data:` image from `views/art/` (the CSP allows those).
+ * `'art:name.avif'`, in the CSS or the scripts, becomes a `data:` image from `views/art/` (the CSP allows those).
  */
 export function buildView(page: string): string {
   const read = (file: string) => readFileSync(new URL(file, VIEWS_DIR), 'utf-8');
@@ -38,7 +40,7 @@ export function buildView(page: string): string {
       styles && `<style>\n${styles}</style>`,
       scripts && `<script type="module">\n${scripts}</script>`,
     ].filter(Boolean).join('\n');
-  }).replace(ART, (_, file: string) => `url('data:image/avif;base64,${art(file)}')`);
+  }).replace(ART, (_, file: string) => `'data:image/avif;base64,${art(file)}'`);
 }
 
 const VIEWS = [
@@ -56,7 +58,34 @@ const VIEWS = [
   },
 ] as const;
 
+const UI_EXTENSION = 'io.modelcontextprotocol/ui';
+
+/** Whether the connected client draws MCP Apps views, as it announced in `initialize`. */
+export function clientDrawsViews(server: McpServer): boolean {
+  const extensions = (server.server.getClientCapabilities() as { extensions?: Record<string, { mimeTypes?: string[] }> } | undefined)?.extensions;
+  return Boolean(extensions?.[UI_EXTENSION]?.mimeTypes?.includes(APP_MIME_TYPE));
+}
+
+const DRAWN_NOTE =
+  'The user sees this result drawn as an interactive card right above your reply. Answer in one or two '
+  + 'sentences with the takeaway; do not restate these figures as a list or a table.';
+
+/**
+ * Only for a client that draws the view: a note before the data, so the model does not repeat as text
+ * what the card already shows. A text-only client gets the result unchanged.
+ */
+export function withDrawnNote<TArgs>(server: McpServer, handler: (args: TArgs) => Promise<ToolResult>) {
+  return async (args: TArgs): Promise<ToolResult> => {
+    const result = await handler(args);
+    if (result.isError || !clientDrawsViews(server)) return result;
+    return { ...result, content: [{ type: 'text', text: DRAWN_NOTE }, ...result.content] };
+  };
+}
+
 export function registerAppViews(server: McpServer) {
+  server.server.oninitialized = () => {
+    logger.info('STARTUP', `Client ${clientDrawsViews(server) ? 'draws' : 'does not draw'} MCP Apps views`);
+  };
   for (const view of VIEWS) {
     let html: string | undefined;
     server.registerResource(view.name, view.uri, { mimeType: APP_MIME_TYPE, description: view.description }, async () => {

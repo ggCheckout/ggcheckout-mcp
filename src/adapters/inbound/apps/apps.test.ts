@@ -12,14 +12,15 @@ import type { PaymentsApiClient } from '../../outbound/payments-api.client.js';
 
 vi.mock('../../../shared/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 
-async function connect() {
+async function connect(drawsViews = false) {
   const server = new McpServer({ name: 't', version: '0' });
-  registerDashboardTools(server, {} as DashboardService);
+  registerDashboardTools(server, { getStats: async () => ({ totalSales: 1, totalRevenue: 100 }) } as unknown as DashboardService);
   registerBillingTools(server, {} as BillingService);
   registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
   registerAppViews(server);
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
-  const client = new Client({ name: 'c', version: '0' });
+  const capabilities = drawsViews ? { extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: [APP_MIME_TYPE] } } } : {};
+  const client = new Client({ name: 'c', version: '0' }, { capabilities });
   await Promise.all([server.connect(serverSide), client.connect(clientSide)]);
   return client;
 }
@@ -29,7 +30,7 @@ describe('buildView', () => {
     const html = buildView(page);
     expect(html).toMatch(/^<!doctype html>/);
     expect(html).not.toContain('<!-- include:');
-    expect(html).not.toContain("url('art:");
+    expect(html).not.toContain("'art:");
     expect(html).toContain("url('data:image/avif;base64,");
     // The host's default CSP has no network: anything external would silently fail to load.
     expect(html).not.toMatch(/(src|href)=["']?https?:/i);
@@ -62,5 +63,20 @@ describe('registerAppViews', () => {
     // Plain data tools stay without a view.
     expect(uriOf('invalidate_dashboard_cache')).toBeUndefined();
     expect(uriOf('list_credits')).toBeUndefined();
+  });
+
+  it('tells the model the card is on screen only to a client that draws it', async () => {
+    const texts = async (drawsViews: boolean) => {
+      const client = await connect(drawsViews);
+      const result = await client.callTool({ name: 'get_dashboard_stats', arguments: {} });
+      return (result.content as { text: string }[]).map((c) => c.text);
+    };
+    const drawn = await texts(true);
+    expect(drawn[0]).toMatch(/drawn as an interactive card/);
+    expect(JSON.parse(drawn[1])).toMatchObject({ totalSales: 1 });
+
+    const plain = await texts(false);
+    expect(plain).toHaveLength(1);
+    expect(JSON.parse(plain[0])).toMatchObject({ totalSales: 1 });
   });
 });
