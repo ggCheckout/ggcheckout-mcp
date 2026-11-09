@@ -3,6 +3,7 @@ import type { Host } from './host';
 import { pickView } from './views';
 import { SalesView } from './dashboard/SalesView';
 import { FunnelView } from './funnel/FunnelView';
+import { PaymentsView } from './payments/PaymentsView';
 import { PixView } from './pix/PixView';
 
 export function GgApp({ host }: { host: Host }) {
@@ -16,6 +17,8 @@ export function GgApp({ host }: { host: Host }) {
       return <SalesView key={state.generation} host={host} state={state} />;
     case 'funnel':
       return <FunnelView key={state.generation} host={host} state={state} />;
+    case 'payments':
+      return <PaymentsView key={state.generation} host={host} state={state} />;
     case 'pix':
       return <PixView key={state.generation} host={host} state={state} />;
     default:

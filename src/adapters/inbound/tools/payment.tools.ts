@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { PaymentService } from '../../../core/services/payment.service.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 export function registerPaymentTools(server: McpServer, service: PaymentService) {
   server.tool(
@@ -20,11 +21,12 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
       inputSchema: {
         businessId: z.string().describe('Business ID to list payments for'),
       },
+      _meta: appMeta(),
     },
-    createToolHandler('list_payments', async ({ businessId }) => {
+    withDrawnNote(server, createToolHandler('list_payments', async ({ businessId }) => {
       const payments = await service.list(businessId);
       return { payments };
-    }),
+    })),
   );
 
   server.registerTool(
@@ -58,10 +60,11 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
           .describe('Search by payment ID, email, phone, or title offer'),
         countOnly: z.boolean().optional().describe('Return only the total count, not the data'),
       },
+      _meta: appMeta(),
     },
-    createToolHandler('get_payments_paginated', async ({ businessId, ...options }) => {
+    withDrawnNote(server, createToolHandler('get_payments_paginated', async ({ businessId, ...options }) => {
       return service.getPaginated(businessId, options);
-    }),
+    })),
   );
 
   server.registerTool(
@@ -72,11 +75,12 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
         businessId: z.string().describe('Business ID'),
         paymentId: z.string().describe('Payment ID (transaction ID)'),
       },
+      _meta: appMeta(),
     },
-    createToolHandler('get_payment', async ({ businessId, paymentId }) => {
+    withDrawnNote(server, createToolHandler('get_payment', async ({ businessId, paymentId }) => {
       const payment = await service.getById(businessId, paymentId);
       return { payment };
-    }),
+    })),
   );
 
   server.registerTool(

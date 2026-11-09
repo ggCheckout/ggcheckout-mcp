@@ -88,3 +88,46 @@ export const funnelAnalytics = {
 };
 
 export const funnelStats = { stats: { visitors: 320, leads: 144, interactionRate: 80, qualified: 96, completed: 72 } };
+
+// Payments: invented buyers, masked like the server masks them. 47 of them, newest first.
+const BUYERS = ['Ana Souza', 'Bruno Lima', 'Carla Mendes', 'Diego Rocha', 'Elisa Prado', 'Felipe Nunes', 'Gabi Torres', 'Hugo Alves'];
+const OFFERS = ['Método Aurora', 'Clube Norte', 'Órbita Pro', 'Farol de Vendas — acesso vitalício com bônus de lançamento'];
+const GATEWAYS: [string, string][] = [['efibank', 'pix'], ['mercadopago', 'pix'], ['stripe', 'credit_card'], ['appmax', 'credit_card'], ['zuckpay', 'pix'], ['novogateway', 'bank_slip']];
+const STATUSES = ['paid', 'paid', 'pending', 'paid', 'expired', 'refunded', 'paid', 'failed', 'charged_back', 'paid'];
+
+export const payments = Array.from({ length: 47 }, (_, i) => {
+  const name = BUYERS[i % BUYERS.length];
+  const [gatewayName, paymentMethod] = GATEWAYS[i % GATEWAYS.length];
+  const status = STATUSES[i % STATUSES.length];
+  const cents = [4990, 19700, 9790, 49700, 2990][i % 5];
+  const createdAt = new Date(Date.UTC(2026, 10, 9, 21, 0) - i * 47 * 60_000).toISOString().replace('Z', '123+00:00');
+  const local = name.toLowerCase().replace(' ', '.');
+  return {
+    id: `pay_${(0x9f3a21 + i * 7919).toString(16)}${i}e0c4b7d2`,
+    status, paymentMethod, gatewayName, finalValueInCents: cents, value: cents / 100,
+    installments: paymentMethod === 'credit_card' ? (i % 3) + 1 : 1,
+    name, email: `${local[0]}***${local.at(-1)}@gmail.com`, cpf: '***.456.789-**', phone: '(31) *****-4321',
+    titleOffer: OFFERS[i % OFFERS.length], paymentMode: i % 9 === 4 ? 'subscription' : 'production',
+    orderBumps: i % 4 === 1 ? [{ title: 'Planilha de lançamento', priceCents: 1990 }, { title: 'Checklist do anúncio', priceCents: 990 }] : [],
+    ...(i % 7 === 3 ? { affiliateData: { commissionPercent: 40 } } : {}),
+    createdAt, paidAt: status === 'paid' ? createdAt : null,
+  };
+});
+
+/** get_payments_paginated over the fixture: cursor = createdAt|id of the page's last payment. */
+export function paymentsPage(args: Record<string, unknown>) {
+  const size = Number(args.pageSize) || 10;
+  const term = String(args.searchTerm ?? '').toLowerCase();
+  const matches = term ? payments.filter((p) => [p.id, p.email, p.name, p.titleOffer].some((f) => f.toLowerCase().includes(term))) : payments;
+  const after = String(args.lastCreatedAt ?? '').split('|')[1];
+  const start = after ? matches.findIndex((p) => p.id === after) + 1 : 0;
+  const page = matches.slice(start, start + size);
+  const last = page.at(-1);
+  return {
+    payments: page,
+    total: matches.length,
+    totalCapped: false,
+    nextCursor: start + size < matches.length && last ? `${last.createdAt}|${last.id}` : null,
+    ...(term ? { coverageCapped: true } : {}),
+  };
+}

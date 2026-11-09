@@ -12,6 +12,8 @@ describe('pickView', () => {
     expect(pickView(undefined, { focus: 'states', byState: [] }, {})).toBe('sales');
     expect(pickView(undefined, { stats: { visitors: 1, interactionRate: 0 } }, {})).toBe('funnel');
     expect(pickView(undefined, { steps: [], totalVisitors: 0, overallConversionRate: 0 }, {})).toBe('funnel');
+    expect(pickView(undefined, { payments: [], total: 0 }, {})).toBe('payments');
+    expect(pickView(undefined, { payment: { id: 'p1', status: 'paid' } }, {})).toBe('payments');
     expect(pickView(undefined, { object: 'payment_intent', id: 'pi_1', status: 'processing' }, {})).toBe('pix');
     expect(pickView(undefined, { anything: true }, {})).toBeNull();
   });

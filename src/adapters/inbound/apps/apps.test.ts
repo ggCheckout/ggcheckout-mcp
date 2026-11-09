@@ -8,10 +8,12 @@ import { registerDashboardTools } from '../tools/dashboard.tools.js';
 import { registerBillingTools } from '../tools/billing.tools.js';
 import { registerPaymentsApiTools } from '../tools/payments-api.tools.js';
 import { registerFunnelTools } from '../tools/funnel.tools.js';
+import { registerPaymentTools } from '../tools/payment.tools.js';
 import type { DashboardService } from '../../../core/services/dashboard.service.js';
 import type { BillingService } from '../../../core/services/billing.service.js';
 import type { PaymentsApiClient } from '../../outbound/payments-api.client.js';
 import type { FunnelService } from '../../../core/services/funnel.service.js';
+import type { PaymentService } from '../../../core/services/payment.service.js';
 
 vi.mock('../../../shared/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 
@@ -21,6 +23,7 @@ async function connect(drawsViews = false) {
   registerBillingTools(server, {} as BillingService);
   registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
   registerFunnelTools(server, {} as FunnelService);
+  registerPaymentTools(server, {} as PaymentService);
   registerAppViews(server);
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const capabilities = drawsViews ? { extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: [APP_MIME_TYPE] } } } : {};

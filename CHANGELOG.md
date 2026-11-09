@@ -34,6 +34,8 @@ right now.
   has none) and carries the funnel's `funnelTitle`; before, a step was only its id.
 - Funnel view on `get_funnel_lead_stats` and `get_funnel_lead_analytics`, as the funnel editor's
   Leads tab: the lead cards, or the conversion bar per step colored by its drop-off.
+- Payments view on `get_payments_paginated`, `list_payments` and `get_payment`, as the dashboard's
+  payments list and detail: search and paging through the tool, a row opens the payment's detail.
 
 ### Fixed
 
