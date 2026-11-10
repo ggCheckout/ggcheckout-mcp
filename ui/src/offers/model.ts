@@ -52,10 +52,30 @@ export function summarizeDownsells(data: unknown): Offer[] | null {
 }
 
 /** What a decline does, worded as the editor's "Comportamento ao recusar". */
-export function declineLine(offer: Offer, isLast: boolean, hasDownsells: boolean): string {
+export function declineLine(offer: Offer, isLast: boolean, hasDownsells: boolean | null): string {
   if (offer.kind === 'upsell') {
     if (offer.continues && !isLast) return 'Se recusar, mostra o próximo upsell da sequência';
+    // Downsells unknown (not read): say only what the upsell's own setting does.
+    if (hasDownsells === null) return 'Se recusar, abre os downsells do produto, se houver';
     return hasDownsells ? 'Se recusar, vai para o downsell' : 'Se recusar, vai para o sucesso';
   }
   return offer.continues && !isLast ? 'Se recusar, mostra o próximo downsell' : 'Se recusar, vai para o sucesso';
+}
+
+export interface MapNotes {
+  /** "Nenhum upsell ainda.": only for an upsell list that was read and is empty. */
+  emptyUpsells: boolean;
+  /** Downsells that cannot show up because the product has no active upsell to decline. */
+  noUpsellWarning: boolean;
+  /** The list whose read failed (the other one is the payload itself). */
+  unreadable: 'upsells' | 'downsells' | null;
+}
+
+/** What the map may claim: a list that is `null` is unknown (not loaded, unavailable or failed), never empty. */
+export function mapNotes(upsells: Offer[] | null, downsells: Offer[] | null, readFailed: boolean): MapNotes {
+  return {
+    emptyUpsells: upsells !== null && upsells.length === 0,
+    noUpsellWarning: upsells !== null && !upsells.some((u) => u.active) && downsells !== null && downsells.length > 0,
+    unreadable: readFailed ? (upsells === null ? 'upsells' : 'downsells') : null,
+  };
 }

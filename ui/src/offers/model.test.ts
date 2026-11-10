@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { declineLine, summarizeDownsells, summarizeUpsells } from './model';
+import { declineLine, mapNotes, summarizeDownsells, summarizeUpsells } from './model';
 
 // QA on 2026-11-10 (trimmed).
 const qaUpsell = {
@@ -24,10 +24,34 @@ describe('offers', () => {
     expect(declineLine(u1, false, true)).toBe('Se recusar, mostra o próximo upsell da sequência');
     expect(declineLine(u2, true, true)).toBe('Se recusar, vai para o downsell');
     expect(declineLine(u2, true, false)).toBe('Se recusar, vai para o sucesso');
+    expect(declineLine(u2, true, null)).toBe('Se recusar, abre os downsells do produto, se houver');
+    expect(declineLine(u1, false, null)).toBe('Se recusar, mostra o próximo upsell da sequência');
   });
 
   it('ignores other payloads', () => {
     expect(summarizeUpsells({ downsells: [] })).toBeNull();
     expect(summarizeDownsells({ upsells: [] })).toBeNull();
+  });
+});
+
+describe('mapNotes', () => {
+  const [up] = summarizeUpsells({ upsells: [qaUpsell] })!;
+  const [down] = summarizeDownsells({ downsells: [{ uid: 'd1', status: 'active' }] })!;
+  const off = { ...up, active: false };
+
+  it('claims no upsell only for an upsell list that was read', () => {
+    expect(mapNotes([], [down], false)).toMatchObject({ emptyUpsells: true, noUpsellWarning: true });
+    expect(mapNotes([off], [down], false)).toMatchObject({ emptyUpsells: false, noUpsellWarning: true });
+    expect(mapNotes([up], [down], false)).toMatchObject({ emptyUpsells: false, noUpsellWarning: false });
+  });
+
+  it('claims nothing about an unknown list', () => {
+    expect(mapNotes(null, [down], false)).toEqual({ emptyUpsells: false, noUpsellWarning: false, unreadable: null });
+    expect(mapNotes([up], null, false)).toEqual({ emptyUpsells: false, noUpsellWarning: false, unreadable: null });
+  });
+
+  it('names the list whose read failed', () => {
+    expect(mapNotes(null, [down], true).unreadable).toBe('upsells');
+    expect(mapNotes([up], null, true).unreadable).toBe('downsells');
   });
 });

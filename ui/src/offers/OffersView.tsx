@@ -4,7 +4,7 @@ import '../styles/dashboard.css';
 import './offers.css';
 import type { Host, HostSnapshot } from '../host';
 import { formatCents } from '../lib/format';
-import { declineLine, summarizeDownsells, summarizeUpsells, type Offer } from './model';
+import { declineLine, mapNotes, summarizeDownsells, summarizeUpsells, type Offer } from './model';
 
 const ORDINALS = ['Primeiro', 'Segundo', 'Terceiro', 'Quarto', 'Quinto'];
 const ordinal = (i: number) => ORDINALS[i] ?? `${i + 1}º`;
@@ -53,34 +53,36 @@ function OfferCard({ offer, i }: { offer: Offer; i: number }) {
 }
 
 /** The post-purchase map: checkout, the upsells, the downsells a declined "stop" upsell opens, success. */
-function OfferMap({ upsells, downsells }: { upsells: Offer[]; downsells: Offer[] | null }) {
-  const live = upsells.filter((u) => u.active);
+function OfferMap({ upsells, downsells, readFailed }: { upsells: Offer[] | null; downsells: Offer[] | null; readFailed: boolean }) {
   const liveDown = (downsells ?? []).filter((d) => d.active);
+  const notes = mapNotes(upsells, downsells, readFailed);
+  const hasActiveAfter = (list: Offer[], i: number) => list.slice(i + 1).some((x) => x.active);
   return (
     <section className="surface of-map">
       <h2 className="card-title">Funil pós-compra</h2>
       <p className="card-sub">Recusar um upsell configurado como "parar na recusa" inicia a sequência de downsell deste produto.</p>
       <ol className="of-flow">
         <Step icon={<ShoppingCart size={16} />} title="Checkout" sub="O comprador paga o produto principal" />
-        {upsells.length ? upsells.map((u, i) => (
+        {upsells && upsells.length > 0 && upsells.map((u, i) => (
           <li key={u.id} className="of-group">
             <ol className="of-flow">
               {i === 0 && <Arrow label="Depois da compra" />}
               <OfferCard offer={u} i={i} />
-              <Arrow label={u.active ? declineLine(u, i === upsells.length - 1 || !upsells.slice(i + 1).some((x) => x.active), liveDown.length > 0) : 'Inativo: o funil pula esta oferta'} />
+              <Arrow label={u.active ? declineLine(u, !hasActiveAfter(upsells, i), downsells === null ? null : liveDown.length > 0) : 'Inativo: o funil pula esta oferta'} />
             </ol>
           </li>
-        )) : <li className="of-empty">Nenhum upsell ainda.</li>}
+        ))}
+        {notes.emptyUpsells && <li className="of-empty">Nenhum upsell ainda.</li>}
         {downsells && downsells.length > 0 && (
           <>
-            {!live.length && (
+            {notes.noUpsellWarning && (
               <li className="of-warn">Este produto não tem upsell. Sem um upsell para recusar, estes downsells não vão aparecer no checkout.</li>
             )}
             {downsells.map((d, i) => (
               <li key={d.id} className="of-group">
                 <ol className="of-flow">
                   <OfferCard offer={d} i={i} />
-                  <Arrow label={d.active ? declineLine(d, i === downsells.length - 1 || !downsells.slice(i + 1).some((x) => x.active), false) : 'Inativo: o funil pula esta oferta'} />
+                  <Arrow label={d.active ? declineLine(d, !hasActiveAfter(downsells, i), false) : 'Inativo: o funil pula esta oferta'} />
                 </ol>
               </li>
             ))}
@@ -88,7 +90,7 @@ function OfferMap({ upsells, downsells }: { upsells: Offer[]; downsells: Offer[]
         )}
         <Step icon={<Flag size={16} />} title="Sucesso" sub="A página de obrigado do produto" />
       </ol>
-      {downsells === null && <p className="of-note">Os downsells deste produto não puderam ser lidos.</p>}
+      {notes.unreadable && <p className="of-note">{`Os ${notes.unreadable === 'upsells' ? 'upsells' : 'downsells'} deste produto não puderam ser lidos.`}</p>}
     </section>
   );
 }
@@ -113,7 +115,8 @@ export function OffersView({ host, state }: { host: Host; state: HostSnapshot })
   }, [host, upsells, downsells]);
 
   if (!upsells && !downsells) return <p className="state" data-tone="error">A resposta não trouxe ofertas.</p>;
-  const ups = upsells ?? (other === undefined ? [] : other ?? []);
-  const downs = downsells ?? (other === undefined ? [] : other);
-  return <div className="dashboard offers"><OfferMap upsells={ups} downsells={downs} /></div>;
+  // `null` is unknown: the other list is not loaded yet, cannot be read here, or failed.
+  const ups = upsells ?? other ?? null;
+  const downs = downsells ?? (upsells ? other ?? null : null);
+  return <div className="dashboard offers"><OfferMap upsells={ups} downsells={downs} readFailed={other === null} /></div>;
 }
