@@ -174,8 +174,10 @@ describe('HttpClient', () => {
       expect.unreachable('should have thrown');
     } catch (e: any) {
       expect(e).toBeInstanceOf(TemporarilyUnavailableError);
-      expect(e.message).toContain('Retry after 5 seconds');
-      expect(e.message).toContain('nothing was changed');
+      expect(e.message).toBe(
+        'service_unavailable. The API is refusing requests while its rate-limit backend is degraded; '
+        + 'nothing was changed. Retry after 5 seconds.',
+      );
     }
   });
 

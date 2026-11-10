@@ -10,7 +10,7 @@ import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 export function registerBillingTools(server: McpServer, service: BillingService) {
   server.registerTool('get_billing_balance', {
-    description: 'Get current billing balance, credit, usage %, and next charge date',
+    description: 'Get current billing balance, credit, usage %, and the next cycle close (closingAt, null when unknown)',
     _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('get_billing_balance', async () => service.getBalance())));
 

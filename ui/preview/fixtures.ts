@@ -151,7 +151,7 @@ export const billingStatusOverdue = {
 
 export const billingBalance = {
   currentBalanceCents: 0, creditBalanceCents: 0, netBalanceCents: 820, level: 5, limitCents: 7000, limitWithToleranceCents: 8050,
-  usagePercent: 12, usageCents: 820, usageLimitCents: 7000, closingAt: '2026-11-17T13:12:10.357Z', cycleStartAt: '2026-11-10T12:12:10.357Z',
+  usagePercent: 12, usageCents: 820, usageLimitCents: 7000, closingAt: '2026-11-13T19:02:59.210836+00:00', cycleStartAt: '2026-11-06T19:02:59.210836+00:00',
 };
 
 const week = (end: string, i: number) => {

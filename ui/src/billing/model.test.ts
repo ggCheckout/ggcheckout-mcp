@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  creditLevel, futureDayTime, invoiceAmount, summarizeInvoice, summarizeInvoices, summarizeLedger, summarizeWallet,
+  creditLevel, formatDay, formatDayTime, futureDayTime, invoiceAmount, summarizeInvoice, summarizeInvoices, summarizeLedger, summarizeWallet,
   usagePercent, usageTone,
 } from './model';
 
@@ -15,7 +15,7 @@ const status = {
 const balance = {
   currentBalanceCents: 0, creditBalanceCents: 0, netBalanceCents: -5, level: 6, limitCents: 10000,
   limitWithToleranceCents: 11500, usagePercent: 0, usageCents: -5, usageLimitCents: 10000,
-  closingAt: '2026-11-17T13:12:10.357Z', cycleStartAt: '2026-11-10T12:12:10.357Z',
+  closingAt: '2026-11-13T19:02:59.210836+00:00', cycleStartAt: '2026-11-06T19:02:59.210836+00:00',
 };
 const paidInvoice = {
   id: '191626b1', status: 'paid', createdAt: '2026-11-06T19:03:03.183Z', dueAt: '2026-11-06T19:02:59.210Z',
@@ -56,10 +56,20 @@ describe('summarizeWallet', () => {
     const wallet = summarizeWallet(balance)!;
     expect(wallet.signedNetCents).toBe(5);
     expect(wallet.limitWithToleranceCents).toBe(11500);
-    // QA 2026-11-10: the balance said 17/11 (now + 7 days); the payments cycle closes on 13/11.
-    expect(wallet.closingAt).toBeNull();
+    // The payments engine's next close (saas#2232); the view still confirms it against the status.
+    expect(wallet.closingAt).toBe(balance.closingAt);
     expect(wallet.fromBalance).toBe(true);
     expect(wallet.totalPaidCents).toBeNull();
+  });
+
+  // Payments did not answer: both cycle dates come null, and no date may be drawn from them.
+  it('keeps the balance answer when the cycle dates are null', () => {
+    const wallet = summarizeWallet({ ...balance, closingAt: null, cycleStartAt: null })!;
+    expect(wallet.signedNetCents).toBe(5);
+    expect(wallet.closingAt).toBeNull();
+    expect(formatDay(wallet.closingAt)).toBe('-');
+    expect(formatDayTime(wallet.closingAt)).toBe('-');
+    expect(futureDayTime(wallet.closingAt)).toBeNull();
   });
 
   it('ignores other payloads', () => {

@@ -21,8 +21,13 @@ export interface BalanceResponse {
   limitCents: number;
   limitWithToleranceCents: number;
   usagePercent: number;
-  nextChargeAt: string | null;
-  cycleStartAt: string;
+  /** The pair that measured usagePercent (the payments cap when it answered). */
+  usageCents: number;
+  usageLimitCents: number;
+  /** Next cycle close from the payments engine; null when the source did not answer. */
+  closingAt: string | null;
+  /** Start of the open cycle (the last close); null when unknown. */
+  cycleStartAt: string | null;
 }
 
 export interface BillingStatusResponse {

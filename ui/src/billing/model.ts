@@ -49,7 +49,7 @@ export interface Wallet {
   totalPaidCents: number | null;
   /** When the cycle closes; null when the account has no cycle. */
   closingAt: string | null;
-  /** get_billing_balance: its cycle dates are not the seller's, so the view reads them from the status. */
+  /** get_billing_balance: the view confirms the closing date against get_billing_status. */
   fromBalance: boolean;
   /** A closed invoice is still unpaid (grace or blocked): the closing is paused until it is paid. */
   overdue: boolean;
@@ -100,9 +100,10 @@ function fromBalance(b: Payload): Wallet {
     limitWithToleranceCents: num(b.limitWithToleranceCents) ?? withTolerance(limitCents),
     level: num(b.level),
     totalPaidCents: null,
-    // The route still computes a legacy week from the call time (now to now+7d); the payments cycle
-    // closes on its own day, which only get_billing_status (paymentsClosingAt) carries.
-    closingAt: null,
+    // The payments engine's next close, or null when it did not answer. A saas older than #2232
+    // still sends a week counted from the call time here, so the view prefers the status answer's
+    // paymentsClosingAt when it has one.
+    closingAt: text(b.closingAt),
     fromBalance: true,
     overdue: false,
     blocked: false,

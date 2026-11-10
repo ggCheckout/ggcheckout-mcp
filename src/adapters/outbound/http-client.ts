@@ -108,7 +108,7 @@ export class HttpClient {
           throw new TemporarilyUnavailableError(
             503,
             withRetry(
-              `${safeMessage} The API is refusing requests while its rate-limit backend is degraded; `
+              `${safeMessage.replace(/\.$/, '')}. The API is refusing requests while its rate-limit backend is degraded; `
               + 'nothing was changed',
             ),
             error,

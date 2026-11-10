@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BillingApiAdapter } from './billing.api.js';
 import type { HttpClient } from './http-client.js';
 import { ApiError } from '../../shared/errors.js';
+import type { BalanceResponse } from '../../core/types/billing.js';
 
 function createMockHttp(): HttpClient {
   return { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() } as any;
@@ -21,6 +22,20 @@ describe('BillingApiAdapter', () => {
     const result = await adapter.getBalance();
     expect(http.get).toHaveBeenCalledWith('/api/billing/balance');
     expect(result.currentBalanceCents).toBe(5000);
+  });
+
+  // closingAt and cycleStartAt come null when the payments engine did not answer; they pass through
+  // untouched.
+  it('getBalance passes null cycle dates through', async () => {
+    const body: BalanceResponse = {
+      currentBalanceCents: 0, creditBalanceCents: 0, netBalanceCents: 820, level: 5, limitCents: 7000,
+      limitWithToleranceCents: 8050, usagePercent: 12, usageCents: 820, usageLimitCents: 7000,
+      closingAt: null, cycleStartAt: null,
+    };
+    vi.mocked(http.get).mockResolvedValue(body);
+    const result = await adapter.getBalance();
+    expect(result.closingAt).toBeNull();
+    expect(result.cycleStartAt).toBeNull();
   });
 
   it('listInvoices passes status and limit filters', async () => {
