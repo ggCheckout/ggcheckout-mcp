@@ -216,3 +216,4 @@
 .dashboard .foot { margin: 12px 0 0; font-size: 12px; color: var(--faint); }
 .dashboard #content[aria-busy='true'] { opacity: 0.55; transition: opacity 150ms ease; }
 .dashboard .icon-btn { display: grid; place-items: center; }
+.dashboard .mono { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }

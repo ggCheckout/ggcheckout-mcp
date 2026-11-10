@@ -17,3 +17,10 @@ export function formatInt(n: number | null | undefined): string {
 export function formatPercent(ratio: number | null | undefined): string {
   return ratio == null ? '–' : pct.format(ratio);
 }
+
+/** The API sends microseconds; Date only reads milliseconds everywhere. */
+export function parseDate(iso: string | null): Date | null {
+  if (!iso) return null;
+  const date = new Date(iso.replace(/(\.\d{3})\d+/, '$1'));
+  return Number.isNaN(date.getTime()) ? null : date;
+}

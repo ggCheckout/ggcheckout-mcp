@@ -2,6 +2,7 @@
 // into what the payments view draws. The amount is `finalValueInCents` (what the buyer paid, in
 // cents); `value` is the same in reais as a float and is only a fallback. Pure.
 
+import { parseDate } from '../lib/format';
 import { count, isPayload, type Payload } from '../lib/payload';
 
 export interface PaymentRow {
@@ -126,13 +127,6 @@ export function initials(name: string | null, email: string | null): string {
   const parts = source.split(/[\s._-]+/).filter(Boolean);
   const letters = parts.length >= 2 ? parts[0][0] + parts[1][0] : (parts[0] ?? '').slice(0, 2);
   return letters.toUpperCase() || '?';
-}
-
-/** The API sends microseconds; Date only reads milliseconds everywhere. */
-export function parseDate(iso: string | null): Date | null {
-  if (!iso) return null;
-  const date = new Date(iso.replace(/(\.\d{3})\d+/, '$1'));
-  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');

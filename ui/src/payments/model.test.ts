@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatListDate, initials, methodName, pageWindow, parseDate, statusLabel, statusVariant, summarizePayment, summarizePaymentsPage,
+  formatListDate, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment, summarizePaymentsPage,
 } from './model';
+import { parseDate } from '../lib/format';
 
 // Trimmed from what QA answered on 09/11/2026 (masked by the server, internal flags left out).
 const paid = {

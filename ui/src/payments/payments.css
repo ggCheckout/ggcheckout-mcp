@@ -196,5 +196,4 @@
 .dashboard .pay-field dt { flex: 0 0 auto; max-width: 45%; font-size: 12.5px; font-weight: 500; color: var(--d-muted); }
 .dashboard .pay-field dd { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; margin: 0; text-align: right; font-size: 13px; font-weight: 600; }
 .dashboard .pay-break { word-break: break-all; }
-.dashboard .mono { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
 .dashboard .pay-bump-price { color: var(--d-muted); font-weight: 500; }
