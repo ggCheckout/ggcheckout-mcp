@@ -18,6 +18,23 @@ interface InvoicePixResponse {
   pix: { emv: string; qrBase64: string; expiresAt: string } | null;
 }
 
+type InvoicePix = NonNullable<InvoicePixResponse['pix']>;
+
+function notTheOpenInvoice(id: string, openId: string): ValidationError {
+  return new ValidationError(`Invoice ${id} is not the open one: only ${openId} can be paid now. Call pay_invoice with that id.`);
+}
+
+function toPixPayment(answer: InvoicePixResponse, pix: InvoicePix): InvoicePixPayment {
+  return {
+    invoiceId: answer.invoiceId as string,
+    amountCents: answer.amountCents,
+    status: answer.status,
+    pixCode: pix.emv ?? null,
+    pixQrBase64: pix.qrBase64 ?? null,
+    expiresAt: pix.expiresAt ?? null,
+  };
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -59,15 +76,28 @@ export class BillingApiAdapter implements BillingPort {
    * LEGACY_BILLING_READ_RETIRED), and credit is applied by payments on its own. The route pays the
    * open invoice of a track, not one by id, so the invoice is read first for its track, and the
    * answer must name that same invoice: a PIX for another one would be paid in its place.
+   *
+   * The POST is limited to 10 per hour per seller (shared with the dashboard button) and reissues
+   * the open invoice's PIX even when `id` is not the open one, so the read-only GET goes first: it
+   * names the open invoice without spending the limit. A live PIX for this invoice is returned
+   * as is; another invoice is refused; only no PIX (or an expired one) falls through to the POST.
    */
   async payInvoice(id: string): Promise<InvoicePixPayment> {
     const invoice = await this.getInvoice(id);
     if (invoice.status === 'paid') throw new ValidationError(`Invoice ${id} is already paid.`);
 
     const track = invoice.track === 'whatsapp' ? 'whatsapp' : 'sales';
+    const pixUrl = `/api/billing/pix?track=${track}`;
+
+    const open = await this.http.get<InvoicePixResponse>(pixUrl);
+    if (open.invoiceId && open.invoiceId !== id) throw notTheOpenInvoice(id, open.invoiceId);
+    if (open.invoiceId === id && open.pix && new Date(open.pix.expiresAt).getTime() > Date.now()) {
+      return toPixPayment(open, open.pix);
+    }
+
     let answer: InvoicePixResponse;
     try {
-      answer = await this.http.post<InvoicePixResponse>(`/api/billing/pix?track=${track}`);
+      answer = await this.http.post<InvoicePixResponse>(pixUrl);
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 429) {
         throw new ValidationError('Too many PIX requests for this invoice (10 per hour). The PIX already issued is still valid: wait and try again.');
@@ -81,17 +111,8 @@ export class BillingApiAdapter implements BillingPort {
     if (!answer.invoiceId || !answer.pix) {
       throw new ValidationError(`Invoice ${id} has no PIX to pay: it is not the open invoice of the ${track} track, or it was just settled.`);
     }
-    if (answer.invoiceId !== id) {
-      throw new ValidationError(`Invoice ${id} is not the open one: only ${answer.invoiceId} can be paid now. Call pay_invoice with that id.`);
-    }
-    return {
-      invoiceId: answer.invoiceId,
-      amountCents: answer.amountCents,
-      status: answer.status,
-      pixCode: answer.pix.emv ?? null,
-      pixQrBase64: answer.pix.qrBase64 ?? null,
-      expiresAt: answer.pix.expiresAt ?? null,
-    };
+    if (answer.invoiceId !== id) throw notTheOpenInvoice(id, answer.invoiceId);
+    return toPixPayment(answer, answer.pix);
   }
 
   /**
