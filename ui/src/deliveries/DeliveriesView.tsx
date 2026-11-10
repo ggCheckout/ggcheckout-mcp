@@ -3,14 +3,12 @@ import { useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
 import './deliveries.css';
 import type { Host, HostSnapshot } from '../host';
-import { parseDate } from '../lib/format';
+import { formatDateTime, plural } from '../lib/format';
+import { messageOf } from '../lib/messageOf';
 import { statusBadge, summarizeDeliveries, summarizeResend, type Deliveries, type Delivery } from './model';
 
 /** formatBrazilDateTime: dd/mm/yyyy hh:mm:ss in São Paulo. */
-function brazilDateTime(iso: string | null): string {
-  const date = parseDate(iso);
-  return date ? date.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }).replace(',', '') : '-';
-}
+const brazilDateTime = (iso: string | null) => formatDateTime(iso, { seconds: true });
 
 const STATUS_ICONS: Record<string, LucideIcon> = {
   pending: Clock, queued: Clock, sending: Send, sent: Check, delivered: CheckCheck, read: Eye, failed: X, permanent_failure: Ban,
@@ -93,7 +91,7 @@ function DeliveriesPanel({ host, data, canCallTools, notice }: { host: Host; dat
       if (fresh) setState(fresh);
       host.tellModel(`O vendedor reenviou pelo chat o WhatsApp do pagamento ${state.paymentId}.`);
     } catch (e) {
-      const text = e instanceof Error ? e.message : '';
+      const text = messageOf(e);
       setMessage({ ok: false, text: text || 'Não foi possível reenviar a mensagem WhatsApp.' });
     } finally {
       setBusy(false);
@@ -109,7 +107,7 @@ function DeliveriesPanel({ host, data, canCallTools, notice }: { host: Host; dat
           <div className="dlv-summary">
             <div className="dlv-sum-head">
               <span>Resumo WhatsApp:</span>
-              <span className="mono">{`${summary.total} ${summary.total === 1 ? 'mensagem' : 'mensagens'}`}</span>
+              <span className="mono">{plural(summary.total, 'mensagem', 'mensagens')}</span>
             </div>
             <div className="dlv-sum-grid">
               <SummaryRow label="Enviadas:" mark="✓" n={summary.sent} tone="green" />

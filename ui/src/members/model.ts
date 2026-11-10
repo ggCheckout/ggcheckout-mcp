@@ -4,9 +4,8 @@
 // with its numbers, list_modules the carousels, list_sections one carousel's modules and list_lessons
 // one module's lessons. Pure.
 
-import { count, isPayload, type Payload } from '../lib/payload';
+import { type Payload, count, isPayload, text } from '../lib/payload';
 
-const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value : null);
 const byOrder = (a: Payload, b: Payload) => count(a.order) - count(b.order);
 
 export interface Area {
@@ -134,7 +133,3 @@ export function formatDuration(seconds: number): string | null {
   return rest === 0 ? `${minutes}min` : `${minutes}min ${rest}s`;
 }
 
-/** "1 módulo · 3 aulas", the carousel's meta. */
-export function plural(n: number, one: string, many: string): string {
-  return `${n} ${n === 1 ? one : many}`;
-}

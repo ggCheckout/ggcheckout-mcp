@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  creditLevel, formatDay, formatDayTime, futureDayTime, invoiceAmount, summarizeInvoice, summarizeInvoices, summarizeLedger, summarizeWallet,
+  creditLevel, futureDayTime, invoiceAmount, summarizeInvoice, summarizeInvoices, summarizeLedger, summarizeWallet,
   usagePercent, usageTone,
 } from './model';
+import { formatDate, formatDateTime } from '../lib/format';
 
 // The shapes QA answered on 2026-11-10 for a seller on the new billing.
 const status = {
@@ -67,8 +68,8 @@ describe('summarizeWallet', () => {
     const wallet = summarizeWallet({ ...balance, closingAt: null, cycleStartAt: null })!;
     expect(wallet.signedNetCents).toBe(5);
     expect(wallet.closingAt).toBeNull();
-    expect(formatDay(wallet.closingAt)).toBe('-');
-    expect(formatDayTime(wallet.closingAt)).toBe('-');
+    expect(formatDate(wallet.closingAt)).toBe('-');
+    expect(formatDateTime(wallet.closingAt)).toBe('-');
     expect(futureDayTime(wallet.closingAt)).toBeNull();
   });
 

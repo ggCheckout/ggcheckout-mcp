@@ -2,8 +2,7 @@
 // into what the payments view draws. The amount is `finalValueInCents` (what the buyer paid, in
 // cents); `value` is the same in reais as a float and is only a fallback. Pure.
 
-import { parseDate } from '../lib/format';
-import { count, isPayload, type Payload } from '../lib/payload';
+import { type Payload, count, isPayload, text } from '../lib/payload';
 
 export interface PaymentRow {
   id: string;
@@ -37,8 +36,6 @@ export interface PaymentsPage {
   /** A search scan hit its read cap: older matches may exist. */
   coverageCapped: boolean;
 }
-
-const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value : null);
 
 function amountCents(p: Payload): number {
   if (typeof p.finalValueInCents === 'number') return p.finalValueInCents;
@@ -127,19 +124,6 @@ export function initials(name: string | null, email: string | null): string {
   const parts = source.split(/[\s._-]+/).filter(Boolean);
   const letters = parts.length >= 2 ? parts[0][0] + parts[1][0] : (parts[0] ?? '').slice(0, 2);
   return letters.toUpperCase() || '?';
-}
-
-const pad = (n: number) => String(n).padStart(2, '0');
-
-/** The list's date (dayjs 'DD/MM/YYYY · HH:mm'), in the viewer's time zone. */
-export function formatListDate(iso: string | null): string {
-  const d = parseDate(iso);
-  return d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}` : '-';
-}
-
-/** The detail's date (toLocaleString('pt-BR'), with seconds). */
-export function formatDetailDate(iso: string | null): string {
-  return parseDate(iso)?.toLocaleString('pt-BR') ?? '-';
 }
 
 /** grid/computePageWindow.ts: 1, last and the neighbors of the current page; gaps become null (…). */

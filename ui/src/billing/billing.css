@@ -112,15 +112,13 @@
 
 /* InvoiceDetailsDialog, inline */
 .dashboard .bill-detail { display: flex; flex-direction: column; gap: 10px; }
-.dashboard .bill-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px 4px 4px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 13px; color: var(--d-muted); }
-.dashboard .bill-back:hover { color: var(--d-fg); background: color-mix(in srgb, var(--d-muted-bg) 40%, transparent); }
 .dashboard .bill-detail-card { border-radius: 12px; padding: 20px; }
 .dashboard .bill-detail-head { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .dashboard .bill-detail-amount { margin: 2px 0 0; font-size: 2rem; font-weight: 700; line-height: 1.1; }
 .dashboard .bill-fields { margin: 16px 0 0; display: flex; flex-direction: column; }
-.dashboard .bill-field { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-top: 1px solid var(--d-line); font-size: 13px; }
-.dashboard .bill-field dt { color: var(--d-muted); }
-.dashboard .bill-field dd { margin: 0; text-align: right; font-weight: 500; }
+.dashboard .bill-fields .field { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-top: 1px solid var(--d-line); font-size: 13px; }
+.dashboard .bill-fields .field dt { color: var(--d-muted); }
+.dashboard .bill-fields .field dd { margin: 0; text-align: right; font-weight: 500; }
 
 @media (prefers-reduced-motion: reduce) {
   .dashboard .bill-bar span, .dashboard .bill-bar span::after, .dashboard .bill-ping::after { animation: none; }

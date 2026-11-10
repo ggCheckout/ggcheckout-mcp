@@ -49,8 +49,6 @@
 .dashboard .ch-chevron { flex: 0 0 auto; color: var(--d-muted); }
 
 .dashboard .ch-detail { display: flex; flex-direction: column; gap: 10px; }
-.dashboard .ch-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px 4px 4px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 13px; color: var(--d-muted); }
-.dashboard .ch-back:hover { color: var(--d-fg); background: color-mix(in srgb, var(--d-muted-bg) 40%, transparent); }
 .dashboard .ch-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .dashboard .ch-head-main { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 4px; }
 .dashboard .ch-name { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; overflow-wrap: anywhere; }

@@ -4,9 +4,7 @@
 // that connects a QR code chip from the phone. The dashboard connects by QR, which the server never
 // passes on (it links a device to the account), so the chat connects with the code instead. Pure.
 
-import { count, isPayload, type Payload } from '../lib/payload';
-
-const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
+import { type Payload, count, isPayload, text } from '../lib/payload';
 
 export type ChipTone = 'success' | 'info' | 'warning' | 'alert' | 'danger' | 'muted';
 
@@ -122,9 +120,6 @@ export function phoneLabel(masked: string | null): string {
   const last = masked.replace(/\D/g, '').slice(-4);
   return last.length === 4 ? `•••• ${last}` : masked;
 }
-
-/** "1 sessão", "3 sessões". */
-export const sessionsLabel = (n: number) => `${n} ${n === 1 ? 'sessão' : 'sessões'}`;
 
 /**
  * ChipsSection groupLookupByChipId: each chip's first session, primary or fallback, from

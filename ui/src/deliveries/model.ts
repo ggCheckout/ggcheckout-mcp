@@ -3,9 +3,7 @@
 // DeliveryCard.tsx and DeliveryStatusBadge.tsx). Both delivery sources (embedded in the payment and
 // the legacy collection) are read. Pure.
 
-import { count, isPayload, type Payload } from '../lib/payload';
-
-const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value : null);
+import { type Payload, count, isPayload, text } from '../lib/payload';
 
 export interface Delivery {
   id: string;

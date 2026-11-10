@@ -4,19 +4,13 @@ import '../styles/dashboard.css';
 import './gateways.css';
 import type { Host, HostSnapshot } from '../host';
 import { Segmented } from '../dashboard/parts';
-import { formatInt } from '../lib/format';
-import { gatewayLogo, gatewayName } from '../lib/gateways';
+import { formatInt, plural } from '../lib/format';
+import { GatewayMark } from '../lib/GatewayMark';
+import { gatewayName } from '../lib/gateways';
 import {
   LOW_SAMPLE, coverLine, formatRate, isUnstable, rankingFor, rateColor, summarizeStats, summarizeWallets, unitLabel, usageLine,
   type GatewayStats, type Metric, type RankRow, type Wallet, type WalletEntry,
 } from './model';
-
-function Logo({ gateway, size = 32 }: { gateway: string; size?: number }) {
-  const logo = gatewayLogo(gateway);
-  return logo
-    ? <img className="gw-logo" src={logo} width={size} height={size} alt="" />
-    : <span className="gw-logo gw-logo-fallback" style={{ width: size, height: size }} aria-hidden>{gatewayName(gateway).charAt(0).toUpperCase()}</span>;
-}
 
 function Rate({ rate, metric }: { rate: number; metric: Metric }) {
   return <span className="gw-rate num" style={{ ['--rate' as string]: rateColor(rate, metric) }}>{`${formatRate(rate)}%`}</span>;
@@ -48,7 +42,7 @@ function OrderedList({ entries, method, metric, stats }: { entries: WalletEntry[
         {entries.map((e, i) => (
           <li key={`${e.credentialId}-${i}`} className="gw-order-row" data-first={i === 0 || undefined}>
             <span className="gw-pos num" aria-hidden>{i + 1}</span>
-            <Logo gateway={e.gateway} />
+            <GatewayMark gateway={e.gateway} size={32} />
             <span className="gw-who">
               <span className="gw-name-line">
                 <span className="gw-name">{gatewayName(e.gateway)}</span>
@@ -123,13 +117,13 @@ function Ranking({ stats }: { stats: GatewayStats }) {
         <p className="card-sub">{`Taxa de sucesso PIX por gateway (últimas ${stats.hours ?? 24}h)`}</p>
       </header>
       <Segmented options={[['reliability', 'Estabilidade'], ['conversion', 'PIX pagos']]} active={metric} onPick={setMetric} className="gw-tabs" />
-      {unstable > 0 && <p className="gw-warn">{`${unstable} ${unstable === 1 ? 'gateway com taxa' : 'gateways com taxa'} de erro acima do normal`}</p>}
+      {unstable > 0 && <p className="gw-warn">{`${plural(unstable, 'gateway com taxa', 'gateways com taxa')} de erro acima do normal`}</p>}
       {rows.length ? (
         <ol className="gw-order">
           {rows.map((r, i) => (
             <li key={r.gateway} className="gw-order-row" data-first={i === 0 || undefined}>
               <span className="gw-pos num" aria-hidden>{i + 1}</span>
-              <Logo gateway={r.gateway} />
+              <GatewayMark gateway={r.gateway} size={32} />
               <span className="gw-who">
                 <span className="gw-name">{gatewayName(r.gateway)}</span>
                 <span className="gw-unit">

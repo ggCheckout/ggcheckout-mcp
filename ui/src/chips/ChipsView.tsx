@@ -1,18 +1,20 @@
-import { Check, ChevronLeft, ChevronRight, Copy, Power, PowerOff, QrCode, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react';
+import { Check, ChevronRight, Copy, Power, PowerOff, QrCode, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
 import './chips.css';
 import type { Host, HostSnapshot } from '../host';
-import { useCopy } from '../lib/useCopy';
+import { BackButton } from '../lib/BackButton';
+import { plural } from '../lib/format';
+import { messageOf } from '../lib/messageOf';
+import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
 import {
-  canPair, needsRestart, chipStatus, formatCode, pairingPhone, phoneLabel, sessionByChip, summarizeHealth, type HealthOutcome, sessionsLabel, summarizeChip, summarizeChips, summarizePairing, type Chip,
+  canPair, needsRestart, chipStatus, formatCode, pairingPhone, phoneLabel, sessionByChip, summarizeHealth, type HealthOutcome, summarizeChip, summarizeChips, summarizePairing, type Chip,
 } from './model';
 
 /** How often the chip is read while the seller types the code, and for how long. */
 const POLL_MS = 4000;
 const POLL_FOR_MS = 3 * 60 * 1000;
 
-const errorText = (e: unknown) => (e instanceof Error ? e.message : '');
 
 function Status({ chip }: { chip: Chip }) {
   const { label, tone, pulse } = chipStatus(chip.status, chip.isActive);
@@ -42,7 +44,8 @@ function PairPanel({ host, chip, firstCode, onConnected }: {
   const [expired, setExpired] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, copy] = useCopy();
+  const [copyState, copy] = useCopy();
+  const copied = copyState === 'copied';
 
   useEffect(() => {
     if (!code || expired) return;
@@ -82,7 +85,7 @@ function PairPanel({ host, chip, firstCode, onConnected }: {
       setExpired(false);
       host.tellModel(`Código de pareamento do chip ${chip.name} gerado na tela do chat.`);
     } catch (err) {
-      const message = errorText(err);
+      const message = messageOf(err);
       setError(/ALREADY_AUTHENTICATED|já está conectado/i.test(message) ? 'Este chip já está conectado.' : 'Não foi possível gerar o código. Confira o número e tente novamente.');
     } finally {
       setBusy(false);
@@ -99,10 +102,11 @@ function PairPanel({ host, chip, firstCode, onConnected }: {
             <li>Toque em <strong>Aparelhos conectados</strong> e depois em <strong>Conectar um aparelho</strong>.</li>
             <li>Toque em <strong>Conectar com número de telefone</strong> e digite o código abaixo.</li>
           </ol>
-          <button type="button" className="ch-code mono" onClick={() => copy(formatCode(code))} title="Clique para copiar">
+          <button type="button" className="ch-code mono" onClick={() => void copy(formatCode(code))} title="Clique para copiar">
             <span>{formatCode(code)}</span>
             {copied ? <Check size={16} className="ch-copied" aria-label="Copiado!" /> : <Copy size={16} aria-hidden />}
           </button>
+          {copyState === 'failed' && <p className="copy-failed" role="status">{COPY_FAILED_TEXT}</p>}
           <p className="ch-waiting" role="status"><span className="ch-dot" data-pulse aria-hidden />Aguardando a conexão no celular…</p>
         </>
       ) : (
@@ -190,7 +194,7 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack }: {
   const connected = chip.status === 'authenticated';
   return (
     <div className="ch-detail">
-      {onBack && <button type="button" className="ch-back" onClick={onBack}><ChevronLeft size={15} aria-hidden />Voltar pros chips</button>}
+      {onBack && <BackButton onBack={onBack} label="Voltar pros chips" />}
       <section className="surface ch-card">
         <header className="ch-head">
           <span className="ch-icon big" aria-hidden><Smartphone size={20} /></span>
@@ -270,7 +274,7 @@ function ChipsList({ chips, sessions, canOpen, busyId, onOpen, checking, health,
                 <span className="ch-row-side">
                   <Status chip={c} />
                   {sessions && <span className="ch-session" data-none={!sessions[c.id] || undefined}>{sessions[c.id] ?? 'Não vinculado'}</span>}
-                  <span className="ch-count num">{sessionsLabel(c.sessionsCount)}</span>
+                  <span className="ch-count num">{plural(c.sessionsCount, 'sessão', 'sessões')}</span>
                 </span>
                 {canOpen && <ChevronRight size={16} className="ch-chevron" aria-hidden />}
               </>
@@ -352,7 +356,7 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
       if (fresh) setList(fresh);
       if (outcome) host.tellModel(`Status dos chips verificado na tela do chat: ${outcome.title}.`);
     } catch (e) {
-      setHealth({ tone: 'danger', title: 'Falha no health check', detail: (e instanceof Error && e.message) || 'Erro desconhecido.' });
+      setHealth({ tone: 'danger', title: 'Falha no health check', detail: messageOf(e) || 'Erro desconhecido.' });
     } finally {
       setChecking(false);
     }

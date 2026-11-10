@@ -9,23 +9,35 @@ import receiptDark from '../art/receipt.avif';
 import receiptLight from '../art/receipt-light.avif';
 import salesIcon from '../art/icon-sales.avif';
 import type { Host, HostSnapshot } from '../host';
-import { formatCents, formatInt } from '../lib/format';
-import { useCopy } from '../lib/useCopy';
-import { gatewayLogo, gatewayName } from '../lib/gateways';
+import { BackButton } from '../lib/BackButton';
+import { Field } from '../lib/Field';
+import { formatCents, formatDateTime, formatInt } from '../lib/format';
+import { GatewayMark } from '../lib/GatewayMark';
+import { gatewayName } from '../lib/gateways';
+import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
 import {
-  formatDetailDate, formatListDate, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment,
+  initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment,
   summarizePaymentsPage, type PaymentRow, type PaymentsPage,
 } from './model';
 
 /** Rows per page when list_payments hands over the whole list (the paginated tool's default). */
 const LOCAL_PAGE_SIZE = 10;
 
+/** The list's date (dayjs 'DD/MM/YYYY · HH:mm'). */
+const listDate = (iso: string | null) => formatDateTime(iso, { separator: ' · ' });
+/** The detail's date, with seconds. */
+const detailDate = (iso: string | null) => formatDateTime(iso, { separator: ', ', seconds: true });
+
 function CopyButton({ value, label }: { value: string; label: string }) {
-  const [copied, copy] = useCopy();
+  const [state, copy] = useCopy();
+  const copied = state === 'copied';
   return (
-    <button type="button" className="pay-copy" aria-label={copied ? 'Copiado' : label} title={label} onClick={(e) => { e.stopPropagation(); copy(value); }}>
-      {copied ? <Check size={14} className="pay-copied" aria-hidden /> : <Copy size={14} aria-hidden />}
-    </button>
+    <>
+      <button type="button" className="pay-copy" aria-label={copied ? 'Copiado' : label} title={label} onClick={(e) => { e.stopPropagation(); void copy(value); }}>
+        {copied ? <Check size={14} className="pay-copied" aria-hidden /> : <Copy size={14} aria-hidden />}
+      </button>
+      {state === 'failed' && <span className="copy-failed" role="status">{COPY_FAILED_TEXT}</span>}
+    </>
   );
 }
 
@@ -40,12 +52,6 @@ function StatusBadge({ status, detail = false }: { status: string; detail?: bool
 
 function Avatar({ row }: { row: PaymentRow }) {
   return <span className="pay-avatar" aria-hidden>{initials(row.customerName, row.customerEmail)}</span>;
-}
-
-function GatewayMark({ id, size }: { id: string | null; size: number }) {
-  const logo = gatewayLogo(id);
-  if (logo) return <img className="pay-gw-logo" src={logo} width={size} height={size} alt="" />;
-  return <span className="pay-gw-fallback" style={{ width: size, height: size }} aria-hidden>{gatewayName(id).charAt(0).toUpperCase()}</span>;
 }
 
 /** The order bump and affiliate chips of OfferCell. */
@@ -92,12 +98,12 @@ function PaymentsTable({ rows, onOpen }: { rows: PaymentRow[]; onOpen: (row: Pay
                   </span>
                 </div>
               </td>
-              <td className="num pay-date">{formatListDate(row.createdAt)}</td>
+              <td className="num pay-date">{listDate(row.createdAt)}</td>
               <td className="num end pay-amount">{formatCents(row.amountCents)}</td>
               <td><StatusBadge status={row.status} /></td>
               <td>
                 <div className="pay-gw">
-                  <GatewayMark id={row.gateway} size={24} />
+                  <GatewayMark gateway={row.gateway} size={24} />
                   <span className="pay-gw-text">
                     <span className="pay-gw-name">{row.gateway ? gatewayName(row.gateway) : 'Não informado'}</span>
                     <span className="pay-gw-method">{methodName(row.method)}</span>
@@ -135,7 +141,7 @@ function PaymentsCards({ rows, onOpen }: { rows: PaymentRow[]; onOpen: (row: Pay
             </span>
             <span className="pay-card-foot">
               <span className="pay-card-gw">{gatewayLine(row)}</span>
-              <span className="num">{formatListDate(row.createdAt)}</span>
+              <span className="num">{listDate(row.createdAt)}</span>
             </span>
           </button>
         </li>
@@ -330,15 +336,6 @@ function PaymentsList({ host, state, first, onOpen }: {
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="pay-field">
-      <dt>{label}</dt>
-      <dd>{children}</dd>
-    </div>
-  );
-}
-
 function DetailCard({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: ReactNode }) {
   return (
     <section className="pay-detail-card">
@@ -353,22 +350,22 @@ function DetailCard({ title, icon: Icon, children }: { title: string; icon: Luci
 
 /** The read-only parts of the payment detail page: header, customer, payment and order bumps. */
 function PaymentDetail({ row, onBack }: { row: PaymentRow; onBack?: () => void }) {
-  const [copied, copy] = useCopy();
+  const [copyState, copy] = useCopy();
+  const copied = copyState === 'copied';
   const method = `${row.subscription ? 'Assinatura ' : ''}${methodName(row.method)}`;
   return (
     <div className="pay-detail">
-      {onBack && (
-        <button type="button" className="pay-back" onClick={onBack}><ChevronLeft size={15} aria-hidden />Voltar</button>
-      )}
+      {onBack && <BackButton onBack={onBack} />}
       <header className="pay-detail-head">
         <StatusBadge status={row.status} detail />
         <h1 className="pay-detail-amount num">{formatCents(row.amountCents)}</h1>
         <div className="pay-detail-meta">
-          <button type="button" className="pay-id num" onClick={() => copy(row.id)} aria-label="Copiar ID do pagamento">
+          <button type="button" className="pay-id num" onClick={() => void copy(row.id)} aria-label="Copiar ID do pagamento">
             {`#${row.id.slice(0, 8)}`}
             {copied ? <Check size={14} className="pay-copied" aria-hidden /> : <Copy size={14} aria-hidden />}
           </button>
-          <span>{`Criado em: ${formatDetailDate(row.createdAt)}`}</span>
+          {copyState === 'failed' && <span className="copy-failed" role="status">{COPY_FAILED_TEXT}</span>}
+          <span>{`Criado em: ${detailDate(row.createdAt)}`}</span>
         </div>
       </header>
       <div className="pay-detail-grid">
@@ -384,15 +381,15 @@ function PaymentDetail({ row, onBack }: { row: PaymentRow; onBack?: () => void }
         <DetailCard title="Pagamento" icon={CreditCard}>
           <Field label="Gateway/Método de Pagamento">
             {row.gateway || row.method
-              ? <><GatewayMark id={row.gateway} size={18} />{`${row.gateway ? gatewayName(row.gateway) : 'Não informado'} · ${method}`}</>
+              ? <><GatewayMark gateway={row.gateway} size={18} />{`${row.gateway ? gatewayName(row.gateway) : 'Não informado'} · ${method}`}</>
               : '-'}
           </Field>
           <Field label="Modo">{row.subscription ? 'Assinatura' : 'Produção'}</Field>
           <Field label="Valor"><span className="num">{formatCents(row.amountCents)}</span></Field>
           {row.installments > 1 && <Field label="Parcelas"><span className="num">{`${row.installments}x`}</span></Field>}
           <Field label="ID"><span className="mono pay-break">{row.id}</span><CopyButton value={row.id} label="Copiar ID" /></Field>
-          <Field label="Criado em"><span className="num">{formatDetailDate(row.createdAt)}</span></Field>
-          {row.paidAt && <Field label="Pago em"><span className="num">{formatDetailDate(row.paidAt)}</span></Field>}
+          <Field label="Criado em"><span className="num">{detailDate(row.createdAt)}</span></Field>
+          {row.paidAt && <Field label="Pago em"><span className="num">{detailDate(row.paidAt)}</span></Field>}
         </DetailCard>
         {row.orderBumps.length > 0 && (
           <DetailCard title={`Produtos Adicionais (${row.orderBumps.length})`} icon={PackagePlus}>

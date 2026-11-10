@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import '../styles/dashboard.css';
 import './members.css';
 import type { Host, HostSnapshot } from '../host';
-import { formatInt } from '../lib/format';
+import { formatInt, plural } from '../lib/format';
 import {
-  formatDuration, plural, summarizeArea, summarizeCarousels, summarizeLessons, summarizeModules, typeLabel,
+  formatDuration, summarizeArea, summarizeCarousels, summarizeLessons, summarizeModules, typeLabel,
   type Area, type Carousel, type Lesson, type LessonType, type Module,
 } from './model';
 

@@ -1,11 +1,13 @@
-import { ArrowDownRight, ArrowUpRight, ChevronLeft, Gem, Lock, Receipt, TriangleAlert } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ArrowDownRight, ArrowUpRight, Gem, Lock, Receipt, TriangleAlert } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
 import './billing.css';
 import type { Host, HostSnapshot } from '../host';
-import { formatCents, formatInt } from '../lib/format';
+import { BackButton } from '../lib/BackButton';
+import { Field } from '../lib/Field';
+import { formatCents, formatDate, formatDateTime, formatInt } from '../lib/format';
 import {
-  TOLERANCE_PCT, creditLevel, formatDay, formatDayTime, futureDayTime, invoiceAmount, invoiceStatusLabel,
+  TOLERANCE_PCT, creditLevel, futureDayTime, invoiceAmount, invoiceStatusLabel,
   summarizeInvoice, summarizeInvoices, summarizeLedger, summarizeWallet, usagePercent, usageTone,
   type InvoiceRow, type Ledger, type LedgerRow, type Wallet,
 } from './model';
@@ -45,7 +47,7 @@ function WalletDeadline({ wallet, owing }: { wallet: Wallet; owing: boolean }) {
     );
   }
   if (!wallet.closingAt) return null;
-  return <p className="bill-line">{owing ? 'Cobrança automática em ' : 'Próxima cobrança em '}<strong>{formatDay(wallet.closingAt)}</strong></p>;
+  return <p className="bill-line">{owing ? 'Cobrança automática em ' : 'Próxima cobrança em '}<strong>{formatDate(wallet.closingAt)}</strong></p>;
 }
 
 /** CreditLevelLadder, folded to its header and the next step: the chat has no room for the whole ladder. */
@@ -90,7 +92,7 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
           <p>
             {wallet.overdue
               ? 'Ciclo em andamento · fechamento pausado até a fatura em aberto ser paga'
-              : `Processando ciclo · fecha ${formatDayTime(wallet.closingAt)}`}
+              : `Processando ciclo · fecha ${dayTime(wallet.closingAt)}`}
           </p>
         </div>
       )}
@@ -129,7 +131,10 @@ function InvoiceBadge({ status }: { status: string }) {
   return <span className="bill-badge" data-status={status}>{invoiceStatusLabel(status)}</span>;
 }
 
-const period = (row: InvoiceRow) => `${formatDay(row.periodStart)} - ${formatDay(row.periodEnd)}`;
+/** "dd/mm/aaaa às HH:mm", as the ledger and the cycle row write it. */
+const dayTime = (iso: string | null) => formatDateTime(iso, { separator: ' às ' });
+
+const period = (row: InvoiceRow) => `${formatDate(row.periodStart)} - ${formatDate(row.periodEnd)}`;
 const salesLine = (row: InvoiceRow) => (row.salesCount == null
   ? null
   : `${formatInt(row.salesCount)} ${row.salesCount === 1 ? 'venda' : 'vendas'} • ${formatCents(row.salesVolumeCents)} em vendas`);
@@ -173,21 +178,12 @@ function InvoiceList({ rows, onOpen }: { rows: InvoiceRow[]; onOpen: (row: Invoi
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="bill-field">
-      <dt>{label}</dt>
-      <dd className="num">{children}</dd>
-    </div>
-  );
-}
-
 /** InvoiceDetailsDialog, read-only: the breakdown of the fee and how it was paid. */
 function InvoiceDetail({ row, onBack }: { row: InvoiceRow; onBack?: () => void }) {
   const salesFee = row.grossCents - row.whatsappCents - row.sacCents;
   return (
     <div className="bill-detail">
-      {onBack && <button type="button" className="bill-back" onClick={onBack}><ChevronLeft size={15} aria-hidden />Voltar</button>}
+      {onBack && <BackButton onBack={onBack} />}
       <section className="surface analytics art-billing-statement bill-detail-card">
         <header className="bill-detail-head">
           <InvoiceBadge status={row.status} />
@@ -195,17 +191,17 @@ function InvoiceDetail({ row, onBack }: { row: InvoiceRow; onBack?: () => void }
           <p className="card-sub num">{`Período: ${period(row)}`}</p>
         </header>
         <dl className="bill-fields">
-          {row.salesCount != null && <Field label="Vendas no período">{salesLine(row)}</Field>}
-          <Field label="Taxa sobre vendas">{formatCents(salesFee)}</Field>
-          {row.sacCents > 0 && <Field label="Atendimento (SAC)">{formatCents(row.sacCents)}</Field>}
-          {row.whatsappCents > 0 && <Field label="Disparos WhatsApp">{formatCents(row.whatsappCents)}</Field>}
-          <Field label="Total da fatura">{formatCents(row.grossCents)}</Field>
-          {row.creditAppliedCents > 0 && <Field label="Pago com saldo">{`−${formatCents(row.creditAppliedCents)}`}</Field>}
+          {row.salesCount != null && <Field label="Vendas no período" valueClassName="num">{salesLine(row)}</Field>}
+          <Field label="Taxa sobre vendas" valueClassName="num">{formatCents(salesFee)}</Field>
+          {row.sacCents > 0 && <Field label="Atendimento (SAC)" valueClassName="num">{formatCents(row.sacCents)}</Field>}
+          {row.whatsappCents > 0 && <Field label="Disparos WhatsApp" valueClassName="num">{formatCents(row.whatsappCents)}</Field>}
+          <Field label="Total da fatura" valueClassName="num">{formatCents(row.grossCents)}</Field>
+          {row.creditAppliedCents > 0 && <Field label="Pago com saldo" valueClassName="num">{`−${formatCents(row.creditAppliedCents)}`}</Field>}
           {row.status === 'paid'
-            ? row.netCents > 0 && <Field label="Restante pago">{formatCents(row.netCents)}</Field>
-            : <Field label="A pagar">{formatCents(row.netCents)}</Field>}
-          {row.dueAt && <Field label="Vencimento">{formatDayTime(row.dueAt)}</Field>}
-          {row.paidAt && <Field label="Pago em">{formatDayTime(row.paidAt)}</Field>}
+            ? row.netCents > 0 && <Field label="Restante pago" valueClassName="num">{formatCents(row.netCents)}</Field>
+            : <Field label="A pagar" valueClassName="num">{formatCents(row.netCents)}</Field>}
+          {row.dueAt && <Field label="Vencimento" valueClassName="num">{dayTime(row.dueAt)}</Field>}
+          {row.paidAt && <Field label="Pago em" valueClassName="num">{dayTime(row.paidAt)}</Field>}
         </dl>
       </section>
     </div>
@@ -226,7 +222,7 @@ function LedgerNotes({ row }: { row: LedgerRow }) {
     );
   }
   if (row.settledInvoiceAt) {
-    const closed = formatDay(row.settledInvoiceAt).slice(0, 5);
+    const closed = formatDate(row.settledInvoiceAt).slice(0, 5);
     return <span className="bill-note num">{`Fatura de ${closed} quitada com saldo`}</span>;
   }
   if (row.pending) {
@@ -255,7 +251,7 @@ function LedgerLine({ row }: { row: LedgerRow }) {
           {row.receipt?.trigger && <span className="bill-outline">{row.receipt.trigger === 'cap' ? 'limite atingido' : 'fechamento semanal'}</span>}
           {row.legacyStatus && <span className="bill-outline">{row.legacyStatus}</span>}
         </span>
-        <span className="bill-ledger-date num">{formatDayTime(row.createdAt)}</span>
+        <span className="bill-ledger-date num">{dayTime(row.createdAt)}</span>
         <LedgerNotes row={row} />
       </span>
       <span className="bill-ledger-side">

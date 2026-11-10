@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatListDate, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment, summarizePaymentsPage,
+  initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment, summarizePaymentsPage,
 } from './model';
 import { parseDate } from '../lib/format';
 
@@ -68,7 +68,6 @@ describe('labels', () => {
 
   it('reads the API dates, which carry microseconds', () => {
     expect(parseDate(paid.createdAt)?.toISOString()).toBe('2026-11-06T19:34:18.164Z');
-    expect(formatListDate('not a date')).toBe('-');
   });
 
   it('reads order bump prices as cents', () => {

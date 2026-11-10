@@ -3,9 +3,7 @@
 // get_telegram_flow is one flow's graph, laid out where the editor keeps each node, and
 // list_telegram_flows the bot's flows. Pure.
 
-import { count, isPayload, type Payload } from '../lib/payload';
-
-const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
+import { type Payload, count, isPayload, text } from '../lib/payload';
 
 export type Category = 'triggers' | 'messages' | 'inputs' | 'logic' | 'commerce' | 'delivery' | 'actions';
 

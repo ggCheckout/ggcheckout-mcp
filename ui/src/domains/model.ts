@@ -3,9 +3,7 @@
 // get_custom_domain / add_custom_domain one domain with its DNS instructions, and verify_custom_domain
 // the outcome of a check. Pure.
 
-import { isPayload, type Payload } from '../lib/payload';
-
-const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value : null);
+import { type Payload, isPayload, text } from '../lib/payload';
 
 export interface DnsRecord {
   type: string;

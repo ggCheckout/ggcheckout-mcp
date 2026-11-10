@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatDuration, plural, releaseLine, summarizeArea, summarizeCarousels, summarizeLessons, summarizeModules, typeLabel,
+  formatDuration, releaseLine, summarizeArea, summarizeCarousels, summarizeLessons, summarizeModules, typeLabel,
 } from './model';
 
 // QA on 2026-11-10 (trimmed).
@@ -40,7 +40,6 @@ describe('members', () => {
     expect(formatDuration(45)).toBe('45s');
     expect(formatDuration(750)).toBe('12min 30s');
     expect(formatDuration(600)).toBe('10min');
-    expect(plural(1, 'aula', 'aulas')).toBe('1 aula');
   });
 
   it('ignores other payloads', () => {

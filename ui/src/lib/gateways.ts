@@ -6,7 +6,7 @@ import cardIcon from '../art/icon-card.avif';
 import gatewayIcon from '../art/icon-gateway.avif';
 import pixIcon from '../art/icon-pix.avif';
 
-export const GATEWAY_NAMES: Record<string, string> = {
+const GATEWAY_NAMES: Record<string, string> = {
   pushinpay: 'PushInPay', amplopay: 'Amplopay', mercadopago: 'Mercado Pago', efibank: 'EfiBank',
   tribopay: 'TriboPay', paradisepags: 'ParadisePags', nitropagamentos: 'Nitro Pagamentos', stripe: 'Stripe',
   trexpay: 'TrexPay', payevo: 'Payevo', abacatepay: 'AbacatePay', buckpay: 'BuckPay', brutalcash: 'Brutal Cash',

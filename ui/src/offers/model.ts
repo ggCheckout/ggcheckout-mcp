@@ -3,10 +3,7 @@
 // success page. The decline rules come from the product editor (saas components/catalog/sections
 // UpsellSection, DownsellSection, ChainBehaviorField). Prices are cents. Pure.
 
-import { isPayload, type Payload } from '../lib/payload';
-
-const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value : null);
-const cents = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
+import { type Payload, finite, isPayload, text } from '../lib/payload';
 
 export interface Offer {
   id: string;
@@ -31,8 +28,8 @@ function toOffer(o: Payload, kind: Offer['kind']): Offer {
     kind,
     title: text(o.title) ?? (kind === 'upsell' ? 'Upsell' : 'Downsell'),
     headline: text(o.headline),
-    priceCents: cents(o.price),
-    originalPriceCents: cents(o.originalPrice),
+    priceCents: finite(o.price),
+    originalPriceCents: finite(o.originalPrice),
     active: o.status !== 'inactive',
     continues: o.chainBehavior === 'continue',
     timerMinutes: o.timerEnabled === true && typeof o.timerMinutes === 'number' ? o.timerMinutes : null,

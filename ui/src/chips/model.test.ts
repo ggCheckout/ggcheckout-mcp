@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeHealth, phoneLabel, sessionByChip, needsRestart, canPair, chipStatus, formatCode, pairingPhone, sessionsLabel, summarizeChip, summarizeChips, summarizePairing } from './model';
+import { summarizeHealth, phoneLabel, sessionByChip, needsRestart, canPair, chipStatus, formatCode, pairingPhone, summarizeChip, summarizeChips, summarizePairing } from './model';
 
 // The shapes of /api/whatsapp/numbers after sanitizeWhatsappNumber (phone masked, no qrCode).
 const waha = { uid: 'c1', provider: 'waha', displayName: 'Suporte', status: 'disconnected', phoneNumber: '*********4321', isActive: true, groupsCount: 2 };
@@ -76,7 +76,6 @@ describe('chips', () => {
   });
 
   it('counts sessions and ignores other payloads', () => {
-    expect(sessionsLabel(1)).toBe('1 sessão');
     expect(summarizeChips({ sessions: [] })).toBeNull();
     expect(summarizeChip({ number: 5 })).toBeNull();
   });

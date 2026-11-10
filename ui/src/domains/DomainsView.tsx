@@ -1,21 +1,17 @@
-import { Check, ChevronLeft, ChevronRight, Copy, RefreshCw } from 'lucide-react';
+import { Check, ChevronRight, Copy, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
 import './domains.css';
 import domainsIcon from '../art/icon-domains.avif';
 import type { Host, HostSnapshot } from '../host';
-import { parseDate } from '../lib/format';
-import { useCopy } from '../lib/useCopy';
+import { BackButton } from '../lib/BackButton';
+import { formatDateTime } from '../lib/format';
+import { messageOf } from '../lib/messageOf';
+import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
 import {
   domainStatus, summarizeDomain, summarizeDomainList, summarizeVerify, usageLabel,
   type DnsRecord, type Domain, type DomainList, type VerifyOutcome,
 } from './model';
-
-/** DomainCard's "Criado em": short date and time, in the platform's time zone. */
-function createdAt(iso: string | null): string {
-  const date = parseDate(iso);
-  return date ? date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium', timeZone: 'America/Sao_Paulo' }) : '-';
-}
 
 function StatusBadge({ status }: { status: string }) {
   const { label, tone } = domainStatus(status);
@@ -35,11 +31,13 @@ function StatusAlert({ status }: { status: string }) {
 
 /** A value of the DNS card: mono, copied on click ("Clique para copiar"). */
 function CopyValue({ value }: { value: string }) {
-  const [copied, copy] = useCopy();
+  const [state, copy] = useCopy();
+  const copied = state === 'copied';
   return (
-    <button type="button" className="dom-copy mono" title="Clique para copiar" onClick={() => copy(value)}>
+    <button type="button" className="dom-copy mono" title="Clique para copiar" onClick={() => void copy(value)}>
       <span>{value}</span>
       {copied ? <Check size={14} className="dom-copied" aria-label="Copiado!" /> : <Copy size={14} aria-hidden />}
+      {state === 'failed' && <span className="copy-failed" role="status">{COPY_FAILED_TEXT}</span>}
     </button>
   );
 }
@@ -87,7 +85,7 @@ function DomainDetail({ host, first, canCallTools, firstOutcome = null, onBack }
       if (fresh) setDomain(fresh);
       host.tellModel(`Verificação do domínio ${domain.domain} na tela do chat: ${next?.title ?? 'sem resposta'}.`);
     } catch (e) {
-      const message = e instanceof Error ? e.message : '';
+      const message = messageOf(e);
       setError(/429|rate|limit/i.test(message)
         ? 'Você pode verificar um domínio até 10 vezes por minuto. Aguarde um instante e tente novamente.'
         : 'Não foi possível verificar agora. Tente novamente.');
@@ -98,14 +96,14 @@ function DomainDetail({ host, first, canCallTools, firstOutcome = null, onBack }
 
   return (
     <div className="dom-detail">
-      {onBack && <button type="button" className="dom-back" onClick={onBack}><ChevronLeft size={15} aria-hidden />Voltar</button>}
+      {onBack && <BackButton onBack={onBack} />}
       <section className="surface dom-card">
         <header className="dom-detail-head">
           <div className="dom-name-row">
             <h2 className="dom-name">{domain.domain}</h2>
             <StatusBadge status={domain.status} />
           </div>
-          <p className="card-sub num">{`Criado em ${createdAt(domain.createdAt)}`}</p>
+          <p className="card-sub num">{`Criado em ${formatDateTime(domain.createdAt, { seconds: true })}`}</p>
         </header>
         {outcome && <Outcome outcome={outcome} />}
         {error && <p className="dom-alert" data-tone="danger" role="alert">{error}</p>}
@@ -157,7 +155,7 @@ function DomainsList({ list, canOpen, busyId, onOpen }: {
               <>
                 <span className="dom-row-main">
                   <span className="dom-name-row"><span className="dom-name small">{d.domain}</span><StatusBadge status={d.status} /></span>
-                  <span className="card-sub num">{`Criado em ${createdAt(d.createdAt)}`}</span>
+                  <span className="card-sub num">{`Criado em ${formatDateTime(d.createdAt, { seconds: true })}`}</span>
                   <StatusAlert status={d.status} />
                 </span>
                 {canOpen && <ChevronRight size={16} className="dom-chevron" aria-hidden />}

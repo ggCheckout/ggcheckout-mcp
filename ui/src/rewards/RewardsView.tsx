@@ -1,6 +1,7 @@
 import { Check, Lock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
+import { messageOf } from '../lib/messageOf';
 import './rewards.css';
 import community from '../art/reward-community.avif';
 import networkGroup from '../art/reward-network-group.avif';
@@ -61,7 +62,7 @@ function GroupRedeem({ host, stop }: { host: Host; stop: Stop }) {
       host.tellModel(`O vendedor resgatou pelo chat: ${stop.title}.`);
       await host.openLink(result.redirectUrl);
     } catch (e) {
-      setError(e instanceof Error && e.message ? e.message : 'Ocorreu um erro ao tentar resgatar a recompensa');
+      setError(messageOf(e) || 'Ocorreu um erro ao tentar resgatar a recompensa');
     } finally {
       setBusy(false);
     }

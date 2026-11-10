@@ -3,11 +3,8 @@
 // get_billing_balance become the CreditWalletCard, list_invoices / get_invoice the InvoiceList and its
 // detail, list_credits the Extrato. Every amount is integer cents. Pure.
 
-import { parseDate } from '../lib/format';
-import { count, isPayload, type Payload } from '../lib/payload';
-
-const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value : null);
-const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
+import { formatDateTime, parseDate } from '../lib/format';
+import { type Payload, count, finite, isPayload, text } from '../lib/payload';
 
 /** applyBillingTolerance: the emergency credit on top of the level's limit. */
 export const TOLERANCE_PCT = 15;
@@ -67,24 +64,24 @@ function fromStatus(s: Payload): Wallet {
   // netBalanceCents is that same fee minus credit, but without the open invoice, so it is only the
   // fallback for an account still on the legacy billing.
   const signedNetCents = migrated
-    ? s.paymentsCreditBalanceCents - (num(open?.amountCents) ?? Math.max(0, count(s.paymentsUnbilledFeeCents)))
+    ? s.paymentsCreditBalanceCents - (finite(open?.amountCents) ?? Math.max(0, count(s.paymentsUnbilledFeeCents)))
     : -count(s.netBalanceCents);
-  const limitCents = num(s.paymentsCreditLimitCents) ?? num(s.limitCents) ?? LEVELS[0].limitCents;
+  const limitCents = finite(s.paymentsCreditLimitCents) ?? finite(s.limitCents) ?? LEVELS[0].limitCents;
   const blocked = s.isBlocked === true || (s.billingStatus ?? s.status) === 'blocked';
   return {
     signedNetCents,
     usedCents: Math.max(0, -signedNetCents),
     limitCents,
     limitWithToleranceCents: withTolerance(limitCents),
-    level: num(s.paymentsCreditLevel),
-    totalPaidCents: num(s.paymentsCreditTotalPaidCents),
+    level: finite(s.paymentsCreditLevel),
+    totalPaidCents: finite(s.paymentsCreditTotalPaidCents),
     closingAt: text(s.paymentsClosingAt),
     fromBalance: false,
     overdue: s.hasOverdueInvoice === true || open?.status === 'overdue' || blocked,
     blocked,
     grace: (s.billingStatus ?? s.status) === 'grace_period',
     graceEndsAt: text(s.graceEndsAt),
-    openInvoiceCents: num(open?.amountCents),
+    openInvoiceCents: finite(open?.amountCents),
   };
 }
 
@@ -92,13 +89,13 @@ function fromBalance(b: Payload): Wallet {
   // On the new billing the route's creditBalanceCents is a frozen mirror (0); netBalanceCents already
   // nets the live payments credit against the cycle's fee, so it is the one number to trust.
   const signedNetCents = -count(b.netBalanceCents);
-  const limitCents = num(b.limitCents) ?? LEVELS[0].limitCents;
+  const limitCents = finite(b.limitCents) ?? LEVELS[0].limitCents;
   return {
     signedNetCents,
     usedCents: Math.max(0, -signedNetCents),
     limitCents,
-    limitWithToleranceCents: num(b.limitWithToleranceCents) ?? withTolerance(limitCents),
-    level: num(b.level),
+    limitWithToleranceCents: finite(b.limitWithToleranceCents) ?? withTolerance(limitCents),
+    level: finite(b.level),
     totalPaidCents: null,
     // The payments engine's next close, or null when it did not answer. A saas older than #2232
     // still sends a week counted from the call time here, so the view prefers the status answer's
@@ -170,8 +167,8 @@ function breakdown(inv: Payload) {
 }
 
 export function toInvoiceRow(inv: Payload): InvoiceRow {
-  const salesCount = num(inv.transactionCount);
-  const salesVolumeCents = num(inv.grossVolumeCents);
+  const salesCount = finite(inv.transactionCount);
+  const salesVolumeCents = finite(inv.grossVolumeCents);
   return {
     id: String(inv.id ?? ''),
     status: String(inv.status ?? 'pending'),
@@ -210,8 +207,6 @@ const INVOICE_STATUS: Record<string, string> = {
 export function invoiceStatusLabel(status: string): string {
   return INVOICE_STATUS[status] ?? status;
 }
-
-export type LedgerKind = 'topup' | 'cycle_debit' | 'debt_settled' | 'opening' | 'adjustment' | 'legacy';
 
 export interface LedgerRow {
   id: string;
@@ -256,7 +251,7 @@ function fromLedgerEntry(e: Payload): LedgerRow {
     kind: String(e.kind ?? ''),
     label: receipt ? 'Fatura fechada' : LEDGER_LABELS[e.kind] ?? String(e.kind ?? '-'),
     amountCents: count(e.amountCents),
-    balanceAfterCents: num(e.balanceAfterCents),
+    balanceAfterCents: finite(e.balanceAfterCents),
     createdAt: text(e.createdAt),
     receipt,
     settledInvoiceAt: e.kind === 'debt_settled' && inv ? text(inv.closedAt) : null,
@@ -305,22 +300,8 @@ export function summarizeLedger(data: unknown): Ledger | null {
   };
 }
 
-const pad = (n: number) => String(n).padStart(2, '0');
-
-/** toLocaleDateString('pt-BR'). */
-export function formatDay(iso: string | null): string {
-  const d = parseDate(iso);
-  return d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}` : '-';
-}
-
-/** "dd/mm/aaaa às HH:mm", as the ledger and the cycle row write it. */
-export function formatDayTime(iso: string | null): string {
-  const d = parseDate(iso);
-  return d ? `${formatDay(iso)} às ${pad(d.getHours())}:${pad(d.getMinutes())}` : '-';
-}
-
 /** formatFutureDeadline: null once the moment has passed, so the copy never shows a past deadline. */
 export function futureDayTime(iso: string | null, now = Date.now()): string | null {
   const d = parseDate(iso);
-  return d && d.getTime() > now ? formatDayTime(iso) : null;
+  return d && d.getTime() > now ? formatDateTime(iso, { separator: ' às ' }) : null;
 }

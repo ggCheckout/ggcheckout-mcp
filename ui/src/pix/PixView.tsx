@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import './pix.css';
 import type { Host, HostSnapshot } from '../host';
 import { formatCents } from '../lib/format';
+import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
 import { FINAL_STATUSES, formatRemaining, normalizePix, polledStatus, type PixCharge, type PixStatus } from './model';
 
 const POLL_MS = 5000;
@@ -82,26 +83,15 @@ function usePolledStatus(host: Host, charge: PixCharge, canCallTools: boolean) {
 }
 
 function CopyButton({ code, field }: { code: string; field: RefObject<HTMLInputElement | null> }) {
-  const [label, setLabel] = useState('Copiar código PIX');
-  const flash = (text: string, ms: number) => {
-    setLabel(text);
-    setTimeout(() => setLabel('Copiar código PIX'), ms);
-  };
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-    } catch {
-      // No clipboard permission in this sandbox: select the text so Ctrl/Cmd+C finishes the job.
-      field.current?.focus();
-      field.current?.select();
-      if (!document.execCommand?.('copy')) {
-        flash('Selecionado, use Ctrl+C', 2400);
-        return;
-      }
-    }
-    flash('Código copiado', 2000);
-  };
-  return <button className="cta" type="button" onClick={copy}>{label}</button>;
+  const [state, copy] = useCopy();
+  // No clipboard in this sandbox: select the code so Ctrl/Cmd+C finishes the job.
+  useEffect(() => {
+    if (state !== 'failed') return;
+    field.current?.focus();
+    field.current?.select();
+  }, [state, field]);
+  const label = state === 'copied' ? 'Código copiado' : state === 'failed' ? COPY_FAILED_TEXT : 'Copiar código PIX';
+  return <button className="cta" type="button" onClick={() => void copy(code)}>{label}</button>;
 }
 
 function Charge({ host, charge, canCallTools }: { host: Host; charge: PixCharge; canCallTools: boolean }) {

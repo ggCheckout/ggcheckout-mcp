@@ -3,8 +3,6 @@
 .dashboard.telegram { display: flex; flex-direction: column; gap: 12px; }
 .dashboard .tg-card { border-radius: 12px; padding: 20px; }
 .dashboard .tg-detail { display: flex; flex-direction: column; gap: 10px; }
-.dashboard .tg-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px 4px 4px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 13px; color: var(--d-muted); }
-.dashboard .tg-back:hover { color: var(--d-fg); background: color-mix(in srgb, var(--d-muted-bg) 40%, transparent); }
 .dashboard .tg-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
 .dashboard .tg-head .card-sub { margin: 0; }
 .dashboard .tg-name-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }

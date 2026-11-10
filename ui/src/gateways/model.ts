@@ -2,9 +2,8 @@
 // following the dashboard's charge order (saas components/settings/Gateways/routes) and its
 // stability ranking (components/settings/GatewayStats). Rates are 0-100. Pure.
 
-import { count, isPayload, type Payload } from '../lib/payload';
-
-const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value : null);
+import { plural } from '../lib/format';
+import { type Payload, count, isPayload, text } from '../lib/payload';
 
 /** lib/gateways/ranking.ts: below this many attempts a rate is not trusted yet. */
 export const LOW_SAMPLE = 50;
@@ -59,8 +58,8 @@ export function summarizeWallets(data: unknown): Wallet[] | null {
 /** RouteOverview's status line: "em 3 checkouts e 2 lojas". */
 export function usageLine(w: Pick<Wallet, 'checkoutCount' | 'storeCount'>): string {
   const parts = [
-    w.checkoutCount ? `${w.checkoutCount} ${w.checkoutCount === 1 ? 'checkout' : 'checkouts'}` : null,
-    w.storeCount ? `${w.storeCount} ${w.storeCount === 1 ? 'loja' : 'lojas'}` : null,
+    w.checkoutCount ? plural(w.checkoutCount, 'checkout', 'checkouts') : null,
+    w.storeCount ? plural(w.storeCount, 'loja', 'lojas') : null,
   ].filter(Boolean);
   return parts.length ? `em ${parts.join(' e ')}` : 'nenhum checkout ou loja';
 }

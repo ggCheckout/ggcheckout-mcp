@@ -1,16 +1,8 @@
 import { formatInt, formatPercent } from '../lib/format';
-import { gatewayLogo, gatewayName, METHOD_ICONS } from '../lib/gateways';
+import { GatewayMark } from '../lib/GatewayMark';
+import { gatewayName, METHOD_ICONS } from '../lib/gateways';
 import { Surface } from './parts';
 import type { MethodApproval } from './model';
-
-function GatewayMark({ gateway }: { gateway: string }) {
-  const logo = gatewayLogo(gateway);
-  return (
-    <span className="gw-mark">
-      {logo ? <img src={logo} alt="" /> : <span className="gw-initial">{gatewayName(gateway).charAt(0).toUpperCase()}</span>}
-    </span>
-  );
-}
 
 function MethodRow({ method, open }: { method: MethodApproval; open: boolean }) {
   const hasGateways = method.byGateway.length > 0;

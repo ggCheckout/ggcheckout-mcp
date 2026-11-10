@@ -39,8 +39,6 @@
 
 /* The instructions, inline. */
 .dashboard .dom-detail { display: flex; flex-direction: column; gap: 10px; }
-.dashboard .dom-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px 4px 4px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 13px; color: var(--d-muted); }
-.dashboard .dom-back:hover { color: var(--d-fg); background: color-mix(in srgb, var(--d-muted-bg) 40%, transparent); }
 .dashboard .dom-detail-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
 .dashboard .dom-detail-head .card-sub { margin: 0; }
 .dashboard .dom-section { margin: 18px 0 4px; font-size: 15px; font-weight: 600; }

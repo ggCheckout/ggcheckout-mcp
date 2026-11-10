@@ -1,11 +1,12 @@
 import {
-  ChevronLeft, ChevronRight, CircleDot, ClipboardList, Clock, CornerDownRight, CreditCard, FileDown, FileText, GitBranch, Image,
+  ChevronRight, CircleDot, ClipboardList, Clock, CornerDownRight, CreditCard, FileDown, FileText, GitBranch, Image,
   LayoutGrid, ListTree, MapPin, MessageSquare, MousePointerClick, Package, PackageCheck, PenLine, Play, QrCode, Repeat,
   ShoppingBag, Shuffle, Tag, TextCursorInput, Timer, Type, UserPlus, Users, Variable, Video, Volume2, Webhook, Workflow,
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import '../styles/dashboard.css';
+import { BackButton } from '../lib/BackButton';
 import './telegram.css';
 import type { Host, HostSnapshot } from '../host';
 import { heightOf, isLabeled, layout, NODE_W } from './layout';
@@ -103,7 +104,7 @@ function StatusBadge({ published, unpublished }: { published: boolean; unpublish
 function FlowDetail({ flow, onBack }: { flow: Flow; onBack?: () => void }) {
   return (
     <div className="tg-detail">
-      {onBack && <button type="button" className="tg-back" onClick={onBack}><ChevronLeft size={15} aria-hidden />Voltar</button>}
+      {onBack && <BackButton onBack={onBack} />}
       <section className="surface tg-card">
         <header className="tg-head">
           <div className="tg-name-row">
