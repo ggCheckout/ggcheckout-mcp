@@ -9,6 +9,7 @@ export class WhatsAppService {
   async setNumberActive(numberId: string, isActive: boolean) { return this.port.setNumberActive(numberId, isActive); }
   async getPairingCode(numberId: string, phoneNumber: string) { return this.port.getPairingCode(numberId, phoneNumber); }
   async restartNumber(numberId: string) { return this.port.restartNumber(numberId); }
+  async checkNumbersHealth() { return this.port.checkNumbersHealth(); }
 
   async listSessions() { return this.port.listSessions(); }
   async getSession(sessionId: string) { return this.port.getSession(sessionId); }

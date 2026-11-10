@@ -39,6 +39,23 @@ export interface WhatsAppNumber {
 }
 
 /**
+ * The chips' health check (`/api/whatsapp/numbers/health-check`): each chip's live status read from its
+ * connection and compared with the stored one; a diverging chip is corrected on the spot, and one the
+ * connection no longer knows is marked disconnected and inactive.
+ */
+export interface WhatsAppNumbersHealth {
+  numbers: Array<{
+    numberId: string;
+    displayName?: string;
+    firebaseStatus: WhatsAppNumberStatus;
+    firebaseIsActive: boolean;
+    realStatus: WhatsAppNumberStatus | 'error';
+    diverged: boolean;
+  }>;
+  summary: { total: number; connected: number; disconnected: number; divergent: number; synced: number };
+}
+
+/**
  * A session as the dashboard calls it (`whatsappSessionGroups`): the chips that send for a set of
  * products. The primary chip sends first; up to two fallbacks take over, in order. Its `uid` is the
  * id templates keep in `sessionIds`.

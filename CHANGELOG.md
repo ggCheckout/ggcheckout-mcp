@@ -61,7 +61,8 @@ right now.
   `verify_custom_domain`, as the domain settings: the domains with their status, the DNS
   instructions with copy buttons, and "Verificar DNS" through the tool, saying what is still missing.
 - Chip tools: `list_whatsapp_numbers`, `get_whatsapp_number` (with the sessions that use it and its
-  role), `update_whatsapp_number` (on/off) and `restart_whatsapp_number`.
+  role), `update_whatsapp_number` (on/off), `restart_whatsapp_number` and `check_whatsapp_numbers`
+  (the dashboard's "Verificar status": each chip checked against its live connection and corrected).
 - Session tools: `update_whatsapp_session` (name, pause, primary and fallback chips),
   `add_whatsapp_session_number`, `remove_whatsapp_session_number` and
   `set_whatsapp_session_products`.

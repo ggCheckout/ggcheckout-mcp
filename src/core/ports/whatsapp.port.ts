@@ -1,7 +1,6 @@
 import type {
   WhatsAppNumber, WhatsAppSessionGroup, WhatsAppMessageTemplate, WhatsAppDelivery,
-  WhatsAppDeliverySummary, CreateTemplateInput, UpdateTemplateInput,
-} from '../types/whatsapp.js';
+  WhatsAppDeliverySummary, CreateTemplateInput, UpdateTemplateInput, WhatsAppNumbersHealth } from '../types/whatsapp.js';
 
 export interface SessionGroupUpdate {
   name?: string;
@@ -16,6 +15,7 @@ export interface WhatsAppPort {
   setNumberActive(numberId: string, isActive: boolean): Promise<WhatsAppNumber>;
   getPairingCode(numberId: string, phoneNumber: string): Promise<{ success: boolean; code: string; message?: string }>;
   restartNumber(numberId: string): Promise<{ message: string; numberId: string }>;
+  checkNumbersHealth(): Promise<WhatsAppNumbersHealth>;
 
   listSessions(): Promise<WhatsAppSessionGroup[]>;
   getSession(sessionId: string): Promise<WhatsAppSessionGroup>;

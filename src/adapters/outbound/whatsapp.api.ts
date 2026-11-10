@@ -1,8 +1,7 @@
 import type { SessionGroupUpdate, WhatsAppPort } from '../../core/ports/whatsapp.port.js';
 import type {
   WhatsAppNumber, WhatsAppSessionGroup, WhatsAppMessageTemplate, WhatsAppDelivery,
-  WhatsAppDeliverySummary, CreateTemplateInput, UpdateTemplateInput,
-} from '../../core/types/whatsapp.js';
+  WhatsAppDeliverySummary, CreateTemplateInput, UpdateTemplateInput, WhatsAppNumbersHealth } from '../../core/types/whatsapp.js';
 import { sanitizeWhatsappNumber, sanitizeWhatsappDelivery } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
@@ -38,6 +37,17 @@ export class WhatsAppApiAdapter implements WhatsAppPort {
 
   async restartNumber(numberId: string) {
     return this.http.post<{ message: string; numberId: string }>(`/api/whatsapp/numbers/${seg(numberId)}/restart`);
+  }
+
+  /** Live check of every chip; the answer drops the connection's session and worker ids. */
+  async checkNumbersHealth(): Promise<WhatsAppNumbersHealth> {
+    const res = await this.http.get<{ success: boolean; data: WhatsAppNumbersHealth }>('/api/whatsapp/numbers/health-check');
+    return {
+      summary: res.data.summary,
+      numbers: res.data.numbers.map(({ numberId, displayName, firebaseStatus, firebaseIsActive, realStatus, diverged }) => ({
+        numberId, displayName, firebaseStatus, firebaseIsActive, realStatus, diverged,
+      })),
+    };
   }
 
   async listSessions(): Promise<WhatsAppSessionGroup[]> {

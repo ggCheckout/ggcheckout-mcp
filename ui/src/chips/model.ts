@@ -141,3 +141,23 @@ export function sessionByChip(data: unknown): Record<string, string> | null {
   }
   return map;
 }
+
+export interface HealthOutcome {
+  tone: 'success' | 'danger' | 'muted';
+  title: string;
+  detail: string | null;
+}
+
+/**
+ * check_whatsapp_numbers worded as the chips screen's toasts after "Verificar status"; null for
+ * anything else.
+ */
+export function summarizeHealth(data: unknown): HealthOutcome | null {
+  if (!isPayload(data) || !isPayload(data.summary) || !Array.isArray(data.numbers)) return null;
+  const { total, connected, divergent } = { total: count(data.summary.total), connected: count(data.summary.connected), divergent: count(data.summary.divergent) };
+  if (total === 0) return { tone: 'muted', title: 'Sem chips', detail: 'Nenhum chip cadastrado pra verificar.' };
+  if (divergent === 0) return { tone: 'success', title: 'Tudo certo', detail: `${connected}/${total} chip(s) conectado(s), sem divergências.` };
+  const offenders = data.numbers.filter(isPayload).filter((n) => n.diverged === true)
+    .map((n) => text(n.displayName) ?? String(n.numberId ?? '').slice(0, 6)).join(', ');
+  return { tone: 'danger', title: `${divergent} chip(s) divergente(s), sincronizado(s)`, detail: `Status real diferia do salvo: ${offenders}. Status atualizado.` };
+}

@@ -5,7 +5,7 @@ import './chips.css';
 import type { Host, HostSnapshot } from '../host';
 import { useCopy } from '../lib/useCopy';
 import {
-  canPair, needsRestart, chipStatus, formatCode, pairingPhone, phoneLabel, sessionByChip, sessionsLabel, summarizeChip, summarizeChips, summarizePairing, type Chip,
+  canPair, needsRestart, chipStatus, formatCode, pairingPhone, phoneLabel, sessionByChip, summarizeHealth, type HealthOutcome, sessionsLabel, summarizeChip, summarizeChips, summarizePairing, type Chip,
 } from './model';
 
 /** How often the chip is read while the seller types the code, and for how long. */
@@ -234,15 +234,29 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack }: {
 }
 
 /** ChipsGrid, as rows: name, number, provider, status and how many sessions use the chip. */
-function ChipsList({ chips, sessions, canOpen, busyId, onOpen }: {
+function ChipsList({ chips, sessions, canOpen, busyId, onOpen, checking, health, onCheck }: {
   chips: Chip[]; sessions: Record<string, string> | null; canOpen: boolean; busyId: string | null; onOpen: (chip: Chip) => void;
+  checking: boolean; health: HealthOutcome | null; onCheck: () => void;
 }) {
   return (
     <section className="surface ch-card">
       <header className="ch-list-head">
-        <h2 className="card-title">Chips</h2>
+        <div className="ch-list-title">
+          <h2 className="card-title">Chips</h2>
+          {canOpen && (
+            <button type="button" className="ch-ghost" onClick={onCheck} disabled={checking} title="Confirma direto na conexão se o status mostrado é real">
+              <ShieldCheck size={14} aria-hidden />{checking ? 'Verificando…' : 'Verificar status'}
+            </button>
+          )}
+        </div>
         <p className="card-sub">Cada chip é uma conexão WhatsApp: API Oficial (Meta) ou QR Code. Atribua a uma sessão pra usar em envios.</p>
       </header>
+      {health && (
+        <div className="ch-health" data-tone={health.tone} role="status">
+          <p className="ch-health-title">{health.title}</p>
+          {health.detail && <p>{health.detail}</p>}
+        </div>
+      )}
       {chips.length ? (
         <ul className="ch-rows">
           {chips.map((c) => {
@@ -289,6 +303,9 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [sessions, setSessions] = useState<Record<string, string> | null>(null);
+  const [list, setList] = useState<Chip[] | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [health, setHealth] = useState<HealthOutcome | null>(null);
   const numberId = typeof state.args.numberId === 'string' ? state.args.numberId : null;
 
   // get_pairing_code answers the code alone: the chip is read to draw it around the code.
@@ -325,7 +342,24 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
     }
   }
 
-  const { chip, chips, code } = parts;
+  /** "Verificar status": the live check corrects the stored status, then the list is read again. */
+  async function checkStatus() {
+    setChecking(true);
+    try {
+      const outcome = summarizeHealth(await host.callTool('check_whatsapp_numbers', {}));
+      setHealth(outcome ?? { tone: 'danger', title: 'Falha no health check', detail: null });
+      const fresh = summarizeChips(await host.callTool('list_whatsapp_numbers', {}));
+      if (fresh) setList(fresh);
+      if (outcome) host.tellModel(`Status dos chips verificado na tela do chat: ${outcome.title}.`);
+    } catch (e) {
+      setHealth({ tone: 'danger', title: 'Falha no health check', detail: (e instanceof Error && e.message) || 'Erro desconhecido.' });
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  const { chip, code } = parts;
+  const chips = parts.chips && (list ?? parts.chips);
   if (!chip && !chips && !code) return <p className="state" data-tone="error">A resposta não trouxe chips do WhatsApp.</p>;
   return (
     <div className="dashboard chips">
@@ -335,7 +369,8 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
         <>
           {open && <ChipDetail key={open.id} host={host} first={open} canCallTools={state.canCallTools} onBack={() => setOpen(null)} />}
           <div hidden={Boolean(open)}>
-            <ChipsList chips={chips} sessions={sessions} canOpen={state.canCallTools} busyId={busyId} onOpen={openChip} />
+            <ChipsList chips={chips} sessions={sessions} canOpen={state.canCallTools} busyId={busyId} onOpen={openChip}
+              checking={checking} health={health} onCheck={checkStatus} />
           </div>
         </>
       )}

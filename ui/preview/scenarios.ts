@@ -86,6 +86,8 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     // The chip connects on the third read, so the preview shows the switch to "Conectado".
     case 'get_whatsapp_number': return chipDetail(String(args.numberId), args.numberId === 'chip_vendas' && ++polls.count >= 3 ? 'authenticated' : undefined);
     case 'get_billing_status': return billingStatus;
+    case 'check_whatsapp_numbers': return { summary: { total: 5, connected: 2, disconnected: 1, divergent: 1, synced: 1 }, numbers: [{ numberId: 'chip_reserva', displayName: 'Reserva', firebaseStatus: 'authenticated', firebaseIsActive: true, realStatus: 'disconnected', diverged: true }] };
+    case 'list_whatsapp_numbers': return chips;
     case 'list_whatsapp_sessions': return { sessions: [{ uid: 'g1', name: 'Método Aurora', primaryNumberId: 'chip_suporte', fallbackNumberIds: ['chip_vendas'] }, { uid: 'g2', name: 'Mentoria', primaryNumberId: 'chip_vendas', fallbackNumberIds: ['chip_suporte'] }] };
     case 'get_pairing_code': return { success: true, code: 'K7QW2MZP' };
     case 'update_whatsapp_number': return { success: true, ...chipDetail(String(args.numberId)), number: { ...chipDetail(String(args.numberId)).number, isActive: args.isActive } };

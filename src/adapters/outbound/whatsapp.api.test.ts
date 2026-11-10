@@ -46,6 +46,18 @@ describe('WhatsAppApiAdapter', () => {
     expect(http.post).toHaveBeenCalledWith('/api/whatsapp/numbers/n1/restart');
   });
 
+  it('checkNumbersHealth GETs the health check and drops the connection ids', async () => {
+    vi.mocked(http.get).mockResolvedValue({ success: true, data: {
+      summary: { total: 1, connected: 0, disconnected: 1, divergent: 1, synced: 1 },
+      numbers: [{ numberId: 'n1', displayName: 'Vendas', sessionId: 'waha-s1', workerId: 'w1', firebaseStatus: 'authenticated', firebaseIsActive: true, realStatus: 'disconnected', diverged: true }],
+    } });
+    const health = await adapter.checkNumbersHealth();
+    expect(http.get).toHaveBeenCalledWith('/api/whatsapp/numbers/health-check');
+    expect(health.summary.divergent).toBe(1);
+    expect(health.numbers[0]).not.toHaveProperty('sessionId');
+    expect(health.numbers[0]).not.toHaveProperty('workerId');
+  });
+
   it('reads sessions from the groups routes', async () => {
     vi.mocked(http.get).mockResolvedValue([]);
     await adapter.listSessions();

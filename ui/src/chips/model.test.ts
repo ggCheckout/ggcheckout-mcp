@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { phoneLabel, sessionByChip, needsRestart, canPair, chipStatus, formatCode, pairingPhone, sessionsLabel, summarizeChip, summarizeChips, summarizePairing } from './model';
+import { summarizeHealth, phoneLabel, sessionByChip, needsRestart, canPair, chipStatus, formatCode, pairingPhone, sessionsLabel, summarizeChip, summarizeChips, summarizePairing } from './model';
 
 // The shapes of /api/whatsapp/numbers after sanitizeWhatsappNumber (phone masked, no qrCode).
 const waha = { uid: 'c1', provider: 'waha', displayName: 'Suporte', status: 'disconnected', phoneNumber: '*********4321', isActive: true, groupsCount: 2 };
@@ -64,6 +64,15 @@ describe('chips', () => {
     expect(phoneLabel('*********1671')).toBe('•••• 1671');
     expect(phoneLabel('*******6230')).toBe('•••• 6230');
     expect(phoneLabel(null)).toBe('—');
+  });
+
+  it('words the status check as the chips screen', () => {
+    const summary = { total: 3, connected: 2, disconnected: 1, divergent: 0, synced: 0 };
+    expect(summarizeHealth({ summary, numbers: [] })).toMatchObject({ tone: 'success', title: 'Tudo certo', detail: '2/3 chip(s) conectado(s), sem divergências.' });
+    expect(summarizeHealth({ summary: { ...summary, divergent: 1 }, numbers: [{ numberId: 'abcdef123', diverged: true }, { numberId: 'x', displayName: 'Ok', diverged: false }] }))
+      .toMatchObject({ tone: 'danger', title: '1 chip(s) divergente(s), sincronizado(s)', detail: 'Status real diferia do salvo: abcdef. Status atualizado.' });
+    expect(summarizeHealth({ summary: { ...summary, total: 0 }, numbers: [] })!.title).toBe('Sem chips');
+    expect(summarizeHealth({ numbers: [] })).toBeNull();
   });
 
   it('counts sessions and ignores other payloads', () => {

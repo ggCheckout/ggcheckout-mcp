@@ -2,6 +2,12 @@
    provider badge, and ChipDetailPage with the code to connect in place of its QR card. */
 .dashboard.chips { display: flex; flex-direction: column; gap: 12px; }
 .dashboard .ch-card { border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.dashboard .ch-list-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.dashboard .ch-health { --tone: #64748b; padding: 10px 14px; border-radius: 8px; font-size: 13px; border: 1px solid color-mix(in srgb, var(--tone) 35%, transparent); background: color-mix(in srgb, var(--tone) 8%, transparent); }
+.dashboard .ch-health[data-tone='success'] { --tone: #10b981; }
+.dashboard .ch-health[data-tone='danger'] { --tone: #dc2626; }
+.dashboard .ch-health p { margin: 0; }
+.dashboard .ch-health-title { font-weight: 600; margin-bottom: 2px !important; }
 .dashboard .ch-list-head { padding-bottom: 14px; border-bottom: 1px solid var(--d-line); }
 .dashboard .ch-icon { flex: 0 0 auto; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; color: var(--d-accent); background: color-mix(in srgb, var(--season-blue) 12%, transparent); }
 .dashboard .ch-icon.big { width: 48px; height: 48px; border-radius: 12px; }

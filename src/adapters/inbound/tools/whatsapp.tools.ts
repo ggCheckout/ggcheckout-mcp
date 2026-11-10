@@ -66,6 +66,13 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
     inputSchema: { numberId: z.string().describe('Chip ID') },
   }, createToolHandler('restart_whatsapp_number', async ({ numberId }) => service.restartNumber(numberId)));
 
+  server.registerTool('check_whatsapp_numbers', {
+    description:
+      'Check every chip against its live connection, as the dashboard\'s "Verificar status": a chip whose stored '
+      + 'status was wrong is corrected, and one the connection no longer knows is marked disconnected and inactive. '
+      + 'Answers a summary (total, connected, disconnected, divergent) and each chip\'s stored and real status',
+  }, createToolHandler('check_whatsapp_numbers', async () => service.checkNumbersHealth()));
+
   // --- Sessions ---
   server.tool('list_whatsapp_sessions',
     `List the WhatsApp sessions: each sends for its assignedProducts with its primary chip (primaryNumberId) and up to two fallbacks in order (fallbackNumberIds). ${IN_DASHBOARD}`,
