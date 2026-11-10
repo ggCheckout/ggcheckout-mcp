@@ -82,6 +82,10 @@ right now.
 
 ### Changed
 
+- `get_credit_topup` says what the route answers: the latest top-up, which may be long finished
+  (only a pending one is open), or null when the seller never opened one. The PIX view shows a
+  finished top-up past its PIX window as "Nenhuma recarga em aberto" instead of drawing it as the
+  current one.
 - `pay_invoice` answers the PIX of the open invoice (`invoiceId`, `amountCents`, `status`, `pixCode`,
   `pixQrBase64`, `expiresAt`) and no longer takes `method`. It used `/api/billing/invoices/{id}/pay`,
   which the dashboard retired with the legacy billing and now fails for every seller; it now goes

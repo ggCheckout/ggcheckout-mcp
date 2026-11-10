@@ -32,6 +32,17 @@ describe('normalizePix', () => {
     expect(normalizePix({ topup: null })).toMatchObject({ status: 'none', poll: null });
   });
 
+  // The route answers the latest top-up even when it is long finished (QA 2026-11-10: a paid one from
+  // September). Within its PIX window a finished top-up is still news; after it, there is none open.
+  it('treats a finished top-up past its PIX window as none open', () => {
+    const now = Date.parse('2026-11-10T16:00:00Z');
+    const old = { creditId: 'cr_9', amountCents: 500, status: 'paid', pixCode: '0002', pixQrBase64: 'iVBO', expiresAt: '2026-09-10T13:32:05Z' };
+    expect(normalizePix({ topup: old }, now)).toMatchObject({ status: 'none', id: null, code: null });
+    expect(normalizePix({ topup: { ...old, status: 'expired' } }, now)).toMatchObject({ status: 'none' });
+    expect(normalizePix({ topup: { ...old, expiresAt: '2026-11-11T15:00:00Z' } }, now)).toMatchObject({ status: 'paid', id: 'cr_9' });
+    expect(normalizePix({ topup: { ...old, status: 'pending', expiresAt: '2026-11-10T15:00:00Z' } }, now)).toMatchObject({ status: 'pending' });
+  });
+
   it('reads the open invoice PIX and polls the invoice until it is paid', () => {
     const pix = normalizePix({
       invoiceId: 'inv_1', amountCents: 1460, status: 'overdue', pixCode: 'pix', pixQrBase64: 'AAAA', expiresAt: '2026-11-10T12:00:00Z',

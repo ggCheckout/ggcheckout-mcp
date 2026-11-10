@@ -102,9 +102,10 @@ export function registerBillingTools(server: McpServer, service: BillingService)
 
   server.registerTool('get_credit_topup', {
     description:
-      'The current credit top-up on the new billing: { creditId, amountCents, status (pending, paid, '
-      + 'expired), pixCode, pixQrBase64, expiresAt }, or null when there is none. A pending top-up is not '
-      + 'in the list_credits ledger until it is paid, so this is where to find one opened by add_credit.',
+      'The latest credit top-up on the new billing: { creditId, amountCents, status (pending, paid, '
+      + 'expired), pixCode, pixQrBase64, expiresAt }, or null when the seller never opened one. It may be '
+      + 'long finished: only a pending one is open. A pending top-up is not in the list_credits ledger '
+      + 'until it is paid, so this is where to find one opened by add_credit and to see it turn paid.',
     _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('get_credit_topup', async () => ({ topup: await service.getCreditTopup() }))));
 

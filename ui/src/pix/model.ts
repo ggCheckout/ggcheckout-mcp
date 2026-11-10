@@ -56,7 +56,7 @@ function fromTopup(t: Payload, via: string): PixCharge {
 }
 
 /** Null when `data` is no PIX answer this view knows. */
-export function normalizePix(data: unknown): PixCharge | null {
+export function normalizePix(data: unknown, now = Date.now()): PixCharge | null {
   if (!isPayload(data)) return null;
 
   if (data.object === 'payment_intent') {
@@ -78,12 +78,18 @@ export function normalizePix(data: unknown): PixCharge | null {
   // add_credit: { creditId, via, pixCode, ... }; a fresh top-up is pending by definition.
   if (typeof data.creditId === 'string' && 'via' in data) return fromTopup({ ...data, status: 'pending' }, data.via);
 
-  // get_credit_topup: { topup: {...} | null }
+  // get_credit_topup: { topup: {...} | null }. The route answers the seller's LATEST top-up, finished
+  // or not (the poll after add_credit needs to see it turn paid). Once its PIX window is over, a
+  // finished one is history, not the current top-up: QA drew a two-month-old paid R$ 5,00 as if the
+  // seller had just asked about it.
   if ('topup' in data) {
-    if (!data.topup) {
+    const t = isPayload(data.topup) ? data.topup : null;
+    const status = t ? TOPUP_STATUS[t.status] ?? 'pending' : 'none';
+    const over = t && status !== 'pending' && Date.parse(t.expiresAt) < now;
+    if (!t || over) {
       return { kind: 'topup', title: 'Recarga de créditos', id: null, amountCents: null, code: null, qrSrc: null, expiresAt: null, status: 'none', livemode: true, poll: null };
     }
-    return fromTopup(data.topup, 'topup');
+    return fromTopup(t, 'topup');
   }
 
   // pay_invoice: the open invoice's PIX, { invoiceId, amountCents, status, pixCode, pixQrBase64, expiresAt }.
