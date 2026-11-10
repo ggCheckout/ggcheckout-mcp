@@ -31,11 +31,53 @@ describe('BillingApiAdapter', () => {
     expect(url).toContain('limit=10');
   });
 
-  it('payInvoice POSTs with method in body', async () => {
-    vi.mocked(http.post).mockResolvedValue({ success: true, qrCode: 'qr123' });
-    const result = await adapter.payInvoice('inv-1', 'pix');
-    expect(http.post).toHaveBeenCalledWith('/api/billing/invoices/inv-1/pay', { method: 'pix' });
-    expect(result.qrCode).toBe('qr123');
+  describe('payInvoice', () => {
+    const open = { id: 'inv-1', status: 'overdue', track: 'sales' };
+    const pix = { invoiceId: 'inv-1', amountCents: 1460, status: 'overdue', pix: { emv: 'emv', qrBase64: 'qr', gateway: 'efi', expiresAt: 'x' } };
+
+    it('asks for the PIX of the invoice track and normalizes it', async () => {
+      vi.mocked(http.get).mockResolvedValue(open);
+      vi.mocked(http.post).mockResolvedValue(pix);
+
+      expect(await adapter.payInvoice('inv-1')).toEqual({
+        invoiceId: 'inv-1', amountCents: 1460, status: 'overdue', pixCode: 'emv', pixQrBase64: 'qr', expiresAt: 'x',
+      });
+      expect(http.get).toHaveBeenCalledWith('/api/billing/invoices/inv-1');
+      expect(http.post).toHaveBeenCalledWith('/api/billing/pix?track=sales');
+    });
+
+    it('routes a WhatsApp invoice to its own track', async () => {
+      vi.mocked(http.get).mockResolvedValue({ ...open, track: 'whatsapp' });
+      vi.mocked(http.post).mockResolvedValue(pix);
+      await adapter.payInvoice('inv-1');
+      expect(http.post).toHaveBeenCalledWith('/api/billing/pix?track=whatsapp');
+    });
+
+    it('does not issue a PIX for a paid invoice', async () => {
+      vi.mocked(http.get).mockResolvedValue({ ...open, status: 'paid' });
+      await expect(adapter.payInvoice('inv-1')).rejects.toThrow('already paid');
+      expect(http.post).not.toHaveBeenCalled();
+    });
+
+    // The route pays the open invoice of the track, whichever it is: handing that PIX back for
+    // another id would have the seller pay an invoice they did not ask about.
+    it('refuses a PIX that pays another invoice, and names the open one', async () => {
+      vi.mocked(http.get).mockResolvedValue({ ...open, id: 'inv-old' });
+      vi.mocked(http.post).mockResolvedValue(pix);
+      await expect(adapter.payInvoice('inv-old')).rejects.toThrow('only inv-1 can be paid now');
+    });
+
+    it('says so when there is no open invoice', async () => {
+      vi.mocked(http.get).mockResolvedValue(open);
+      vi.mocked(http.post).mockResolvedValue({ pix: null });
+      await expect(adapter.payInvoice('inv-1')).rejects.toThrow('has no PIX to pay');
+    });
+
+    it('explains the PIX rate limit', async () => {
+      vi.mocked(http.get).mockResolvedValue(open);
+      vi.mocked(http.post).mockRejectedValue(new ApiError(429, 'pix_refused'));
+      await expect(adapter.payInvoice('inv-1')).rejects.toThrow('10 per hour');
+    });
   });
 
   it('addCredit POSTs amountCents', async () => {

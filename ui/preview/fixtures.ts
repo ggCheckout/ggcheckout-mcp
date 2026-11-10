@@ -172,6 +172,12 @@ export const invoices = [
   ...Array.from({ length: 13 }, (_, i) => invoice(i + 1, 'paid', 900 + ((i * 137) % 700), i % 3 === 0 ? 300 : 900 + ((i * 137) % 700), 9 + (i % 7), 120000 + i * 15350)),
 ];
 
+/** pay_invoice: the PIX of the overdue invoice, with the same QR as the other PIX fixtures. */
+export const invoicePix = {
+  invoiceId: invoices[0].id, amountCents: invoices[0].feeGrossCents, status: 'overdue',
+  pixCode: creditTopup.pixCode, pixQrBase64: creditTopup.pixQrBase64, expiresAt: '2026-12-31T23:59:00.000Z',
+};
+
 const entry = (id: string, kind: string, amountCents: number, balanceAfterCents: number, createdAt: string, extra: object = {}) => ({
   id, kind, amountCents, balanceAfterCents, refId: null, description: null, createdAt, invoice: null, pendingInvoice: null, ...extra,
 });

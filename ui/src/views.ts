@@ -31,12 +31,12 @@ export const TOOL_VIEWS: Record<string, ViewName> = {
  * The view for a result: by tool name when the host gives it, else by the payload's shape (not every
  * host fills hostContext.toolInfo).
  */
-export function pickView(toolName: string | undefined, payload: unknown, args: Record<string, unknown>): ViewName | null {
+export function pickView(toolName: string | undefined, payload: unknown): ViewName | null {
   if (toolName && TOOL_VIEWS[toolName]) return TOOL_VIEWS[toolName];
   if (summarizeStats(payload) || summarizeCharts(payload)) return 'sales';
   if (summarizeFunnelStats(payload) || summarizeFunnelConversion(payload)) return 'funnel';
   if (summarizePaymentsPage(payload) || summarizePayment(payload)) return 'payments';
   if (summarizeWallet(payload) || summarizeInvoice(payload) || summarizeInvoices(payload) || summarizeLedger(payload)) return 'billing';
-  if (normalizePix(payload, args)) return 'pix';
+  if (normalizePix(payload)) return 'pix';
   return null;
 }

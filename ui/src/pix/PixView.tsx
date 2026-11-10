@@ -111,15 +111,6 @@ function Charge({ host, charge, canCallTools }: { host: Host; charge: PixCharge;
   const field = useRef<HTMLInputElement>(null);
 
   if (status === 'none') return <p className="state">Nenhuma recarga em aberto.</p>;
-  if (status === 'requested') {
-    const how = charge.method === 'card' ? 'no cartão salvo' : charge.method === 'credits' ? 'com os créditos' : '';
-    return (
-      <div className="done">
-        <CheckIcon />
-        <div><h2 className="display">Pagamento enviado</h2><p className="note muted">{`Fatura ${charge.id} ${how}`.trim()}</p></div>
-      </div>
-    );
-  }
   if (status === 'paid') {
     return (
       <div className="done" role="status">
@@ -159,7 +150,7 @@ function Charge({ host, charge, canCallTools }: { host: Host; charge: PixCharge;
 
 /** PIX view: QR, copy-and-paste code, time left, and the status kept fresh while the view is open. */
 export function PixView({ host, state }: { host: Host; state: HostSnapshot }) {
-  const [charge] = useState(() => normalizePix(state.payload, state.args));
+  const [charge] = useState(() => normalizePix(state.payload));
   if (!charge) return <p className="state" data-tone="error">A resposta não trouxe um PIX.</p>;
   return (
     <div className={`pix-view surface ${charge.kind === 'topup' ? 'art-credit-wallet' : 'art-sales-by-payment'}`}>

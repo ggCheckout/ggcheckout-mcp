@@ -46,13 +46,18 @@ export function registerBillingTools(server: McpServer, service: BillingService)
   })));
 
   server.registerTool('pay_invoice', {
-    description: 'Pay an invoice via PIX, card, or credits',
+    description:
+      'Get the PIX that pays an open invoice (closed and not paid yet). Returns { invoiceId, amountCents, '
+      + 'status, pixCode, pixQrBase64, expiresAt }: `pixCode` is the copy-and-paste string and `pixQrBase64` '
+      + 'the QR image (base64, no `data:` prefix). Calling it again hands back the same PIX while it is '
+      + 'valid. PIX is the only way to pay an invoice: card charges are retired and credit is applied '
+      + 'automatically, so to pay with credit use add_credit instead. Only the open invoice of its track can '
+      + 'be paid; for another one the error names the invoice that can.',
     inputSchema: {
-      invoiceId: z.string().describe('Invoice ID'),
-      method: z.enum(['pix', 'card', 'credits']).describe('Payment method'),
+      invoiceId: z.string().min(1).describe('Invoice ID (from list_invoices)'),
     },
     _meta: appMeta(),
-  }, withDrawnNote(server, createToolHandler('pay_invoice', async ({ invoiceId, method }) => service.payInvoice(invoiceId, method))));
+  }, withDrawnNote(server, createToolHandler('pay_invoice', async ({ invoiceId }) => service.payInvoice(invoiceId))));
 
   server.registerTool('list_credits', {
     description:

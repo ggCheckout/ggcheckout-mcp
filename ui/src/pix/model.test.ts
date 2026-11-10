@@ -32,13 +32,13 @@ describe('normalizePix', () => {
     expect(normalizePix({ topup: null })).toMatchObject({ status: 'none', poll: null });
   });
 
-  it('takes the invoice id from the tool input, and has no PIX for a card payment', () => {
-    const pix = normalizePix({ success: true, qrCode: 'pix', qrCodeImage: 'data:image/png;base64,AAAA' }, { invoiceId: 'inv_1', method: 'pix' })!;
-    expect(pix).toMatchObject({ kind: 'invoice', id: 'inv_1', status: 'pending', qrSrc: 'data:image/png;base64,AAAA' });
+  it('reads the open invoice PIX and polls the invoice until it is paid', () => {
+    const pix = normalizePix({
+      invoiceId: 'inv_1', amountCents: 1460, status: 'overdue', pixCode: 'pix', pixQrBase64: 'AAAA', expiresAt: '2026-11-10T12:00:00Z',
+    })!;
+    expect(pix).toMatchObject({ kind: 'invoice', id: 'inv_1', amountCents: 1460, status: 'pending', qrSrc: 'data:image/png;base64,AAAA' });
+    expect(pix.poll).toEqual({ tool: 'get_invoice', args: { invoiceId: 'inv_1' } });
     expect(polledStatus(pix, { invoice: { id: 'inv_1', status: 'paid' } })).toBe('paid');
-
-    const card = normalizePix({ success: true }, { invoiceId: 'inv_1', method: 'card' })!;
-    expect(card).toMatchObject({ status: 'requested', poll: null });
   });
 
   it('is null for an answer with no PIX', () => {

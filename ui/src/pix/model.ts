@@ -4,7 +4,7 @@
 
 import { isPayload, type Payload } from '../lib/payload';
 
-export type PixStatus = 'pending' | 'paid' | 'expired' | 'canceled' | 'failed' | 'none' | 'requested';
+export type PixStatus = 'pending' | 'paid' | 'expired' | 'canceled' | 'failed' | 'none';
 
 export interface PixCharge {
   kind: 'intent' | 'topup' | 'invoice';
@@ -17,7 +17,6 @@ export interface PixCharge {
   expiresAt: string | null;
   status: PixStatus;
   livemode: boolean;
-  method?: string | null;
   poll: { tool: string; args: Record<string, unknown> } | null;
 }
 
@@ -57,7 +56,7 @@ function fromTopup(t: Payload, via: string): PixCharge {
 }
 
 /** Null when `data` is no PIX answer this view knows. */
-export function normalizePix(data: unknown, args: Record<string, unknown> = {}): PixCharge | null {
+export function normalizePix(data: unknown): PixCharge | null {
   if (!isPayload(data)) return null;
 
   if (data.object === 'payment_intent') {
@@ -87,21 +86,19 @@ export function normalizePix(data: unknown, args: Record<string, unknown> = {}):
     return fromTopup(data.topup, 'topup');
   }
 
-  // pay_invoice: { success, qrCode?, qrCodeImage? }. Only a PIX payment carries a code to show.
-  if ('success' in data && args.invoiceId) {
-    const pix = Boolean(data.qrCode || data.qrCodeImage);
+  // pay_invoice: the open invoice's PIX, { invoiceId, amountCents, status, pixCode, pixQrBase64, expiresAt }.
+  if (typeof data.invoiceId === 'string' && 'pixCode' in data) {
     return {
       kind: 'invoice',
       title: 'Pagamento de fatura',
-      id: String(args.invoiceId),
-      amountCents: null,
-      code: data.qrCode ?? null,
-      qrSrc: qrImageSrc(data.qrCodeImage),
-      expiresAt: null,
-      status: pix ? 'pending' : 'requested',
-      method: (args.method as string) ?? null,
+      id: data.invoiceId,
+      amountCents: data.amountCents ?? null,
+      code: data.pixCode ?? null,
+      qrSrc: qrImageSrc(data.pixQrBase64),
+      expiresAt: data.expiresAt ?? null,
+      status: data.status === 'paid' ? 'paid' : 'pending',
       livemode: true,
-      poll: pix ? { tool: 'get_invoice', args: { invoiceId: String(args.invoiceId) } } : null,
+      poll: { tool: 'get_invoice', args: { invoiceId: data.invoiceId } },
     };
   }
 

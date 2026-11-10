@@ -567,7 +567,7 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 - "What's my current billing balance?"
 - "What's my billing status?"
 - "Show me my invoices"
-- "Pay invoice abc123 via PIX"
+- "Generate the PIX for my open invoice"
 - "Add R$100 in billing credits"
 - "Do I have a card on file?"
 - "Remove my saved card"

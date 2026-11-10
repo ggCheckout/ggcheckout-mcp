@@ -13,7 +13,7 @@ export function GgApp({ host }: { host: Host }) {
   if (state.error) return <p className="state" data-tone="error" role="alert">{state.error}</p>;
   if (state.payload === undefined) return <div className="skeleton" style={{ height: 220 }} aria-busy="true" />;
 
-  switch (pickView(state.toolName, state.payload, state.args)) {
+  switch (pickView(state.toolName, state.payload)) {
     case 'sales':
       return <SalesView key={state.generation} host={host} state={state} />;
     case 'funnel':

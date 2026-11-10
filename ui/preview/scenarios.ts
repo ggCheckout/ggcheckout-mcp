@@ -1,5 +1,5 @@
 import {
-  billingBalance, billingStatus, billingStatusOverdue, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
+  billingBalance, billingStatus, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
 } from './fixtures';
 
 export interface Scenario {
@@ -35,7 +35,7 @@ export const SCENARIOS: Scenario[] = [
   { id: 'ledger', question: 'Me mostra o extrato de crédito', tool: 'list_credits', args: {}, result: ledgerPages[0] },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
-  { id: 'invoice-card', question: 'Paga a fatura no cartão', tool: 'pay_invoice', args: { invoiceId: 'inv_42', method: 'card' }, result: { success: true } },
+  { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
 ];
 
 /** Answers the app's tools/call like the server would, from the same fixtures. */
@@ -47,6 +47,7 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     // The charge is paid on the third poll, so the preview shows the switch to "confirmed".
     case 'get_payments_paginated': return paymentsPage(args);
     case 'get_payment_intent': return paymentIntent(++polls.count >= 3 ? 'succeeded' : 'requires_action');
+    case 'get_invoice': return { invoice: { ...invoices[0], status: ++polls.count >= 3 ? 'paid' : 'overdue' } };
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
     default: throw new Error(`no fixture for ${name}`);

@@ -41,6 +41,15 @@ right now.
   limit and the credit level, the invoice history with each invoice's breakdown, and the credit
   statement, paged through the tool.
 
+### Changed
+
+- `pay_invoice` answers the PIX of the open invoice (`invoiceId`, `amountCents`, `status`, `pixCode`,
+  `pixQrBase64`, `expiresAt`) and no longer takes `method`. It used `/api/billing/invoices/{id}/pay`,
+  which the dashboard retired with the legacy billing and now fails for every seller; it now goes
+  through `/api/billing/pix`, as the dashboard's "Pagar Fatura" does. PIX is the only way left to
+  pay an invoice: card charges are retired and credit is applied on its own (`add_credit` tops it
+  up). Only the open invoice of its track can be paid, and the error names it otherwise.
+
 ### Fixed
 
 - `get_payment` no longer returns the buyer's encrypted CPF and phone (`cpfEnc`, `phoneEnc`) next to
