@@ -40,8 +40,10 @@ function useNow(active: boolean) {
 /** Keeps the status fresh by polling the tool that reads it, until it is final or polling gives up. */
 function usePolledStatus(host: Host, charge: PixCharge, canCallTools: boolean) {
   const [status, setStatus] = useState<PixStatus>(charge.status);
+  const [gaveUp, setGaveUp] = useState(false);
+  const polling = status === 'pending' && canCallTools && !!charge.poll && !gaveUp;
   useEffect(() => {
-    if (status !== 'pending' || !canCallTools || !charge.poll) return;
+    if (!polling || !charge.poll) return;
     const poll = charge.poll;
     const startedAt = Date.now();
     let timer = 0;
@@ -51,6 +53,7 @@ function usePolledStatus(host: Host, charge: PixCharge, canCallTools: boolean) {
       const expiredFor = charge.expiresAt ? Date.now() - Date.parse(charge.expiresAt) : -1;
       if (expiredFor > GRACE_AFTER_EXPIRY_MS || Date.now() - startedAt > POLL_LIMIT_MS) {
         if (expiredFor > 0) setStatus('expired');
+        else setGaveUp(true);
         return;
       }
       if (!document.hidden) {
@@ -71,7 +74,7 @@ function usePolledStatus(host: Host, charge: PixCharge, canCallTools: boolean) {
       stopped = true;
       clearTimeout(timer);
     };
-  }, [host, charge, canCallTools, status]);
+  }, [host, charge, polling]);
 
   useEffect(() => {
     if (status === charge.status || !FINAL_STATUSES.has(status)) return;
@@ -79,7 +82,7 @@ function usePolledStatus(host: Host, charge: PixCharge, canCallTools: boolean) {
     host.tellModel(`${what}: ${STATUS_TEXT[status].toLowerCase()} (visto na tela do PIX).`);
   }, [host, charge, status]);
 
-  return status;
+  return { status, polling, gaveUp };
 }
 
 function CopyButton({ code, field }: { code: string; field: RefObject<HTMLInputElement | null> }) {
@@ -95,7 +98,7 @@ function CopyButton({ code, field }: { code: string; field: RefObject<HTMLInputE
 }
 
 function Charge({ host, charge, canCallTools }: { host: Host; charge: PixCharge; canCallTools: boolean }) {
-  const status = usePolledStatus(host, charge, canCallTools);
+  const { status, polling, gaveUp } = usePolledStatus(host, charge, canCallTools);
   const open = status === 'pending';
   const now = useNow(open);
   const field = useRef<HTMLInputElement>(null);
@@ -125,13 +128,14 @@ function Charge({ host, charge, canCallTools }: { host: Host; charge: PixCharge;
           {charge.amountCents != null && <p className="amount display num">{formatCents(charge.amountCents)}</p>}
           {charge.description && <p className="description">{charge.description}</p>}
         </div>
-        <div className="meta" role="status">
-          <span className="pill" data-status={status}>{STATUS_TEXT[status] ?? status}</span>
-          {open && charge.expiresAt && <span className="muted num">{remaining ? `expira em ${remaining}` : 'prazo encerrado, conferindo'}</span>}
+        <div className="meta">
+          <span className="pill" role="status" data-status={status}>{STATUS_TEXT[status] ?? status}</span>
+          {open && charge.expiresAt && <span className="muted num">{remaining ? `expira em ${remaining}` : polling ? 'prazo encerrado, conferindo' : 'prazo encerrado'}</span>}
           {!charge.livemode && <span className="badge">MODO TESTE</span>}
         </div>
         {charge.code && open && <input ref={field} className="code" value={charge.code} readOnly aria-label="Código PIX copia e cola" />}
         {charge.code && open && <CopyButton code={charge.code} field={field} />}
+        {open && gaveUp && <p className="note faint">Paramos de conferir. Peça para verificar o pagamento de novo.</p>}
         {open && !canCallTools && <p className="note faint">Peça no chat para conferir se o PIX foi pago.</p>}
       </div>
     </div>
