@@ -86,10 +86,16 @@ function DeliveriesPanel({ host, data, canCallTools, notice }: { host: Host; dat
     setBusy(true);
     try {
       const result = summarizeResend(await host.callTool('resend_delivery', { paymentId: state.paymentId }));
-      setMessage({ ok: result?.ok ?? true, text: result?.message ?? 'Mensagem WhatsApp reenviada com sucesso!' });
-      const fresh = summarizeDeliveries(await host.callTool('get_delivery_status', { paymentId: state.paymentId }));
-      if (fresh) setState(fresh);
+      const text = result?.message ?? 'Mensagem WhatsApp reenviada com sucesso!';
+      setMessage({ ok: result?.ok ?? true, text });
       host.tellModel(`O vendedor reenviou pelo chat o WhatsApp do pagamento ${state.paymentId}.`);
+      // The message is out: a failed refresh must not read as a failed resend (a second click would send it twice).
+      try {
+        const fresh = summarizeDeliveries(await host.callTool('get_delivery_status', { paymentId: state.paymentId }));
+        if (fresh) setState(fresh);
+      } catch {
+        setMessage({ ok: result?.ok ?? true, text: `${text} Não foi possível atualizar a lista agora.` });
+      }
     } catch (e) {
       const text = messageOf(e);
       setMessage({ ok: false, text: text || 'Não foi possível reenviar a mensagem WhatsApp.' });

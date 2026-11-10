@@ -1,5 +1,5 @@
 import { Check, ChevronRight, Copy, Power, PowerOff, QrCode, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
 import './chips.css';
 import type { Host, HostSnapshot } from '../host';
@@ -50,7 +50,10 @@ function PairPanel({ host, chip, firstCode, onConnected }: {
   useEffect(() => {
     if (!code || expired) return;
     let live = true;
-    const timer = setInterval(async () => {
+    let timer = 0;
+    // Self-rescheduling: the next read starts only after the previous one settled.
+    const tick = async () => {
+      if (!live) return;
       if (Date.now() - since > POLL_FOR_MS) {
         setExpired(true);
         return;
@@ -60,12 +63,15 @@ function PairPanel({ host, chip, firstCode, onConnected }: {
         if (live && fresh?.status === 'authenticated') {
           onConnected(fresh);
           host.tellModel(`O chip ${fresh.name} foi conectado pela tela do chat.`);
+          return;
         }
       } catch {
         // A failed read is retried on the next tick.
       }
-    }, POLL_MS);
-    return () => { live = false; clearInterval(timer); };
+      if (live) timer = window.setTimeout(tick, POLL_MS);
+    };
+    timer = window.setTimeout(tick, POLL_MS);
+    return () => { live = false; clearTimeout(timer); };
   }, [host, chip.id, code, since, expired, onConnected]);
 
   async function generate(e: React.FormEvent) {
@@ -149,10 +155,15 @@ function UsedBy({ uses }: { uses: NonNullable<Chip['usedBy']> }) {
 }
 
 /** ChipDetailPage: the chip, connecting it with a code, its sessions, and "Reiniciar" behind a confirmation. */
-function ChipDetail({ host, first, firstCode = null, canCallTools, onBack }: {
-  host: Host; first: Chip; firstCode?: string | null; canCallTools: boolean; onBack?: () => void;
+function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onChange }: {
+  host: Host; first: Chip; firstCode?: string | null; canCallTools: boolean; onBack?: () => void; onChange?: (chip: Chip) => void;
 }) {
-  const [chip, setChip] = useState(first);
+  const [chip, setChipState] = useState(first);
+  /** The detail's chip, also reported to the parent so the list shows it after "Voltar". */
+  const setChip = useCallback((next: Chip) => {
+    setChipState(next);
+    onChange?.(next);
+  }, [onChange]);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,10 +174,15 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack }: {
     setError(null);
     try {
       await host.callTool('restart_whatsapp_number', { numberId: chip.id });
-      const fresh = summarizeChip(await host.callTool('get_whatsapp_number', { numberId: chip.id }));
-      if (fresh) setChip(fresh);
       setRound((n) => n + 1);
       host.tellModel(`O chip ${chip.name} foi reiniciado pela tela do chat e precisa ser conectado de novo.`);
+      // The restart happened: a failed refresh must not read as a failed restart.
+      try {
+        const fresh = summarizeChip(await host.callTool('get_whatsapp_number', { numberId: chip.id }));
+        if (fresh) setChip(fresh);
+      } catch {
+        setError('Chip reiniciado, mas não foi possível atualizar o status agora.');
+      }
     } catch {
       setError('Falha ao reiniciar chip. Tenta de novo em alguns segundos.');
     } finally {
@@ -364,6 +380,10 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
 
   const { chip, code } = parts;
   const chips = parts.chips && (list ?? parts.chips);
+  /** A chip changed in the detail replaces its row, so "Voltar" does not show the old status. */
+  const replaceChip = useCallback((next: Chip) => {
+    setList((cur) => (cur ?? parts.chips ?? []).map((c) => (c.id === next.id ? next : c)));
+  }, [parts.chips]);
   if (!chip && !chips && !code) return <p className="state" data-tone="error">A resposta não trouxe chips do WhatsApp.</p>;
   return (
     <div className="dashboard chips">
@@ -371,7 +391,7 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
       {chip && <ChipDetail host={host} first={chip} canCallTools={state.canCallTools} />}
       {chips && (
         <>
-          {open && <ChipDetail key={open.id} host={host} first={open} canCallTools={state.canCallTools} onBack={() => setOpen(null)} />}
+          {open && <ChipDetail key={open.id} host={host} first={open} canCallTools={state.canCallTools} onBack={() => setOpen(null)} onChange={replaceChip} />}
           <div hidden={Boolean(open)}>
             <ChipsList chips={chips} sessions={sessions} canOpen={state.canCallTools} busyId={busyId} onOpen={openChip}
               checking={checking} health={health} onCheck={checkStatus} />

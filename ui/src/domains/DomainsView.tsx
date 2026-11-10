@@ -1,5 +1,5 @@
 import { Check, ChevronRight, Copy, RefreshCw } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
 import './domains.css';
 import domainsIcon from '../art/icon-domains.avif';
@@ -66,8 +66,8 @@ function Outcome({ outcome }: { outcome: VerifyOutcome }) {
 }
 
 /** One domain: its state and the DnsInstructionsModal's content, with "Verificar DNS" through the host. */
-function DomainDetail({ host, first, canCallTools, firstOutcome = null, onBack }: {
-  host: Host; first: Domain; canCallTools: boolean; firstOutcome?: VerifyOutcome | null; onBack?: () => void;
+function DomainDetail({ host, first, canCallTools, firstOutcome = null, onBack, onChange }: {
+  host: Host; first: Domain; canCallTools: boolean; firstOutcome?: VerifyOutcome | null; onBack?: () => void; onChange?: (domain: Domain) => void;
 }) {
   const [domain, setDomain] = useState(first);
   const [outcome, setOutcome] = useState(firstOutcome);
@@ -81,9 +81,17 @@ function DomainDetail({ host, first, canCallTools, firstOutcome = null, onBack }
     try {
       const next = summarizeVerify(await host.callTool('verify_custom_domain', { domainId: domain.id }));
       if (next) setOutcome(next);
-      const fresh = summarizeDomain(await host.callTool('get_custom_domain', { domainId: domain.id }));
-      if (fresh) setDomain(fresh);
       host.tellModel(`Verificação do domínio ${domain.domain} na tela do chat: ${next?.title ?? 'sem resposta'}.`);
+      // The check ran: a failed refresh must not read as a failed check.
+      try {
+        const fresh = summarizeDomain(await host.callTool('get_custom_domain', { domainId: domain.id }));
+        if (fresh) {
+          setDomain(fresh);
+          onChange?.(fresh);
+        }
+      } catch {
+        setError('A verificação foi feita, mas não foi possível atualizar o status agora.');
+      }
     } catch (e) {
       const message = messageOf(e);
       setError(/429|rate|limit/i.test(message)
@@ -191,6 +199,7 @@ export function DomainsView({ host, state }: { host: Host; state: HostSnapshot }
   const [open, setOpen] = useState<Domain | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [list, setList] = useState<DomainList | null>(null);
   const domainId = typeof state.args.domainId === 'string' ? state.args.domainId : null;
 
   // verify_custom_domain answers the check alone: the domain is read again to draw it.
@@ -221,17 +230,26 @@ export function DomainsView({ host, state }: { host: Host; state: HostSnapshot }
     }
   }
 
-  const { domain, list, outcome } = parts;
-  if (!domain && !list && !outcome) return <p className="state" data-tone="error">A resposta não trouxe domínios.</p>;
+  /** A domain changed in the detail replaces its row, so "Voltar" does not show the old status. */
+  const replaceDomain = useCallback((next: Domain) => {
+    setList((cur) => {
+      const base = cur ?? parts.list;
+      return base && { ...base, domains: base.domains.map((d) => (d.id === next.id ? next : d)) };
+    });
+  }, [parts.list]);
+
+  const { domain, outcome } = parts;
+  const shown = parts.list && (list ?? parts.list);
+  if (!domain && !shown && !outcome) return <p className="state" data-tone="error">A resposta não trouxe domínios.</p>;
   return (
     <div className="dashboard domains">
       {failed && <p className="dom-alert" data-tone="danger" role="alert">Não foi possível carregar o domínio. Tente novamente.</p>}
       {domain && <DomainDetail host={host} first={domain} canCallTools={state.canCallTools} />}
-      {list && (
+      {shown && (
         <>
-          {open && <DomainDetail key={open.id} host={host} first={open} canCallTools={state.canCallTools} onBack={() => setOpen(null)} />}
+          {open && <DomainDetail key={open.id} host={host} first={open} canCallTools={state.canCallTools} onBack={() => setOpen(null)} onChange={replaceDomain} />}
           <div hidden={Boolean(open)}>
-            <DomainsList list={list} canOpen={state.canCallTools} busyId={busyId} onOpen={openDomain} />
+            <DomainsList list={shown} canOpen={state.canCallTools} busyId={busyId} onOpen={openDomain} />
           </div>
         </>
       )}
