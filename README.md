@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 196 tools across 20 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 201 tools across 20 domains.
 
 ## Overview
 
@@ -156,7 +156,7 @@ resource), which picks the view by the tool that answered.
 
 ---
 
-## Available Tools (196)
+## Available Tools (201)
 
 ### Products (19 tools)
 
@@ -553,18 +553,24 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 
 ---
 
-### WhatsApp (13 tools)
+### WhatsApp (18 tools)
+
+Follows the dashboard: **chips** are the connected numbers, and a **session** is a primary chip
+with up to two fallbacks that sends for a set of products. Templates belong to sessions. Creating
+or deleting a chip or a session, and connecting an official (Meta) number, are refused to API keys
+on purpose: do those in the dashboard.
 
 **Example prompts:**
+- "Which WhatsApp chips are connected?"
+- "Connect chip abc123 to 5511999999999 with a pairing code"
+- "Restart chip abc123"
 - "List my WhatsApp sessions"
-- "Create a new WhatsApp session called 'Sales'"
-- "Get a pairing code for session abc123 with phone number 5511999999999"
-- "List all message templates"
-- "Create a template for the 'paid' event: 'Hi {nome}, thanks for purchasing {produto}!'"
+- "Make chip def456 the primary of session 'Sales' and abc123 its fallback"
+- "Send session 'Sales' for products p1 and p2"
+- "Create a template for the 'upsell_paid' event in session 'Sales': 'Hi {{nome}}, thanks for purchasing {{produto}}!'"
 - "Disable template abc123"
 - "Check the WhatsApp delivery status for payment xyz789"
 - "Resend the WhatsApp delivery for payment xyz789"
-- "Send a message to 5511999887766 via session abc123: 'Hello!'"
 
 ---
 

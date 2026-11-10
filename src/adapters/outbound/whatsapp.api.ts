@@ -1,61 +1,71 @@
-import type { WhatsAppPort } from '../../core/ports/whatsapp.port.js';
+import type { SessionGroupUpdate, WhatsAppPort } from '../../core/ports/whatsapp.port.js';
 import type {
-  WhatsAppSession, WhatsAppMessageTemplate, WhatsAppDelivery,
-  WhatsAppDeliverySummary, CreateTemplateInput, SendMessageInput,
+  WhatsAppNumber, WhatsAppSessionGroup, WhatsAppMessageTemplate, WhatsAppDelivery,
+  WhatsAppDeliverySummary, CreateTemplateInput, UpdateTemplateInput,
 } from '../../core/types/whatsapp.js';
-import { sanitizeWhatsappSession, sanitizeWhatsappDelivery } from '../../shared/sanitizer.js';
-import { ApiError } from '../../shared/errors.js';
+import { sanitizeWhatsappNumber, sanitizeWhatsappDelivery } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
+const seg = encodeURIComponent;
+
+/**
+ * The dashboard's WhatsApp model: chips (`/api/whatsapp/numbers`) are the connected numbers, and a
+ * session (`/api/whatsapp/groups`) is a primary chip with up to two fallbacks, sending for a set of
+ * products. Creating or deleting a chip or a session, and connecting a Meta chip, refuse API keys
+ * (403 by design); those happen in the dashboard.
+ */
 export class WhatsAppApiAdapter implements WhatsAppPort {
   constructor(private readonly http: HttpClient) {}
 
-  async listSessions(): Promise<WhatsAppSession[]> {
-    const sessions = await this.http.get<WhatsAppSession[]>('/api/whatsapp/sessions');
-    return sessions.map(sanitizeWhatsappSession);
+  async listNumbers(): Promise<WhatsAppNumber[]> {
+    const chips = await this.http.get<WhatsAppNumber[]>('/api/whatsapp/numbers');
+    return chips.map(sanitizeWhatsappNumber);
   }
 
-  async getSession(sessionId: string): Promise<WhatsAppSession> {
-    const session = await this.http.get<WhatsAppSession>(`/api/whatsapp/sessions/${sessionId}`);
-    return sanitizeWhatsappSession(session);
+  async getNumber(numberId: string): Promise<WhatsAppNumber> {
+    return sanitizeWhatsappNumber(await this.http.get<WhatsAppNumber>(`/api/whatsapp/numbers/${seg(numberId)}`));
   }
 
-  /**
-   * This route blocks API keys deliberately — it is classed as sensitive, and the refusal is
-   * logged as a security event — so it answers 403 and no key will ever work. Listing, deleting
-   * and the pairing code all accept the key; only creating does not.
-   */
-  async createSession(sessionName: string): Promise<WhatsAppSession> {
-    try {
-      const session = await this.http.post<WhatsAppSession>('/api/whatsapp/sessions', { sessionName });
-      return sanitizeWhatsappSession(session);
-    } catch (error) {
-      if (error instanceof ApiError && error.statusCode === 403) {
-        throw new ApiError(
-          403,
-          'Creating a WhatsApp session is blocked for API keys on purpose: the route only accepts a '
-          + 'browser session or a Firebase ID token, and the refusal is logged. Retrying will not help '
-          + 'and no argument changes it. Create the session in the dashboard, then list_whatsapp_sessions, '
-          + 'get_pairing_code and the template tools all work with this API key.',
-          error,
-        );
-      }
-      throw error;
-    }
+  async setNumberActive(numberId: string, isActive: boolean): Promise<WhatsAppNumber> {
+    return sanitizeWhatsappNumber(await this.http.patch<WhatsAppNumber>(`/api/whatsapp/numbers/${seg(numberId)}`, { isActive }));
   }
 
-  async deleteSession(sessionId: string): Promise<void> {
-    await this.http.delete(`/api/whatsapp/sessions/${sessionId}`);
-  }
-
-  async getPairingCode(sessionId: string, phoneNumber: string) {
-    return this.http.post<{ success: boolean; code: string }>(
-      `/api/whatsapp/sessions/${sessionId}/pairing-code`, { phoneNumber },
+  async getPairingCode(numberId: string, phoneNumber: string) {
+    return this.http.post<{ success: boolean; code: string; message?: string }>(
+      `/api/whatsapp/numbers/${seg(numberId)}/pairing-code`, { phoneNumber },
     );
   }
 
+  async restartNumber(numberId: string) {
+    return this.http.post<{ message: string; numberId: string }>(`/api/whatsapp/numbers/${seg(numberId)}/restart`);
+  }
+
+  async listSessions(): Promise<WhatsAppSessionGroup[]> {
+    return this.http.get<WhatsAppSessionGroup[]>('/api/whatsapp/groups');
+  }
+
+  async getSession(sessionId: string): Promise<WhatsAppSessionGroup> {
+    return this.http.get<WhatsAppSessionGroup>(`/api/whatsapp/groups/${seg(sessionId)}`);
+  }
+
+  async updateSession(sessionId: string, update: SessionGroupUpdate): Promise<WhatsAppSessionGroup> {
+    return this.http.patch<WhatsAppSessionGroup>(`/api/whatsapp/groups/${seg(sessionId)}`, update);
+  }
+
+  async addSessionNumber(sessionId: string, numberId: string): Promise<WhatsAppSessionGroup> {
+    return this.http.post<WhatsAppSessionGroup>(`/api/whatsapp/groups/${seg(sessionId)}/numbers`, { numberId });
+  }
+
+  async removeSessionNumber(sessionId: string, numberId: string): Promise<WhatsAppSessionGroup> {
+    return this.http.delete<WhatsAppSessionGroup>(`/api/whatsapp/groups/${seg(sessionId)}/numbers/${seg(numberId)}`);
+  }
+
+  async setSessionProducts(sessionId: string, productIds: string[]): Promise<WhatsAppSessionGroup> {
+    return this.http.patch<WhatsAppSessionGroup>(`/api/whatsapp/groups/${seg(sessionId)}/products`, { assignedProducts: productIds });
+  }
+
   async listTemplates(sessionId?: string): Promise<WhatsAppMessageTemplate[]> {
-    const url = sessionId ? `/api/whatsapp/templates?sessionId=${sessionId}` : '/api/whatsapp/templates';
+    const url = sessionId ? `/api/whatsapp/templates?sessionId=${seg(sessionId)}` : '/api/whatsapp/templates';
     return this.http.get<WhatsAppMessageTemplate[]>(url);
   }
 
@@ -63,32 +73,26 @@ export class WhatsAppApiAdapter implements WhatsAppPort {
     return this.http.post<WhatsAppMessageTemplate>('/api/whatsapp/templates', input);
   }
 
-  async updateTemplate(templateId: string, input: Partial<CreateTemplateInput>): Promise<WhatsAppMessageTemplate> {
-    return this.http.patch<WhatsAppMessageTemplate>(`/api/whatsapp/templates/${templateId}`, input);
+  async updateTemplate(templateId: string, input: UpdateTemplateInput): Promise<WhatsAppMessageTemplate> {
+    return this.http.patch<WhatsAppMessageTemplate>(`/api/whatsapp/templates/${seg(templateId)}`, input);
   }
 
   async toggleTemplate(templateId: string): Promise<WhatsAppMessageTemplate> {
-    return this.http.post<WhatsAppMessageTemplate>(`/api/whatsapp/templates/${templateId}/toggle`);
+    return this.http.post<WhatsAppMessageTemplate>(`/api/whatsapp/templates/${seg(templateId)}/toggle`);
   }
 
   async deleteTemplate(templateId: string): Promise<void> {
-    await this.http.delete(`/api/whatsapp/templates/${templateId}`);
+    await this.http.delete(`/api/whatsapp/templates/${seg(templateId)}`);
   }
 
   async getDeliveryStatus(paymentId: string) {
     const data = await this.http.get<{ deliveries: WhatsAppDelivery[]; summary: WhatsAppDeliverySummary }>(
-      `/api/whatsapp/deliveries/${paymentId}`,
+      `/api/whatsapp/deliveries/${seg(paymentId)}`,
     );
     return { ...data, deliveries: data.deliveries.map(sanitizeWhatsappDelivery) };
   }
 
   async resendDelivery(paymentId: string) {
-    return this.http.post<{ success: boolean; message: string }>(
-      `/api/whatsapp/deliveries/${encodeURIComponent(paymentId)}/resend`,
-    );
-  }
-
-  async sendMessage(input: SendMessageInput) {
-    return this.http.post<{ message: string; data: any }>('/api/whatsapp/send', input);
+    return this.http.post<{ success: boolean; message: string }>(`/api/whatsapp/deliveries/${seg(paymentId)}/resend`);
   }
 }
