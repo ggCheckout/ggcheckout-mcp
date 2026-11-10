@@ -114,7 +114,7 @@ answer as before.
 |------|-------|---------------|
 | Sales | `get_dashboard_stats`, `get_dashboard_charts` | Only the part the user asked about: the period's numbers with the change against the previous one (`get_dashboard_stats`), or the `focus` of `get_dashboard_charts` (`revenue` over time with a hover tooltip, `approval` per method, top `products`, `states`, `refunds`). Without a `focus`, the whole panel. The period buttons call the same tool, with the same focus, again. |
 | Funnel | `get_funnel_lead_stats`, `get_funnel_lead_analytics` | As the funnel editor's Leads tab: the five lead cards (visitors, leads, interaction rate, qualified, completed), or the conversion per step, each bar sized by its visitors and colored by its drop-off (the worst one red). |
-| Payments | `get_payments_paginated`, `list_payments`, `get_payment` | As the dashboard's payments list: customer and offer, date, amount, status badge, gateway with its logo and method. The search and the next page call `get_payments_paginated` again (with `searchTerm` and the `nextCursor`); `list_payments` pages and searches its list locally. A row opens the payment's detail (customer, payment, order bumps), which `get_payment` draws on its own. |
+| Payments | `get_payments_paginated`, `list_payments`, `get_payment` | As the dashboard's payments list: customer and offer, date, amount, status badge, gateway with its logo and method. The search and the next page call `get_payments_paginated` again (with `searchTerm` and the `nextCursor`); `list_payments` answers that same first page, so it pages and searches the same way. A row opens the payment's detail (customer, payment, order bumps), which `get_payment` draws on its own. |
 | Billing | `get_billing_status`, `get_billing_balance`, `list_invoices`, `get_invoice`, `list_credits` | As the seller's billing page: the account balance (signed, green credit or red to pay), the use of the credit limit with its 15% tolerance, the credit level and the next one, and the grace or blocked banner (`get_billing_status`, `get_billing_balance`). The invoice history with status badges, a row opening the invoice's breakdown (`list_invoices`, `get_invoice`). The credit statement (`list_credits`), each closing drawn as its receipt, with older lines loaded through `before`. |
 | Domains | `list_custom_domains`, `get_custom_domain`, `add_custom_domain`, `verify_custom_domain` | As the domain settings: each domain with its status badge, created date and what is missing; a row opens the DNS instructions (the CNAME's name and value, each copied on a click, and the notes). "Verificar DNS" calls `verify_custom_domain` and says what is still missing: the CNAME not seen yet, or the certificate still being issued. |
 | WhatsApp deliveries | `get_delivery_status`, `resend_delivery` | As the payment detail's WhatsApp data: the summary and a card per message (kind, status badge, sent, delivered and read times, attempts, error). The resend button asks first and calls `resend_delivery`, then reads the deliveries again. |
@@ -352,6 +352,10 @@ Tags with name and hex color (max 5 per checkout).
 **Pro Tip:** Use it in follow-up prompts: "Get my business ID, then show me all payments"
 
 #### `list_payments` / `get_payments_paginated` / `get_payment`
+
+`list_payments` is the first page of `get_payments_paginated` with no filters (10 payments by
+default, up to 100), with `total` and `nextCursor`; use `get_payments_paginated` to go further or
+to filter.
 
 **Example prompts:**
 - "Show me all payments for my business"

@@ -33,7 +33,7 @@ describe('summarizePaymentsPage', () => {
     expect(summarizePaymentsPage({ payments: [], total: 0 })!.total).toBe(0);
   });
 
-  it('reads list_payments, which has no cursor', () => {
+  it('reads a bare list, with no cursor and no count', () => {
     expect(summarizePaymentsPage({ payments: [paid] })).toMatchObject({ nextCursor: null, total: null });
   });
 });

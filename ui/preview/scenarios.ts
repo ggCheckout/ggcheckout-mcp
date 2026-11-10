@@ -25,7 +25,7 @@ export const SCENARIOS: Scenario[] = [
   { id: 'funnel', question: 'Onde as pessoas desistem do quiz?', tool: 'get_funnel_lead_analytics', args: { funnelId: 'fn_preview' }, result: funnelAnalytics },
   { id: 'payments', question: 'Quais foram os últimos pagamentos?', tool: 'get_payments_paginated', args: { businessId: 'biz_preview' }, result: paymentsPage({}) },
   { id: 'payments-empty', question: 'Teve pagamento ontem?', tool: 'get_payments_paginated', args: { businessId: 'biz_preview', dateFrom: '2026-11-08T03:00:00Z', dateTo: '2026-11-09T02:59:59Z' }, result: { payments: [], total: 0, totalCapped: false, nextCursor: null } },
-  { id: 'payments-all', question: 'Lista todos os meus pagamentos', tool: 'list_payments', args: { businessId: 'biz_preview' }, result: { payments } },
+  { id: 'payments-all', question: 'Lista todos os meus pagamentos', tool: 'list_payments', args: { businessId: 'biz_preview' }, result: paymentsPage({}) },
   { id: 'payment', question: 'Me mostra o pagamento do Bruno', tool: 'get_payment', args: { businessId: 'biz_preview', paymentId: payments[1].id }, result: { payment: payments[1] } },
   { id: 'wallet', question: 'Quanto tenho de saldo na GG?', tool: 'get_billing_status', args: {}, result: billingStatus },
   { id: 'wallet-overdue', question: 'Minha conta está em dia?', tool: 'get_billing_status', args: {}, result: billingStatusOverdue },

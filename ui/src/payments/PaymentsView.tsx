@@ -204,9 +204,10 @@ interface CursorPages {
 function PaymentsList({ host, state, first, onOpen }: {
   host: Host; state: HostSnapshot; first: PaymentsPage; onOpen: (row: PaymentRow) => void;
 }) {
-  // list_payments has no cursor and answers the whole list: pages and search are local. The paginated
-  // tool pages and searches on the server, through the host.
-  const local = state.toolName === 'list_payments' || (!state.toolName && first.nextCursor === null && first.total === null);
+  // Both tools answer a page of get_payments_paginated, and the next page and the search go back to it
+  // through the host. A host that drops the tool name and hands a bare list (no cursor, no count) gets
+  // its pages and search locally, over what it gave.
+  const local = !state.toolName && first.nextCursor === null && first.total === null;
   const remote = !local && state.canCallTools;
   const [query, setQuery] = useState('');
   const [applied, setApplied] = useState('');

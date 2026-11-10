@@ -17,15 +17,19 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
   server.registerTool(
     'list_payments',
     {
-      description: 'List all payments for a specific business',
+      description:
+        'List the newest payments of a business, newest first. The answer is the first page of '
+        + '`get_payments_paginated` with no filters: `total` counts every payment, and `nextCursor` '
+        + '(null on the last page) continues the list through `get_payments_paginated`.',
       inputSchema: {
         businessId: z.string().describe('Business ID to list payments for'),
+        pageSize: z.number().min(1).max(100).optional()
+          .describe('Number of payments to return (default: 10, max 100)'),
       },
       _meta: appMeta(),
     },
-    withDrawnNote(server, createToolHandler('list_payments', async ({ businessId }) => {
-      const payments = await service.list(businessId);
-      return { payments };
+    withDrawnNote(server, createToolHandler('list_payments', async ({ businessId, pageSize }) => {
+      return service.getPaginated(businessId, { pageSize: pageSize ?? 10 });
     })),
   );
 

@@ -20,10 +20,6 @@ export class PaymentService {
     return this.authPort.getMyBusinessId();
   }
 
-  async list(businessId: string): Promise<Payment[]> {
-    return this.paymentPort.list(businessId);
-  }
-
   async getPaginated(
     businessId: string,
     options?: PaginationOptions,

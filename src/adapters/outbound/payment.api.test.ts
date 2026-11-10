@@ -16,12 +16,6 @@ describe('PaymentApiAdapter', () => {
     adapter = new PaymentApiAdapter(http);
   });
 
-  it('list calls correct URL with businessId', async () => {
-    vi.mocked(http.get).mockResolvedValue({ payments: [] });
-    await adapter.list('biz-1');
-    expect(http.get).toHaveBeenCalledWith('/api/get-clients/business/biz-1/payments');
-  });
-
   it('getPaginated builds query string from options', async () => {
     vi.mocked(http.get).mockResolvedValue({ payments: [], total: 0 });
     await adapter.getPaginated('biz-1', { pageSize: 20, status: 'paid', dateFrom: '2024-01-01' });
