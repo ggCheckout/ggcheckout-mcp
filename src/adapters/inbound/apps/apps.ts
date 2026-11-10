@@ -64,7 +64,7 @@ export function registerAppViews(server: McpServer) {
   };
   server.registerResource('ggcheckout_app', APP_URI, {
     mimeType: APP_MIME_TYPE,
-    description: 'GG Checkout views: sales panel (stats and charts) and PIX charges with live status',
+    description: 'GG Checkout views: sales panel, funnel leads, payments, billing wallet and invoices, and PIX charges with live status',
   }, async () => ({
     contents: [{
       uri: APP_URI,

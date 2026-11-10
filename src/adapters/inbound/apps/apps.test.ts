@@ -45,7 +45,7 @@ describe('registerAppViews', () => {
     expect(html).not.toMatch(/<script[^>]+src=/i);
   });
 
-  it('points the tools that answer with a chart or a PIX to their view', async () => {
+  it('points every tool with a view to the app', async () => {
     const client = await connect();
     const { tools } = await client.listTools();
     const uriOf = (name: string) => (tools.find((t) => t.name === name)?._meta as any)?.ui?.resourceUri;
@@ -55,7 +55,8 @@ describe('registerAppViews', () => {
     expect(drawn).toEqual(Object.keys(TOOL_VIEWS).sort());
     // Plain data tools stay without a view.
     expect(uriOf('invalidate_dashboard_cache')).toBeUndefined();
-    expect(uriOf('list_credits')).toBeUndefined();
+    expect(uriOf('get_billing_history')).toBeUndefined();
+    expect(uriOf('get_card_status')).toBeUndefined();
   });
 
   it('tells the model the card is on screen only to a client that draws it', async () => {

@@ -9,13 +9,15 @@ import { createToolHandler } from '../tool-handler.js';
 import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 export function registerBillingTools(server: McpServer, service: BillingService) {
-  server.tool('get_billing_balance', 'Get current billing balance, credit, usage %, and next charge date',
-    createToolHandler('get_billing_balance', async () => service.getBalance()),
-  );
+  server.registerTool('get_billing_balance', {
+    description: 'Get current billing balance, credit, usage %, and next charge date',
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_billing_balance', async () => service.getBalance())));
 
-  server.tool('get_billing_status', 'Get billing status (active, pending_card, grace_period, blocked)',
-    createToolHandler('get_billing_status', async () => service.getStatus()),
-  );
+  server.registerTool('get_billing_status', {
+    description: 'Get billing status (active, pending_card, grace_period, blocked)',
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_billing_status', async () => service.getStatus())));
 
   server.registerTool('get_billing_history', {
     description: 'Get billing history (charges, credits, payments)',
@@ -31,15 +33,17 @@ export function registerBillingTools(server: McpServer, service: BillingService)
       status: z.enum(['pending', 'processing', 'paid', 'failed', 'overdue']).optional().describe('Filter by invoice status'),
       limit: z.number().min(1).max(1000).optional().describe('Max invoices to return (default: 50)'),
     },
-  }, createToolHandler('list_invoices', async (args) => service.listInvoices(args)));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_invoices', async (args) => service.listInvoices(args))));
 
   server.registerTool('get_invoice', {
     description: 'Get details of a specific invoice (fees, transaction count, volume, status)',
     inputSchema: { invoiceId: z.string().describe('Invoice ID') },
-  }, createToolHandler('get_invoice', async ({ invoiceId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_invoice', async ({ invoiceId }) => {
     const invoice = await service.getInvoice(invoiceId);
     return { invoice };
-  }));
+  })));
 
   server.registerTool('pay_invoice', {
     description: 'Pay an invoice via PIX, card, or credits',
@@ -66,7 +70,8 @@ export function registerBillingTools(server: McpServer, service: BillingService)
       before: z.string().optional()
         .describe('Ledger cursor: the `nextBefore` from the previous page (RFC3339)'),
     },
-  }, createToolHandler('list_credits', async (args) => service.listCredits(args)));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_credits', async (args) => service.listCredits(args))));
 
   server.registerTool('add_credit', {
     description:

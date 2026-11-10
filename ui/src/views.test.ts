@@ -14,6 +14,11 @@ describe('pickView', () => {
     expect(pickView(undefined, { steps: [], totalVisitors: 0, overallConversionRate: 0 }, {})).toBe('funnel');
     expect(pickView(undefined, { payments: [], total: 0 }, {})).toBe('payments');
     expect(pickView(undefined, { payment: { id: 'p1', status: 'paid' } }, {})).toBe('payments');
+    expect(pickView(undefined, { status: 'active', isDelinquent: false, netBalanceCents: -5 }, {})).toBe('billing');
+    expect(pickView(undefined, { netBalanceCents: -5, limitWithToleranceCents: 11500, level: 6 }, {})).toBe('billing');
+    expect(pickView(undefined, { invoices: [], total: 0 }, {})).toBe('billing');
+    expect(pickView(undefined, { invoice: { id: 'i1', periodStart: '2026-11-01', status: 'paid' } }, {})).toBe('billing');
+    expect(pickView(undefined, { credits: [], total: 0, ledger: { entries: [], nextBefore: null } }, {})).toBe('billing');
     expect(pickView(undefined, { object: 'payment_intent', id: 'pi_1', status: 'processing' }, {})).toBe('pix');
     expect(pickView(undefined, { anything: true }, {})).toBeNull();
   });

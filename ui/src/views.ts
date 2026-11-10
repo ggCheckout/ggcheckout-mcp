@@ -1,9 +1,10 @@
+import { summarizeInvoice, summarizeInvoices, summarizeLedger, summarizeWallet } from './billing/model';
 import { summarizeCharts, summarizeStats } from './dashboard/model';
 import { summarizeFunnelConversion, summarizeFunnelStats } from './funnel/model';
 import { summarizePayment, summarizePaymentsPage } from './payments/model';
 import { normalizePix } from './pix/model';
 
-export type ViewName = 'sales' | 'funnel' | 'payments' | 'pix';
+export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'pix';
 
 /** Tools with a view (their `_meta.ui.resourceUri` is ui://ggcheckout/app.html) and the view each draws. */
 export const TOOL_VIEWS: Record<string, ViewName> = {
@@ -14,6 +15,11 @@ export const TOOL_VIEWS: Record<string, ViewName> = {
   list_payments: 'payments',
   get_payments_paginated: 'payments',
   get_payment: 'payments',
+  get_billing_status: 'billing',
+  get_billing_balance: 'billing',
+  list_invoices: 'billing',
+  get_invoice: 'billing',
+  list_credits: 'billing',
   create_pix_charge: 'pix',
   get_payment_intent: 'pix',
   add_credit: 'pix',
@@ -30,6 +36,7 @@ export function pickView(toolName: string | undefined, payload: unknown, args: R
   if (summarizeStats(payload) || summarizeCharts(payload)) return 'sales';
   if (summarizeFunnelStats(payload) || summarizeFunnelConversion(payload)) return 'funnel';
   if (summarizePaymentsPage(payload) || summarizePayment(payload)) return 'payments';
+  if (summarizeWallet(payload) || summarizeInvoice(payload) || summarizeInvoices(payload) || summarizeLedger(payload)) return 'billing';
   if (normalizePix(payload, args)) return 'pix';
   return null;
 }

@@ -115,6 +115,7 @@ answer as before.
 | Sales | `get_dashboard_stats`, `get_dashboard_charts` | Only the part the user asked about: the period's numbers with the change against the previous one (`get_dashboard_stats`), or the `focus` of `get_dashboard_charts` (`revenue` over time with a hover tooltip, `approval` per method, top `products`, `states`, `refunds`). Without a `focus`, the whole panel. The period buttons call the same tool, with the same focus, again. |
 | Funnel | `get_funnel_lead_stats`, `get_funnel_lead_analytics` | As the funnel editor's Leads tab: the five lead cards (visitors, leads, interaction rate, qualified, completed), or the conversion per step, each bar sized by its visitors and colored by its drop-off (the worst one red). |
 | Payments | `get_payments_paginated`, `list_payments`, `get_payment` | As the dashboard's payments list: customer and offer, date, amount, status badge, gateway with its logo and method. The search and the next page call `get_payments_paginated` again (with `searchTerm` and the `nextCursor`); `list_payments` pages and searches its list locally. A row opens the payment's detail (customer, payment, order bumps), which `get_payment` draws on its own. |
+| Billing | `get_billing_status`, `get_billing_balance`, `list_invoices`, `get_invoice`, `list_credits` | As the seller's billing page: the account balance (signed, green credit or red to pay), the use of the credit limit with its 15% tolerance, the credit level and the next one, and the grace or blocked banner (`get_billing_status`, `get_billing_balance`). The invoice history with status badges, a row opening the invoice's breakdown (`list_invoices`, `get_invoice`). The credit statement (`list_credits`), each closing drawn as its receipt, with older lines loaded through `before`. |
 | PIX | `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup`, `pay_invoice` | QR code, copy-and-paste button, time left, and the status, polled every 5 s through `get_payment_intent`, `get_credit_topup`, `list_credits` or `get_invoice` until it is paid or expires. |
 
 The views run in the client's sandbox with no network access: their data only arrives through
@@ -838,8 +839,8 @@ network), talking to the host through the official `@modelcontextprotocol/ext-ap
 
 - `src/GgApp.tsx` picks the view; `src/views.ts` maps each tool to its view, and a server test
   checks that this list matches the tools whose `_meta.ui` points to the app.
-- `src/dashboard/`, `src/funnel/`, `src/payments/` and `src/pix/` hold each view, its pure model
-  (`model.ts`, unit tested) and its stylesheet, scoped to the view's root class.
+- `src/dashboard/`, `src/funnel/`, `src/payments/`, `src/billing/` and `src/pix/` hold each view,
+  its pure model (`model.ts`, unit tested) and its stylesheet, scoped to the view's root class.
 - The look follows the seller dashboard of saas-checkout (Seasons tokens, the dashboard cards);
   colors and assets are copied from there and say where from.
 - `preview/` is a real MCP Apps host (`AppBridge`) over invented fixtures, light and dark side by

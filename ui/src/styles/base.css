@@ -109,6 +109,7 @@ body {
 .art-sales-by-payment { --art: url('../art/sales-by-payment-corner.avif'); }
 .art-credit-wallet { --art: url('../art/credit-wallet-corner.avif'); }
 .art-payments-list { --art: url('../art/payments-list-corner.avif'); }
+.art-billing-statement { --art: url('../art/billing-statement-corner.avif'); }
 :root[data-theme='dark'] [class*='art-']::before {
   content: '';
   position: absolute;
@@ -124,6 +125,7 @@ body {
   mix-blend-mode: screen;
 }
 :root[data-theme='dark'] .art-payments-list::before { opacity: 0.4; }
+:root[data-theme='dark'] .art-billing-statement::before { opacity: 0.6; }
 
 /* Brand eyebrow: a short red slash (the CTA's red wedge, well under 8% of the view) and caps. */
 .eyebrow {

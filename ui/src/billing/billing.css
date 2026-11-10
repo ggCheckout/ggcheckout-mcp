@@ -1,0 +1,127 @@
+/* The seller's /billing page (saas components/billing): CreditWalletCard, UsageLimitBar, the folded
+   CreditLevelLadder, InvoiceList with its detail and CreditLedgerList. */
+.dashboard.billing { display: flex; flex-direction: column; gap: 12px; }
+.dashboard .bill-eyebrow { margin: 0; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.14em; color: var(--d-muted); }
+
+/* UnblockInfoBanner */
+.dashboard .bill-banner { --tone: #dc2626; --tint: rgb(239 68 68 / 0.08); display: flex; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--tone) 35%, transparent); background: var(--tint); color: var(--d-fg); font-size: 13px; }
+.dashboard .bill-banner[data-tone='warn'] { --tone: #ea580c; --tint: rgb(249 115 22 / 0.08); }
+.dashboard .bill-banner svg { flex: 0 0 auto; margin-top: 1px; color: var(--tone); }
+.dashboard .bill-banner p { margin: 0; }
+.dashboard .bill-banner-title { font-weight: 700; color: var(--tone); margin-bottom: 2px !important; }
+
+/* The cycle row of "Cobrança da plataforma", with its amber ping. */
+.dashboard .bill-cycle { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 12px; border: 1px solid var(--d-border); background: var(--d-card); font-size: 13px; }
+.dashboard .bill-cycle p { margin: 0; }
+.dashboard .bill-ping { position: relative; flex: 0 0 auto; width: 8px; height: 8px; border-radius: 999px; background: #f59e0b; }
+.dashboard .bill-ping::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: bill-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes bill-ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
+
+/* CreditWalletCard: the signed balance as the hero, the GG blue rule beside it. */
+.dashboard .bill-wallet { overflow: hidden; border-radius: 12px; }
+.dashboard .bill-hero { position: relative; padding: 20px 20px 16px; }
+.dashboard .bill-rule { position: absolute; left: 0; top: 0; bottom: 16px; width: 3px; border-radius: 0 0 999px 999px; background: #3b82f6; }
+.dashboard .bill-title { margin: 0; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; }
+.dashboard .bill-value { margin: 14px 0 0; font-size: 2.75rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.dashboard .bill-value[data-tone='owing'] { color: #ef4444; }
+.dashboard .bill-value[data-tone='credit'] { color: #22c55e; }
+.dashboard .bill-sub { margin: 8px 0 0; font-size: 13px; color: var(--d-muted); }
+.dashboard .bill-line { margin: 4px 0 0; font-size: 13px; color: var(--d-muted); }
+.dashboard .bill-line.danger { color: #ef4444; }
+.dashboard .bill-line strong { font-weight: 600; color: inherit; }
+
+/* UsageLimitBar on the Seasons progress bar: square track, slanted fill, one grow and one sweep. */
+.dashboard .bill-usage { padding: 14px 20px 20px; border-top: 1px solid var(--d-line); }
+.dashboard .bill-usage-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.dashboard .bill-usage-head span { font-size: 14px; font-weight: 600; }
+.dashboard .bill-usage-head [data-tone='warn'] { color: #f59e0b; }
+.dashboard .bill-usage-head [data-tone='danger'] { color: #ef4444; }
+.dashboard .bill-bar { height: 10px; overflow: hidden; background: color-mix(in srgb, var(--season-blue) 17%, var(--d-card)); }
+.dashboard .bill-bar span {
+  --fill: linear-gradient(90deg, #05329d, var(--season-blue) 70%, #3f7bff);
+  position: relative; display: block; height: 100%; min-width: 14px; overflow: hidden; background: var(--fill);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 6px) 100%, 0 100%); transform-origin: left center;
+  animation: bill-grow 1100ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.dashboard .bill-bar[data-tone='warn'] span { --fill: linear-gradient(90deg, #92400e, #d97706 70%, #fbbf24); }
+.dashboard .bill-bar[data-tone='danger'] span { --fill: linear-gradient(90deg, #9b1418, #ed262b 70%, #ff5a5e); }
+.dashboard .bill-bar span::before { content: ''; position: absolute; inset: 0 0 0 auto; width: 10px; background: linear-gradient(90deg, transparent, rgb(255 255 255 / 55%)); }
+.dashboard .bill-bar span::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 45%) 50%, transparent 70%);
+  animation: bill-sweep 900ms ease-out 1000ms both;
+}
+@keyframes bill-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes bill-sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.dashboard .bill-usage-line { margin: 8px 0 0; font-size: 12px; color: var(--d-muted); }
+.dashboard .bill-usage-note { margin: 8px 0 0; font-size: 12px; color: #d97706; }
+
+/* CreditLevelLadder, folded: header, limit and the next gem. */
+.dashboard .bill-level { padding: 14px 20px 20px; border-top: 1px solid var(--d-line); }
+.dashboard .bill-level-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dashboard .bill-level-name { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: #c026d3; }
+:root[data-theme='dark'] .dashboard .bill-level-name { color: #e879f9; }
+.dashboard .bill-pill { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--d-accent); background: color-mix(in srgb, var(--season-blue) 12%, transparent); }
+.dashboard .bill-level-limit { margin: 6px 0 0; font-size: 22px; font-weight: 700; }
+.dashboard .bill-level-next { margin: 6px 0 0; font-size: 12px; color: var(--d-fg); }
+.dashboard .bill-level-hint { margin: 6px 0 0; font-size: 12px; color: var(--d-muted); }
+
+/* Status badges (getStatusBadge). */
+.dashboard .bill-badge { --tint: #f3f4f6; --ink: #374151; display: inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: var(--tint); color: var(--ink); white-space: nowrap; }
+.dashboard .bill-badge[data-status='paid'] { --tint: #dcfce7; --ink: #15803d; }
+.dashboard .bill-badge[data-status='pending'] { --tint: #fef9c3; --ink: #a16207; }
+.dashboard .bill-badge[data-status='processing'] { --tint: #dbeafe; --ink: #1d4ed8; }
+.dashboard .bill-badge:is([data-status='failed'], [data-status='overdue']) { --tint: #fee2e2; --ink: #b91c1c; }
+:root[data-theme='dark'] .dashboard .bill-badge { --tint: rgb(17 24 39 / 0.3); --ink: #9ca3af; }
+:root[data-theme='dark'] .dashboard .bill-badge[data-status='paid'] { --tint: rgb(20 83 45 / 0.3); --ink: #4ade80; }
+:root[data-theme='dark'] .dashboard .bill-badge[data-status='pending'] { --tint: rgb(113 63 18 / 0.3); --ink: #facc15; }
+:root[data-theme='dark'] .dashboard .bill-badge[data-status='processing'] { --tint: rgb(30 58 138 / 0.3); --ink: #60a5fa; }
+:root[data-theme='dark'] .dashboard .bill-badge:is([data-status='failed'], [data-status='overdue']) { --tint: rgb(127 29 29 / 0.3); --ink: #f87171; }
+
+/* InvoiceList and CreditLedgerList */
+.dashboard .bill-list { border-radius: 12px; padding: 0 0 8px; }
+.dashboard .bill-list-head { padding: 20px 20px 12px; }
+.dashboard .bill-list .list-foot { margin: 0 20px; }
+.dashboard .bill-list .empty { padding: 24px 20px; }
+.dashboard .bill-rows, .dashboard .bill-ledger { margin: 0; padding: 0; list-style: none; }
+.dashboard .bill-rows li + li, .dashboard .bill-ledger li + li { border-top: 1px solid var(--d-line); }
+.dashboard .bill-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border: 0; background: transparent; text-align: left; cursor: pointer; transition: background-color 150ms ease; }
+.dashboard .bill-row:hover { background: color-mix(in srgb, var(--d-muted-bg) 40%, transparent); }
+.dashboard .bill-row-main, .dashboard .bill-ledger-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dashboard .bill-row-title { font-size: 14px; font-weight: 500; }
+.dashboard .bill-row-sub, .dashboard .bill-ledger-date { font-size: 12px; color: var(--d-muted); }
+.dashboard .bill-row-side, .dashboard .bill-ledger-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: 0 0 auto; }
+.dashboard .bill-row-amount, .dashboard .bill-ledger-amount { font-size: 14px; font-weight: 600; }
+.dashboard .bill-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 20px; color: var(--d-muted); }
+.dashboard .bill-empty p { margin: 0; font-size: 14px; }
+.dashboard .bill-error { margin: 0 20px 12px; font-size: 13px; color: var(--danger); }
+
+.dashboard .bill-ledger-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 20px; }
+.dashboard .bill-ledger-icon { --c: #22c55e; flex: 0 0 auto; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
+.dashboard .bill-ledger-icon[data-dir='out'] { --c: #ef4444; }
+.dashboard .bill-ledger-icon[data-dir='neutral'] { --c: var(--d-muted); }
+.dashboard .bill-ledger-main { flex: 1; }
+.dashboard .bill-ledger-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; }
+.dashboard .bill-outline { padding: 1px 8px; border-radius: 999px; border: 1px solid var(--d-line); font-size: 11px; font-weight: 500; color: var(--d-muted); }
+.dashboard .bill-note { font-size: 12px; color: var(--d-muted); }
+.dashboard .bill-note.danger { color: #ef4444; }
+.dashboard .bill-ledger-amount[data-dir='in'] { color: #22c55e; }
+.dashboard .bill-ledger-amount[data-dir='out'] { color: #ef4444; }
+.dashboard .bill-ledger-balance { color: var(--d-muted); font-size: 11px; }
+.dashboard .bill-ledger[aria-busy='true'] { opacity: 0.55; }
+
+/* InvoiceDetailsDialog, inline */
+.dashboard .bill-detail { display: flex; flex-direction: column; gap: 10px; }
+.dashboard .bill-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px 4px 4px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 13px; color: var(--d-muted); }
+.dashboard .bill-back:hover { color: var(--d-fg); background: color-mix(in srgb, var(--d-muted-bg) 40%, transparent); }
+.dashboard .bill-detail-card { border-radius: 12px; padding: 20px; }
+.dashboard .bill-detail-head { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.dashboard .bill-detail-amount { margin: 2px 0 0; font-size: 2rem; font-weight: 700; line-height: 1.1; }
+.dashboard .bill-fields { margin: 16px 0 0; display: flex; flex-direction: column; }
+.dashboard .bill-field { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-top: 1px solid var(--d-line); font-size: 13px; }
+.dashboard .bill-field dt { color: var(--d-muted); }
+.dashboard .bill-field dd { margin: 0; text-align: right; font-weight: 500; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard .bill-bar span, .dashboard .bill-bar span::after, .dashboard .bill-ping::after { animation: none; }
+}

@@ -131,3 +131,77 @@ export function paymentsPage(args: Record<string, unknown>) {
     ...(term ? { coverageCapped: true } : {}),
   };
 }
+
+// Billing, in the shapes the billing routes answer for a seller on the new billing (payments).
+export const billingStatus = {
+  status: 'active', isDelinquent: false, graceStage: null, graceEndsAt: null, hasOverdueInvoice: false, isBlocked: false,
+  hasValidCard: false, usesBillingGateway: true, isMigratedToPayments: true, paymentsCreditBalanceCents: 4250,
+  paymentsCreditLevel: 3, paymentsCreditTotalPaidCents: 2310, paymentsClosingAt: '2026-11-13T19:02:59.210836+00:00',
+  paymentsOpenInvoice: null, paymentsUnbilledFeeCents: 1180, paymentsUnbilledSaleCount: 14,
+  paymentsCycleStartedAt: '2026-11-06T19:02:59.210836+00:00', paymentsCreditLimitCents: 2000, paymentsCapExposureCents: -3070,
+  billingStatus: 'active', graceStartedAt: null, usagePercent: 0, netBalanceCents: -3070, limitCents: 2000,
+};
+
+export const billingStatusOverdue = {
+  ...billingStatus, status: 'grace_period', billingStatus: 'grace_period', isDelinquent: true, hasOverdueInvoice: true,
+  graceStage: 'T5', graceEndsAt: '2026-12-31T21:00:00.000Z', paymentsCreditBalanceCents: 0, paymentsCreditLevel: 2,
+  paymentsCreditLimitCents: 1000, limitCents: 1000, paymentsUnbilledFeeCents: 640,
+  paymentsOpenInvoice: { invoiceId: 'inv_overdue', amountCents: 1460, status: 'overdue' }, netBalanceCents: 640,
+};
+
+export const billingBalance = {
+  currentBalanceCents: 0, creditBalanceCents: 0, netBalanceCents: 820, level: 5, limitCents: 7000, limitWithToleranceCents: 8050,
+  usagePercent: 12, usageCents: 820, usageLimitCents: 7000, closingAt: '2026-11-17T13:12:10.357Z', cycleStartAt: '2026-11-10T12:12:10.357Z',
+};
+
+const week = (end: string, i: number) => {
+  const close = new Date(Date.parse(end) - i * 7 * 86_400_000);
+  return { periodStart: new Date(close.getTime() - 7 * 86_400_000).toISOString(), periodEnd: close.toISOString() };
+};
+const invoice = (i: number, status: string, fee: number, credit: number, sales: number, volume: number) => {
+  const { periodStart, periodEnd } = week('2026-11-06T19:02:59.210Z', i);
+  return {
+    id: `inv_${String(i).padStart(3, '0')}`, businessId: 'biz_preview', status, periodStart, periodEnd, createdAt: periodEnd, dueAt: periodEnd,
+    paidAt: status === 'paid' ? periodEnd : null, feeGrossCents: fee, totalFeeCents: fee - credit, creditAppliedCents: credit,
+    prepaidAppliedCents: credit, transactionCount: sales, grossVolumeCents: volume, whatsappUsageCents: i === 1 ? 120 : 0,
+    whatsappMessageCount: i === 1 ? 24 : 0, sacOverageCents: 0, source: 'payments', track: 'sales', paymentAttempts: [], paymentIds: [],
+  };
+};
+export const invoices = [
+  invoice(0, 'overdue', 1460, 0, 18, 287400),
+  ...Array.from({ length: 13 }, (_, i) => invoice(i + 1, 'paid', 900 + ((i * 137) % 700), i % 3 === 0 ? 300 : 900 + ((i * 137) % 700), 9 + (i % 7), 120000 + i * 15350)),
+];
+
+const entry = (id: string, kind: string, amountCents: number, balanceAfterCents: number, createdAt: string, extra: object = {}) => ({
+  id, kind, amountCents, balanceAfterCents, refId: null, description: null, createdAt, invoice: null, pendingInvoice: null, ...extra,
+});
+const closing = (gross: number, credit: number, trigger: 'cap' | 'time') => ({
+  invoice: { invoiceId: 'inv', closedAt: '2026-11-06T19:02:59.210836+00:00', closeTrigger: trigger, grossCents: gross, creditAppliedCents: credit, remainingCents: gross - credit },
+});
+export const ledgerPages = [
+  {
+    credits: [], total: 0,
+    ledger: {
+      entries: [
+        entry('l1', 'topup', 4250, 4250, '2026-11-08T14:21:09.112000+00:00'),
+        entry('l2', 'cycle_debit', -680, 0, '2026-11-06T19:03:03.183191+00:00', closing(1430, 680, 'time')),
+        entry('l3', 'cycle_debit', -2000, 680, '2026-11-01T11:40:12.004000+00:00', closing(2600, 2000, 'cap')),
+        entry('l4', 'debt_settled', -600, 2680, '2026-10-28T09:12:44.000000+00:00', {
+          invoice: { invoiceId: 'inv_old', closedAt: '2026-10-23T19:02:59.210836+00:00', closeTrigger: null, grossCents: null, creditAppliedCents: null, remainingCents: null },
+        }),
+        entry('l5', 'topup', 3000, 3280, '2026-10-28T09:12:43.900000+00:00', { pendingInvoice: { invoiceId: 'inv_old', amountCents: 600, shortfallCents: 0 } }),
+      ],
+      nextBefore: '2026-10-28T09:12:43.900000+00:00|l5',
+    },
+  },
+  {
+    credits: [], total: 0,
+    ledger: {
+      entries: [
+        entry('l6', 'topup', 200, 280, '2026-10-20T16:02:10.000000+00:00', { pendingInvoice: { invoiceId: 'inv_x', amountCents: 900, shortfallCents: 700 } }),
+        entry('l7', 'opening', 80, 80, '2026-10-01T00:00:00.000000+00:00'),
+      ],
+      nextBefore: null,
+    },
+  },
+];

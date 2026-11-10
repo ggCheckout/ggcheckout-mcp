@@ -36,6 +36,10 @@ right now.
   Leads tab: the lead cards, or the conversion bar per step colored by its drop-off.
 - Payments view on `get_payments_paginated`, `list_payments` and `get_payment`, as the dashboard's
   payments list and detail: search and paging through the tool, a row opens the payment's detail.
+- Billing view on `get_billing_status`, `get_billing_balance`, `list_invoices`, `get_invoice` and
+  `list_credits`, as the seller's billing page: the account balance with the use of the credit
+  limit and the credit level, the invoice history with each invoice's breakdown, and the credit
+  statement, paged through the tool.
 
 ### Fixed
 
