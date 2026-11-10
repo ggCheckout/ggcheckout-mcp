@@ -110,7 +110,12 @@ body {
 .art-credit-wallet { --art: url('../art/credit-wallet-corner.avif'); }
 .art-payments-list { --art: url('../art/payments-list-corner.avif'); }
 .art-billing-statement { --art: url('../art/billing-statement-corner.avif'); }
-:root[data-theme='dark'] [class*='art-']::before {
+/* Named one by one: a substring match on "art-" also hits chart-head, chart-body and the rest, and
+   each of them drew its own opaque copy of the inherited --art over the card. */
+:root[data-theme='dark'] :is(
+  .art-sales-chart, .art-approval-rate, .art-sales-by-product, .art-sales-by-payment,
+  .art-credit-wallet, .art-payments-list, .art-billing-statement
+)::before {
   content: '';
   position: absolute;
   top: 0;
