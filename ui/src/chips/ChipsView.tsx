@@ -5,7 +5,7 @@ import './chips.css';
 import type { Host, HostSnapshot } from '../host';
 import { useCopy } from '../lib/useCopy';
 import {
-  canPair, chipStatus, formatCode, pairingPhone, sessionsLabel, summarizeChip, summarizeChips, summarizePairing, type Chip,
+  canPair, chipStatus, formatCode, pairingPhone, sessionByChip, sessionsLabel, summarizeChip, summarizeChips, summarizePairing, type Chip,
 } from './model';
 
 /** How often the chip is read while the seller types the code, and for how long. */
@@ -208,8 +208,8 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack }: {
 }
 
 /** ChipsGrid, as rows: name, number, provider, status and how many sessions use the chip. */
-function ChipsList({ chips, canOpen, busyId, onOpen }: {
-  chips: Chip[]; canOpen: boolean; busyId: string | null; onOpen: (chip: Chip) => void;
+function ChipsList({ chips, sessions, canOpen, busyId, onOpen }: {
+  chips: Chip[]; sessions: Record<string, string> | null; canOpen: boolean; busyId: string | null; onOpen: (chip: Chip) => void;
 }) {
   return (
     <section className="surface ch-card">
@@ -229,6 +229,7 @@ function ChipsList({ chips, canOpen, busyId, onOpen }: {
                 </span>
                 <span className="ch-row-side">
                   <Status chip={c} />
+                  {sessions && <span className="ch-session" data-none={!sessions[c.id] || undefined}>{sessions[c.id] ?? 'Não vinculado'}</span>}
                   <span className="ch-count num">{sessionsLabel(c.sessionsCount)}</span>
                 </span>
                 {canOpen && <ChevronRight size={16} className="ch-chevron" aria-hidden />}
@@ -244,7 +245,7 @@ function ChipsList({ chips, canOpen, busyId, onOpen }: {
           })}
         </ul>
       ) : (
-        <p className="empty">Nenhum chip cadastrado. Cadastre o primeiro em Configurações, WhatsApp.</p>
+        <p className="empty">Nenhum chip cadastrado ainda.</p>
       )}
     </section>
   );
@@ -261,6 +262,7 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
   const [open, setOpen] = useState<Chip | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [sessions, setSessions] = useState<Record<string, string> | null>(null);
   const numberId = typeof state.args.numberId === 'string' ? state.args.numberId : null;
 
   // get_pairing_code answers the code alone: the chip is read to draw it around the code.
@@ -270,6 +272,12 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
       .then((data) => setOpen(summarizeChip(data)))
       .catch(() => setFailed(true));
   }, [host, parts.code, numberId, state.canCallTools]);
+
+  // The list's "Sessão": the first session that uses each chip, read once.
+  useEffect(() => {
+    if (!parts.chips || !state.canCallTools) return;
+    host.callTool('list_whatsapp_sessions', {}).then((data) => setSessions(sessionByChip(data))).catch(() => setSessions(null));
+  }, [host, parts.chips, state.canCallTools]);
 
   useEffect(() => {
     if (parts.chip) host.tellModel(`Chip ${parts.chip.name} aberto na tela do chat.`);
@@ -301,7 +309,7 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
         <>
           {open && <ChipDetail key={open.id} host={host} first={open} canCallTools={state.canCallTools} onBack={() => setOpen(null)} />}
           <div hidden={Boolean(open)}>
-            <ChipsList chips={chips} canOpen={state.canCallTools} busyId={busyId} onOpen={openChip} />
+            <ChipsList chips={chips} sessions={sessions} canOpen={state.canCallTools} busyId={busyId} onOpen={openChip} />
           </div>
         </>
       )}

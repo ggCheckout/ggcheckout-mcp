@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canPair, chipStatus, formatCode, pairingPhone, sessionsLabel, summarizeChip, summarizeChips, summarizePairing } from './model';
+import { sessionByChip, canPair, chipStatus, formatCode, pairingPhone, sessionsLabel, summarizeChip, summarizeChips, summarizePairing } from './model';
 
 // The shapes of /api/whatsapp/numbers after sanitizeWhatsappNumber (phone masked, no qrCode).
 const waha = { uid: 'c1', provider: 'waha', displayName: 'Suporte', status: 'disconnected', phoneNumber: '5531*****4321', isActive: true, groupsCount: 2 };
@@ -44,6 +44,15 @@ describe('chips', () => {
     expect(pairingPhone('(31) 99876-5432')).toBe('5531998765432');
     expect(pairingPhone('+55 31 99876-5432')).toBe('5531998765432');
     expect(pairingPhone('12345')).toBeNull();
+  });
+
+  it('finds the first session that uses each chip, primary or fallback', () => {
+    const map = sessionByChip({ sessions: [
+      { uid: 'g1', name: 'Curso', primaryNumberId: 'c1', fallbackNumberIds: ['c2'] },
+      { uid: 'g2', name: 'Mentoria', primaryNumberId: 'c2', fallbackNumberIds: [] },
+    ] })!;
+    expect(map).toEqual({ c1: 'Curso', c2: 'Curso' });
+    expect(sessionByChip({ numbers: [] })).toBeNull();
   });
 
   it('counts sessions and ignores other payloads', () => {

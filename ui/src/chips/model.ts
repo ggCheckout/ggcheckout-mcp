@@ -107,3 +107,19 @@ export function pairingPhone(input: string): string | null {
 
 /** "1 sessão", "3 sessões". */
 export const sessionsLabel = (n: number) => `${n} ${n === 1 ? 'sessão' : 'sessões'}`;
+
+/**
+ * ChipsSection groupLookupByChipId: each chip's first session, primary or fallback, from
+ * list_whatsapp_sessions `{ sessions }`; null for anything else.
+ */
+export function sessionByChip(data: unknown): Record<string, string> | null {
+  if (!isPayload(data) || !Array.isArray(data.sessions)) return null;
+  const map: Record<string, string> = {};
+  for (const s of data.sessions.filter(isPayload)) {
+    const ids = [s.primaryNumberId, ...(Array.isArray(s.fallbackNumberIds) ? s.fallbackNumberIds : [])];
+    for (const id of ids) {
+      if (typeof id === 'string' && id && !(id in map)) map[id] = text(s.name) ?? 'Sessão';
+    }
+  }
+  return map;
+}
