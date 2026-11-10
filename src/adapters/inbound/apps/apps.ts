@@ -48,13 +48,19 @@ const DRAWN_NOTE =
 
 /**
  * Only for a client that draws the view: a note before the data, so the model does not repeat as text
- * what the card already shows. A text-only client gets the result unchanged.
+ * what the card already shows. A host may give the model `structuredContent` instead of the text, so
+ * the note goes in both (as `_view`, distinct from the `_notice` of third-party data). A text-only
+ * client gets the result unchanged.
  */
 export function withDrawnNote<TArgs>(server: McpServer, handler: (args: TArgs) => Promise<ToolResult>) {
   return async (args: TArgs): Promise<ToolResult> => {
     const result = await handler(args);
     if (result.isError || !clientDrawsViews(server)) return result;
-    return { ...result, content: [{ type: 'text', text: DRAWN_NOTE }, ...result.content] };
+    return {
+      ...result,
+      content: [{ type: 'text', text: DRAWN_NOTE }, ...result.content],
+      ...(result.structuredContent ? { structuredContent: { _view: DRAWN_NOTE, ...result.structuredContent } } : {}),
+    };
   };
 }
 
@@ -64,7 +70,7 @@ export function registerAppViews(server: McpServer) {
   };
   server.registerResource('ggcheckout_app', APP_URI, {
     mimeType: APP_MIME_TYPE,
-    description: 'GG Checkout views: sales panel, funnel leads, payments, billing wallet and invoices, custom domains with their DNS, and PIX charges with live status',
+    description: 'GG Checkout views: sales panel, funnel leads, payments, billing wallet, invoices and credit statement, custom domains with their DNS, WhatsApp deliveries, gateways charge order and stability, rewards trail, post-purchase offers, members area tree, Telegram flow, WhatsApp chips, and PIX charges with live status',
   }, async () => ({
     contents: [{
       uri: APP_URI,

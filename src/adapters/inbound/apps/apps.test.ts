@@ -99,4 +99,20 @@ describe('registerAppViews', () => {
     expect(plain).toHaveLength(1);
     expect(JSON.parse(plain[0])).toMatchObject({ totalSales: 1 });
   });
+
+  // A host may hand the model structuredContent instead of the text, so the note rides there too.
+  it('puts the note in structuredContent as _view only for a client that draws it', async () => {
+    const structured = async (drawsViews: boolean) => {
+      const client = await connect(drawsViews);
+      const result = await client.callTool({ name: 'get_dashboard_stats', arguments: {} });
+      return result.structuredContent as Record<string, unknown>;
+    };
+    const drawn = await structured(true);
+    expect(String(drawn._view)).toMatch(/drawn as an interactive card/);
+    expect(drawn).toMatchObject({ totalSales: 1, totalRevenue: 100 });
+
+    const plain = await structured(false);
+    expect(plain).not.toHaveProperty('_view');
+    expect(plain).toMatchObject({ totalSales: 1, totalRevenue: 100 });
+  });
 });
