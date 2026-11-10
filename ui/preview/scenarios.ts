@@ -1,5 +1,5 @@
 import {
-  billingBalance, billingStatus, membersArea, memberCarousels, memberModules, memberLessons, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
+  billingBalance, billingStatus, membersArea, telegramFlows, telegramFlowVisual, telegramFlowBasic, memberCarousels, memberModules, memberLessons, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
 } from './fixtures';
 
 export interface Scenario {
@@ -50,6 +50,8 @@ export const SCENARIOS: Scenario[] = [
   { id: 'members', question: 'Como está a área de membros do Método Aurora?', tool: 'get_members_area', args: { areaId: 'ma_aurora' }, result: membersArea },
   { id: 'members-carousels', question: 'Quais carrosséis tem no curso?', tool: 'list_modules', args: { areaId: 'ma_aurora' }, result: memberCarousels },
   { id: 'members-lessons', question: 'Quais aulas tem em Boas-vindas?', tool: 'list_lessons', args: { areaId: 'ma_aurora', moduleId: 'mc1', sectionId: 'ms1' }, result: memberLessons },
+  { id: 'telegram-flow', question: 'Me mostra o fluxo do meu bot', tool: 'get_telegram_flow', args: { flowId: 'tf_visual' }, result: telegramFlowVisual },
+  { id: 'telegram-flows', question: 'Quais flows meu bot tem?', tool: 'list_telegram_flows', args: { botId: 'bot1' }, result: telegramFlows },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
@@ -76,6 +78,7 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'list_modules': return memberCarousels;
     case 'list_sections': return memberModules[String(args.moduleId)] ?? { sections: [] };
     case 'list_lessons': return memberLessons;
+    case 'get_telegram_flow': return args.flowId === 'tf_basic' ? telegramFlowBasic : telegramFlowVisual;
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
     default: throw new Error(`no fixture for ${name}`);

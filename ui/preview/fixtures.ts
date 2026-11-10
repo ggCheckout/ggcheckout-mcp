@@ -334,3 +334,69 @@ export const memberLessons = {
     { id: 'ml3', order: 2, title: 'Teste rápido de nivelamento', type: 'quiz', locked: true, duration: 0 },
   ],
 };
+
+// Telegram flows (list_telegram_flows, get_telegram_flow), shaped as QA's on 2026-11-10: a visual flow
+// branching on a buttons menu, and a basic one whose remarketing loops back up the column.
+export const telegramFlows = {
+  flows: [
+    { id: 'tf_visual', botId: 'bot1', mode: 'visual', name: 'Menu de compra', nodeCount: 12, published: true },
+    { id: 'tf_basic', botId: 'bot1', mode: 'basic', name: 'PIX ou cartão', nodeCount: 15, published: false },
+  ],
+};
+const node = (id: string, type: string, x: number, y: number, data: Record<string, unknown> = {}) => ({ id, type, position: { x, y }, data });
+const edge = (source: string, target: string, sourceHandle = 'default') => ({ id: `${source}-${target}-${sourceHandle}`, source, target, sourceHandle });
+export const telegramFlowVisual = {
+  flow: {
+    id: 'tf_visual', name: 'Menu de compra', mode: 'visual', published: true, hasUnpublishedChanges: true,
+    nodes: [
+      node('n_start', 'trigger_start', 0, 0, { command: '/start' }),
+      node('n_welcome', 'send_text', 0, 130, { text: '<b>Olá!</b> 👋 Que bom te ver por aqui. Escolha como quer seguir:' }),
+      node('n_menu', 'ask_buttons', 0, 260, { prompt: 'O que você quer fazer?', options: [{ label: 'Grupo VIP' }, { label: 'Cartão' }, { label: 'PIX' }] }),
+      node('n_lead', 'create_lead', -380, 420, { status: 'lead' }),
+      node('n_tag', 'tag_user', -380, 550, { tags: ['vip-teste'] }),
+      node('n_group', 'deliver_group', -380, 680, { message: '🎟️ Seu convite para o grupo VIP:' }),
+      node('n_card', 'card_payment', 0, 420, { checkoutId: '1d27f362-e183-488c-87f3-b507044b9adf' }),
+      node('n_email', 'ask_text', 380, 420, { prompt: 'Qual é o seu e-mail?', variableName: 'email' }),
+      node('n_pix', 'pix_payment', 380, 550, { checkoutId: '1d27f362-e183-488c-87f3-b507044b9adf' }),
+      node('n_ok', 'send_text', 190, 720, { text: '✅ Pagamento aprovado!' }),
+      node('n_deliver', 'deliver_product', 190, 850, { message: 'Aqui está o seu produto:' }),
+      node('n_expired', 'send_text', 520, 720, { text: '⏳ O pagamento expirou. Mande /start para tentar de novo.' }),
+    ],
+    edges: [
+      edge('n_start', 'n_welcome'), edge('n_welcome', 'n_menu'),
+      edge('n_menu', 'n_lead', 'option_0'), edge('n_lead', 'n_tag'), edge('n_tag', 'n_group'),
+      edge('n_menu', 'n_card', 'option_1'), edge('n_card', 'n_ok', 'approved'), edge('n_card', 'n_expired', 'expired'),
+      edge('n_menu', 'n_email', 'option_2'), edge('n_email', 'n_pix'), edge('n_pix', 'n_ok', 'approved'), edge('n_pix', 'n_expired', 'expired'),
+      edge('n_ok', 'n_deliver'),
+    ],
+  },
+};
+const pay = { checkoutId: '1d27f362-e183-488c-87f3-b507044b9adf' };
+export const telegramFlowBasic = {
+  flow: {
+    id: 'tf_basic', name: 'PIX ou cartão', mode: 'basic', published: false, hasUnpublishedChanges: false,
+    nodes: [
+      node('b1', 'trigger_start', 300, 50, { command: '/start' }),
+      node('b2', 'send_typing', 300, 170, { duration: 3 }),
+      node('b3', 'send_text', 300, 290, { text: '👋 Olá! Bem-vindo(a)!\n\nVou te ajudar a encontrar a solução perfeita para você.' }),
+      node('b4', 'ask_buttons', 300, 410, { prompt: 'Como você prefere pagar?', options: [{ label: '💠 PIX' }, { label: '💳 Cartão' }] }),
+      node('b5', 'pix_payment', 300, 530, pay),
+      node('b6', 'send_text', 300, 650, { text: '✅ Pagamento aprovado! Obrigado pela compra.' }),
+      node('b7', 'send_text', 300, 770, { text: '😔 Vi que não foi possível concluir... Preparei uma condição especial só para você:' }),
+      node('b8', 'delay', 300, 890, { seconds: 900 }),
+      node('b9', 'send_text', 300, 1010, { text: '⏳ Não esqueça! Sua oferta exclusiva ainda está ativa.' }),
+      node('b10', 'pix_payment', 300, 1130, pay),
+      node('b11', 'delay', 300, 1250, { seconds: 3600 }),
+      node('b12', 'send_text', 300, 1370, { text: '🔥 Últimas horas! Depois disso, o preço volta ao normal.' }),
+      node('b13', 'pix_payment', 300, 1490, pay),
+      node('b14', 'card_payment', 300, 1610, pay),
+      node('b15', 'send_text', 300, 1730, { text: '✅ Pagamento aprovado! Obrigado pela compra.' }),
+    ],
+    edges: [
+      edge('b1', 'b2'), edge('b2', 'b3'), edge('b3', 'b4'), edge('b4', 'b5', 'option_0'), edge('b5', 'b6', 'approved'), edge('b5', 'b7', 'expired'),
+      edge('b7', 'b8'), edge('b8', 'b9'), edge('b9', 'b10'), edge('b10', 'b6', 'approved'), edge('b10', 'b11', 'expired'),
+      edge('b11', 'b12'), edge('b12', 'b13'), edge('b13', 'b6', 'approved'), edge('b13', 'b8', 'expired'),
+      edge('b4', 'b14', 'option_1'), edge('b14', 'b15', 'approved'),
+    ],
+  },
+};

@@ -36,6 +36,8 @@ describe('pickView', () => {
     expect(pickView(undefined, { modules: [] })).toBe('members');
     expect(pickView(undefined, { sections: [] })).toBe('members');
     expect(pickView(undefined, { lessons: [] })).toBe('members');
+    expect(pickView(undefined, { flow: { id: 'f1', nodes: [], edges: [] } })).toBe('telegram');
+    expect(pickView(undefined, { flows: [] })).toBe('telegram');
     expect(pickView(undefined, { anything: true })).toBeNull();
   });
 });

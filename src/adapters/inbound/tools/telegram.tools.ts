@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { TelegramService } from '../../../core/services/telegram.service.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 export function registerTelegramTools(server: McpServer, service: TelegramService) {
   // =====================
@@ -90,21 +91,24 @@ export function registerTelegramTools(server: McpServer, service: TelegramServic
   // =====================
 
   server.registerTool('list_telegram_flows', {
-    description: 'List Telegram flows. Optionally filter by bot.',
+    description: 'List Telegram flows (name, mode, node count, published). Optionally filter by bot.',
     inputSchema: {
       botId: z.string().optional().describe('Filter by bot ID'),
     },
-  }, createToolHandler('list_telegram_flows', async ({ botId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_telegram_flows', async ({ botId }) => {
     const flows = await service.listFlows(botId);
     return { flows };
-  }));
+  })));
 
   server.registerTool('get_telegram_flow', {
     description: 'Get full details of a Telegram flow (nodes, edges, variables, basicConfig)',
     inputSchema: { flowId: z.string().describe('Flow ID') },
-  }, createToolHandler('get_telegram_flow', async ({ flowId }) => {
-    return service.getFlow(flowId);
-  }));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_telegram_flow', async ({ flowId }) => {
+    const flow = await service.getFlow(flowId);
+    return { flow };
+  })));
 
   server.registerTool('create_telegram_flow', {
     description: 'Create a new Telegram flow. Mode can be "basic" (tab-based funnel) or "visual" (node editor).',

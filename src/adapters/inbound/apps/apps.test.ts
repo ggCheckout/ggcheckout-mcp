@@ -15,6 +15,7 @@ import { registerGatewayTools } from '../tools/gateway.tools.js';
 import { registerRewardsTools } from '../tools/rewards.tools.js';
 import { registerProductTools } from '../tools/product.tools.js';
 import { registerMembersAreaTools } from '../tools/members-area.tools.js';
+import { registerTelegramTools } from '../tools/telegram.tools.js';
 import type { DashboardService } from '../../../core/services/dashboard.service.js';
 import type { BillingService } from '../../../core/services/billing.service.js';
 import type { PaymentsApiClient } from '../../outbound/payments-api.client.js';
@@ -26,6 +27,7 @@ import type { GatewayService } from '../../../core/services/gateway.service.js';
 import type { RewardsService } from '../../../core/services/rewards.service.js';
 import type { ProductService } from '../../../core/services/product.service.js';
 import type { MembersAreaService } from '../../../core/services/members-area.service.js';
+import type { TelegramService } from '../../../core/services/telegram.service.js';
 
 vi.mock('../../../shared/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 
@@ -42,6 +44,7 @@ async function connect(drawsViews = false) {
   registerRewardsTools(server, {} as RewardsService);
   registerProductTools(server, {} as ProductService);
   registerMembersAreaTools(server, {} as MembersAreaService);
+  registerTelegramTools(server, {} as TelegramService);
   registerAppViews(server);
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const capabilities = drawsViews ? { extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: [APP_MIME_TYPE] } } } : {};
@@ -79,6 +82,7 @@ describe('registerAppViews', () => {
     expect(uriOf('list_whatsapp_templates')).toBeUndefined();
     expect(uriOf('list_members_areas')).toBeUndefined();
     expect(uriOf('reorder_modules')).toBeUndefined();
+    expect(uriOf('list_telegram_leads')).toBeUndefined();
   });
 
   it('tells the model the card is on screen only to a client that draws it', async () => {

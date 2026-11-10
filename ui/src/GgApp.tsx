@@ -11,6 +11,7 @@ import { GatewaysView } from './gateways/GatewaysView';
 import { RewardsView } from './rewards/RewardsView';
 import { OffersView } from './offers/OffersView';
 import { MembersView } from './members/MembersView';
+import { TelegramFlowView } from './telegram/TelegramFlowView';
 import { PixView } from './pix/PixView';
 
 export function GgApp({ host }: { host: Host }) {
@@ -40,6 +41,8 @@ export function GgApp({ host }: { host: Host }) {
       return <OffersView key={state.generation} host={host} state={state} />;
     case 'members':
       return <MembersView key={state.generation} host={host} state={state} />;
+    case 'telegram':
+      return <TelegramFlowView key={state.generation} host={host} state={state} />;
     case 'pix':
       return <PixView key={state.generation} host={host} state={state} />;
     default:

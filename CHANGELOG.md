@@ -63,6 +63,8 @@ right now.
   checkout through the upsells and downsells to success, with what each decline does.
 - Members area view on `get_members_area`, `list_modules`, `list_sections` and `list_lessons`: the
   course tree in the seller's names (carousels, modules, lessons), each level read when opened.
+- Telegram flow view on `get_telegram_flow` and `list_telegram_flows`: the flow drawn as the bot's
+  flow editor lays it out, read-only, with published state and unpublished changes.
 
 ### Fixed
 
