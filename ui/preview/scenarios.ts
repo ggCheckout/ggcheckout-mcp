@@ -1,5 +1,5 @@
 import {
-  billingBalance, billingStatus, membersArea, telegramFlows, telegramFlowVisual, telegramFlowBasic, memberCarousels, memberModules, memberLessons, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
+  billingBalance, billingStatus, membersArea, chips, chipDetail, telegramFlows, telegramFlowVisual, telegramFlowBasic, memberCarousels, memberModules, memberLessons, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
 } from './fixtures';
 
 export interface Scenario {
@@ -52,6 +52,9 @@ export const SCENARIOS: Scenario[] = [
   { id: 'members-lessons', question: 'Quais aulas tem em Boas-vindas?', tool: 'list_lessons', args: { areaId: 'ma_aurora', moduleId: 'mc1', sectionId: 'ms1' }, result: memberLessons },
   { id: 'telegram-flow', question: 'Me mostra o fluxo do meu bot', tool: 'get_telegram_flow', args: { flowId: 'tf_visual' }, result: telegramFlowVisual },
   { id: 'telegram-flows', question: 'Quais flows meu bot tem?', tool: 'list_telegram_flows', args: { botId: 'bot1' }, result: telegramFlows },
+  { id: 'chips', question: 'Quais chips do WhatsApp estão conectados?', tool: 'list_whatsapp_numbers', args: {}, result: chips },
+  { id: 'chip-connect', question: 'Conecta meu chip Vendas 2', tool: 'get_whatsapp_number', args: { numberId: 'chip_vendas' }, result: chipDetail('chip_vendas') },
+  { id: 'chip-code', question: 'Gera o código pra conectar o chip Vendas 2', tool: 'get_pairing_code', args: { numberId: 'chip_vendas', phoneNumber: '5531998778877' }, result: { success: true, code: 'K7QW2MZP' } },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
@@ -79,6 +82,10 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'list_sections': return memberModules[String(args.moduleId)] ?? { sections: [] };
     case 'list_lessons': return memberLessons;
     case 'get_telegram_flow': return args.flowId === 'tf_basic' ? telegramFlowBasic : telegramFlowVisual;
+    // The chip connects on the third read, so the preview shows the switch to "Conectado".
+    case 'get_whatsapp_number': return chipDetail(String(args.numberId), args.numberId === 'chip_vendas' && ++polls.count >= 3 ? 'authenticated' : undefined);
+    case 'get_pairing_code': return { success: true, code: 'K7QW2MZP' };
+    case 'restart_whatsapp_number': return { message: 'Chip reiniciado', numberId: args.numberId };
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
     default: throw new Error(`no fixture for ${name}`);

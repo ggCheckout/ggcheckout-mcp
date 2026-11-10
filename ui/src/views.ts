@@ -6,12 +6,13 @@ import { summarizeStats as summarizeGatewayStats, summarizeWallets } from './gat
 import { summarizeRedeem, summarizeRewards } from './rewards/model';
 import { summarizeDownsells, summarizeUpsells } from './offers/model';
 import { summarizeFlow, summarizeFlowList } from './telegram/model';
+import { summarizeChip, summarizeChips, summarizePairing } from './chips/model';
 import { summarizeArea, summarizeCarousels, summarizeLessons, summarizeModules } from './members/model';
 import { summarizeFunnelConversion, summarizeFunnelStats } from './funnel/model';
 import { summarizePayment, summarizePaymentsPage } from './payments/model';
 import { normalizePix } from './pix/model';
 
-export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'members' | 'telegram' | 'pix';
+export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'members' | 'telegram' | 'chips' | 'pix';
 
 /** Tools with a view (their `_meta.ui.resourceUri` is ui://ggcheckout/app.html) and the view each draws. */
 export const TOOL_VIEWS: Record<string, ViewName> = {
@@ -45,6 +46,9 @@ export const TOOL_VIEWS: Record<string, ViewName> = {
   list_lessons: 'members',
   list_telegram_flows: 'telegram',
   get_telegram_flow: 'telegram',
+  list_whatsapp_numbers: 'chips',
+  get_whatsapp_number: 'chips',
+  get_pairing_code: 'chips',
   create_pix_charge: 'pix',
   get_payment_intent: 'pix',
   add_credit: 'pix',
@@ -69,6 +73,7 @@ export function pickView(toolName: string | undefined, payload: unknown): ViewNa
   if (summarizeUpsells(payload) || summarizeDownsells(payload)) return 'offers';
   if (summarizeArea(payload) || summarizeCarousels(payload) || summarizeModules(payload) || summarizeLessons(payload)) return 'members';
   if (summarizeFlow(payload) || summarizeFlowList(payload)) return 'telegram';
+  if (summarizeChip(payload) || summarizeChips(payload) || summarizePairing(payload)) return 'chips';
   if (normalizePix(payload)) return 'pix';
   return null;
 }

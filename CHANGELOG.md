@@ -91,6 +91,9 @@ right now.
   course tree in the seller's names (carousels, modules, lessons), each level read when opened.
 - Telegram flow view on `get_telegram_flow` and `list_telegram_flows`: the flow drawn as the bot's
   flow editor lays it out, read-only, with published state and unpublished changes.
+- WhatsApp chips view on `list_whatsapp_numbers`, `get_whatsapp_number` and `get_pairing_code`:
+  the chips with their status, and a disconnected QR code chip connected in place with a pairing
+  code, read until it connects.
 
 ### Fixed
 

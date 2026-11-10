@@ -400,3 +400,22 @@ export const telegramFlowBasic = {
     ],
   },
 };
+
+// WhatsApp chips (list_whatsapp_numbers, get_whatsapp_number, get_pairing_code), as the server sends
+// them: the phone masked and no QR.
+export const chips = {
+  numbers: [
+    { uid: 'chip_suporte', provider: 'waha', displayName: 'Suporte', status: 'authenticated', phoneNumber: '5531*****4321', isActive: true, groupsCount: 2 },
+    { uid: 'chip_vendas', provider: 'waha', displayName: 'Vendas 2', status: 'disconnected', phoneNumber: '5531*****8877', isActive: true, groupsCount: 1 },
+    { uid: 'chip_oficial', provider: 'meta', displayName: 'Oficial GG', status: 'authenticated', phoneNumber: '5511*****0000', isActive: true, groupsCount: 0 },
+    { uid: 'chip_antigo', provider: 'waha', displayName: '', status: 'banned', phoneNumber: '5521*****1111', isActive: false, groupsCount: 0 },
+  ],
+};
+export const chipDetail = (id: string, status?: string) => {
+  const base = chips.numbers.find((c) => c.uid === id) ?? chips.numbers[1];
+  const usedBy = base.uid === 'chip_suporte'
+    ? [{ groupId: 'g1', name: 'Método Aurora', role: 'primary' }, { groupId: 'g2', name: 'Mentoria', role: 'fallback' }]
+    : base.uid === 'chip_vendas' ? [{ groupId: 'g1', name: 'Método Aurora', role: 'fallback' }] : [];
+  const { groupsCount: _count, ...rest } = base;
+  return { number: { ...rest, status: status ?? base.status, usedBy } };
+};

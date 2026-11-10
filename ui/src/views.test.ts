@@ -38,6 +38,9 @@ describe('pickView', () => {
     expect(pickView(undefined, { lessons: [] })).toBe('members');
     expect(pickView(undefined, { flow: { id: 'f1', nodes: [], edges: [] } })).toBe('telegram');
     expect(pickView(undefined, { flows: [] })).toBe('telegram');
+    expect(pickView(undefined, { numbers: [] })).toBe('chips');
+    expect(pickView(undefined, { number: { uid: 'c1', provider: 'waha', status: 'pending' } })).toBe('chips');
+    expect(pickView(undefined, { success: true, code: 'ABCD1234' })).toBe('chips');
     expect(pickView(undefined, { anything: true })).toBeNull();
   });
 });

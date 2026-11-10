@@ -28,15 +28,16 @@ const templateFields = {
  */
 export function registerWhatsAppTools(server: McpServer, service: WhatsAppService) {
   // --- Chips ---
-  server.tool('list_whatsapp_numbers',
-    `List the WhatsApp chips (connected numbers): status (pending, qr_code, authenticated, disconnected, banned, error), provider (waha = QR code, meta = official API), isActive and how many sessions use each. ${IN_DASHBOARD}`,
-    createToolHandler('list_whatsapp_numbers', async () => ({ numbers: await service.listNumbers() })),
-  );
+  server.registerTool('list_whatsapp_numbers', {
+    description: `List the WhatsApp chips (connected numbers): status (pending, qr_code, authenticated, disconnected, banned, error), provider (waha = QR code, meta = official API), isActive and how many sessions use each. ${IN_DASHBOARD}`,
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_whatsapp_numbers', async () => ({ numbers: await service.listNumbers() }))));
 
   server.registerTool('get_whatsapp_number', {
     description: 'Get a WhatsApp chip with its live status and the sessions that use it (usedBy, with its role: primary or fallback)',
     inputSchema: { numberId: z.string().describe('Chip ID (from list_whatsapp_numbers)') },
-  }, createToolHandler('get_whatsapp_number', async ({ numberId }) => ({ number: await service.getNumber(numberId) })));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_whatsapp_number', async ({ numberId }) => ({ number: await service.getNumber(numberId) }))));
 
   server.registerTool('update_whatsapp_number', {
     description: 'Turn a WhatsApp chip on or off. An inactive chip does not send for any session',
@@ -57,7 +58,8 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
       numberId: z.string().describe('Chip ID (from list_whatsapp_numbers)'),
       phoneNumber: z.string().max(20).describe('The phone number of the WhatsApp to connect, with country and area code (e.g., "5511999999999")'),
     },
-  }, createToolHandler('get_pairing_code', async ({ numberId, phoneNumber }) => service.getPairingCode(numberId, phoneNumber)));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_pairing_code', async ({ numberId, phoneNumber }) => service.getPairingCode(numberId, phoneNumber))));
 
   server.registerTool('restart_whatsapp_number', {
     description: 'Restart a QR code chip (provider waha) that is stuck or disconnected: it goes back to pending and needs connecting again (get_pairing_code)',
