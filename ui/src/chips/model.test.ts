@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sessionByChip, canPair, chipStatus, formatCode, pairingPhone, sessionsLabel, summarizeChip, summarizeChips, summarizePairing } from './model';
+import { sessionByChip, needsRestart, canPair, chipStatus, formatCode, pairingPhone, sessionsLabel, summarizeChip, summarizeChips, summarizePairing } from './model';
 
 // The shapes of /api/whatsapp/numbers after sanitizeWhatsappNumber (phone masked, no qrCode).
 const waha = { uid: 'c1', provider: 'waha', displayName: 'Suporte', status: 'disconnected', phoneNumber: '5531*****4321', isActive: true, groupsCount: 2 };
@@ -25,12 +25,17 @@ describe('chips', () => {
     expect(chipStatus('banned', true).tone).toBe('danger');
   });
 
-  it('pairs only an active QR code chip that is not connected', () => {
+  it('pairs an active QR code chip in the handshake, and restarts a dropped one first', () => {
     const [w, m] = summarizeChips({ numbers: [waha, meta] })!;
-    expect(canPair(w)).toBe(true);
-    expect(canPair(m)).toBe(false);
+    expect(canPair(w)).toBe(false);
+    expect(needsRestart(w)).toBe(true);
+    expect(canPair({ ...w, status: 'pending' })).toBe(true);
+    expect(canPair({ ...w, status: 'qr_code' })).toBe(true);
+    expect(canPair({ ...w, status: 'starting' })).toBe(true);
     expect(canPair({ ...w, status: 'authenticated' })).toBe(false);
-    expect(canPair({ ...w, isActive: false })).toBe(false);
+    expect(canPair({ ...w, status: 'pending', isActive: false })).toBe(false);
+    expect(canPair(m)).toBe(false);
+    expect(needsRestart(m)).toBe(false);
   });
 
   it('reads and formats the pairing code', () => {

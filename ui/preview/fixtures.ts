@@ -406,8 +406,9 @@ export const telegramFlowBasic = {
 export const chips = {
   numbers: [
     { uid: 'chip_suporte', provider: 'waha', displayName: 'Suporte', status: 'authenticated', phoneNumber: '5531*****4321', isActive: true, groupsCount: 2 },
-    { uid: 'chip_vendas', provider: 'waha', displayName: 'Vendas 2', status: 'disconnected', phoneNumber: '5531*****8877', isActive: true, groupsCount: 1 },
+    { uid: 'chip_vendas', provider: 'waha', displayName: 'Vendas 2', status: 'pending', phoneNumber: '5531*****8877', isActive: true, groupsCount: 1 },
     { uid: 'chip_oficial', provider: 'meta', displayName: 'Oficial GG', status: 'authenticated', phoneNumber: '5511*****0000', isActive: true, groupsCount: 0 },
+    { uid: 'chip_reserva', provider: 'waha', displayName: 'Reserva', status: 'disconnected', phoneNumber: '5531*****2222', isActive: true, groupsCount: 0 },
     { uid: 'chip_antigo', provider: 'waha', displayName: '', status: 'banned', phoneNumber: '5521*****1111', isActive: false, groupsCount: 0 },
   ],
 };

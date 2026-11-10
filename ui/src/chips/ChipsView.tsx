@@ -1,11 +1,11 @@
-import { Check, ChevronLeft, ChevronRight, Copy, QrCode, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Copy, Power, PowerOff, QrCode, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
 import './chips.css';
 import type { Host, HostSnapshot } from '../host';
 import { useCopy } from '../lib/useCopy';
 import {
-  canPair, chipStatus, formatCode, pairingPhone, sessionByChip, sessionsLabel, summarizeChip, summarizeChips, summarizePairing, type Chip,
+  canPair, needsRestart, chipStatus, formatCode, pairingPhone, sessionByChip, sessionsLabel, summarizeChip, summarizeChips, summarizePairing, type Chip,
 } from './model';
 
 /** How often the chip is read while the seller types the code, and for how long. */
@@ -164,10 +164,26 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack }: {
       setRound((n) => n + 1);
       host.tellModel(`O chip ${chip.name} foi reiniciado pela tela do chat e precisa ser conectado de novo.`);
     } catch {
-      setError('Não foi possível reiniciar o chip. Tente novamente.');
+      setError('Falha ao reiniciar chip. Tenta de novo em alguns segundos.');
     } finally {
       setBusy(false);
       setConfirming(false);
+    }
+  }
+
+  /** "Desativar" / "Reativar": update_whatsapp_number answers the chip as it is now. */
+  async function toggleActive() {
+    const wasActive = chip.isActive;
+    setBusy(true);
+    setError(null);
+    try {
+      const fresh = summarizeChip(await host.callTool('update_whatsapp_number', { numberId: chip.id, isActive: !wasActive }));
+      setChip(fresh ? { ...fresh, usedBy: fresh.usedBy ?? chip.usedBy } : { ...chip, isActive: !wasActive });
+      host.tellModel(`O chip ${chip.name} foi ${wasActive ? 'desativado' : 'reativado'} pela tela do chat.`);
+    } catch {
+      setError(`${wasActive ? 'Falha ao desativar chip' : 'Falha ao reativar chip'}. Tenta de novo em alguns segundos.`);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -182,8 +198,15 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack }: {
             <h2 className="ch-name">{chip.name}</h2>
             <p className="ch-sub">{chip.phone && <span className="num">{chip.phone}</span>}<Status chip={chip} /><Provider provider={chip.provider} /></p>
           </div>
-          {canCallTools && chip.provider === 'waha' && !confirming && (
-            <button type="button" className="ch-ghost" onClick={() => setConfirming(true)} disabled={busy}><RefreshCw size={14} aria-hidden />Reiniciar</button>
+          {canCallTools && !confirming && (
+            <div className="ch-actions">
+              {chip.provider === 'waha' && (
+                <button type="button" className="ch-ghost" onClick={() => setConfirming(true)} disabled={busy}><RefreshCw size={14} aria-hidden />Reiniciar</button>
+              )}
+              <button type="button" className="ch-ghost" onClick={toggleActive} disabled={busy}>
+                {chip.isActive ? <><PowerOff size={14} aria-hidden />Desativar</> : <><Power size={14} aria-hidden />Reativar</>}
+              </button>
+            </div>
           )}
         </header>
         {confirming && (
@@ -201,7 +224,10 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack }: {
         {canCallTools && canPair(chip) && (
           <PairPanel key={round} host={host} chip={chip} firstCode={round === 0 ? firstCode : null} onConnected={setChip} />
         )}
-        {chip.usedBy && (connected || !canPair(chip)) && <UsedBy uses={chip.usedBy} />}
+        {canCallTools && needsRestart(chip) && (
+          <p className="ch-note">Este chip desconectou. Clique em <strong>Reiniciar</strong> para conectar de novo.</p>
+        )}
+        {chip.usedBy && connected && <UsedBy uses={chip.usedBy} />}
       </section>
     </div>
   );

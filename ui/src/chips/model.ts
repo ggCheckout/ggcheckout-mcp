@@ -84,9 +84,17 @@ export function summarizePairing(data: unknown): string | null {
   return data.code.trim();
 }
 
-/** A QR code chip that is on but not connected: the chat can connect it with a code. */
+/**
+ * ChipDetailPage `showQR`: an active QR code chip in the handshake (pending, qr_code, starting). The
+ * dashboard shows its QR there; the chat, a pairing code. A disconnected chip is restarted first.
+ */
 export function canPair(chip: Chip): boolean {
-  return chip.provider === 'waha' && chip.isActive && ['pending', 'starting', 'qr_code', 'disconnected'].includes(chip.status);
+  return chip.provider === 'waha' && chip.isActive && ['pending', 'starting', 'qr_code'].includes(chip.status);
+}
+
+/** A QR code chip that dropped: "Reiniciar" puts it back in the handshake to connect again. */
+export function needsRestart(chip: Chip): boolean {
+  return chip.provider === 'waha' && chip.isActive && chip.status === 'disconnected';
 }
 
 /** WhatsApp shows the code in two groups of four: "ABCD-EFGH". */

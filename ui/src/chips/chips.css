@@ -48,6 +48,7 @@
 .dashboard .ch-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .dashboard .ch-head-main { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 4px; }
 .dashboard .ch-name { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.dashboard .ch-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .dashboard .ch-ghost { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); color: var(--d-fg); cursor: pointer; font: inherit; font-size: 13px; font-weight: 500; }
 .dashboard .ch-ghost:hover { border-color: var(--season-blue); }
 .dashboard .ch-ghost:disabled { opacity: 0.6; cursor: progress; }

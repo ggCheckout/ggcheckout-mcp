@@ -54,6 +54,7 @@ export const SCENARIOS: Scenario[] = [
   { id: 'telegram-flows', question: 'Quais flows meu bot tem?', tool: 'list_telegram_flows', args: { botId: 'bot1' }, result: telegramFlows },
   { id: 'chips', question: 'Quais chips do WhatsApp estão conectados?', tool: 'list_whatsapp_numbers', args: {}, result: chips },
   { id: 'chip-connect', question: 'Conecta meu chip Vendas 2', tool: 'get_whatsapp_number', args: { numberId: 'chip_vendas' }, result: chipDetail('chip_vendas') },
+  { id: 'chip-dropped', question: 'Por que o chip Reserva não envia?', tool: 'get_whatsapp_number', args: { numberId: 'chip_reserva' }, result: chipDetail('chip_reserva') },
   { id: 'chip-code', question: 'Gera o código pra conectar o chip Vendas 2', tool: 'get_pairing_code', args: { numberId: 'chip_vendas', phoneNumber: '5531998778877' }, result: { success: true, code: 'K7QW2MZP' } },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
@@ -86,6 +87,7 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'get_whatsapp_number': return chipDetail(String(args.numberId), args.numberId === 'chip_vendas' && ++polls.count >= 3 ? 'authenticated' : undefined);
     case 'list_whatsapp_sessions': return { sessions: [{ uid: 'g1', name: 'Método Aurora', primaryNumberId: 'chip_suporte', fallbackNumberIds: ['chip_vendas'] }, { uid: 'g2', name: 'Mentoria', primaryNumberId: 'chip_vendas', fallbackNumberIds: ['chip_suporte'] }] };
     case 'get_pairing_code': return { success: true, code: 'K7QW2MZP' };
+    case 'update_whatsapp_number': return { success: true, ...chipDetail(String(args.numberId)), number: { ...chipDetail(String(args.numberId)).number, isActive: args.isActive } };
     case 'restart_whatsapp_number': return { message: 'Chip reiniciado', numberId: args.numberId };
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
