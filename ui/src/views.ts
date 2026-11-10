@@ -4,11 +4,12 @@ import { summarizeDomain, summarizeDomainList, summarizeVerify } from './domains
 import { summarizeDeliveries, summarizeResend } from './deliveries/model';
 import { summarizeStats as summarizeGatewayStats, summarizeWallets } from './gateways/model';
 import { summarizeRedeem, summarizeRewards } from './rewards/model';
+import { summarizeDownsells, summarizeUpsells } from './offers/model';
 import { summarizeFunnelConversion, summarizeFunnelStats } from './funnel/model';
 import { summarizePayment, summarizePaymentsPage } from './payments/model';
 import { normalizePix } from './pix/model';
 
-export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'pix';
+export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'pix';
 
 /** Tools with a view (their `_meta.ui.resourceUri` is ui://ggcheckout/app.html) and the view each draws. */
 export const TOOL_VIEWS: Record<string, ViewName> = {
@@ -34,6 +35,8 @@ export const TOOL_VIEWS: Record<string, ViewName> = {
   get_gateway_fallback_stats: 'gateways',
   calculate_rewards: 'rewards',
   redeem_reward: 'rewards',
+  list_upsells: 'offers',
+  list_downsells: 'offers',
   create_pix_charge: 'pix',
   get_payment_intent: 'pix',
   add_credit: 'pix',
@@ -55,6 +58,7 @@ export function pickView(toolName: string | undefined, payload: unknown): ViewNa
   if (summarizeDeliveries(payload) || summarizeResend(payload)) return 'deliveries';
   if (summarizeWallets(payload) || summarizeGatewayStats(payload)) return 'gateways';
   if (summarizeRewards(payload) || summarizeRedeem(payload)) return 'rewards';
+  if (summarizeUpsells(payload) || summarizeDownsells(payload)) return 'offers';
   if (normalizePix(payload)) return 'pix';
   return null;
 }

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ProductService } from '../../../core/services/product.service.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 import { isSellerPageUrl } from '../../../shared/external-offer-snippet.js';
 
 export function registerProductTools(server: McpServer, service: ProductService) {
@@ -186,15 +187,16 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'list_upsells',
     {
-      description: 'List all upsells for a product',
+      description: 'List all upsells for a product, in funnel order (`order`); prices in cents',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
       },
+      _meta: appMeta(),
     },
-    createToolHandler('list_upsells', async ({ productId }) => {
+    withDrawnNote(server, createToolHandler('list_upsells', async ({ productId }) => {
       const upsells = await service.listUpsells(productId);
       return { upsells };
-    }),
+    })),
   );
 
   server.registerTool(
@@ -265,15 +267,17 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'list_downsells',
     {
-      description: 'List all downsells for a product',
+      description: 'List all downsells for a product, in funnel order (`order`); prices in cents. They show when the '
+        + 'buyer declines an upsell of the product whose chainBehavior is stop_on_decline',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
       },
+      _meta: appMeta(),
     },
-    createToolHandler('list_downsells', async ({ productId }) => {
+    withDrawnNote(server, createToolHandler('list_downsells', async ({ productId }) => {
       const result = await service.listDownsells(productId);
       return { downsells: result.downsells, count: result.count };
-    }),
+    })),
   );
 
   server.registerTool(

@@ -59,6 +59,8 @@ right now.
   ranking. `get_gateway_fallback_stats` describes its units and its `ranking`.
 - Rewards view on `calculate_rewards` and `redeem_reward`, as the rewards trail, with the WhatsApp
   group redeemed in place. Views can ask the client to open a link (`openLink`).
+- Offers view on `list_upsells` and `list_downsells`: the product's post-purchase funnel, from
+  checkout through the upsells and downsells to success, with what each decline does.
 
 ### Fixed
 

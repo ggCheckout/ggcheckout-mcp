@@ -286,3 +286,17 @@ export const gatewayStats = {
     card: [rank('stripe', 88, 100), rank('pagarme', 81.4, 59)],
   },
 };
+
+// A product's post-purchase funnel (list_upsells, list_downsells), prices in cents.
+export const upsells = {
+  upsells: [
+    { uid: 'up1', order: 0, status: 'active', chainBehavior: 'continue', title: 'Mentoria em grupo', headline: 'Antes de ir: uma vaga na mentoria', price: 19700, originalPrice: 39700, timerEnabled: true, timerMinutes: 10, upsellProductIds: ['p_m'] },
+    { uid: 'up2', order: 1, status: 'active', chainBehavior: 'stop_on_decline', title: 'Kit de templates', headline: null, price: 4700, originalPrice: null, timerEnabled: false, upsellProductIds: ['p_t1', 'p_t2'] },
+  ],
+};
+export const downsells = {
+  downsells: [
+    { uid: 'dn1', order: 1, status: 'active', chainBehavior: 'stop', title: 'Kit essencial', headline: 'Fica com a versão enxuta', price: 1990, originalPrice: 4700, timerEnabled: true, timerMinutes: 5, downsellProductIds: ['p_t1'] },
+  ],
+  count: 1,
+};

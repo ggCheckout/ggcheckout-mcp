@@ -30,6 +30,8 @@ describe('pickView', () => {
     expect(pickView(undefined, { stats: {}, ranking: null, cachedAt: null })).toBe('gateways');
     expect(pickView(undefined, { currentRevenue: 1, milestones: [5000] })).toBe('rewards');
     expect(pickView(undefined, { success: true, redeemType: 'whatsapp_group', redirectUrl: 'https://x' })).toBe('rewards');
+    expect(pickView(undefined, { upsells: [] })).toBe('offers');
+    expect(pickView(undefined, { downsells: [], count: 0 })).toBe('offers');
     expect(pickView(undefined, { anything: true })).toBeNull();
   });
 });
