@@ -29,7 +29,6 @@ export interface DeliverySummary {
   read: number;
   pending: number;
   failed: number;
-  canResend: boolean;
 }
 
 export interface Deliveries {
@@ -91,7 +90,6 @@ export function summarizeDeliveries(data: unknown): Deliveries | null {
       read: count(s.read),
       pending: count(s.pending),
       failed: count(s.failed) + count(s.permanentFailure),
-      canResend: s.canResend === true,
     },
   };
 }

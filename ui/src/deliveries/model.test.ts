@@ -8,7 +8,7 @@ const embedded = {
     { id: 'd1', uid: 'd1', type: 'product_delivery', status: 'read', provider: 'waha', messageId: 'wamid', recipientPhone: '*********7766', sentAt: '2026-11-10T12:00:00Z', readAt: '2026-11-10T12:05:00Z', retryCount: 0 },
     { id: 'd2', uid: 'd2', type: 'order_bump_file_ob9', status: 'sent', recipientPhone: '*********7766', retryCount: 1 },
   ],
-  summary: { total: 2, pending: 0, sent: 1, delivered: 0, read: 1, failed: 0, permanentFailure: 0, canResend: false },
+  summary: { total: 2, pending: 0, sent: 1, delivered: 0, read: 1, failed: 0, permanentFailure: 0 },
 };
 
 describe('summarizeDeliveries', () => {
@@ -18,16 +18,16 @@ describe('summarizeDeliveries', () => {
     expect(deliveries.map((d) => d.label)).toEqual(['Entrega de Produto', 'Arquivo Order Bump']);
     expect(deliveries[0].unconfirmed).toBe(false);
     expect(deliveries[1]).toMatchObject({ provider: 'waha', unconfirmed: true, retryCount: 1 });
-    expect(summary).toMatchObject({ total: 2, read: 1, canResend: false });
+    expect(summary).toMatchObject({ total: 2, read: 1 });
   });
 
   it('reads a legacy delivery by its messageType and customer phone', () => {
     const legacy = summarizeDeliveries({
       deliveries: [{ uid: 'l1', messageType: 'payment_confirmed', status: 'failed', customerPhone: '***99', error: 'PHONE_NOT_ON_WHATSAPP', retryCount: 3 }],
-      summary: { total: 1, failed: 1, permanentFailure: 1, canResend: true },
+      summary: { total: 1, failed: 1, permanentFailure: 1 },
     })!;
     expect(legacy.deliveries[0]).toMatchObject({ label: 'Pagamento Confirmado', phone: '***99', error: 'PHONE_NOT_ON_WHATSAPP' });
-    expect(legacy.summary).toMatchObject({ failed: 2, canResend: true });
+    expect(legacy.summary).toMatchObject({ failed: 2 });
   });
 
   it('ignores other payloads', () => {
