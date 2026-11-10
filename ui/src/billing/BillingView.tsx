@@ -321,6 +321,15 @@ export function BillingView({ host, state }: { host: Host; state: HostSnapshot }
     return { wallet, invoice, invoices, ledger };
   }, [state.payload]);
   const [open, setOpen] = useState<InvoiceRow | null>(null);
+  const [closingAt, setClosingAt] = useState<string | null>(null);
+
+  // The balance answer has no real closing date: the status carries the payments cycle's.
+  useEffect(() => {
+    if (!parts.wallet?.fromBalance || !state.canCallTools) return;
+    host.callTool('get_billing_status', {})
+      .then((data) => setClosingAt(summarizeWallet(data)?.closingAt ?? null))
+      .catch(() => setClosingAt(null));
+  }, [host, parts.wallet, state.canCallTools]);
 
   useEffect(() => {
     const { wallet, invoice, invoices, ledger } = parts;
@@ -339,7 +348,7 @@ export function BillingView({ host, state }: { host: Host; state: HostSnapshot }
   if (!wallet && !invoice && !invoices && !ledger) return <p className="state" data-tone="error">A resposta não trouxe dados da fatura.</p>;
   return (
     <div className="dashboard billing">
-      {wallet && <WalletCard wallet={wallet} />}
+      {wallet && <WalletCard wallet={closingAt ? { ...wallet, closingAt } : wallet} />}
       {invoice && <InvoiceDetail row={invoice} />}
       {invoices && (
         <>

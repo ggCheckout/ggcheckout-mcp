@@ -85,6 +85,7 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'get_telegram_flow': return args.flowId === 'tf_basic' ? telegramFlowBasic : telegramFlowVisual;
     // The chip connects on the third read, so the preview shows the switch to "Conectado".
     case 'get_whatsapp_number': return chipDetail(String(args.numberId), args.numberId === 'chip_vendas' && ++polls.count >= 3 ? 'authenticated' : undefined);
+    case 'get_billing_status': return billingStatus;
     case 'list_whatsapp_sessions': return { sessions: [{ uid: 'g1', name: 'Método Aurora', primaryNumberId: 'chip_suporte', fallbackNumberIds: ['chip_vendas'] }, { uid: 'g2', name: 'Mentoria', primaryNumberId: 'chip_vendas', fallbackNumberIds: ['chip_suporte'] }] };
     case 'get_pairing_code': return { success: true, code: 'K7QW2MZP' };
     case 'update_whatsapp_number': return { success: true, ...chipDetail(String(args.numberId)), number: { ...chipDetail(String(args.numberId)).number, isActive: args.isActive } };

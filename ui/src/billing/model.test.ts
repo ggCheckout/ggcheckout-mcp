@@ -56,7 +56,9 @@ describe('summarizeWallet', () => {
     const wallet = summarizeWallet(balance)!;
     expect(wallet.signedNetCents).toBe(5);
     expect(wallet.limitWithToleranceCents).toBe(11500);
-    expect(wallet.closingAt).toBe(balance.closingAt);
+    // QA 2026-11-10: the balance said 17/11 (now + 7 days); the payments cycle closes on 13/11.
+    expect(wallet.closingAt).toBeNull();
+    expect(wallet.fromBalance).toBe(true);
     expect(wallet.totalPaidCents).toBeNull();
   });
 

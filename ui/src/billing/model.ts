@@ -49,6 +49,8 @@ export interface Wallet {
   totalPaidCents: number | null;
   /** When the cycle closes; null when the account has no cycle. */
   closingAt: string | null;
+  /** get_billing_balance: its cycle dates are not the seller's, so the view reads them from the status. */
+  fromBalance: boolean;
   /** A closed invoice is still unpaid (grace or blocked): the closing is paused until it is paid. */
   overdue: boolean;
   blocked: boolean;
@@ -77,6 +79,7 @@ function fromStatus(s: Payload): Wallet {
     level: num(s.paymentsCreditLevel),
     totalPaidCents: num(s.paymentsCreditTotalPaidCents),
     closingAt: text(s.paymentsClosingAt),
+    fromBalance: false,
     overdue: s.hasOverdueInvoice === true || open?.status === 'overdue' || blocked,
     blocked,
     grace: (s.billingStatus ?? s.status) === 'grace_period',
@@ -97,7 +100,10 @@ function fromBalance(b: Payload): Wallet {
     limitWithToleranceCents: num(b.limitWithToleranceCents) ?? withTolerance(limitCents),
     level: num(b.level),
     totalPaidCents: null,
-    closingAt: text(b.closingAt) ?? text(b.nextChargeAt),
+    // The route still computes a legacy week from the call time (now to now+7d); the payments cycle
+    // closes on its own day, which only get_billing_status (paymentsClosingAt) carries.
+    closingAt: null,
+    fromBalance: true,
     overdue: false,
     blocked: false,
     grace: false,
