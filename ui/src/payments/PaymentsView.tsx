@@ -10,6 +10,7 @@ import receiptLight from '../art/receipt-light.avif';
 import salesIcon from '../art/icon-sales.avif';
 import type { Host, HostSnapshot } from '../host';
 import { formatCents, formatInt } from '../lib/format';
+import { useCopy } from '../lib/useCopy';
 import { gatewayLogo, gatewayName } from '../lib/gateways';
 import {
   formatDetailDate, formatListDate, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment,
@@ -18,16 +19,6 @@ import {
 
 /** Rows per page when list_payments hands over the whole list (the paginated tool's default). */
 const LOCAL_PAGE_SIZE = 10;
-
-function useCopy(): [boolean, (value: string) => void] {
-  const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 1500);
-    return () => clearTimeout(timer);
-  }, [copied]);
-  return [copied, (value) => { navigator.clipboard?.writeText(value).then(() => setCopied(true), () => {}); }];
-}
 
 function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, copy] = useCopy();
