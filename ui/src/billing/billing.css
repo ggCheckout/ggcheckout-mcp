@@ -13,7 +13,7 @@
 /* The cycle row of "Cobrança da plataforma", with its amber ping. */
 .dashboard .bill-cycle { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 12px; border: 1px solid var(--d-border); background: var(--d-card); font-size: 13px; }
 .dashboard .bill-cycle p { margin: 0; }
-.dashboard .bill-ping { position: relative; flex: 0 0 auto; width: 8px; height: 8px; border-radius: 999px; background: #f59e0b; }
+.dashboard .bill-ping { position: relative; flex: 0 0 auto; width: 8px; height: 8px; border-radius: 999px; background: #b45309; }
 .dashboard .bill-ping::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: bill-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
 @keyframes bill-ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
 
@@ -23,19 +23,19 @@
 .dashboard .bill-rule { position: absolute; left: 0; top: 0; bottom: 16px; width: 3px; border-radius: 0 0 999px 999px; background: #3b82f6; }
 .dashboard .bill-title { margin: 0; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; }
 .dashboard .bill-value { margin: 14px 0 0; font-size: 2.75rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
-.dashboard .bill-value[data-tone='owing'] { color: #ef4444; }
-.dashboard .bill-value[data-tone='credit'] { color: #22c55e; }
+.dashboard .bill-value[data-tone='owing'] { color: #dc2626; }
+.dashboard .bill-value[data-tone='credit'] { color: #15803d; }
 .dashboard .bill-sub { margin: 8px 0 0; font-size: 13px; color: var(--d-muted); }
 .dashboard .bill-line { margin: 4px 0 0; font-size: 13px; color: var(--d-muted); }
-.dashboard .bill-line.danger { color: #ef4444; }
+.dashboard .bill-line.danger { color: #dc2626; }
 .dashboard .bill-line strong { font-weight: 600; color: inherit; }
 
 /* UsageLimitBar on the Seasons progress bar: square track, slanted fill, one grow and one sweep. */
 .dashboard .bill-usage { padding: 14px 20px 20px; border-top: 1px solid var(--d-line); }
 .dashboard .bill-usage-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
 .dashboard .bill-usage-head span { font-size: 14px; font-weight: 600; }
-.dashboard .bill-usage-head [data-tone='warn'] { color: #f59e0b; }
-.dashboard .bill-usage-head [data-tone='danger'] { color: #ef4444; }
+.dashboard .bill-usage-head [data-tone='warn'] { color: #b45309; }
+.dashboard .bill-usage-head [data-tone='danger'] { color: #dc2626; }
 .dashboard .bill-bar { height: 10px; overflow: hidden; background: color-mix(in srgb, var(--season-blue) 17%, var(--d-card)); }
 .dashboard .bill-bar span {
   --fill: linear-gradient(90deg, #05329d, var(--season-blue) 70%, #3f7bff);
@@ -54,7 +54,7 @@
 @keyframes bill-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes bill-sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 .dashboard .bill-usage-line { margin: 8px 0 0; font-size: 12px; color: var(--d-muted); }
-.dashboard .bill-usage-note { margin: 8px 0 0; font-size: 12px; color: #d97706; }
+.dashboard .bill-usage-note { margin: 8px 0 0; font-size: 12px; color: #b45309; }
 
 /* CreditLevelLadder, folded: header, limit and the next gem. */
 .dashboard .bill-level { padding: 14px 20px 20px; border-top: 1px solid var(--d-line); }
@@ -97,16 +97,16 @@
 .dashboard .bill-error { margin: 0 20px 12px; font-size: 13px; color: var(--danger); }
 
 .dashboard .bill-ledger-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 20px; }
-.dashboard .bill-ledger-icon { --c: #22c55e; flex: 0 0 auto; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
-.dashboard .bill-ledger-icon[data-dir='out'] { --c: #ef4444; }
+.dashboard .bill-ledger-icon { --c: #15803d; flex: 0 0 auto; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
+.dashboard .bill-ledger-icon[data-dir='out'] { --c: #dc2626; }
 .dashboard .bill-ledger-icon[data-dir='neutral'] { --c: var(--d-muted); }
 .dashboard .bill-ledger-main { flex: 1; }
 .dashboard .bill-ledger-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; }
 .dashboard .bill-outline { padding: 1px 8px; border-radius: 999px; border: 1px solid var(--d-line); font-size: 11px; font-weight: 500; color: var(--d-muted); }
 .dashboard .bill-note { font-size: 12px; color: var(--d-muted); }
-.dashboard .bill-note.danger { color: #ef4444; }
-.dashboard .bill-ledger-amount[data-dir='in'] { color: #22c55e; }
-.dashboard .bill-ledger-amount[data-dir='out'] { color: #ef4444; }
+.dashboard .bill-note.danger { color: #dc2626; }
+.dashboard .bill-ledger-amount[data-dir='in'] { color: #15803d; }
+.dashboard .bill-ledger-amount[data-dir='out'] { color: #dc2626; }
 .dashboard .bill-ledger-balance { color: var(--d-muted); font-size: 11px; }
 .dashboard .bill-ledger[aria-busy='true'] { opacity: 0.55; }
 
@@ -123,3 +123,17 @@
 @media (prefers-reduced-motion: reduce) {
   .dashboard .bill-bar span, .dashboard .bill-bar span::after, .dashboard .bill-ping::after { animation: none; }
 }
+
+/* Dark theme keeps the lighter tints: the 700-level inks above only clear contrast on the light surface. */
+:root[data-theme='dark'] .dashboard .bill-ping { background: #f59e0b; }
+:root[data-theme='dark'] .dashboard .bill-value[data-tone='owing'],
+:root[data-theme='dark'] .dashboard .bill-line.danger,
+:root[data-theme='dark'] .dashboard .bill-usage-head [data-tone='danger'],
+:root[data-theme='dark'] .dashboard .bill-note.danger,
+:root[data-theme='dark'] .dashboard .bill-ledger-amount[data-dir='out'] { color: #f87171; }
+:root[data-theme='dark'] .dashboard .bill-value[data-tone='credit'],
+:root[data-theme='dark'] .dashboard .bill-ledger-amount[data-dir='in'] { color: #4ade80; }
+:root[data-theme='dark'] .dashboard .bill-usage-head [data-tone='warn'] { color: #fbbf24; }
+:root[data-theme='dark'] .dashboard .bill-usage-note { color: #fbbf24; }
+:root[data-theme='dark'] .dashboard .bill-ledger-icon { --c: #4ade80; }
+:root[data-theme='dark'] .dashboard .bill-ledger-icon[data-dir='out'] { --c: #f87171; }

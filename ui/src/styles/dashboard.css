@@ -208,7 +208,7 @@
 .dashboard .method[open] .chevron { transform: rotate(225deg); margin-bottom: -3px; }
 .dashboard .gw-list { display: flex; flex-direction: column; gap: 6px; padding: 0 12px 12px; }
 .dashboard .gw-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto 52px; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; background: var(--d-card); font-size: 13px; }
-.dashboard .gw-logo { display: block; flex: 0 0 auto; border-radius: 8px; object-fit: cover; background: #ffffff; }
+.dashboard .gw-logo { display: block; flex: 0 0 auto; border-radius: 8px; object-fit: contain; background: #ffffff; }
 .dashboard .gw-logo-fallback { display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #111827; }
 .dashboard .gw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .dashboard .gw-rate { text-align: right; font-weight: 700; color: var(--method); }
