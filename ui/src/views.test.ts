@@ -21,6 +21,9 @@ describe('pickView', () => {
     expect(pickView(undefined, { credits: [], total: 0, ledger: { entries: [], nextBefore: null } })).toBe('billing');
     expect(pickView(undefined, { object: 'payment_intent', id: 'pi_1', status: 'processing' })).toBe('pix');
     expect(pickView(undefined, { invoiceId: 'inv_1', amountCents: 100, status: 'overdue', pixCode: 'x', pixQrBase64: null })).toBe('pix');
+    expect(pickView(undefined, { domains: [], total: 0, limit: 5 })).toBe('domains');
+    expect(pickView(undefined, { domain: { id: 'd1', domain: 'pay.loja.com', status: 'pending' } })).toBe('domains');
+    expect(pickView(undefined, { success: true, status: 'pending', checks: {} })).toBe('domains');
     expect(pickView(undefined, { anything: true })).toBeNull();
   });
 });

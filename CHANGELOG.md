@@ -40,6 +40,9 @@ right now.
   `list_credits`, as the seller's billing page: the account balance with the use of the credit
   limit and the credit level, the invoice history with each invoice's breakdown, and the credit
   statement, paged through the tool.
+- Domains view on `list_custom_domains`, `get_custom_domain`, `add_custom_domain` and
+  `verify_custom_domain`, as the domain settings: the domains with their status, the DNS
+  instructions with copy buttons, and "Verificar DNS" through the tool, saying what is still missing.
 
 ### Changed
 
@@ -52,6 +55,10 @@ right now.
 
 ### Fixed
 
+- The custom domain types and descriptions follow the API: a domain has `status` (pending, verified,
+  failed, disabled) and `dnsInstructions`, not `verified` / `dnsRecords`; `verify_custom_domain`
+  answers `status`, `checks` and `cloudflare` and is limited to 10 per minute, not 5 per hour; and
+  `add_custom_domain` takes subdomains only.
 - `get_payment` no longer returns the buyer's encrypted CPF and phone (`cpfEnc`, `phoneEnc`) next to
   the masked ones: every `*Enc` field is dropped from payment answers.
 

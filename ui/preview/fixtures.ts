@@ -211,3 +211,33 @@ export const ledgerPages = [
     },
   },
 ];
+
+// Custom domains, in the shapes the domain routes answer.
+const dnsInstructions = (name: string) => ({
+  type: 'subdomain',
+  txt: { name: '', value: '', type: 'TXT' },
+  pointer: { name, value: 'pay.ggcheckout.app', type: 'CNAME' },
+  notes: [
+    '✅ Configure apenas o registro CNAME abaixo',
+    'Se você usa Cloudflare como DNS, deixe com Proxy desligado (DNS only — nuvem cinza)',
+    'A validação é automática em até 2 minutos após a propagação do DNS',
+    'O SSL será emitido automaticamente pela Cloudflare',
+  ],
+});
+const domain = (id: string, name: string, status: string, createdAt: string) => ({
+  id, domain: name, status, type: 'subdomain', provider: 'cloudflare', addedToVercel: false, cfStatus: status === 'verified' ? 'active' : 'pending',
+  createdAt, updatedAt: createdAt, deleted: false, dnsInstructions: dnsInstructions(name),
+});
+export const domains = [
+  domain('dom_pay', 'pay.metodoaurora.com.br', 'pending', '2026-11-10T03:41:42.805639+00:00'),
+  domain('dom_checkout', 'checkout.clubenorte.com', 'verified', '2026-04-17T19:28:31.359+00:00'),
+  domain('dom_old', 'compra.orbitapro.com', 'failed', '2026-09-02T12:10:00.000+00:00'),
+];
+/** list_custom_domains answers each domain without its instructions. */
+export const domainList = { domains: domains.map(({ dnsInstructions: _, ...d }) => d), total: domains.length, limit: 5 };
+export const verifyPending = {
+  success: true, status: 'pending',
+  checks: { txt: { valid: true, expected: '' }, pointer: { valid: false, expected: 'pay.ggcheckout.app', type: 'CNAME' } },
+  cloudflare: { hostnameStatus: 'pending', sslStatus: 'pending_validation', hostnameActive: false, sslActive: false },
+  message: 'Aguardando propagação DNS e validação automática (até 2 min). Verifique se o CNAME está configurado e o proxy desligado (DNS only).',
+};

@@ -1,5 +1,5 @@
 import {
-  billingBalance, billingStatus, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
+  billingBalance, billingStatus, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
 } from './fixtures';
 
 export interface Scenario {
@@ -33,6 +33,10 @@ export const SCENARIOS: Scenario[] = [
   { id: 'invoices', question: 'Me mostra minhas faturas', tool: 'list_invoices', args: {}, result: { invoices, total: invoices.length } },
   { id: 'invoice', question: 'Abre a fatura em aberto', tool: 'get_invoice', args: { invoiceId: invoices[0].id }, result: { invoice: invoices[0] } },
   { id: 'ledger', question: 'Me mostra o extrato de crédito', tool: 'list_credits', args: {}, result: ledgerPages[0] },
+  { id: 'domains', question: 'Quais domínios eu tenho?', tool: 'list_custom_domains', args: {}, result: domainList },
+  { id: 'domain', question: 'Como configuro o DNS do pay.metodoaurora.com.br?', tool: 'get_custom_domain', args: { domainId: domains[0].id }, result: { domain: domains[0] } },
+  { id: 'domain-add', question: 'Adiciona o domínio pay.metodoaurora.com.br', tool: 'add_custom_domain', args: { domain: domains[0].domain }, result: { success: true, domain: { id: domains[0].id, domain: domains[0].domain, status: 'pending', dnsInstructions: domains[0].dnsInstructions, createdAt: domains[0].createdAt } } },
+  { id: 'domain-verify', question: 'Verifica o DNS do meu domínio', tool: 'verify_custom_domain', args: { domainId: domains[0].id }, result: verifyPending },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
@@ -48,6 +52,8 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'get_payments_paginated': return paymentsPage(args);
     case 'get_payment_intent': return paymentIntent(++polls.count >= 3 ? 'succeeded' : 'requires_action');
     case 'get_invoice': return { invoice: { ...invoices[0], status: ++polls.count >= 3 ? 'paid' : 'overdue' } };
+    case 'get_custom_domain': return { domain: domains.find((d) => d.id === args.domainId) ?? domains[0] };
+    case 'verify_custom_domain': return verifyPending;
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
     default: throw new Error(`no fixture for ${name}`);
