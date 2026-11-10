@@ -2,7 +2,7 @@ import {
   Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, CreditCard, PackagePlus, Search, User, Users,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import '../styles/dashboard.css';
 import './payments.css';
 import receiptDark from '../art/receipt.avif';
@@ -16,7 +16,7 @@ import { GatewayMark } from '../lib/GatewayMark';
 import { gatewayName } from '../lib/gateways';
 import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
 import {
-  initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment,
+  formatPeriodDay, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment,
   summarizePaymentsPage, type PaymentRow, type PaymentsPage,
 } from './model';
 
@@ -194,9 +194,8 @@ function totalLabel(total: number | null, capped: boolean): string {
 }
 
 function periodLabel(args: Record<string, unknown>): string | null {
-  const day = (v: unknown) => (typeof v === 'string' && v ? new Date(v).toLocaleDateString('pt-BR') : null);
-  const from = day(args.dateFrom);
-  const to = day(args.dateTo);
+  const from = formatPeriodDay(args.dateFrom);
+  const to = formatPeriodDay(args.dateTo);
   return from && to ? `${from} - ${to}` : null;
 }
 
@@ -223,6 +222,9 @@ function PaymentsList({ host, state, first, onOpen }: {
   }));
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Only the latest fetch may land: a response that is no longer current is dropped, and only the
+  // current request clears `busy`.
+  const requestId = useRef(0);
 
   const filtered = useMemo(() => {
     if (!local || !applied) return first.payments;
@@ -237,18 +239,20 @@ function PaymentsList({ host, state, first, onOpen }: {
   const rows = local ? filtered.slice((page - 1) * pageSize, page * pageSize) : data.walk.pages[page - 1] ?? [];
   const hasNext = local ? page < (totalPages ?? 1) : page < data.walk.pages.length || (remote && data.walk.cursors[page - 1] != null);
 
+  /** The page, or null when the call failed or a newer fetch superseded this one. */
   async function fetchPage(args: Record<string, unknown>) {
+    const id = ++requestId.current;
     setBusy(true);
     setFailed(false);
     try {
       const next = summarizePaymentsPage(await host.callTool('get_payments_paginated', args));
       if (!next) throw new Error('no page');
-      return next;
+      return id === requestId.current ? next : null;
     } catch {
-      setFailed(true);
+      if (id === requestId.current) setFailed(true);
       return null;
     } finally {
-      setBusy(false);
+      if (id === requestId.current) setBusy(false);
     }
   }
 
@@ -265,7 +269,7 @@ function PaymentsList({ host, state, first, onOpen }: {
   async function search(e: FormEvent) {
     e.preventDefault();
     const term = query.trim();
-    if (term === applied) return;
+    if (busy || term === applied) return;
     if (local) {
       setApplied(term);
       setPage(1);
@@ -303,7 +307,7 @@ function PaymentsList({ host, state, first, onOpen }: {
           {canSearch && (
             <form className="pay-search" role="search" onSubmit={search}>
               <Search size={16} aria-hidden />
-              <input type="search" value={query} placeholder="Buscar..." aria-label="Buscar pagamentos" onChange={(e) => setQuery(e.target.value)} />
+              <input type="search" value={query} placeholder="Buscar..." aria-label="Buscar pagamentos" aria-busy={busy || undefined} onChange={(e) => setQuery(e.target.value)} />
             </form>
           )}
         </div>

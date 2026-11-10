@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import '../styles/dashboard.css';
 import type { Host, HostSnapshot } from '../host';
 import { formatCents, formatInt, formatPercent } from '../lib/format';
@@ -68,6 +68,8 @@ export function SalesView({ host, state }: { host: Host; state: HostSnapshot }) 
   const [range, setRange] = useState<string>(isRange(state.args.range) ? state.args.range : 'week');
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  // Only the latest period switch may land; an older response is dropped.
+  const requestId = useRef(0);
 
   const stats = summarizeStats(payload);
   const charts = stats ? null : summarizeCharts(payload);
@@ -82,23 +84,27 @@ export function SalesView({ host, state }: { host: Host; state: HostSnapshot }) 
   if (!stats && !charts) return <p className="state" data-tone="error">A resposta não trouxe dados do painel.</p>;
 
   const switchRange = async (next: DashboardRange) => {
+    if (busy) return;
+    const id = ++requestId.current;
     const previous = range;
     setRange(next);
     setBusy(true);
     setFailure(null);
     try {
-      setPayload(stats
+      const answer = (stats
         ? await host.callTool('get_dashboard_stats', { range: next })
         : await host.callTool('get_dashboard_charts', {
           range: next,
           ...(timezone ? { tz: timezone } : {}),
           ...(charts?.focus ? { focus: charts.focus } : {}),
         }));
+      if (id === requestId.current) setPayload(answer);
     } catch (error) {
+      if (id !== requestId.current) return;
       setRange(previous);
       setFailure(`Não deu para trocar o período: ${(error as Error).message}`);
     } finally {
-      setBusy(false);
+      if (id === requestId.current) setBusy(false);
     }
   };
 
@@ -109,7 +115,7 @@ export function SalesView({ host, state }: { host: Host; state: HostSnapshot }) 
         {state.canCallTools && (
           <div className="ranges" role="group" aria-label="Período">
             {DASHBOARD_RANGES.map((r) => (
-              <button key={r.value} type="button" aria-pressed={r.value === (busy ? range : period)} onClick={() => r.value !== period && switchRange(r.value)}>
+              <button key={r.value} type="button" aria-pressed={r.value === (busy ? range : period)} disabled={busy} onClick={() => r.value !== period && switchRange(r.value)}>
                 {r.label}
               </button>
             ))}
