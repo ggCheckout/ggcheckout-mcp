@@ -49,6 +49,8 @@ const cases: Array<{ tool: string; field: string; max: number; args: Record<stri
   { tool: 'update_telegram_flow', field: 'nodes', max: 500, args: { flowId: 'f' } },
   { tool: 'update_telegram_flow', field: 'edges', max: 1000, args: { flowId: 'f' } },
   { tool: 'update_telegram_flow', field: 'variables', max: 100, args: { flowId: 'f' } },
+  { tool: 'set_whatsapp_session_products', field: 'productIds', max: 500, args: { sessionId: 's' } },
+  { tool: 'update_whatsapp_session', field: 'fallbackNumberIds', max: 2, args: { sessionId: 's' } },
 ];
 
 describe('collection size limits', () => {

@@ -136,11 +136,24 @@ export function sanitizeGatewayToken<T extends Record<string, any>>(token: T): T
   };
 }
 
-export function sanitizeWhatsappSession<T extends Record<string, any>>(session: T): T {
-  if (!session) return session;
+/**
+ * A chip: masked phone, no QR (it links a device to the account) and no worker address. Of a Meta
+ * chip only the public side stays; the encrypted token and secret and the webhook token are dropped.
+ */
+export function sanitizeWhatsappNumber<T extends Record<string, any>>(chip: T): T {
+  if (!chip) return chip;
+  const meta = chip.meta && typeof chip.meta === 'object'
+    ? {
+      wabaId: chip.meta.wabaId,
+      phoneNumberId: chip.meta.phoneNumberId,
+      businessVerified: chip.meta.businessVerified,
+      qualityRating: chip.meta.qualityRating,
+      messagingTier: chip.meta.messagingTier,
+    }
+    : undefined;
   return stripCredentials(
-    { ...session, phoneNumber: maskPhone(session.phoneNumber) },
-    ['qrCode', 'workerUrl'],
+    { ...chip, phoneNumber: maskPhone(chip.phoneNumber), ...(meta ? { meta } : {}) },
+    ['qrCode', 'workerId', 'workerUrl', 'sessionId'],
   );
 }
 

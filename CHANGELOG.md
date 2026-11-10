@@ -5,6 +5,42 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## Unreleased
+
+### Breaking
+
+- The WhatsApp tools follow the dashboard's model: chips (the connected numbers) and sessions
+  (a primary chip with up to two fallbacks, sending for a set of products). They read the
+  `/api/whatsapp/numbers` and `/api/whatsapp/groups` routes; the legacy `/api/whatsapp/sessions`
+  data they read before is no longer what the dashboard shows, so `list_whatsapp_sessions` came
+  back empty for sellers with sessions.
+  - `list_whatsapp_sessions` and `get_whatsapp_session` answer the dashboard's sessions
+    (`name`, `primaryNumberId`, `fallbackNumberIds`, `assignedProducts`, `isActive`).
+  - `get_pairing_code` takes `numberId` (a chip) instead of `sessionId`.
+  - `create_whatsapp_template` takes `sessionIds` (a list of sessions, possibly empty) instead of
+    `sessionId`, and templates answer `sessionIds`.
+  - Removed `create_whatsapp_session` and `delete_whatsapp_session`: the API refuses both to API
+    keys (403), so they could never work. Create and delete sessions in the dashboard.
+  - Removed `send_whatsapp_message`: it only reached legacy sessions and answered 404 for every
+    session or chip of the dashboard.
+
+### Added
+
+- Chip tools: `list_whatsapp_numbers`, `get_whatsapp_number` (with the sessions that use it and its
+  role), `update_whatsapp_number` (on/off) and `restart_whatsapp_number`.
+- Session tools: `update_whatsapp_session` (name, pause, primary and fallback chips),
+  `add_whatsapp_session_number`, `remove_whatsapp_session_number` and
+  `set_whatsapp_session_products`.
+- Templates take every event the dashboard has (`upsell_*`, `downsell_*`,
+  `recovery_abandoned_cart`, `recovery_card_refused`, `recovery_card_cancelled`), a sending window
+  (`allowedHoursStart`, `allowedHoursEnd`) and `paymentMethods`; `update_whatsapp_template` can
+  relink `sessionIds`.
+
+### Security
+
+- Chips never carry their QR code (it links a device to the account), the worker, or a Meta chip's
+  token, secret and webhook token; the phone stays masked.
+
 ## 0.5.0
 
 ### Breaking

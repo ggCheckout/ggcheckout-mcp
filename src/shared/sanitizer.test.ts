@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   maskCpf, maskPhone, maskEmail, maskToken, stripCredentials,
   sanitizePayment, sanitizeWebhook, sanitizeGatewayToken,
-  sanitizeWhatsappSession, sanitizeLead, sanitizeFunnel,
+  sanitizeWhatsappNumber, sanitizeLead, sanitizeFunnel,
   sanitizeBillingCard, sanitizeStoreConfig, sanitizeCustomer,
   sanitizeFeedback, sanitizeStudent, sanitizePushDevice,
   sanitizeWhatsappDelivery, sanitizeStorePaymentMethods, sanitizeStoreAdminConfig,
@@ -108,14 +108,23 @@ describe('sanitizeGatewayToken', () => {
   });
 });
 
-describe('sanitizeWhatsappSession', () => {
-  it('strips qrCode, workerUrl and masks phoneNumber', () => {
-    const session = { uid: 's1', qrCode: 'base64...', workerUrl: 'https://internal.url', phoneNumber: '5511999887766' };
-    const result = sanitizeWhatsappSession(session);
+describe('sanitizeWhatsappNumber', () => {
+  it('strips the QR, the worker and the WAHA name and masks the phone', () => {
+    const chip = { uid: 'n1', qrCode: 'data:image/png;base64,AA', workerId: 'w1', sessionId: 'waha_1', phoneNumber: '5511999887766' };
+    const result = sanitizeWhatsappNumber(chip);
     expect(result.qrCode).toBeUndefined();
-    expect(result.workerUrl).toBeUndefined();
+    expect(result.workerId).toBeUndefined();
+    expect(result.sessionId).toBeUndefined();
     expect(result.phoneNumber).toContain('****');
-    expect(result.uid).toBe('s1');
+    expect(result.uid).toBe('n1');
+  });
+
+  it('keeps only the public side of a Meta chip', () => {
+    const result = sanitizeWhatsappNumber({
+      uid: 'n2', provider: 'meta',
+      meta: { wabaId: 'w', phoneNumberId: 'p', accessTokenEnc: 'iv:tag:ct', appSecretEnc: 'iv:tag:ct', webhookVerifyToken: 't', qualityRating: 'GREEN' },
+    });
+    expect(result.meta).toEqual({ wabaId: 'w', phoneNumberId: 'p', businessVerified: undefined, qualityRating: 'GREEN', messagingTier: undefined });
   });
 });
 
