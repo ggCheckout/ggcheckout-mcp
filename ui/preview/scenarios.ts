@@ -1,5 +1,5 @@
 import {
-  billingBalance, billingStatus, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
+  billingBalance, billingStatus, membersArea, memberCarousels, memberModules, memberLessons, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
 } from './fixtures';
 
 export interface Scenario {
@@ -47,6 +47,9 @@ export const SCENARIOS: Scenario[] = [
   { id: 'rewards-start', question: 'Quais recompensas eu posso ganhar?', tool: 'calculate_rewards', args: {}, result: { completedGoals: 1, currentRevenue: 7310.5, currentRevenueCents: 731050, fromCache: true, milestones: [5000, 10000, 50000, 100000, 500000, 1000000], totalGoals: 6 } },
   { id: 'upsells', question: 'Como está o funil pós-compra do Método Aurora?', tool: 'list_upsells', args: { productId: 'p_aurora' }, result: upsells },
   { id: 'downsells-orphan', question: 'Quais downsells eu tenho?', tool: 'list_downsells', args: { productId: 'p_orfao' }, result: downsells },
+  { id: 'members', question: 'Como está a área de membros do Método Aurora?', tool: 'get_members_area', args: { areaId: 'ma_aurora' }, result: membersArea },
+  { id: 'members-carousels', question: 'Quais carrosséis tem no curso?', tool: 'list_modules', args: { areaId: 'ma_aurora' }, result: memberCarousels },
+  { id: 'members-lessons', question: 'Quais aulas tem em Boas-vindas?', tool: 'list_lessons', args: { areaId: 'ma_aurora', moduleId: 'mc1', sectionId: 'ms1' }, result: memberLessons },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
@@ -70,6 +73,9 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'redeem_reward': return { success: true, redeemType: 'whatsapp_group', redirectUrl: 'https://chat.whatsapp.com/preview', redeemCount: 1, maxRedeems: 1 };
     case 'list_downsells': return downsells;
     case 'list_upsells': return args.productId === 'p_orfao' ? { upsells: [] } : upsells;
+    case 'list_modules': return memberCarousels;
+    case 'list_sections': return memberModules[String(args.moduleId)] ?? { sections: [] };
+    case 'list_lessons': return memberLessons;
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
     default: throw new Error(`no fixture for ${name}`);

@@ -14,6 +14,7 @@ import { registerWhatsAppTools } from '../tools/whatsapp.tools.js';
 import { registerGatewayTools } from '../tools/gateway.tools.js';
 import { registerRewardsTools } from '../tools/rewards.tools.js';
 import { registerProductTools } from '../tools/product.tools.js';
+import { registerMembersAreaTools } from '../tools/members-area.tools.js';
 import type { DashboardService } from '../../../core/services/dashboard.service.js';
 import type { BillingService } from '../../../core/services/billing.service.js';
 import type { PaymentsApiClient } from '../../outbound/payments-api.client.js';
@@ -24,6 +25,7 @@ import type { WhatsAppService } from '../../../core/services/whatsapp.service.js
 import type { GatewayService } from '../../../core/services/gateway.service.js';
 import type { RewardsService } from '../../../core/services/rewards.service.js';
 import type { ProductService } from '../../../core/services/product.service.js';
+import type { MembersAreaService } from '../../../core/services/members-area.service.js';
 
 vi.mock('../../../shared/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 
@@ -39,6 +41,7 @@ async function connect(drawsViews = false) {
   registerGatewayTools(server, {} as GatewayService);
   registerRewardsTools(server, {} as RewardsService);
   registerProductTools(server, {} as ProductService);
+  registerMembersAreaTools(server, {} as MembersAreaService);
   registerAppViews(server);
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const capabilities = drawsViews ? { extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: [APP_MIME_TYPE] } } } : {};
@@ -74,6 +77,8 @@ describe('registerAppViews', () => {
     expect(uriOf('get_card_status')).toBeUndefined();
     expect(uriOf('delete_custom_domain')).toBeUndefined();
     expect(uriOf('list_whatsapp_templates')).toBeUndefined();
+    expect(uriOf('list_members_areas')).toBeUndefined();
+    expect(uriOf('reorder_modules')).toBeUndefined();
   });
 
   it('tells the model the card is on screen only to a client that draws it', async () => {

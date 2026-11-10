@@ -300,3 +300,37 @@ export const downsells = {
   ],
   count: 1,
 };
+
+// A members area (get_members_area, list_modules, list_sections, list_lessons). The API's modules are
+// the screen's carousels and its sections the screen's modules; durations in seconds.
+export const membersArea = {
+  area: {
+    id: 'ma_aurora', name: 'Método Aurora', enabled: true, productId: 'p_aurora',
+    stats: { totalStudents: 1284, activeStudents: 412, avgCompletion: 37.4, totalModules: 3, totalSections: 5, totalLessons: 19 },
+  },
+};
+export const memberCarousels = {
+  modules: [
+    { id: 'mc1', order: 0, title: 'Comece por aqui', locked: false, dripSettings: null, stats: { totalSections: 2, totalLessons: 7 } },
+    { id: 'mc2', order: 1, title: 'Método na prática', locked: false, dripSettings: { enabled: true, daysAfterPurchase: 7, referenceDate: 'purchase' }, stats: { totalSections: 2, totalLessons: 10 } },
+    { id: 'mc3', order: 2, title: 'Bônus', locked: true, dripSettings: null, stats: { totalSections: 1, totalLessons: 2 } },
+  ],
+};
+export const memberModules: Record<string, unknown> = {
+  mc1: { sections: [
+    { id: 'ms1', order: 0, title: 'Boas-vindas', locked: false, dripSettings: null, stats: { totalLessons: 3 } },
+    { id: 'ms2', order: 1, title: 'Fundamentos', locked: false, dripSettings: { enabled: true, daysAfterPurchase: 1, referenceDate: 'first_access' }, stats: { totalLessons: 4 } },
+  ] },
+  mc2: { sections: [
+    { id: 'ms3', order: 0, title: 'Rotina da manhã', locked: false, dripSettings: null, stats: { totalLessons: 6 } },
+    { id: 'ms4', order: 1, title: 'Revisão semanal', locked: false, dripSettings: null, stats: { totalLessons: 0 } },
+  ] },
+  mc3: { sections: [{ id: 'ms5', order: 0, title: 'Lives gravadas', locked: true, dripSettings: null, stats: { totalLessons: 2 } }] },
+};
+export const memberLessons = {
+  lessons: [
+    { id: 'ml1', order: 0, title: 'Assista antes de tudo', type: 'video', locked: false, duration: 452 },
+    { id: 'ml2', order: 1, title: 'Guia de estudos', type: 'pdf', locked: false, duration: 0 },
+    { id: 'ml3', order: 2, title: 'Teste rápido de nivelamento', type: 'quiz', locked: true, duration: 0 },
+  ],
+};

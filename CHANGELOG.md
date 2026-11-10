@@ -61,6 +61,8 @@ right now.
   group redeemed in place. Views can ask the client to open a link (`openLink`).
 - Offers view on `list_upsells` and `list_downsells`: the product's post-purchase funnel, from
   checkout through the upsells and downsells to success, with what each decline does.
+- Members area view on `get_members_area`, `list_modules`, `list_sections` and `list_lessons`: the
+  course tree in the seller's names (carousels, modules, lessons), each level read when opened.
 
 ### Fixed
 

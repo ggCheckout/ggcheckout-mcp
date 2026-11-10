@@ -10,6 +10,7 @@ import { DeliveriesView } from './deliveries/DeliveriesView';
 import { GatewaysView } from './gateways/GatewaysView';
 import { RewardsView } from './rewards/RewardsView';
 import { OffersView } from './offers/OffersView';
+import { MembersView } from './members/MembersView';
 import { PixView } from './pix/PixView';
 
 export function GgApp({ host }: { host: Host }) {
@@ -37,6 +38,8 @@ export function GgApp({ host }: { host: Host }) {
       return <RewardsView key={state.generation} host={host} state={state} />;
     case 'offers':
       return <OffersView key={state.generation} host={host} state={state} />;
+    case 'members':
+      return <MembersView key={state.generation} host={host} state={state} />;
     case 'pix':
       return <PixView key={state.generation} host={host} state={state} />;
     default:

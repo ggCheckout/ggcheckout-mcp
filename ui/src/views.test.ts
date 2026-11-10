@@ -32,6 +32,10 @@ describe('pickView', () => {
     expect(pickView(undefined, { success: true, redeemType: 'whatsapp_group', redirectUrl: 'https://x' })).toBe('rewards');
     expect(pickView(undefined, { upsells: [] })).toBe('offers');
     expect(pickView(undefined, { downsells: [], count: 0 })).toBe('offers');
+    expect(pickView(undefined, { area: { id: 'a1', name: 'Curso', stats: {} } })).toBe('members');
+    expect(pickView(undefined, { modules: [] })).toBe('members');
+    expect(pickView(undefined, { sections: [] })).toBe('members');
+    expect(pickView(undefined, { lessons: [] })).toBe('members');
     expect(pickView(undefined, { anything: true })).toBeNull();
   });
 });

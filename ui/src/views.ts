@@ -5,11 +5,12 @@ import { summarizeDeliveries, summarizeResend } from './deliveries/model';
 import { summarizeStats as summarizeGatewayStats, summarizeWallets } from './gateways/model';
 import { summarizeRedeem, summarizeRewards } from './rewards/model';
 import { summarizeDownsells, summarizeUpsells } from './offers/model';
+import { summarizeArea, summarizeCarousels, summarizeLessons, summarizeModules } from './members/model';
 import { summarizeFunnelConversion, summarizeFunnelStats } from './funnel/model';
 import { summarizePayment, summarizePaymentsPage } from './payments/model';
 import { normalizePix } from './pix/model';
 
-export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'pix';
+export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'members' | 'pix';
 
 /** Tools with a view (their `_meta.ui.resourceUri` is ui://ggcheckout/app.html) and the view each draws. */
 export const TOOL_VIEWS: Record<string, ViewName> = {
@@ -37,6 +38,10 @@ export const TOOL_VIEWS: Record<string, ViewName> = {
   redeem_reward: 'rewards',
   list_upsells: 'offers',
   list_downsells: 'offers',
+  get_members_area: 'members',
+  list_modules: 'members',
+  list_sections: 'members',
+  list_lessons: 'members',
   create_pix_charge: 'pix',
   get_payment_intent: 'pix',
   add_credit: 'pix',
@@ -59,6 +64,7 @@ export function pickView(toolName: string | undefined, payload: unknown): ViewNa
   if (summarizeWallets(payload) || summarizeGatewayStats(payload)) return 'gateways';
   if (summarizeRewards(payload) || summarizeRedeem(payload)) return 'rewards';
   if (summarizeUpsells(payload) || summarizeDownsells(payload)) return 'offers';
+  if (summarizeArea(payload) || summarizeCarousels(payload) || summarizeModules(payload) || summarizeLessons(payload)) return 'members';
   if (normalizePix(payload)) return 'pix';
   return null;
 }
