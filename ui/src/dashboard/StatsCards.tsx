@@ -1,5 +1,5 @@
 import { AlertCircle, Clock, DollarSign, ShoppingCart, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
-import { formatCents } from '../lib/format';
+import { formatCents, formatInt } from '../lib/format';
 import { COMPARISON_LABELS, PERIOD_LABELS, type StatsSummary } from './model';
 
 interface Card {
@@ -14,7 +14,8 @@ interface Card {
   hideChange?: boolean;
 }
 
-const formatChange = (value?: number) => (value == null || Number.isNaN(value) ? '--' : `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`);
+const changeNumber = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const formatChange = (value?: number) => (value == null || Number.isNaN(value) ? '--' : `${value >= 0 ? '+' : ''}${changeNumber.format(value)}%`);
 
 /** One-line value that shrinks with the card, as `fitOneLineFontSize` does on the dashboard. */
 const fitOneLine = (text: string, maxRem: number) => `max(1rem, min(${maxRem}rem, ${(100 / (text.length * 0.62)).toFixed(2)}cqi))`;
@@ -45,10 +46,10 @@ function StatCard({ card }: { card: Card }) {
 export function StatsCards({ stats, period }: { stats: StatsSummary; period: string }) {
   const comparison = COMPARISON_LABELS[period] ?? COMPARISON_LABELS.custom;
   const cards: Card[] = [
-    { id: 'sales', title: 'Total de Vendas', icon: ShoppingCart, tone: 'success', value: String(stats.sales), change: stats.salesChange, description: comparison },
+    { id: 'sales', title: 'Total de Vendas', icon: ShoppingCart, tone: 'success', value: formatInt(stats.sales), change: stats.salesChange, description: comparison },
     { id: 'revenue', title: 'Receita Total', icon: DollarSign, tone: 'success', value: formatCents(stats.revenue), change: stats.revenueChange, description: comparison },
-    { id: 'pending', title: 'Vendas Pendentes', icon: Clock, tone: 'warning', value: String(stats.pending), change: stats.pendingChange, description: 'aguardando pagamento', invert: true },
-    { id: 'expired', title: 'Vendas Expiradas', icon: AlertCircle, tone: 'danger', value: String(stats.expired), description: PERIOD_LABELS[period] ?? PERIOD_LABELS.custom, hideChange: true },
+    { id: 'pending', title: 'Vendas Pendentes', icon: Clock, tone: 'warning', value: formatInt(stats.pending), change: stats.pendingChange, description: 'aguardando pagamento', invert: true },
+    { id: 'expired', title: 'Vendas Expiradas', icon: AlertCircle, tone: 'danger', value: formatInt(stats.expired), description: PERIOD_LABELS[period] ?? PERIOD_LABELS.custom, hideChange: true },
   ];
   return <div className="stats">{cards.map((card) => <StatCard key={card.id} card={card} />)}</div>;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment, summarizePaymentsPage,
+  formatPeriodDay, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment, summarizePaymentsPage,
 } from './model';
 import { parseDate } from '../lib/format';
 
@@ -81,5 +81,21 @@ describe('pageWindow', () => {
     expect(pageWindow(5, 10)).toEqual([1, null, 4, 5, 6, null, 10]);
     expect(pageWindow(1, 10)).toEqual([1, 2, null, 10]);
     expect(pageWindow(2, 3)).toEqual([1, 2, 3]);
+  });
+});
+
+describe('formatPeriodDay', () => {
+  it('keeps a bare date on its calendar day', () => {
+    expect(formatPeriodDay('2026-11-01')).toBe('01/11/2026');
+  });
+
+  it('shows a timestamp in Sao Paulo time', () => {
+    expect(formatPeriodDay('2026-11-01T01:00:00.000Z')).toBe('31/10/2026');
+  });
+
+  it('is null for anything else', () => {
+    expect(formatPeriodDay('')).toBeNull();
+    expect(formatPeriodDay(undefined)).toBeNull();
+    expect(formatPeriodDay('garbage')).toBeNull();
   });
 });

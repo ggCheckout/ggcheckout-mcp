@@ -2,6 +2,7 @@
 // into what the payments view draws. The amount is `finalValueInCents` (what the buyer paid, in
 // cents); `value` is the same in reais as a float and is only a fallback. Pure.
 
+import { formatDate } from '../lib/format';
 import { type Payload, count, isPayload, text } from '../lib/payload';
 
 export interface PaymentRow {
@@ -138,4 +139,17 @@ export function pageWindow(page: number, totalPages: number): (number | null)[] 
     out.push(n);
   }
   return out;
+}
+
+/**
+ * A period bound of the tool args as dd/mm/yyyy. A bare `YYYY-MM-DD` is a calendar date and is
+ * reformatted as written (parsing it as UTC would show the day before in BRT); a full timestamp is
+ * shown in São Paulo time.
+ */
+export function formatPeriodDay(value: unknown): string | null {
+  if (typeof value !== 'string' || !value) return null;
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (day) return `${day[3]}/${day[2]}/${day[1]}`;
+  const formatted = formatDate(value);
+  return formatted === '-' ? null : formatted;
 }

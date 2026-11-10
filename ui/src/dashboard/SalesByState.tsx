@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import locationIcon from '../art/icon-location.avif';
-import { formatCents } from '../lib/format';
+import { formatCents, formatInt } from '../lib/format';
 import { BRAZIL_STATES } from './brazilStates';
 import { InfoTip, Segmented, Surface } from './parts';
 import type { StateSales } from './model';
@@ -57,7 +57,7 @@ function StatesMap({ states }: { states: StateSales[] }) {
                   <span className="badge" style={{ background: RANK_BADGES[i] }}>{i + 1}</span>
                   <span className="top-name">{BRAZIL_STATES[s.state]?.name ?? s.state}</span>
                 </span>
-                <span className="top-count">{`${s.count} (${((s.count / total) * 100).toFixed(0)}%)`}</span>
+                <span className="top-count">{total > 0 ? `${formatInt(s.count)} (${((s.count / total) * 100).toFixed(0)}%)` : formatInt(s.count)}</span>
               </div>
             ))}
           </>
@@ -83,7 +83,7 @@ function StatesList({ states }: { states: StateSales[] }) {
           <span className="state-right">
             <span className="state-track"><span style={{ width: `${total > 0 ? (s.count / total) * 100 : 0}%` }} /></span>
             <span className="state-nums">
-              <span className="state-count">{s.count}</span>
+              <span className="state-count">{formatInt(s.count)}</span>
               <span className="state-rev">{formatCents(s.revenue)}</span>
             </span>
           </span>

@@ -102,7 +102,8 @@ describe('chart axis', () => {
 
   it('labels ticks in reais with k above a thousand', () => {
     expect(chartTickLabel(200000)).toBe('2k');
-    expect(chartTickLabel(150000)).toBe('1.5k');
+    expect(chartTickLabel(150000)).toBe('1,5k');
     expect(chartTickLabel(75000)).toBe('750');
+    expect(chartTickLabel(123400)).toBe('1,2k');
   });
 });

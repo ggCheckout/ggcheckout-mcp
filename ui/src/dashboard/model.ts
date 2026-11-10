@@ -3,6 +3,8 @@
 
 import { count, isPayload, type Payload } from '../lib/payload';
 
+const tickNumber = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
+
 export type DashboardRange = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all';
 
 export const DASHBOARD_RANGES: { value: DashboardRange; label: string }[] = [
@@ -176,12 +178,12 @@ export function chartTicks(max: number): number[] {
   return [0, step, step * 2, step * 3, top];
 }
 
-/** SalesChart's tick label, from cents: "2k", "1.5k", or the whole reais. */
+/** SalesChart's tick label, from cents: "2k", "1,5k", or the whole reais. */
 export function chartTickLabel(cents: number): string {
   const reais = cents / 100;
   if (reais >= 1000) {
     const k = reais / 1000;
-    return k % 1 === 0 ? `${k}k` : `${k.toFixed(1)}k`;
+    return `${tickNumber.format(k)}k`;
   }
   return String(Math.round(reais));
 }
