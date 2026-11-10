@@ -215,7 +215,7 @@ function ChipsList({ chips, canOpen, busyId, onOpen }: {
     <section className="surface ch-card">
       <header className="ch-list-head">
         <h2 className="card-title">Chips</h2>
-        <p className="card-sub">Os números conectados que enviam as mensagens das sessões.</p>
+        <p className="card-sub">Cada chip é uma conexão WhatsApp: API Oficial (Meta) ou QR Code. Atribua a uma sessão pra usar em envios.</p>
       </header>
       {chips.length ? (
         <ul className="ch-rows">
