@@ -18,6 +18,8 @@
 /* The canvas: the editor's dotted background, scrolling when the graph cannot shrink further. */
 .dashboard .tg-canvas { overflow: auto; max-height: 620px; border-radius: 10px; border: 1px solid var(--d-row-border);
   background-color: var(--d-bg); background-image: radial-gradient(color-mix(in srgb, var(--d-muted) 28%, transparent) 1px, transparent 1px); background-size: 18px 18px; }
+.dashboard .tg-canvas:focus-visible { outline: 2px solid var(--season-blue, #0e51f2); outline-offset: 2px; }
+.dashboard .tg-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .dashboard .tg-plane { position: relative; transform-origin: 0 0; }
 .dashboard .tg-edges { position: absolute; inset: 0; overflow: visible; }
 .dashboard .tg-edges path { fill: none; stroke-width: 2; opacity: 0.85; }

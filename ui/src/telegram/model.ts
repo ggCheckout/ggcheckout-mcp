@@ -97,6 +97,18 @@ export interface Flow {
   edges: FlowEdge[];
 }
 
+/** Text equivalent of the drawn graph: one "Origem → Destino (rótulo)" line per edge between known nodes. */
+export function describeConnections(flow: Flow): string[] {
+  const byId = new Map(flow.nodes.map((n) => [n.id, n]));
+  return flow.edges.flatMap((e) => {
+    const from = byId.get(e.source);
+    const to = byId.get(e.target);
+    if (!from || !to) return [];
+    const label = from.handles.find((h) => h.id === e.handle)?.label;
+    return [`${from.label} → ${to.label}${label ? ` (${label})` : ''}`];
+  });
+}
+
 const stripHtml = (s: string) => s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 const cut = (s: string, n: number) => {
   const chars = Array.from(s);

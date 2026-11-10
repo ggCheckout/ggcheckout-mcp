@@ -10,7 +10,7 @@ import { BackButton } from '../lib/BackButton';
 import './telegram.css';
 import type { Host, HostSnapshot } from '../host';
 import { heightOf, isLabeled, layout, NODE_W } from './layout';
-import { modeLabel, summarizeFlow, summarizeFlowList, type Flow, type FlowListItem, type FlowNode } from './model';
+import { describeConnections, modeLabel, summarizeFlow, summarizeFlowList, type Flow, type FlowListItem, type FlowNode } from './model';
 
 /** Below this the labels stop being readable: the canvas scrolls instead. */
 const MIN_SCALE = 0.6;
@@ -66,11 +66,17 @@ function FlowCanvas({ flow }: { flow: Flow }) {
   }, []);
 
   const scale = width ? Math.max(MIN_SCALE, Math.min(1, width / graph.width)) : 1;
+  const connections = useMemo(() => describeConnections(flow), [flow]);
   const colors = [...new Set(flow.nodes.flatMap((n) => n.handles.map((h) => h.color)))];
   const markerId = (color: string) => `tg-arrow-${color.slice(1)}`;
 
   return (
-    <div className="tg-canvas" ref={box}>
+    <div className="tg-canvas" ref={box} tabIndex={0} role="region" aria-label="Diagrama do flow">
+      {connections.length > 0 && (
+        <ul className="tg-sr-only">
+          {connections.map((c, i) => <li key={i}>{c}</li>)}
+        </ul>
+      )}
       <div style={{ width: graph.width * scale, height: graph.height * scale, margin: '0 auto' }}>
         <div className="tg-plane" style={{ width: graph.width, height: graph.height, transform: `scale(${scale})` }}>
           <svg className="tg-edges" width={graph.width} height={graph.height} aria-hidden>
@@ -112,7 +118,7 @@ function FlowDetail({ flow, onBack }: { flow: Flow; onBack?: () => void }) {
             <StatusBadge published={flow.published} unpublished={flow.unpublished} />
           </div>
           <p className="card-sub num">{`${modeLabel(flow.mode)} · ${flow.nodes.length} nodes`}</p>
-          {flow.unpublished && <p className="tg-hint">Os compradores só veem a versão publicada. Clique em Deploy para publicar esta.</p>}
+          {flow.unpublished && <p className="tg-hint">Este flow tem alterações não publicadas. Publique-as no editor do bot, no painel; os compradores só veem a versão publicada.</p>}
         </header>
         {flow.nodes.length ? <FlowCanvas flow={flow} /> : <p className="empty">Este flow ainda não tem nodes.</p>}
       </section>

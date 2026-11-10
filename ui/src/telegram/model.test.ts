@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatSeconds, nodePreview, summarizeFlow, summarizeFlowList } from './model';
+import { describeConnections, formatSeconds, nodePreview, summarizeFlow, summarizeFlowList } from './model';
 
 // QA on 2026-11-10 (trimmed): "Fluxo de estudo", a visual flow.
 const qaFlow = {
@@ -52,5 +52,14 @@ describe('telegram flow', () => {
   it('ignores other payloads', () => {
     expect(summarizeFlow({ flows: [] })).toBeNull();
     expect(summarizeFlowList({ flow: {} })).toBeNull();
+  });
+});
+
+describe('describeConnections', () => {
+  it('names each edge by node labels, with the handle label when there is one', () => {
+    const flow = summarizeFlow(qaFlow)!;
+    const lines = describeConnections(flow);
+    expect(lines).toHaveLength(flow.edges.filter((e) => flow.nodes.some((n) => n.id === e.source) && flow.nodes.some((n) => n.id === e.target)).length);
+    expect(lines[0]).toMatch(/^.+ → .+$/);
   });
 });
