@@ -17,8 +17,9 @@ if (external.length) {
   console.error(`app.html loads something from outside: ${external.join(', ')}`);
   process.exit(1);
 }
-if (html.length > LIMIT_BYTES) {
-  console.error(`app.html has ${html.length} bytes, over the ${LIMIT_BYTES} limit`);
+const bytes = Buffer.byteLength(html, 'utf8');
+if (bytes > LIMIT_BYTES) {
+  console.error(`app.html has ${bytes} bytes, over the ${LIMIT_BYTES} limit`);
   process.exit(1);
 }
-console.log(`app.html: ${(html.length / 1024).toFixed(0)} KB, self-contained`);
+console.log(`app.html: ${(bytes / 1024).toFixed(0)} KB, self-contained`);
