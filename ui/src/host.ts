@@ -99,6 +99,12 @@ export function createHost(app: App): Host {
     },
     async openLink(url) {
       try {
+        const { protocol } = new URL(url);
+        if (protocol !== 'https:' && protocol !== 'http:') return false;
+      } catch {
+        return false;
+      }
+      try {
         return !(await app.openLink({ url })).isError;
       } catch {
         return false;
