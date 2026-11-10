@@ -113,6 +113,16 @@ export function pairingPhone(input: string): string | null {
   return digits.length >= 12 && digits.length <= 15 ? digits : null;
 }
 
+/**
+ * The masked number as a line: the server keeps only the last four digits (`*********1671`), so the
+ * dashboard's formatPhoneBR cannot apply, and guessing a BR layout would misread a foreign Meta chip.
+ */
+export function phoneLabel(masked: string | null): string {
+  if (!masked) return '—';
+  const last = masked.replace(/\D/g, '').slice(-4);
+  return last.length === 4 ? `•••• ${last}` : masked;
+}
+
 /** "1 sessão", "3 sessões". */
 export const sessionsLabel = (n: number) => `${n} ${n === 1 ? 'sessão' : 'sessões'}`;
 

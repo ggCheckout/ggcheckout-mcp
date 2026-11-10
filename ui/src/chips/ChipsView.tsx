@@ -5,7 +5,7 @@ import './chips.css';
 import type { Host, HostSnapshot } from '../host';
 import { useCopy } from '../lib/useCopy';
 import {
-  canPair, needsRestart, chipStatus, formatCode, pairingPhone, sessionByChip, sessionsLabel, summarizeChip, summarizeChips, summarizePairing, type Chip,
+  canPair, needsRestart, chipStatus, formatCode, pairingPhone, phoneLabel, sessionByChip, sessionsLabel, summarizeChip, summarizeChips, summarizePairing, type Chip,
 } from './model';
 
 /** How often the chip is read while the seller types the code, and for how long. */
@@ -196,7 +196,7 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack }: {
           <span className="ch-icon big" aria-hidden><Smartphone size={20} /></span>
           <div className="ch-head-main">
             <h2 className="ch-name">{chip.name}</h2>
-            <p className="ch-sub">{chip.phone && <span className="num">{chip.phone}</span>}<Status chip={chip} /><Provider provider={chip.provider} /></p>
+            <p className="ch-sub"><span className="num">{phoneLabel(chip.phone)}</span><Status chip={chip} /><Provider provider={chip.provider} /></p>
           </div>
           {canCallTools && !confirming && (
             <div className="ch-actions">
@@ -251,7 +251,7 @@ function ChipsList({ chips, sessions, canOpen, busyId, onOpen }: {
                 <span className="ch-icon" aria-hidden><Smartphone size={16} /></span>
                 <span className="ch-row-main">
                   <span className="ch-row-name">{c.name}</span>
-                  <span className="ch-sub">{c.phone && <span className="num">{c.phone}</span>}<Provider provider={c.provider} /></span>
+                  <span className="ch-sub"><span className="num">{phoneLabel(c.phone)}</span><Provider provider={c.provider} /></span>
                 </span>
                 <span className="ch-row-side">
                   <Status chip={c} />

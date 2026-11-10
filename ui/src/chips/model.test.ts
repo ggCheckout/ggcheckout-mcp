@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { sessionByChip, needsRestart, canPair, chipStatus, formatCode, pairingPhone, sessionsLabel, summarizeChip, summarizeChips, summarizePairing } from './model';
+import { phoneLabel, sessionByChip, needsRestart, canPair, chipStatus, formatCode, pairingPhone, sessionsLabel, summarizeChip, summarizeChips, summarizePairing } from './model';
 
 // The shapes of /api/whatsapp/numbers after sanitizeWhatsappNumber (phone masked, no qrCode).
-const waha = { uid: 'c1', provider: 'waha', displayName: 'Suporte', status: 'disconnected', phoneNumber: '5531*****4321', isActive: true, groupsCount: 2 };
-const meta = { uid: 'c2', provider: 'meta', displayName: '', status: 'authenticated', phoneNumber: '5511*****0000', isActive: true, groupsCount: 0 };
+const waha = { uid: 'c1', provider: 'waha', displayName: 'Suporte', status: 'disconnected', phoneNumber: '*********4321', isActive: true, groupsCount: 2 };
+const meta = { uid: 'c2', provider: 'meta', displayName: '', status: 'authenticated', phoneNumber: '*******0000', isActive: true, groupsCount: 0 };
 
 describe('chips', () => {
   it('reads the chips list', () => {
@@ -58,6 +58,12 @@ describe('chips', () => {
     ] })!;
     expect(map).toEqual({ c1: 'Curso', c2: 'Curso' });
     expect(sessionByChip({ numbers: [] })).toBeNull();
+  });
+
+  it('shows the masked number by its last four digits', () => {
+    expect(phoneLabel('*********1671')).toBe('•••• 1671');
+    expect(phoneLabel('*******6230')).toBe('•••• 6230');
+    expect(phoneLabel(null)).toBe('—');
   });
 
   it('counts sessions and ignores other payloads', () => {
