@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { GatewayService } from '../../../core/services/gateway.service.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 /**
  * The only types the creation route takes. It checks `target` against the same list, because
@@ -47,18 +48,22 @@ export function registerGatewayTools(server: McpServer, service: GatewayService)
     return { success: true, message: 'Token deleted' };
   }));
 
-  server.tool(
-    'list_checkout_wallets',
-    'List the seller\'s wallets (payment routes). A wallet holds the gateways that charge PIX (in '
-    + 'fallback order) and card. Checkouts and stores charge PIX and card only through a wallet: '
-    + 'pass its `id` as `routeId` in create_checkout / update_checkout `paymentMethods`, or as `paymentRouteId` in update_store. Wallets are '
-    + 'created and edited in the dashboard (Tools → Gateways → Charge order, "Ferramentas › Gateways › Ordem de cobrança").',
-    createToolHandler('list_checkout_wallets', async () => ({ wallets: await service.listWallets() })),
-  );
+  server.registerTool('list_checkout_wallets', {
+    description:
+      'List the seller\'s wallets (payment routes). A wallet holds the gateways that charge PIX (in '
+      + 'fallback order) and card. Checkouts and stores charge PIX and card only through a wallet: '
+      + 'pass its `id` as `routeId` in create_checkout / update_checkout `paymentMethods`, or as `paymentRouteId` in update_store. Wallets are '
+      + 'created and edited in the dashboard (Tools → Gateways → Charge order, "Ferramentas › Gateways › Ordem de cobrança").',
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_checkout_wallets', async () => ({ wallets: await service.listWallets() }))));
 
-  server.tool(
-    'get_gateway_fallback_stats',
-    'Get PIX gateway fallback reliability statistics. Shows success/error counts and reliability percentage per gateway, based on the last 24 hours of transactions.',
-    createToolHandler('get_gateway_fallback_stats', async () => service.getFallbackStats()),
-  );
+  server.registerTool('get_gateway_fallback_stats', {
+    description:
+      'PIX gateway reliability over the last 24 hours. `stats` holds per gateway the attempts (`success`, `errors`, '
+      + '`total`; one sale can make several attempts through the fallback) and `reliability` in percent (0-100). '
+      + '`ranking` orders the gateways best first by `reliability`, `conversion` (paid PIX over generated) and `card` '
+      + 'approval, each row with `rate` (0-100) and `sample`; under 50 the rate is not reliable yet. A gateway with no '
+      + 'data is left out of a ranking, never ranked as 0.',
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_gateway_fallback_stats', async () => service.getFallbackStats())));
 }

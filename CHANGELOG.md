@@ -54,6 +54,9 @@ right now.
   up). Only the open invoice of its track can be paid, and the error names it otherwise.
 - WhatsApp deliveries view on `get_delivery_status` and `resend_delivery`, as the payment detail's
   WhatsApp data: the summary, a card per message with its status, and a confirmed resend.
+- Gateways view on `list_checkout_wallets` and `get_gateway_fallback_stats`, as the charge order
+  (each wallet's PIX and card gateways in order, with their last-day rate) and the stability
+  ranking. `get_gateway_fallback_stats` describes its units and its `ranking`.
 
 ### Fixed
 

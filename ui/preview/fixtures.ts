@@ -252,3 +252,37 @@ export const deliveries = {
   ],
   summary: { total: 3, pending: 0, sent: 0, delivered: 1, read: 1, failed: 1, permanentFailure: 0, canResend: true },
 };
+
+// Wallets (list_checkout_wallets) and the last day's ranking (get_gateway_fallback_stats).
+const walletEntry = (credentialId: string, gateway: string, label: string | null = null, active = true, locked = false) => ({ credentialId, gateway, label, active, locked, favorite: false });
+export const wallets = {
+  wallets: [
+    {
+      id: 'w_main', publicId: 'wal_main', name: 'Carteira principal', mode: 'manual', metric: 'reliability',
+      pix: [walletEntry('c1', 'efibank', 'Conta PJ', true, true), walletEntry('c2', 'appmax'), walletEntry('c3', 'pushinpay', null, false)],
+      card: [walletEntry('c4', 'stripe'), walletEntry('c5', 'pagarme')],
+      reorderedAt: null, createdAt: '2026-10-20T14:46:58Z', updatedAt: '2026-10-20T14:56:51Z', checkoutCount: 12, storeCount: 1,
+    },
+    {
+      id: 'w_auto', publicId: 'wal_auto', name: 'Lançamento', mode: 'auto', metric: 'conversion',
+      pix: [walletEntry('c6', 'mercadopago', 'Mercado Pago'), walletEntry('c1', 'efibank', 'Conta PJ')],
+      card: [], reorderedAt: '2026-11-10T06:00:00Z', createdAt: '2026-10-30T20:22:52Z', updatedAt: '2026-11-10T06:00:00Z', checkoutCount: 3, storeCount: 0,
+    },
+  ],
+};
+const rank = (gateway: string, rate: number, sample: number) => ({ gateway, score: rate / 110, sample, rate });
+export const gatewayStats = {
+  stats: {
+    efibank: { success: 412, errors: 6, total: 418, reliability: 98.6 },
+    appmax: { success: 61, errors: 19, total: 80, reliability: 76.3 },
+    mercadopago: { success: 33, errors: 1, total: 34, reliability: 97.1 },
+    stripe: { success: 88, errors: 12, total: 100, reliability: 88 },
+  },
+  cachedAt: 1794317057192,
+  window: { from: '2026-11-09T14:00:00Z', to: '2026-11-10T14:00:00Z', hours: 24 },
+  ranking: {
+    reliability: [rank('efibank', 98.6, 418), rank('mercadopago', 97.1, 34), rank('appmax', 76.3, 80)],
+    conversion: [rank('mercadopago', 74.5, 31), rank('efibank', 68.2, 390)],
+    card: [rank('stripe', 88, 100), rank('pagarme', 81.4, 59)],
+  },
+};

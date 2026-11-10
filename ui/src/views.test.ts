@@ -26,6 +26,8 @@ describe('pickView', () => {
     expect(pickView(undefined, { success: true, status: 'pending', checks: {} })).toBe('domains');
     expect(pickView(undefined, { deliveries: [], summary: { total: 0 }, paymentId: 'p1' })).toBe('deliveries');
     expect(pickView(undefined, { success: true, message: 'ok', remaining: { user: 1, payment: 1 } })).toBe('deliveries');
+    expect(pickView(undefined, { wallets: [] })).toBe('gateways');
+    expect(pickView(undefined, { stats: {}, ranking: null, cachedAt: null })).toBe('gateways');
     expect(pickView(undefined, { anything: true })).toBeNull();
   });
 });

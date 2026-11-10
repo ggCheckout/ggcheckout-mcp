@@ -1,5 +1,5 @@
 import {
-  billingBalance, billingStatus, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
+  billingBalance, billingStatus, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
 } from './fixtures';
 
 export interface Scenario {
@@ -40,6 +40,9 @@ export const SCENARIOS: Scenario[] = [
   { id: 'deliveries', question: 'O cliente recebeu o produto pelo WhatsApp?', tool: 'get_delivery_status', args: { paymentId: deliveries.paymentId }, result: deliveries },
   { id: 'deliveries-empty', question: 'Saiu WhatsApp desse pagamento?', tool: 'get_delivery_status', args: { paymentId: 'pay_preview_2' }, result: { paymentId: 'pay_preview_2', source: 'legacy', deliveries: [], summary: { total: 0, pending: 0, sent: 0, delivered: 0, read: 0, failed: 0, permanentFailure: 0, canResend: false } } },
   { id: 'resend', question: 'Reenvia o WhatsApp do pagamento', tool: 'resend_delivery', args: { paymentId: deliveries.paymentId }, result: { success: true, message: 'Entregável reenviado via WhatsApp com sucesso', remaining: { user: 49, payment: 19 } } },
+  { id: 'wallets', question: 'Qual a ordem de cobrança das minhas carteiras?', tool: 'list_checkout_wallets', args: {}, result: wallets },
+  { id: 'gateway-ranking', question: 'Qual gateway está mais estável hoje?', tool: 'get_gateway_fallback_stats', args: {}, result: gatewayStats },
+  { id: 'gateway-ranking-empty', question: 'Algum gateway falhando?', tool: 'get_gateway_fallback_stats', args: {}, result: { stats: {}, cachedAt: 1794317057192, window: { from: 'a', to: 'b', hours: 24 }, ranking: { reliability: [], conversion: [], card: [], pix: [] } } },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
@@ -59,6 +62,7 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'verify_custom_domain': return verifyPending;
     case 'get_delivery_status': return deliveries;
     case 'resend_delivery': return { success: true, message: 'Entregável reenviado via WhatsApp com sucesso', remaining: { user: 48, payment: 18 } };
+    case 'get_gateway_fallback_stats': return gatewayStats;
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
     default: throw new Error(`no fixture for ${name}`);

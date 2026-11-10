@@ -11,6 +11,7 @@ import { registerFunnelTools } from '../tools/funnel.tools.js';
 import { registerPaymentTools } from '../tools/payment.tools.js';
 import { registerCustomDomainTools } from '../tools/custom-domain.tools.js';
 import { registerWhatsAppTools } from '../tools/whatsapp.tools.js';
+import { registerGatewayTools } from '../tools/gateway.tools.js';
 import type { DashboardService } from '../../../core/services/dashboard.service.js';
 import type { BillingService } from '../../../core/services/billing.service.js';
 import type { PaymentsApiClient } from '../../outbound/payments-api.client.js';
@@ -18,6 +19,7 @@ import type { FunnelService } from '../../../core/services/funnel.service.js';
 import type { PaymentService } from '../../../core/services/payment.service.js';
 import type { CustomDomainService } from '../../../core/services/custom-domain.service.js';
 import type { WhatsAppService } from '../../../core/services/whatsapp.service.js';
+import type { GatewayService } from '../../../core/services/gateway.service.js';
 
 vi.mock('../../../shared/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 
@@ -30,6 +32,7 @@ async function connect(drawsViews = false) {
   registerPaymentTools(server, {} as PaymentService);
   registerCustomDomainTools(server, {} as CustomDomainService);
   registerWhatsAppTools(server, {} as WhatsAppService);
+  registerGatewayTools(server, {} as GatewayService);
   registerAppViews(server);
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const capabilities = drawsViews ? { extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: [APP_MIME_TYPE] } } } : {};
