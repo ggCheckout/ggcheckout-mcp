@@ -10,9 +10,11 @@ right now.
 ### Docs
 
 - `package.json`: `homepage` points to https://www.ggcheckout.com (`repository` and `bugs` stay on
-  GitHub), and the keywords gain `brazilian`, `pix` and `infoproduct`. npm shows them from the next
-  published version.
-- README: a section of example prompts in Portuguese and English, each with the tools it uses.
+  GitHub), and the keywords gain `brazilian`, `pix` and `infoproduct`.
+- README: a section of example prompts in Portuguese and English, each with the tools that are enough
+  to fulfil it.
+- README: the example prompts use the reserved `example.com` domain for URLs and e-mails, so a copied
+  prompt does not point a webhook, a custom domain or a support e-mail at someone else's site.
 
 ## 0.5.0
 
