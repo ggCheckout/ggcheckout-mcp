@@ -1,5 +1,5 @@
 import {
-  billingBalance, billingStatus, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
+  billingBalance, billingStatus, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
 } from './fixtures';
 
 export interface Scenario {
@@ -37,6 +37,9 @@ export const SCENARIOS: Scenario[] = [
   { id: 'domain', question: 'Como configuro o DNS do pay.metodoaurora.com.br?', tool: 'get_custom_domain', args: { domainId: domains[0].id }, result: { domain: domains[0] } },
   { id: 'domain-add', question: 'Adiciona o domínio pay.metodoaurora.com.br', tool: 'add_custom_domain', args: { domain: domains[0].domain }, result: { success: true, domain: { id: domains[0].id, domain: domains[0].domain, status: 'pending', dnsInstructions: domains[0].dnsInstructions, createdAt: domains[0].createdAt } } },
   { id: 'domain-verify', question: 'Verifica o DNS do meu domínio', tool: 'verify_custom_domain', args: { domainId: domains[0].id }, result: verifyPending },
+  { id: 'deliveries', question: 'O cliente recebeu o produto pelo WhatsApp?', tool: 'get_delivery_status', args: { paymentId: deliveries.paymentId }, result: deliveries },
+  { id: 'deliveries-empty', question: 'Saiu WhatsApp desse pagamento?', tool: 'get_delivery_status', args: { paymentId: 'pay_preview_2' }, result: { paymentId: 'pay_preview_2', source: 'legacy', deliveries: [], summary: { total: 0, pending: 0, sent: 0, delivered: 0, read: 0, failed: 0, permanentFailure: 0, canResend: false } } },
+  { id: 'resend', question: 'Reenvia o WhatsApp do pagamento', tool: 'resend_delivery', args: { paymentId: deliveries.paymentId }, result: { success: true, message: 'Entregável reenviado via WhatsApp com sucesso', remaining: { user: 49, payment: 19 } } },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
@@ -54,6 +57,8 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'get_invoice': return { invoice: { ...invoices[0], status: ++polls.count >= 3 ? 'paid' : 'overdue' } };
     case 'get_custom_domain': return { domain: domains.find((d) => d.id === args.domainId) ?? domains[0] };
     case 'verify_custom_domain': return verifyPending;
+    case 'get_delivery_status': return deliveries;
+    case 'resend_delivery': return { success: true, message: 'Entregável reenviado via WhatsApp com sucesso', remaining: { user: 48, payment: 18 } };
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
     default: throw new Error(`no fixture for ${name}`);

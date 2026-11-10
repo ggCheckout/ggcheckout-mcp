@@ -52,6 +52,8 @@ right now.
   through `/api/billing/pix`, as the dashboard's "Pagar Fatura" does. PIX is the only way left to
   pay an invoice: card charges are retired and credit is applied on its own (`add_credit` tops it
   up). Only the open invoice of its track can be paid, and the error names it otherwise.
+- WhatsApp deliveries view on `get_delivery_status` and `resend_delivery`, as the payment detail's
+  WhatsApp data: the summary, a card per message with its status, and a confirmed resend.
 
 ### Fixed
 

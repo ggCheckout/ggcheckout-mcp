@@ -1,0 +1,39 @@
+/* The payment detail's "Dados do WhatsApp" (saas WhatsAppDetails, DeliveryCard, DeliveryStatusBadge). */
+.dashboard .dlv-panel { border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.dashboard .dlv-summary, .dashboard .dlv-card, .dashboard .dlv-empty { border-radius: 8px; border: 1px solid var(--d-row-border); background: var(--d-row); padding: 12px 14px; }
+.dashboard .dlv-sum-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; }
+.dashboard .dlv-sum-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; margin-top: 8px; }
+.dashboard .dlv-sum-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--d-muted); }
+.dashboard .dlv-sum-row [data-tone='green'] { color: #16a34a; }
+.dashboard .dlv-sum-row [data-tone='blue'] { color: #2563eb; }
+.dashboard .dlv-sum-row [data-tone='yellow'] { color: #ca8a04; }
+.dashboard .dlv-sum-row [data-tone='red'] { color: #dc2626; }
+.dashboard .dlv-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.dashboard .dlv-card { display: flex; flex-direction: column; gap: 6px; }
+.dashboard .dlv-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.dashboard .dlv-type { font-size: 14px; font-weight: 600; }
+.dashboard .dlv-provider { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; color: var(--d-muted); background: var(--d-muted-bg); }
+.dashboard .dlv-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; }
+.dashboard .dlv-field > span:first-child { color: var(--d-muted); font-weight: 500; }
+.dashboard .dlv-badge { --bg: var(--d-muted-bg); --fg: var(--d-fg); display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 500; background: var(--bg); color: var(--fg); }
+.dashboard .dlv-badge[data-tone='amber'] { --bg: #fef3c7; --fg: #78350f; }
+.dashboard .dlv-badge[data-tone='emerald'] { --bg: #d1fae5; --fg: #064e3b; }
+.dashboard .dlv-badge[data-tone='sky'] { --bg: #e0f2fe; --fg: #0c4a6e; }
+.dashboard .dlv-badge[data-tone='red'] { --bg: #fee2e2; --fg: #7f1d1d; }
+:root[data-theme='dark'] .dashboard .dlv-badge[data-tone='amber'] { --bg: rgb(120 53 15 / 0.35); --fg: #fcd34d; }
+:root[data-theme='dark'] .dashboard .dlv-badge[data-tone='emerald'] { --bg: rgb(6 78 59 / 0.35); --fg: #6ee7b7; }
+:root[data-theme='dark'] .dashboard .dlv-badge[data-tone='sky'] { --bg: rgb(12 74 110 / 0.35); --fg: #7dd3fc; }
+:root[data-theme='dark'] .dashboard .dlv-badge[data-tone='red'] { --bg: rgb(127 29 29 / 0.35); --fg: #fca5a5; }
+.dashboard .dlv-note { margin: 0; padding: 6px 10px; border-radius: 6px; font-size: 12px; border: 1px solid rgb(245 158 11 / 0.35); background: rgb(245 158 11 / 0.08); }
+.dashboard .dlv-error { padding: 8px 10px; border-radius: 6px; border: 1px solid rgb(239 68 68 / 0.35); background: rgb(239 68 68 / 0.07); font-size: 12px; }
+.dashboard .dlv-error p { margin: 0; overflow-wrap: anywhere; }
+.dashboard .dlv-error-title { font-weight: 600; margin-bottom: 2px !important; }
+.dashboard .dlv-empty p { margin: 8px 0 0; font-size: 13px; color: var(--d-muted); }
+.dashboard .dlv-message { margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 13px; background: rgb(16 185 129 / 0.1); }
+.dashboard .dlv-message[data-tone='error'] { background: rgb(239 68 68 / 0.1); color: var(--danger); }
+.dashboard .dlv-resend { align-self: flex-start; }
+.dashboard .dlv-confirm { padding: 14px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); font-size: 13px; }
+.dashboard .dlv-confirm p { margin: 0; }
+.dashboard .dlv-confirm-title { font-weight: 600; margin-bottom: 4px !important; }
+.dashboard .dlv-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.dashboard .dlv-cancel { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--d-line); background: transparent; cursor: pointer; font-weight: 600; }

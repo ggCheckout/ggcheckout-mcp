@@ -241,3 +241,14 @@ export const verifyPending = {
   cloudflare: { hostnameStatus: 'pending', sslStatus: 'pending_validation', hostnameActive: false, sslActive: false },
   message: 'Aguardando propagação DNS e validação automática (até 2 min). Verifique se o CNAME está configurado e o proxy desligado (DNS only).',
 };
+
+// WhatsApp deliveries of a payment, embedded in it (the masked phone, as the MCP answers it).
+export const deliveries = {
+  paymentId: 'pay_preview_1', source: 'embedded',
+  deliveries: [
+    { id: 'dl1', uid: 'dl1', type: 'payment_confirmed', status: 'read', provider: 'waha', messageId: 'wamid.1', recipientPhone: '*********7766', sentAt: '2026-11-10T12:00:04Z', deliveredAt: '2026-11-10T12:00:06Z', readAt: '2026-11-10T12:03:41Z', retryCount: 0 },
+    { id: 'dl2', uid: 'dl2', type: 'product_delivery', status: 'delivered', provider: 'waha', messageId: 'wamid.2', recipientPhone: '*********7766', sentAt: '2026-11-10T12:00:09Z', deliveredAt: '2026-11-10T12:00:12Z', retryCount: 0 },
+    { id: 'dl3', uid: 'dl3', type: 'order_bump_file_ob1', status: 'failed', provider: 'waha', recipientPhone: '*********7766', error: 'O arquivo do order bump não pôde ser baixado.', retryCount: 3 },
+  ],
+  summary: { total: 3, pending: 0, sent: 0, delivered: 1, read: 1, failed: 1, permanentFailure: 0, canResend: true },
+};

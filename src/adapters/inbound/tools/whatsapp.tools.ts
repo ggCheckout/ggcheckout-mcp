@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { WhatsAppService } from '../../../core/services/whatsapp.service.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 export function registerWhatsAppTools(server: McpServer, service: WhatsAppService) {
   // --- Sessions ---
@@ -119,16 +120,18 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   server.registerTool('get_delivery_status', {
     description: 'Get WhatsApp delivery status for a payment (sent, delivered, read, failed)',
     inputSchema: { paymentId: z.string().describe('Payment ID') },
-  }, createToolHandler('get_delivery_status', async ({ paymentId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_delivery_status', async ({ paymentId }) => {
     return service.getDeliveryStatus(paymentId);
-  }));
+  })));
 
   server.registerTool('resend_delivery', {
     description: 'Resend WhatsApp delivery for a payment (rate limited: 50/hour per user)',
     inputSchema: { paymentId: z.string().describe('Payment ID') },
-  }, createToolHandler('resend_delivery', async ({ paymentId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('resend_delivery', async ({ paymentId }) => {
     return service.resendDelivery(paymentId);
-  }));
+  })));
 
   // --- Send ---
   server.registerTool('send_whatsapp_message', {
