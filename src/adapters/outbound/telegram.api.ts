@@ -55,13 +55,14 @@ export class TelegramApiAdapter implements TelegramPort {
   // --- Flows ---
 
   async listFlows(botId?: string): Promise<TelegramFlowListItem[]> {
-    const params = botId ? `?botId=${botId}` : '';
+    const params = botId ? `?botId=${encodeURIComponent(botId)}` : '';
     const res = await this.http.get<{ flows: TelegramFlowListItem[] }>(`/api/telegram/flows${params}`);
     return res.flows;
   }
 
   async getFlow(flowId: string): Promise<TelegramFlow> {
-    return this.http.get<TelegramFlow>(`/api/telegram/flows/${flowId}`);
+    const res = await this.http.get<{ flow: TelegramFlow }>(`/api/telegram/flows/${encodeURIComponent(flowId)}`);
+    return res.flow;
   }
 
   async createFlow(input: CreateFlowInput): Promise<TelegramFlow> {

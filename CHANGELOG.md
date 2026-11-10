@@ -75,6 +75,8 @@ right now.
   `add_custom_domain` takes subdomains only.
 - `get_payment` no longer returns the buyer's encrypted CPF and phone (`cpfEnc`, `phoneEnc`) next to
   the masked ones: every `*Enc` field is dropped from payment answers.
+- `get_telegram_flow` reads the flow out of the API's `{ flow }` envelope, as its type always said,
+  and answers `{ flow }`. Flow and bot ids are encoded in the path and query.
 
 ## 0.5.0
 
