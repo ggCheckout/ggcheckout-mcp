@@ -57,9 +57,14 @@ right now.
 - Gateways view on `list_checkout_wallets` and `get_gateway_fallback_stats`, as the charge order
   (each wallet's PIX and card gateways in order, with their last-day rate) and the stability
   ranking. `get_gateway_fallback_stats` describes its units and its `ranking`.
+- Rewards view on `calculate_rewards` and `redeem_reward`, as the rewards trail, with the WhatsApp
+  group redeemed in place. Views can ask the client to open a link (`openLink`).
 
 ### Fixed
 
+- `redeem_reward` takes only `whatsapp_group_5000`: the route it calls redeems only the WhatsApp
+  group, and the bracelet and plaques are shipped, so the dashboard redeems them with the address.
+  The description promised all of them.
 - The custom domain types and descriptions follow the API: a domain has `status` (pending, verified,
   failed, disabled) and `dnsInstructions`, not `verified` / `dnsRecords`; `verify_custom_domain`
   answers `status`, `checks` and `cloudflare` and is limited to 10 per minute, not 5 per hour; and

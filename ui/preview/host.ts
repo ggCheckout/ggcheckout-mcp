@@ -32,6 +32,10 @@ async function mount(scenario: Scenario, theme: Theme, slot: HTMLElement) {
     log.push(`${scenario.id}: model context ${JSON.stringify(content)}`);
     return {};
   };
+  bridge.onopenlink = async ({ url }) => {
+    log.push(`${scenario.id}: open link ${url}`);
+    return {};
+  };
   bridge.onsizechange = ({ height }) => {
     if (height) frame.style.height = `${height}px`;
   };

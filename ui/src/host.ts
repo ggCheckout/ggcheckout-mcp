@@ -23,6 +23,8 @@ export interface Host {
   callTool(name: string, args: Record<string, unknown>): Promise<unknown>;
   /** Puts a short line in the model context, so the next turn knows what the view showed. */
   tellModel(text: string): void;
+  /** Asks the host to open a link outside the sandbox; false when it refused or cannot. */
+  openLink(url: string): Promise<boolean>;
 }
 
 function applyTheme(theme: unknown): ColorMode | undefined {
@@ -94,6 +96,13 @@ export function createHost(app: App): Host {
     },
     tellModel(text) {
       app.updateModelContext({ content: [{ type: 'text', text }] }).catch(() => {});
+    },
+    async openLink(url) {
+      try {
+        return !(await app.openLink({ url })).isError;
+      } catch {
+        return false;
+      }
     },
   };
 }

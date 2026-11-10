@@ -43,6 +43,8 @@ export const SCENARIOS: Scenario[] = [
   { id: 'wallets', question: 'Qual a ordem de cobrança das minhas carteiras?', tool: 'list_checkout_wallets', args: {}, result: wallets },
   { id: 'gateway-ranking', question: 'Qual gateway está mais estável hoje?', tool: 'get_gateway_fallback_stats', args: {}, result: gatewayStats },
   { id: 'gateway-ranking-empty', question: 'Algum gateway falhando?', tool: 'get_gateway_fallback_stats', args: {}, result: { stats: {}, cachedAt: 1794317057192, window: { from: 'a', to: 'b', hours: 24 }, ranking: { reliability: [], conversion: [], card: [], pix: [] } } },
+  { id: 'rewards', question: 'Quanto falta pra próxima placa?', tool: 'calculate_rewards', args: {}, result: { completedGoals: 4, currentRevenue: 190587.39, currentRevenueCents: 19058739, fromCache: false, milestones: [5000, 10000, 50000, 100000, 500000, 1000000], totalGoals: 6 } },
+  { id: 'rewards-start', question: 'Quais recompensas eu posso ganhar?', tool: 'calculate_rewards', args: {}, result: { completedGoals: 1, currentRevenue: 7310.5, currentRevenueCents: 731050, fromCache: true, milestones: [5000, 10000, 50000, 100000, 500000, 1000000], totalGoals: 6 } },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
@@ -63,6 +65,7 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'get_delivery_status': return deliveries;
     case 'resend_delivery': return { success: true, message: 'Entregável reenviado via WhatsApp com sucesso', remaining: { user: 48, payment: 18 } };
     case 'get_gateway_fallback_stats': return gatewayStats;
+    case 'redeem_reward': return { success: true, redeemType: 'whatsapp_group', redirectUrl: 'https://chat.whatsapp.com/preview', redeemCount: 1, maxRedeems: 1 };
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
     default: throw new Error(`no fixture for ${name}`);
