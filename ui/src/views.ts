@@ -1,7 +1,7 @@
 import { summarizeInvoice, summarizeInvoices, summarizeLedger, summarizeWallet } from './billing/model';
 import { summarizeCharts, summarizeStats } from './dashboard/model';
 import { summarizeDomain, summarizeDomainList, summarizeVerify } from './domains/model';
-import { summarizeDeliveries, summarizeResend } from './deliveries/model';
+import { isResendAnswer, summarizeDeliveries } from './deliveries/model';
 import { summarizeStats as summarizeGatewayStats, summarizeWallets } from './gateways/model';
 import { summarizeRedeem, summarizeRewards } from './rewards/model';
 import { summarizeDownsells, summarizeUpsells } from './offers/model';
@@ -67,7 +67,7 @@ export function pickView(toolName: string | undefined, payload: unknown): ViewNa
   if (summarizePaymentsPage(payload) || summarizePayment(payload)) return 'payments';
   if (summarizeWallet(payload) || summarizeInvoice(payload) || summarizeInvoices(payload) || summarizeLedger(payload)) return 'billing';
   if (summarizeDomain(payload) || summarizeDomainList(payload) || summarizeVerify(payload)) return 'domains';
-  if (summarizeDeliveries(payload) || summarizeResend(payload)) return 'deliveries';
+  if (summarizeDeliveries(payload) || isResendAnswer(payload)) return 'deliveries';
   if (summarizeWallets(payload) || summarizeGatewayStats(payload)) return 'gateways';
   if (summarizeRewards(payload) || summarizeRedeem(payload)) return 'rewards';
   if (summarizeUpsells(payload) || summarizeDownsells(payload)) return 'offers';

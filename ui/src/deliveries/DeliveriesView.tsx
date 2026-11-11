@@ -5,7 +5,7 @@ import './deliveries.css';
 import type { Host, HostSnapshot } from '../host';
 import { formatDateTime, plural } from '../lib/format';
 import { messageOf } from '../lib/messageOf';
-import { statusBadge, summarizeDeliveries, summarizeResend, type Deliveries, type Delivery } from './model';
+import { isResendAnswer, statusBadge, summarizeDeliveries, summarizeResend, type Deliveries, type Delivery } from './model';
 
 /** formatBrazilDateTime: dd/mm/yyyy hh:mm:ss in São Paulo. */
 const brazilDateTime = (iso: string | null) => formatDateTime(iso, { seconds: true });
@@ -86,15 +86,15 @@ function DeliveriesPanel({ host, data, canCallTools, notice }: { host: Host; dat
     setBusy(true);
     try {
       const result = summarizeResend(await host.callTool('resend_delivery', { paymentId: state.paymentId }));
-      const text = result?.message ?? 'Mensagem WhatsApp reenviada com sucesso!';
-      setMessage({ ok: result?.ok ?? true, text });
-      host.tellModel(`O vendedor reenviou pelo chat o WhatsApp do pagamento ${state.paymentId}.`);
+      const text = result.message;
+      setMessage({ ok: result.status === 'confirmed', text });
+      if (result.status === 'confirmed') host.tellModel(`O vendedor reenviou pelo chat o WhatsApp do pagamento ${state.paymentId}.`);
       // The message is out: a failed refresh must not read as a failed resend (a second click would send it twice).
       try {
         const fresh = summarizeDeliveries(await host.callTool('get_delivery_status', { paymentId: state.paymentId }));
         if (fresh) setState(fresh);
       } catch {
-        setMessage({ ok: result?.ok ?? true, text: `${text} Não foi possível atualizar a lista agora.` });
+        setMessage({ ok: result.status === 'confirmed', text: `${text} Não foi possível atualizar a lista agora.` });
       }
     } catch (e) {
       const text = messageOf(e);
@@ -155,7 +155,8 @@ function DeliveriesPanel({ host, data, canCallTools, notice }: { host: Host; dat
 /** Deliveries view: get_delivery_status, and resend_delivery (the list is read again after it). */
 export function DeliveriesView({ host, state }: { host: Host; state: HostSnapshot }) {
   const data = useMemo(() => summarizeDeliveries(state.payload), [state.payload]);
-  const resent = useMemo(() => (data ? null : summarizeResend(state.payload)), [data, state.payload]);
+  const isResend = !data && (state.toolName === 'resend_delivery' || isResendAnswer(state.payload));
+  const resent = useMemo(() => (isResend ? summarizeResend(state.payload) : null), [isResend, state.payload]);
   const paymentId = typeof state.args.paymentId === 'string' ? state.args.paymentId : null;
   const [after, setAfter] = useState<Deliveries | null>(null);
 
@@ -164,9 +165,9 @@ export function DeliveriesView({ host, state }: { host: Host; state: HostSnapsho
   }, [host, data, paymentId]);
 
   useEffect(() => {
-    if (!resent || !paymentId || !state.canCallTools) return;
+    if (resent?.status !== 'confirmed' || !paymentId || !state.canCallTools) return;
     host.callTool('get_delivery_status', { paymentId }).then((d) => setAfter(summarizeDeliveries(d))).catch(() => {});
-  }, [host, resent, paymentId, state.canCallTools]);
+  }, [host, resent?.status, paymentId, state.canCallTools]);
 
   if (data) return <div className="dashboard deliveries"><DeliveriesPanel host={host} data={{ ...data, paymentId: data.paymentId ?? paymentId }} canCallTools={state.canCallTools} /></div>;
   if (resent) {
@@ -174,7 +175,7 @@ export function DeliveriesView({ host, state }: { host: Host; state: HostSnapsho
       <div className="dashboard deliveries">
         {after
           ? <DeliveriesPanel key="after" host={host} data={{ ...after, paymentId: after.paymentId ?? paymentId }} canCallTools={state.canCallTools} notice={resent.message} />
-          : <section className="surface dlv-panel"><p className="dlv-message" data-tone={resent.ok ? 'ok' : 'error'}>{resent.message}</p></section>}
+          : <section className="surface dlv-panel"><p className="dlv-message" data-tone={resent.status === 'confirmed' ? 'ok' : 'error'}>{resent.message}</p></section>}
       </div>
     );
   }

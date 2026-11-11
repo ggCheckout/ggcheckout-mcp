@@ -94,13 +94,23 @@ export function summarizeDeliveries(data: unknown): Deliveries | null {
   };
 }
 
-/** resend_delivery: `{ success, message, remaining }`; null for anything else. */
-export function summarizeResend(data: unknown): { ok: boolean; message: string } | null {
-  if (!isPayload(data) || !isPayload(data.remaining)) return null;
-  return {
-    ok: data.success !== false,
-    message: data.success !== false ? 'Mensagem WhatsApp reenviada com sucesso!' : (text(data.message) ?? 'Não foi possível reenviar a mensagem WhatsApp.'),
-  };
+export interface ResendOutcome {
+  /** `unconfirmed`: the answer carried no recognizable `success`, so neither a send nor a failure is known. */
+  status: 'confirmed' | 'failed' | 'unconfirmed';
+  message: string;
+}
+
+/** The shape of a real resend answer (`{ success, message, remaining }`); `success` alone is too generic to route a payload by. */
+export function isResendAnswer(data: unknown): boolean {
+  return isPayload(data) && isPayload(data.remaining) && typeof data.success === 'boolean';
+}
+
+/** resend_delivery (`{ success, message }`, `remaining` is extra): decided by `success` alone. */
+export function summarizeResend(data: unknown): ResendOutcome {
+  const success = isPayload(data) ? data.success : undefined;
+  if (success === true) return { status: 'confirmed', message: 'Mensagem WhatsApp reenviada com sucesso!' };
+  if (success === false) return { status: 'failed', message: (isPayload(data) ? text(data.message) : null) ?? 'Não foi possível reenviar a mensagem WhatsApp.' };
+  return { status: 'unconfirmed', message: 'Não deu para confirmar o reenvio. Confira o status antes de reenviar de novo.' };
 }
 
 export type Tone = 'amber' | 'emerald' | 'sky' | 'red' | 'neutral';

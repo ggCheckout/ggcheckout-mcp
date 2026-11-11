@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { statusBadge, summarizeDeliveries, summarizeResend, typeLabel } from './model';
+import { isResendAnswer, statusBadge, summarizeDeliveries, summarizeResend, typeLabel } from './model';
 
 const embedded = {
   paymentId: 'pay_1',
@@ -54,7 +54,24 @@ describe('typeLabel and summarizeResend', () => {
   });
 
   it('reads the resend answer', () => {
-    expect(summarizeResend({ success: true, message: 'ok', remaining: { user: 49, payment: 19 } })).toEqual({ ok: true, message: 'Mensagem WhatsApp reenviada com sucesso!' });
-    expect(summarizeResend({ deliveries: [] })).toBeNull();
+    expect(summarizeResend({ success: true, message: 'ok', remaining: { user: 49, payment: 19 } })).toEqual({ status: 'confirmed', message: 'Mensagem WhatsApp reenviada com sucesso!' });
+    expect(summarizeResend({ success: true })).toMatchObject({ status: 'confirmed' });
+  });
+
+  it('shows the server message when success is false, with or without remaining', () => {
+    expect(summarizeResend({ success: false, message: 'Limite atingido' })).toEqual({ status: 'failed', message: 'Limite atingido' });
+    expect(summarizeResend({ success: false })).toMatchObject({ status: 'failed', message: 'Não foi possível reenviar a mensagem WhatsApp.' });
+  });
+
+  it('does not call an unrecognizable answer a success', () => {
+    for (const data of [{ deliveries: [] }, { remaining: { user: 1 } }, { success: 'yes' }, null, 'ok']) {
+      expect(summarizeResend(data).status).toBe('unconfirmed');
+    }
+  });
+
+  it('routes by shape only a real resend answer', () => {
+    expect(isResendAnswer({ success: true, message: 'ok', remaining: { user: 1 } })).toBe(true);
+    expect(isResendAnswer({ success: true })).toBe(false);
+    expect(isResendAnswer({ success: false, message: 'x' })).toBe(false);
   });
 });
