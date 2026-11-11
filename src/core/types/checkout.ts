@@ -66,12 +66,24 @@ export interface Checkout {
   published?: boolean;
   orderBumps?: string[];
   checkout?: Record<string, unknown>;
-  metricToken?: string | null;
+  /**
+   * Ids of the metric credentials (`list_tokens`) the checkout fires. The API stores one id or a
+   * list of them (one per platform), so a read can answer any of the three.
+   */
+  metricToken?: string | string[] | null;
   emailProviderToken?: string;
   paymentMethods?: CheckoutPaymentMethods;
   price: number;
   image?: string;
   createBy?: string;
+  /** The id in the public checkout link (`/checkout/{publicId}`); the link uses `uid` when absent. */
+  publicId?: string;
+  /** Which checkout layout the page renders (the same field `FunnelCheckoutSummary` reports). */
+  checkoutModel?: string;
+  /** Hostname of the verified custom domain the checkout opens on; null or absent on the app origin. */
+  customDomain?: string | null;
+  /** The absolute public link the API computes (the dashboard's own link); absent on an API that predates it. */
+  publicUrl?: string;
   tags?: CheckoutTag[];
   createdAt?: string;
   updatedAt?: string;

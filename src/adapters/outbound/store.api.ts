@@ -163,8 +163,10 @@ export class StoreApiAdapter implements StorePort {
   }
 
   async getStore(storeId: string): Promise<StoreAdminConfig> {
-    const data = await this.http.get<{ config: StoreAdminConfig }>(this.storePath(storeId));
-    return sanitizeStoreAdminConfig(data.config);
+    const data = await this.http.get<{ config: StoreAdminConfig; publicUrl?: unknown }>(this.storePath(storeId));
+    const config = sanitizeStoreAdminConfig(data.config);
+    // Derived by the API and sent beside the config; attached after sanitizing, on reads only.
+    return typeof data.publicUrl === 'string' ? { ...config, publicUrl: data.publicUrl } : config;
   }
 
   async updateStore(storeId: string, patch: StoreConfigPatch): Promise<StoreAdminConfig> {
