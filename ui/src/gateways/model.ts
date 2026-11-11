@@ -127,6 +127,11 @@ export function isUnstable(gateway: string, rate: number, stats: GatewayStats): 
   return (stats.totals[gateway] ?? 0) >= LOW_SAMPLE && rate < UNSTABLE_BELOW;
 }
 
+/** PIX gateways whose error rate is above normal: always read from the stability ranking, whatever tab is open. */
+export function unstableCount(stats: GatewayStats): number {
+  return rankingFor(stats, 'pix', 'reliability').filter((r) => isUnstable(r.gateway, r.rate, stats)).length;
+}
+
 /** formatPercent: one decimal, pt-BR. */
 export function formatRate(rate: number): string {
   return rate.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });

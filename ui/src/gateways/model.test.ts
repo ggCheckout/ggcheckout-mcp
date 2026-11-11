@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coverLine, isUnstable, rankingFor, rateColor, summarizeStats, summarizeWallets, usageLine } from './model';
+import { coverLine, isUnstable, rankingFor, rateColor, summarizeStats, summarizeWallets, unstableCount, usageLine } from './model';
 
 // The shape QA answered on 2026-11-10 (one wallet).
 const wallets = {
@@ -65,5 +65,16 @@ describe('rateColor', () => {
     expect(rateColor(100)).toBe('rgb(18, 183, 106)');
     expect(rateColor(0)).toBe('rgb(229, 35, 42)');
     expect(rateColor(70, 'conversion')).toBe(rateColor(95));
+  });
+});
+
+describe('unstableCount', () => {
+  it('counts from the stability ranking, not from the conversion tab', () => {
+    const row = (gateway: string, rate: number) => ({ gateway, rate, sample: 100 });
+    const stats = {
+      ranking: { reliability: [row('appmax', 57.1), row('efibank', 98)], pix: null, conversion: [row('efibank', 40), row('appmax', 30)], card: [] },
+      totals: { appmax: 100, efibank: 100 }, hours: 24, cachedAt: null,
+    } as unknown as Parameters<typeof unstableCount>[0];
+    expect(unstableCount(stats)).toBe(1);
   });
 });

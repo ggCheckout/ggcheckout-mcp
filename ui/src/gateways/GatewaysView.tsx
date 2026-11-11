@@ -8,7 +8,7 @@ import { formatInt, plural } from '../lib/format';
 import { GatewayMark } from '../lib/GatewayMark';
 import { gatewayName } from '../lib/gateways';
 import {
-  LOW_SAMPLE, coverLine, formatRate, isUnstable, rankingFor, rateColor, summarizeStats, summarizeWallets, unitLabel, usageLine,
+  LOW_SAMPLE, coverLine, formatRate, isUnstable, rankingFor, rateColor, summarizeStats, summarizeWallets, unitLabel, unstableCount, usageLine,
   type GatewayStats, type Metric, type RankRow, type Wallet, type WalletEntry,
 } from './model';
 
@@ -109,7 +109,7 @@ function Ranking({ stats }: { stats: GatewayStats }) {
   const hasConversion = Boolean(stats.ranking?.conversion.length);
   const [metric, setMetric] = useState<Metric>(stats.ranking && !rankingFor(stats, 'pix', 'reliability').length && hasConversion ? 'conversion' : 'reliability');
   const rows = rankingFor(stats, 'pix', metric);
-  const unstable = rows.filter((r) => isUnstable(r.gateway, r.rate, stats)).length;
+  const unstable = unstableCount(stats);
   return (
     <section className="surface gw-wallet">
       <header className="gw-wallet-head">
