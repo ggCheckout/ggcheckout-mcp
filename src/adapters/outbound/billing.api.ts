@@ -24,6 +24,10 @@ function notTheOpenInvoice(id: string, openId: string): ValidationError {
   return new ValidationError(`Invoice ${id} is not the open one: only ${openId} can be paid now. Call pay_invoice with that id.`);
 }
 
+function noPixToPay(id: string, track: string): ValidationError {
+  return new ValidationError(`Invoice ${id} has no PIX to pay: it is not the open invoice of the ${track} track, or it was just settled.`);
+}
+
 function toPixPayment(answer: InvoicePixResponse, pix: InvoicePix): InvoicePixPayment {
   return {
     invoiceId: answer.invoiceId as string,
@@ -80,7 +84,10 @@ export class BillingApiAdapter implements BillingPort {
    * The POST is limited to 10 per hour per seller (shared with the dashboard button) and reissues
    * the open invoice's PIX even when `id` is not the open one, so the read-only GET goes first: it
    * names the open invoice without spending the limit. A live PIX for this invoice is returned
-   * as is; another invoice is refused; only no PIX (or an expired one) falls through to the POST.
+   * as is; another invoice is refused; no open invoice at all (the read answers `{ pix: null }`
+   * with no `invoiceId`: payments has none open for the track) is refused too, because the POST
+   * would 404 the same way and still spend the limit. Only this invoice with no PIX (or an
+   * expired one) falls through to the POST.
    */
   async payInvoice(id: string): Promise<InvoicePixPayment> {
     const invoice = await this.getInvoice(id);
@@ -90,8 +97,9 @@ export class BillingApiAdapter implements BillingPort {
     const pixUrl = `/api/billing/pix?track=${track}`;
 
     const open = await this.http.get<InvoicePixResponse>(pixUrl);
-    if (open.invoiceId && open.invoiceId !== id) throw notTheOpenInvoice(id, open.invoiceId);
-    if (open.invoiceId === id && open.pix && new Date(open.pix.expiresAt).getTime() > Date.now()) {
+    if (!open.invoiceId) throw noPixToPay(id, track);
+    if (open.invoiceId !== id) throw notTheOpenInvoice(id, open.invoiceId);
+    if (open.pix && new Date(open.pix.expiresAt).getTime() > Date.now()) {
       return toPixPayment(open, open.pix);
     }
 
@@ -109,7 +117,7 @@ export class BillingApiAdapter implements BillingPort {
     }
 
     if (!answer.invoiceId || !answer.pix) {
-      throw new ValidationError(`Invoice ${id} has no PIX to pay: it is not the open invoice of the ${track} track, or it was just settled.`);
+      throw noPixToPay(id, track);
     }
     if (answer.invoiceId !== id) throw notTheOpenInvoice(id, answer.invoiceId);
     return toPixPayment(answer, answer.pix);

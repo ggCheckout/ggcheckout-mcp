@@ -51,7 +51,10 @@ describe('BillingApiAdapter', () => {
     const future = new Date(Date.now() + 3_600_000).toISOString();
     const pix = { invoiceId: 'inv-1', amountCents: 1460, status: 'overdue', pix: { emv: 'emv', qrBase64: 'qr', gateway: 'efi', expiresAt: 'x' } };
     const livePix = { ...pix, pix: { ...pix.pix, expiresAt: future } };
-    const noPix = { pix: null };
+    // The open invoice is this one, but it has no PIX yet (or an expired one): only then does the POST run.
+    const noPix = { invoiceId: 'inv-1', pix: null };
+    // payments has no open invoice for the track: the saas answers no `invoiceId` at all.
+    const noOpenInvoice = { pix: null };
 
     /** The invoice read, then the read-only PIX lookup. */
     function mockReads(invoice: object, lookup: object) {
@@ -111,12 +114,19 @@ describe('BillingApiAdapter', () => {
     });
 
     it('refuses a POST answer that pays another invoice', async () => {
-      mockReads({ ...open, id: 'inv-old' }, noPix);
+      mockReads({ ...open, id: 'inv-old' }, { invoiceId: 'inv-old', pix: null });
       vi.mocked(http.post).mockResolvedValue(pix);
       await expect(adapter.payInvoice('inv-old')).rejects.toThrow('only inv-1 can be paid now');
     });
 
-    it('says so when there is no open invoice', async () => {
+    // The POST would 404 the same way and spend the seller's 10 per hour, so it is never sent.
+    it('says so and never POSTs when the read names no open invoice', async () => {
+      mockReads(open, noOpenInvoice);
+      await expect(adapter.payInvoice('inv-1')).rejects.toThrow('has no PIX to pay');
+      expect(http.post).not.toHaveBeenCalled();
+    });
+
+    it('says so when the POST answers no PIX', async () => {
       mockReads(open, noPix);
       vi.mocked(http.post).mockResolvedValue({ pix: null });
       await expect(adapter.payInvoice('inv-1')).rejects.toThrow('has no PIX to pay');
