@@ -141,3 +141,12 @@ export function formatRemaining(expiresAt: string, now = Date.now()): string | n
   const s = String(seconds % 60).padStart(2, '0');
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
 }
+
+const POLL_MS = 5000;
+// A test key reads 60 times a minute: 5 s would spend 12 of them per open card, so test intents poll at half the rate.
+const TEST_POLL_MS = 10_000;
+
+/** How often the open card re-reads its status. */
+export function pollIntervalMs(charge: Pick<PixCharge, 'kind' | 'livemode'>): number {
+  return charge.kind === 'intent' && !charge.livemode ? TEST_POLL_MS : POLL_MS;
+}

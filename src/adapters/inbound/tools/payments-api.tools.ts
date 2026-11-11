@@ -61,7 +61,18 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       + '`active_pix_count` (active PIX gateways; 0 means create_pix_charge fails with wallet_has_no_active_pix on a live key; a test key simulates without checking it). '
       + 'Use `id` as `wallet` in create_pix_charge.',
     inputSchema: {},
-  }, createToolHandler('list_wallets', async () => client.listWallets()));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_wallets', async () => client.listWallets())));
+
+  server.registerTool('get_payments_api_limits', {
+    description:
+      'Requests per minute of the payments API key in use (live or test): for each bucket (create, read, cancel per key; '
+      + 'create per seller; per day on a test key) `limit`, `used`, `window_seconds` and `resets_in_seconds`, plus '
+      + '`max_amount_cents`, the largest amount per charge. Spends one read of the key\'s read bucket. '
+      + 'Answers `available: false` while the API has no limits route yet: say so, it is not an error.',
+    inputSchema: {},
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_payments_api_limits', async () => client.getLimits())));
 
   server.registerTool('create_pix_charge', {
     description:
@@ -114,8 +125,11 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       external_reference: z.string().optional().describe('Find the charge of one order'),
       starting_after: z.string().optional().describe('The `next_cursor` of the previous page'),
       limit: z.number().int().min(1).max(100).optional().describe('Page size, 1-100 (default 20)'),
+      created_gte: z.number().int().min(0).optional()
+        .describe('Only intents created at or after this moment, in unix seconds (UTC)'),
     },
-  }, asThirdPartyData(createToolHandler('list_payment_intents', async (args) => client.listPaymentIntents(args))));
+    _meta: appMeta(),
+  }, withDrawnNote(server, asThirdPartyData(createToolHandler('list_payment_intents', async (args) => client.listPaymentIntents(args)))));
 
   server.registerTool('cancel_payment_intent', {
     description:
@@ -123,5 +137,6 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
       + 'failed or expired. A PIX paid after the cancel still enters the wallet (the API then sends '
       + '`payment_intent.succeeded_after_cancel`). Confirm with the user before calling it.',
     inputSchema: { id: z.string().regex(INTENT_ID).describe('Payment intent id (`pi_…`)') },
-  }, asThirdPartyData(createToolHandler('cancel_payment_intent', async ({ id }) => client.cancelPaymentIntent(id))));
+    _meta: appMeta(),
+  }, withDrawnNote(server, asThirdPartyData(createToolHandler('cancel_payment_intent', async ({ id }) => client.cancelPaymentIntent(id)))));
 }

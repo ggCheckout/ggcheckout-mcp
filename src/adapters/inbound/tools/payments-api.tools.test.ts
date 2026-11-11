@@ -9,14 +9,14 @@ import type { PaymentsApiClient } from '../../outbound/payments-api.client.js';
 vi.mock('../../../shared/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 
 const KEY = 'ggpk_test_' + 'a'.repeat(46);
-const NAMES = ['list_wallets', 'create_pix_charge', 'get_payment_intent', 'list_payment_intents', 'cancel_payment_intent'];
+const NAMES = ['list_wallets', 'get_payments_api_limits', 'create_pix_charge', 'get_payment_intent', 'list_payment_intents', 'cancel_payment_intent'];
 
 function registered(server: McpServer): Record<string, any> {
   return (server as any)._registeredTools;
 }
 
 describe('registerPaymentsApiTools', () => {
-  it('registers the five payments API tools', () => {
+  it('registers the six payments API tools', () => {
     const server = new McpServer({ name: 't', version: '0' });
     registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
     expect(Object.keys(registered(server)).sort()).toEqual([...NAMES].sort());
@@ -58,6 +58,30 @@ describe('registerPaymentsApiTools', () => {
     expect(wallet('..')).toBe(false);
     expect(wallet('wal_8f3kQ2')).toBe(false);
     expect(wallet('wal_8f3kQ2mN7xR4tY9pL6a/b')).toBe(false);
+  });
+
+  it('describes get_payments_api_limits and exposes created_gte on list_payment_intents', () => {
+    const server = new McpServer({ name: 't', version: '0' });
+    registerPaymentsApiTools(server, {} as PaymentsApiClient, 'test');
+    const tools = registered(server);
+    expect(tools.get_payments_api_limits.description).toContain('max_amount_cents');
+    expect(tools.get_payments_api_limits.description).toContain('available: false');
+    const shape = z.object(tools.list_payment_intents.inputSchema.shape ?? tools.list_payment_intents.inputSchema).shape;
+    expect(shape.created_gte.safeParse(1_760_000_000).success).toBe(true);
+    expect(shape.created_gte.safeParse(1.5).success).toBe(false);
+  });
+
+  it('returns the limits without the third-party notice, and the not-available answer as a result', async () => {
+    const unavailable = { object: 'limits_unavailable', available: false, message: 'no route' };
+    const client = { getLimits: vi.fn().mockResolvedValueOnce({ object: 'limits', buckets: [] }).mockResolvedValueOnce(unavailable) };
+    const server = new McpServer({ name: 't', version: '0' });
+    registerPaymentsApiTools(server, client as unknown as PaymentsApiClient, 'test');
+    const first = await registered(server).get_payments_api_limits.handler({}, {});
+    expect(first.isError).toBeFalsy();
+    expect(first.structuredContent._notice).toBeUndefined();
+    const second = await registered(server).get_payments_api_limits.handler({}, {});
+    expect(second.isError).toBeFalsy();
+    expect(second.structuredContent).toMatchObject({ available: false });
   });
 
   it('asks for confirmation before cancel_payment_intent', () => {

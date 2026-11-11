@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatRemaining, normalizePix, polledStatus, qrImageSrc } from './model';
+import { formatRemaining, normalizePix, pollIntervalMs, polledStatus, qrImageSrc } from './model';
 
 describe('normalizePix', () => {
   const intent = {
@@ -71,5 +71,13 @@ describe('formatRemaining', () => {
     expect(formatRemaining('2026-11-09T20:14:05Z', now)).toBe('14:05');
     expect(formatRemaining('2026-11-09T21:00:00Z', now)).toBe('1:00:00');
     expect(formatRemaining('2026-11-09T19:59:59Z', now)).toBeNull();
+  });
+});
+
+describe('pollIntervalMs', () => {
+  it('polls test-mode intents every 10 s (60 reads a minute) and everything else every 5 s', () => {
+    expect(pollIntervalMs({ kind: 'intent', livemode: false })).toBe(10_000);
+    expect(pollIntervalMs({ kind: 'intent', livemode: true })).toBe(5000);
+    expect(pollIntervalMs({ kind: 'topup', livemode: true })).toBe(5000);
   });
 });

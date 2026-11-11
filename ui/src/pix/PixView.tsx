@@ -3,9 +3,8 @@ import './pix.css';
 import type { Host, HostSnapshot } from '../host';
 import { formatCents } from '../lib/format';
 import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
-import { FINAL_STATUSES, formatRemaining, normalizePix, polledStatus, type PixCharge, type PixStatus } from './model';
+import { FINAL_STATUSES, formatRemaining, normalizePix, pollIntervalMs, polledStatus, type PixCharge, type PixStatus } from './model';
 
-const POLL_MS = 5000;
 // A PIX paid in the last seconds can take a moment to show, so polling outlives the expiry a little.
 const GRACE_AFTER_EXPIRY_MS = 120_000;
 const POLL_LIMIT_MS = 30 * 60_000;
@@ -46,6 +45,7 @@ function usePolledStatus(host: Host, charge: PixCharge, canCallTools: boolean) {
     if (!polling || !charge.poll) return;
     const poll = charge.poll;
     const startedAt = Date.now();
+    const pollMs = pollIntervalMs(charge);
     let timer = 0;
     let stopped = false;
     const tick = async () => {
@@ -67,9 +67,9 @@ function usePolledStatus(host: Host, charge: PixCharge, canCallTools: boolean) {
           // A failed read is not a status: try again on the next tick.
         }
       }
-      if (!stopped) timer = window.setTimeout(tick, POLL_MS);
+      if (!stopped) timer = window.setTimeout(tick, pollMs);
     };
-    timer = window.setTimeout(tick, POLL_MS);
+    timer = window.setTimeout(tick, pollMs);
     return () => {
       stopped = true;
       clearTimeout(timer);
