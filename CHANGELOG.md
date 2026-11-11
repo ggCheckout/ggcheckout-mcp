@@ -5,7 +5,7 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
-## Unreleased
+## 0.6.0
 
 ### Breaking
 
@@ -38,7 +38,6 @@ right now.
 - Inline views (MCP Apps, spec 2026-01-26) for clients that draw them: a sales panel on
   `get_dashboard_charts`, and a PIX view (QR, copy-and-paste, time left, live status) on
   `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup` and `pay_invoice`.
-  The minimum supported version does not need to move: no write changed.
 - `get_dashboard_charts` takes an optional `focus` (`revenue`, `approval`, `products`, `states`,
   `refunds`): the answer carries only that part, and the sales view draws only it. Without `focus`
   the answer is the whole payload, as before. `get_dashboard_stats` is drawn by the same view, as
@@ -80,18 +79,6 @@ right now.
   (`allowedHoursStart`, `allowedHoursEnd`) and `paymentMethods`; `update_whatsapp_template` can
   relink `sessionIds`.
 
-### Changed
-
-- `get_credit_topup` says what the route answers: the latest top-up, which may be long finished
-  (only a pending one is open), or null when the seller never opened one. The PIX view shows a
-  finished top-up past its PIX window as "Nenhuma recarga em aberto" instead of drawing it as the
-  current one.
-- `pay_invoice` answers the PIX of the open invoice (`invoiceId`, `amountCents`, `status`, `pixCode`,
-  `pixQrBase64`, `expiresAt`) and no longer takes `method`. It used `/api/billing/invoices/{id}/pay`,
-  which the dashboard retired with the legacy billing and now fails for every seller; it now goes
-  through `/api/billing/pix`, as the dashboard's "Pagar Fatura" does. PIX is the only way left to
-  pay an invoice: card charges are retired and credit is applied on its own (`add_credit` tops it
-  up). Only the open invoice of its track can be paid, and the error names it otherwise.
 - WhatsApp deliveries view on `get_delivery_status` and `resend_delivery`, as the payment detail's
   WhatsApp data: the summary, a card per message with its status, and a confirmed resend.
 - Gateways view on `list_checkout_wallets` and `get_gateway_fallback_stats`, as the charge order
@@ -108,6 +95,19 @@ right now.
 - WhatsApp chips view on `list_whatsapp_numbers`, `get_whatsapp_number` and `get_pairing_code`:
   the chips with their status, and a disconnected QR code chip connected in place with a pairing
   code, read until it connects.
+
+### Changed
+
+- `get_credit_topup` says what the route answers: the latest top-up, which may be long finished
+  (only a pending one is open), or null when the seller never opened one. The PIX view shows a
+  finished top-up past its PIX window as "Nenhuma recarga em aberto" instead of drawing it as the
+  current one.
+- `pay_invoice` answers the PIX of the open invoice (`invoiceId`, `amountCents`, `status`, `pixCode`,
+  `pixQrBase64`, `expiresAt`) and no longer takes `method`. It used `/api/billing/invoices/{id}/pay`,
+  which the dashboard retired with the legacy billing and now fails for every seller; it now goes
+  through `/api/billing/pix`, as the dashboard's "Pagar Fatura" does. PIX is the only way left to
+  pay an invoice: card charges are retired and credit is applied on its own (`add_credit` tops it
+  up). Only the open invoice of its track can be paid, and the error names it otherwise.
 
 ### Fixed
 
@@ -127,6 +127,20 @@ right now.
 
 - Chips never carry their QR code (it links a device to the account), the worker, or a Meta chip's
   token, secret and webhook token; the phone stays masked.
+
+- Minimum-version decision for this release: **0.6.0**. From 0.6.0 on, the saas API refuses 0.5.x
+  by version (read from the `User-Agent`) and tells the user to update with `npx -y ggcheckout-mcp@latest`.
+  The payments public API keeps 0.5.0 as its minimum on purpose: its tools (`create_pix_charge`,
+  `get_payment_intent`, `list_payment_intents`, `cancel_payment_intent`, `list_wallets`) send the same
+  requests in 0.5.0 and 0.6.0, and the core only announces 0.6.0 as the latest.
+  The reason is `create_whatsapp_template`: a 0.5.x install sends the legacy `sessionId`, the saas
+  wraps it into `sessionIds: [sessionId]`, and the template is linked to an id that is not a session,
+  so it is saved and never fires, with no error. The other changed writes do not need the minimum:
+  0.5.x `pay_invoice` fails loudly (500 `LEGACY_BILLING_READ_RETIRED`), and the removed WhatsApp tools
+  answer 403 or 404. Release order: publish 0.6.0 to npm first; only then raise
+  `MIN_SUPPORTED_GGCHECKOUT_MCP_VERSION` and `LATEST_GGCHECKOUT_MCP_VERSION` in saas-checkout and
+  `DEFAULT_MCP_LATEST_VERSION` in ggcheckout-core to 0.6.0. Raising the minimum before the release
+  would refuse every install with nothing to upgrade to.
 
 ## 0.5.0
 

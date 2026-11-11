@@ -135,8 +135,9 @@ resource), which picks the view by the tool that answered.
 
 - Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>`, so the API
   knows which release is calling.
-- The API refuses every request from versions below the minimum it supports (0.5.0 from this
-  release). The refusal says so and asks you to update.
+- Each API refuses every request from versions below the minimum it supports: the dashboard API
+  (saas) from 0.6.0 on this release, the payments public API from 0.5.0 (its tools did not change).
+  The refusal says so and asks you to update.
 - Both APIs tell an outdated install so in their response headers (`X-GG-MCP-Latest` and
   `X-GG-MCP-Update`); the tool result then ends with a short `update:` line so your assistant can
   suggest updating. The version must be a newer semver and the text is fixed (with `@latest` in the
