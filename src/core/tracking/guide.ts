@@ -9,7 +9,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   {
     id: 'paths',
     title: 'Caminhos dos eventos',
-    summary: 'Cada evento pode chegar às plataformas por dois caminhos: o navegador do comprador e o servidor do GG Checkout.',
+    summary: 'Cada evento pode chegar às plataformas por dois caminhos: o navegador do comprador e o servidor do GGCheckout.',
     items: [
       {
         title: 'Credenciais',
