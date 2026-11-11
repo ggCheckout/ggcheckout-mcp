@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatPeriodDay, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment, summarizePaymentsPage,
+  formatPeriodDay, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment, summarizePaymentsCount, summarizePaymentsPage, countScope,
 } from './model';
 import { parseDate } from '../lib/format';
 
@@ -97,5 +97,25 @@ describe('formatPeriodDay', () => {
     expect(formatPeriodDay('')).toBeNull();
     expect(formatPeriodDay(undefined)).toBeNull();
     expect(formatPeriodDay('garbage')).toBeNull();
+  });
+});
+
+describe('summarizePaymentsCount', () => {
+  it('reads a countOnly answer, which has a total and no payments', () => {
+    expect(summarizePaymentsCount({ total: 42 })).toEqual({ total: 42, capped: false });
+    expect(summarizePaymentsCount({ total: 5000, totalCapped: true })).toEqual({ total: 5000, capped: true });
+    expect(summarizePaymentsPage({ total: 42 })).toBeNull();
+  });
+
+  it('ignores pages and other payloads', () => {
+    expect(summarizePaymentsCount({ payments: [], total: 0 })).toBeNull();
+    expect(summarizePaymentsCount({ total: 'x' })).toBeNull();
+    expect(summarizePaymentsCount(null)).toBeNull();
+  });
+
+  it('describes what was counted from the args', () => {
+    expect(countScope({ dateFrom: '2026-11-01', dateTo: '2026-11-10', status: 'paid', searchTerm: 'ana' }))
+      .toEqual(['Período: 01/11/2026 - 10/11/2026', 'Status: Pago', 'Busca: "ana"']);
+    expect(countScope({ status: 'all' })).toEqual([]);
   });
 });

@@ -3,7 +3,7 @@
 // cents); `value` is the same in reais as a float and is only a fallback. Pure.
 
 import { formatDate } from '../lib/format';
-import { type Payload, count, isPayload, text } from '../lib/payload';
+import { type Payload, count, finite, isPayload, text } from '../lib/payload';
 
 export interface PaymentRow {
   id: string;
@@ -80,6 +80,31 @@ export function summarizePaymentsPage(data: unknown): PaymentsPage | null {
     nextCursor: text(data.nextCursor),
     coverageCapped: data.coverageCapped === true,
   };
+}
+
+/** A count-only answer (`countOnly: true`): a finite `total` and no `payments`; null for anything else. */
+export function summarizePaymentsCount(data: unknown): { total: number; capped: boolean } | null {
+  if (!isPayload(data) || 'payments' in data) return null;
+  const total = finite(data.total);
+  return total === null ? null : { total, capped: data.totalCapped === true };
+}
+
+/** What a count-only answer was counted over, from the call's args: period, status and search, when present. */
+export function periodLabel(args: Record<string, unknown>): string | null {
+  const from = formatPeriodDay(args.dateFrom);
+  const to = formatPeriodDay(args.dateTo);
+  return from && to ? `${from} - ${to}` : null;
+}
+
+export function countScope(args: Record<string, unknown>): string[] {
+  const period = periodLabel(args);
+  const status = text(args.status);
+  const search = text(args.searchTerm);
+  return [
+    period ? `Período: ${period}` : null,
+    status && status.toLowerCase() !== 'all' ? `Status: ${statusLabel(status)}` : null,
+    search ? `Busca: "${search}"` : null,
+  ].filter((s): s is string => s !== null);
 }
 
 /** One payment (get_payment answers `{ payment }`); null for anything else. */

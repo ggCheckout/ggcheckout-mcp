@@ -17,7 +17,7 @@ import { gatewayName } from '../lib/gateways';
 import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
 import {
   formatPeriodDay, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment,
-  summarizePaymentsPage, type PaymentRow, type PaymentsPage,
+  countScope, periodLabel, summarizePaymentsCount, summarizePaymentsPage, type PaymentRow, type PaymentsPage,
 } from './model';
 
 /** Rows per page when list_payments hands over the whole list (the paginated tool's default). */
@@ -193,16 +193,16 @@ function totalLabel(total: number | null, capped: boolean): string {
   return `${formatInt(total)}${capped ? '+' : ''}`;
 }
 
-function periodLabel(args: Record<string, unknown>): string | null {
-  const from = formatPeriodDay(args.dateFrom);
-  const to = formatPeriodDay(args.dateTo);
-  return from && to ? `${from} - ${to}` : null;
-}
-
 interface CursorPages {
   pages: PaymentRow[][];
   /** Cursor that loads pages[i + 1]; null once the last page is in. */
   cursors: (string | null)[];
+}
+
+/** The call's args without the filters the list owns (the active search) and the cursor. */
+function baseArgs(args: Record<string, unknown>): Record<string, unknown> {
+  const { searchTerm: _, lastCreatedAt: __, ...rest } = args;
+  return rest;
 }
 
 /** PaymentsListCard + the footer of the payments page, for get_payments_paginated and list_payments. */
@@ -214,8 +214,11 @@ function PaymentsList({ host, state, first, onOpen }: {
   // its pages and search locally, over what it gave.
   const local = !state.toolName && first.nextCursor === null && first.total === null;
   const remote = !local && state.canCallTools;
-  const [query, setQuery] = useState('');
-  const [applied, setApplied] = useState('');
+  // One active filter, started from the search the model opened the list with: the field shows it, paging
+  // and the next search read it, and clearing the field drops it. (A local list filters what it holds.)
+  const opened = local ? '' : typeof state.args.searchTerm === 'string' ? state.args.searchTerm.trim() : '';
+  const [query, setQuery] = useState(opened);
+  const [applied, setApplied] = useState(opened);
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ head: PaymentsPage; walk: CursorPages }>(() => ({
     head: first, walk: { pages: [first.payments], cursors: [first.nextCursor] },
@@ -260,7 +263,7 @@ function PaymentsList({ host, state, first, onOpen }: {
     if (local || target <= data.walk.pages.length) return setPage(target);
     const cursor = data.walk.cursors[target - 2];
     if (!cursor || busy) return;
-    const next = await fetchPage({ ...state.args, ...(applied ? { searchTerm: applied } : {}), lastCreatedAt: cursor });
+    const next = await fetchPage({ ...baseArgs(state.args), ...(applied ? { searchTerm: applied } : {}), lastCreatedAt: cursor });
     if (!next) return;
     setData((d) => ({ ...d, walk: { pages: [...d.walk.pages, next.payments], cursors: [...d.walk.cursors, next.nextCursor] } }));
     setPage(target);
@@ -276,7 +279,7 @@ function PaymentsList({ host, state, first, onOpen }: {
       return;
     }
     if (!remote) return;
-    const { searchTerm: _, lastCreatedAt: __, ...rest } = state.args;
+    const rest = baseArgs(state.args);
     const head = await fetchPage(term ? { ...rest, searchTerm: term } : rest);
     if (!head) return;
     setApplied(term);
@@ -414,6 +417,7 @@ function PaymentDetail({ row, onBack }: { row: PaymentRow; onBack?: () => void }
 export function PaymentsView({ host, state }: { host: Host; state: HostSnapshot }) {
   const single = useMemo(() => summarizePayment(state.payload), [state.payload]);
   const page = useMemo(() => (single ? null : summarizePaymentsPage(state.payload)), [single, state.payload]);
+  const counted = useMemo(() => (single || page ? null : summarizePaymentsCount(state.payload)), [single, page, state.payload]);
   const [open, setOpen] = useState<PaymentRow | null>(null);
 
   useEffect(() => {
@@ -425,6 +429,17 @@ export function PaymentsView({ host, state }: { host: Host; state: HostSnapshot 
     host.tellModel(`O vendedor abriu o pagamento ${row.id} na tela do chat.`);
   };
 
+  if (counted) {
+    const scope = countScope(state.args);
+    return (
+      <div className="dashboard payments">
+        <section className="surface pay-total">
+          <p className="pay-total-value num">{`${counted.capped ? 'Mais de ' : ''}${formatInt(counted.total)} ${counted.total === 1 ? 'pagamento' : 'pagamentos'}`}</p>
+          {scope.length > 0 && <p className="pay-total-scope">{scope.join(' · ')}</p>}
+        </section>
+      </div>
+    );
+  }
   if (!single && !page) return <p className="state" data-tone="error">A resposta não trouxe pagamentos.</p>;
   return (
     <div className="dashboard payments">
