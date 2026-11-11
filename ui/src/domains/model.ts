@@ -29,6 +29,13 @@ function record(r: unknown): DnsRecord | null {
   return name && value ? { type: String(r.type ?? ''), name, value } : null;
 }
 
+/** The sentence above the records: the CNAME alone, or the CNAME and the legacy TXT a Vercel domain also lists. */
+export function recordsHint(records: DnsRecord[]): string {
+  const hasTxt = records.some((r) => r.type.toUpperCase() === 'TXT');
+  const hasPointer = records.some((r) => r.type.toUpperCase() !== 'TXT');
+  return hasTxt && hasPointer ? 'Configure os registros CNAME e TXT abaixo.' : hasTxt ? 'Configure o registro TXT abaixo.' : 'Configure o registro CNAME abaixo.';
+}
+
 /** DnsInstructionsModal: the pointer (CNAME) always, the TXT only when a legacy domain has one. */
 function toDomain(d: Payload): Domain {
   const dns = isPayload(d.dnsInstructions) ? d.dnsInstructions : null;
@@ -39,8 +46,9 @@ function toDomain(d: Payload): Domain {
     createdAt: text(d.createdAt),
     records: [record(dns?.pointer), record(dns?.txt)].filter((r): r is DnsRecord => r !== null),
     notes: (Array.isArray(dns?.notes) ? dns.notes : []).filter((n: unknown): n is string => typeof n === 'string')
-      // The first note says "configure only the CNAME below": the view's heading already says it.
-      .map((n: string) => n.replace(/^✅\s*/, '')),
+      // The first note says "configure only the CNAME below": the view's own sentence (recordsHint) says what applies.
+      .map((n: string) => n.replace(/^✅\s*/, ''))
+      .filter((n: string) => !/^Configure apenas o registro CNAME/i.test(n)),
   };
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { domainStatus, summarizeDomain, summarizeDomainList, summarizeVerify, usageLabel } from './model';
+import { domainStatus, recordsHint, summarizeDomain, summarizeDomainList, summarizeVerify, usageLabel } from './model';
 
 // The shapes QA answered on 2026-11-10.
 const instructions = {
@@ -20,7 +20,7 @@ describe('summarizeDomain', () => {
   it('keeps the CNAME and drops the empty TXT', () => {
     const domain = summarizeDomain({ domain: pending })!;
     expect(domain.records).toEqual([{ type: 'CNAME', name: 'checkout.exemplo.com.br', value: 'pay.ggcheckout.app' }]);
-    expect(domain.notes[0]).toBe('Configure apenas o registro CNAME abaixo');
+    expect(domain.notes).toEqual(['Se você usa Cloudflare como DNS, deixe com Proxy desligado (DNS only — nuvem cinza)']);
   });
 
   it('reads the answer of add_custom_domain too', () => {
@@ -69,5 +69,15 @@ describe('domainStatus', () => {
   it('labels each status as the settings do', () => {
     expect(domainStatus('verified')).toEqual({ label: 'Verificado', tone: 'success' });
     expect(domainStatus('weird')).toEqual({ label: 'weird', tone: 'muted' });
+  });
+});
+
+describe('recordsHint', () => {
+  const cname = { type: 'CNAME', name: 'a.loja.com', value: 'pay.ggcheckout.app' };
+  const txt = { type: 'TXT', name: '_vercel.loja.com', value: 'vc-domain-verify=x' };
+
+  it('words the sentence from the records present', () => {
+    expect(recordsHint([cname])).toBe('Configure o registro CNAME abaixo.');
+    expect(recordsHint([cname, txt])).toBe('Configure os registros CNAME e TXT abaixo.');
   });
 });

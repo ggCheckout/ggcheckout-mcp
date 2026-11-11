@@ -9,7 +9,7 @@ import { formatDateTime } from '../lib/format';
 import { messageOf } from '../lib/messageOf';
 import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
 import {
-  domainStatus, summarizeDomain, summarizeDomainList, summarizeVerify, usageLabel,
+  domainStatus, recordsHint, summarizeDomain, summarizeDomainList, summarizeVerify, usageLabel,
   type DnsRecord, type Domain, type DomainList, type VerifyOutcome,
 } from './model';
 
@@ -120,7 +120,7 @@ function DomainDetail({ host, first, canCallTools, firstOutcome = null, onBack, 
         {domain.records.length > 0 && (
           <>
             <h3 className="dom-section">Instruções de Configuração DNS</h3>
-            <p className="dom-hint">Configure apenas o registro CNAME abaixo. Se você usa Cloudflare como DNS, deixe o Proxy desligado (DNS only, nuvem cinza).</p>
+            <p className="dom-hint">{`${recordsHint(domain.records)} Se você usa Cloudflare como DNS, deixe o Proxy desligado (DNS only, nuvem cinza).`}</p>
             {domain.records.map((r, i) => <RecordCard key={`${r.type}-${r.name}`} record={r} n={i + 1} />)}
           </>
         )}
