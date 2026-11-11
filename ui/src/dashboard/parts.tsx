@@ -44,7 +44,7 @@ export function ViewHeader({ title, children }: { title?: string; children?: Rea
   return (
     <div className="head">
       <div>
-        <p className="eyebrow brand">GG Checkout</p>
+        <p className="eyebrow brand">GGCheckout</p>
         {title && <h1 className="display">{title}</h1>}
       </div>
       {children}
