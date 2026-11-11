@@ -11,8 +11,11 @@ import { summarizeArea, summarizeCarousels, summarizeLessons, summarizeModules }
 import { summarizeFunnelConversion, summarizeFunnelStats } from './funnel/model';
 import { summarizePayment, summarizePaymentsPage } from './payments/model';
 import { normalizePix } from './pix/model';
+import { summarizePayApi } from './payapi/model';
+import { summarizeDiagnosis, summarizeGuide } from './tracking/model';
+import { summarizeLink } from './utm/model';
 
-export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'members' | 'telegram' | 'chips' | 'pix';
+export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'members' | 'telegram' | 'chips' | 'pix' | 'payapi' | 'tracking' | 'utm';
 
 /** Tools with a view (their `_meta.ui.resourceUri` is ui://ggcheckout/app.html) and the view each draws. */
 export const TOOL_VIEWS: Record<string, ViewName> = {
@@ -54,6 +57,13 @@ export const TOOL_VIEWS: Record<string, ViewName> = {
   add_credit: 'pix',
   get_credit_topup: 'pix',
   pay_invoice: 'pix',
+  cancel_payment_intent: 'pix',
+  get_payments_api_limits: 'payapi',
+  list_wallets: 'payapi',
+  list_payment_intents: 'payapi',
+  explain_tracking: 'tracking',
+  diagnose_tracking: 'tracking',
+  build_tracking_link: 'utm',
 };
 
 /**
@@ -71,9 +81,13 @@ export function pickView(toolName: string | undefined, payload: unknown): ViewNa
   if (summarizeWallets(payload) || summarizeGatewayStats(payload)) return 'gateways';
   if (summarizeRewards(payload) || summarizeRedeem(payload)) return 'rewards';
   if (summarizeUpsells(payload) || summarizeDownsells(payload)) return 'offers';
+  // Before members: a guide also has `sections`, which the members tree reads as a section list.
+  if (summarizeDiagnosis(payload) || summarizeGuide(payload)) return 'tracking';
   if (summarizeArea(payload) || summarizeCarousels(payload) || summarizeModules(payload) || summarizeLessons(payload)) return 'members';
   if (summarizeFlow(payload) || summarizeFlowList(payload)) return 'telegram';
   if (summarizeChip(payload) || summarizeChips(payload) || summarizePairing(payload)) return 'chips';
+  if (summarizePayApi(payload)) return 'payapi';
   if (normalizePix(payload)) return 'pix';
+  if (summarizeLink(payload)) return 'utm';
   return null;
 }

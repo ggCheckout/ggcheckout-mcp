@@ -27,6 +27,7 @@ import { RewardsApiAdapter } from './adapters/outbound/rewards.api.js';
 import { ProfileApiAdapter } from './adapters/outbound/profile.api.js';
 import { PushApiAdapter } from './adapters/outbound/push.api.js';
 import { TelegramApiAdapter } from './adapters/outbound/telegram.api.js';
+import { TrackingApiAdapter } from './adapters/outbound/tracking.api.js';
 
 // Services
 import { ProductService } from './core/services/product.service.js';
@@ -48,6 +49,8 @@ import { RewardsService } from './core/services/rewards.service.js';
 import { ProfileService } from './core/services/profile.service.js';
 import { PushService } from './core/services/push.service.js';
 import { TelegramService } from './core/services/telegram.service.js';
+import { TrackingService } from './core/services/tracking.service.js';
+import { appOriginOf } from './core/tracking-links/index.js';
 
 // Inbound adapters (MCP tools)
 import { registerProductTools } from './adapters/inbound/tools/product.tools.js';
@@ -70,6 +73,8 @@ import { registerRewardsTools } from './adapters/inbound/tools/rewards.tools.js'
 import { registerProfileTools } from './adapters/inbound/tools/profile.tools.js';
 import { registerPushTools } from './adapters/inbound/tools/push.tools.js';
 import { registerTelegramTools } from './adapters/inbound/tools/telegram.tools.js';
+import { registerTrackingTools } from './adapters/inbound/tools/tracking.tools.js';
+import { registerTrackingLinkTools } from './adapters/inbound/tools/tracking-link.tools.js';
 import { registerAppViews } from './adapters/inbound/apps/apps.js';
 
 import { readFileSync } from 'node:fs';
@@ -117,6 +122,7 @@ const checkoutAdapter = new CheckoutApiAdapter(httpClient);
 const webhookAdapter = new WebhookApiAdapter(httpClient);
 const storeAdapter = new StoreApiAdapter(httpClient);
 const funnelAdapter = new FunnelApiAdapter(httpClient);
+const trackingAdapter = new TrackingApiAdapter(httpClient);
 const membersAreaAdapter = new MembersAreaApiAdapter(httpClient);
 const discountAdapter = new DiscountApiAdapter(httpClient, authAdapter);
 const whatsappAdapter = new WhatsAppApiAdapter(httpClient);
@@ -138,6 +144,7 @@ const checkoutService = new CheckoutService(checkoutAdapter, authAdapter, produc
 const webhookService = new WebhookService(webhookAdapter, authAdapter);
 const storeService = new StoreService(storeAdapter);
 const funnelService = new FunnelService(funnelAdapter);
+const trackingService = new TrackingService(trackingAdapter, authAdapter);
 const membersAreaService = new MembersAreaService(
   membersAreaAdapter,
   authAdapter,
@@ -169,6 +176,7 @@ registerCheckoutTools(server, checkoutService);
 registerWebhookTools(server, webhookService);
 registerStoreTools(server, storeService);
 registerFunnelTools(server, funnelService);
+registerTrackingTools(server, trackingService);
 registerMembersAreaTools(server, membersAreaService);
 registerDiscountTools(server, discountService);
 registerWhatsAppTools(server, whatsappService);
@@ -182,6 +190,11 @@ registerRewardsTools(server, rewardsService);
 registerProfileTools(server, profileService);
 registerPushTools(server, pushService);
 registerTelegramTools(server, telegramService);
+registerTrackingLinkTools(
+  server,
+  { checkouts: checkoutService, funnels: funnelService, stores: storeService, domains: customDomainService },
+  appOriginOf(API_URL),
+);
 registerAppViews(server);
 
 let paymentsUrl: string | undefined;

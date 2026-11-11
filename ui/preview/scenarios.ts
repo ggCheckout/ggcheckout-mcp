@@ -1,5 +1,6 @@
 import {
   billingBalance, billingStatus, membersArea, chips, chipDetail, telegramFlows, telegramFlowVisual, telegramFlowBasic, memberCarousels, memberModules, memberLessons, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
+  payApiLimits, payApiLimitsUnavailable, payApiWallets, payApiIntents, trackingGuide, trackingDiagnosis, utmMeta, utmManual,
 } from './fixtures';
 
 export interface Scenario {
@@ -57,6 +58,15 @@ export const SCENARIOS: Scenario[] = [
   { id: 'chip-dropped', question: 'Por que o chip Reserva não envia?', tool: 'get_whatsapp_number', args: { numberId: 'chip_reserva' }, result: chipDetail('chip_reserva') },
   { id: 'chip-code', question: 'Gera o código pra conectar o chip Vendas 2', tool: 'get_pairing_code', args: { numberId: 'chip_vendas', phoneNumber: '5531998778877' }, result: { success: true, code: 'K7QW2MZP' } },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
+  { id: 'pix-canceled', question: 'Cancela a cobrança pi_preview…', tool: 'cancel_payment_intent', args: { id: 'pi_preview0000000000000001' }, result: { ...paymentIntent('requires_action'), status: 'canceled' } },
+  { id: 'payapi-limits', question: 'Quais são os limites da API de pagamentos?', tool: 'get_payments_api_limits', args: {}, result: payApiLimits },
+  { id: 'payapi-limits-unavailable', question: 'Quais são os limites da API de pagamentos?', tool: 'get_payments_api_limits', args: {}, result: payApiLimitsUnavailable },
+  { id: 'payapi-wallets', question: 'Quais carteiras a chave pode cobrar?', tool: 'list_wallets', args: {}, result: payApiWallets },
+  { id: 'payapi-intents', question: 'Lista as últimas cobranças PIX', tool: 'list_payment_intents', args: {}, result: payApiIntents },
+  { id: 'tracking-guide', question: 'Como as métricas das minhas vendas chegam na Meta e no TikTok?', tool: 'explain_tracking', args: {}, result: trackingGuide },
+  { id: 'tracking-diagnosis', question: 'Por que a venda do curso não aparece no TikTok?', tool: 'diagnose_tracking', args: { checkoutId: 'ck_preview', paymentId: 'pay_preview' }, result: trackingDiagnosis },
+  { id: 'utm-meta', question: 'Gera o link do meu checkout pra anunciar no Meta', tool: 'build_tracking_link', args: { checkoutId: 'ck_aurora', platform: 'meta' }, result: utmMeta },
+  { id: 'utm-manual', question: 'Faz um link do quiz pra colocar na bio do Instagram', tool: 'build_tracking_link', args: { funnelId: 'fn_aurora', platform: 'manual', utm_source: 'instagram', utm_medium: 'bio', utm_campaign: 'Lançamento Aurora', sck: 'story1' }, result: utmManual },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
 ];
@@ -69,7 +79,15 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'get_dashboard_charts': return args.focus ? { ...chartsFor(range), focus: args.focus } : chartsFor(range);
     // The charge is paid on the third poll, so the preview shows the switch to "confirmed".
     case 'get_payments_paginated': return paymentsPage(args);
-    case 'get_payment_intent': return paymentIntent(++polls.count >= 3 ? 'succeeded' : 'requires_action');
+    case 'get_payment_intent': {
+      // The row opened from the payapi list keeps its id; any other id is the preview charge.
+      const intent = paymentIntent(++polls.count >= 3 ? 'succeeded' : 'requires_action');
+      return typeof args.id === 'string' ? { ...intent, id: args.id } : intent;
+    }
+    case 'get_payments_api_limits': return payApiLimits;
+    case 'list_payment_intents': return { ...payApiIntents, has_more: false, next_cursor: null };
+    case 'list_wallets': return payApiWallets;
+    case 'build_tracking_link': return args.platform === 'meta' ? utmMeta : utmManual;
     case 'get_invoice': return { invoice: { ...invoices[0], status: ++polls.count >= 3 ? 'paid' : 'overdue' } };
     case 'get_custom_domain': return { domain: domains.find((d) => d.id === args.domainId) ?? domains[0] };
     case 'verify_custom_domain': return verifyPending;

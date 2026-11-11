@@ -46,4 +46,28 @@ describe('pickView', () => {
     expect(pickView(undefined, { success: true, code: 'ABCD1234' })).toBe('chips');
     expect(pickView(undefined, { anything: true })).toBeNull();
   });
+
+  it('draws the payments API, tracking and UTM answers without stealing other shapes', () => {
+    expect(pickView('get_payments_api_limits', {})).toBe('payapi');
+    expect(pickView('list_wallets', {})).toBe('payapi');
+    expect(pickView('list_payment_intents', {})).toBe('payapi');
+    expect(pickView('cancel_payment_intent', {})).toBe('pix');
+    expect(pickView('explain_tracking', {})).toBe('tracking');
+    expect(pickView('diagnose_tracking', {})).toBe('tracking');
+    expect(pickView('build_tracking_link', {})).toBe('utm');
+
+    expect(pickView(undefined, { object: 'limits', buckets: [] })).toBe('payapi');
+    expect(pickView(undefined, { object: 'limits_unavailable', available: false })).toBe('payapi');
+    expect(pickView(undefined, { object: 'list', data: [{ id: 'wal_1', name: 'Loja', active_pix_count: 0 }] })).toBe('payapi');
+    expect(pickView(undefined, { object: 'list', data: [{ id: 'pi_1', object: 'payment_intent', status: 'succeeded', amount: 100 }], has_more: false })).toBe('payapi');
+    expect(pickView(undefined, { sections: [{ id: 'paths', title: 'Caminhos', summary: '', items: [] }], problems: [] })).toBe('tracking');
+    expect(pickView(undefined, { scope: { kind: 'account' }, findings: [], tokens: [] })).toBe('tracking');
+    expect(pickView(undefined, {
+      destination: { kind: 'checkout', url: 'https://ggcheckout.app/checkout/ck_1' }, platform: 'manual', finalUrl: 'https://ggcheckout.app/checkout/ck_1?utm_source=a',
+    })).toBe('utm');
+
+    // A single charge stays with the PIX view, and a members area tree is not a tracking guide.
+    expect(pickView(undefined, { object: 'payment_intent', id: 'pi_1', status: 'canceled' })).toBe('pix');
+    expect(pickView(undefined, { sections: [] })).toBe('members');
+  });
 });

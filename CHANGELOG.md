@@ -95,6 +95,29 @@ right now.
 - WhatsApp chips view on `list_whatsapp_numbers`, `get_whatsapp_number` and `get_pairing_code`:
   the chips with their status, and a disconnected QR code chip connected in place with a pairing
   code, read until it connects.
+- `get_payments_api_limits`: requests per minute per bucket of the key in use (live or test) and the
+  maximum per charge. Reads GET /v1/limits; while the API has no such route it answers
+  `available: false` instead of an error.
+- `list_payment_intents` takes `created_gte` (unix seconds).
+- New payapi view for `get_payments_api_limits`, `list_wallets` and `list_payment_intents`, each
+  list with a requests-per-minute strip on top; `cancel_payment_intent` draws a canceled charge in
+  the PIX view.
+- The PIX view polls test-mode charges every 10 s (was 5 s), so a test key (60 reads/min) is not
+  spent 12 times a minute per open card.
+- `explain_tracking`: pt-BR guide (browser and server paths, InitiateCheckout, Purchase, UTMs,
+  dedup, funnel, store, errors) with common problems and fixes. No API call.
+- `diagnose_tracking`: tokens with health, checkout/funnel token links, a payment's UTMs and event
+  dispatch, last 24 h integration errors; findings sorted critical, warning, info, ok, each with
+  what to do. Never credentials, buyer data or untruncated provider errors. A saas route not
+  deployed yet becomes a finding, not an error.
+- Tracking view for both tools.
+- `build_tracking_link`: the link to sell from, with UTMs, for a checkout, funnel, store (or one of
+  its products) or any https URL, on Meta, TikTok, Google and Kwai (UTMify's templates) or manual.
+  The link comes from the dashboard's own `publicUrl` when the API sends it; otherwise the MCP
+  builds it (verified custom domain, else the GG address), so check it in the panel. No API write.
+  UTM links view for it.
+- Types: `Checkout.metricToken` is `string | string[] | null`; `Checkout` gained `publicId`,
+  `checkoutModel`, `customDomain` and `publicUrl`; `FunnelSettings` gained `utmify`.
 
 ### Changed
 

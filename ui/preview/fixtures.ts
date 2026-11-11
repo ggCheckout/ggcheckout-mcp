@@ -1,3 +1,18 @@
+import { explainTracking } from '../../src/core/tracking/guide';
+import { diagnoseTracking, topSubjects } from '../../src/core/tracking/diagnose';
+import { disabledReasonText, maskId } from '../../src/core/tracking/text';
+import {
+  TRACKING_CHANNELS,
+  type ChannelErrors,
+  type TrackingChannel,
+  type TrackingDiagnosis,
+  type TrackingErrorSummary,
+  type TrackingPayment,
+  type TrackingScope,
+  type TrackingToken,
+  type TrackingTokenView,
+} from '../../src/core/types/tracking';
+
 // Invented payloads in the exact shape each tool answers (structuredContent), so every view and
 // state can be seen without an API key. Amounts in cents, as the API sends them.
 
@@ -419,4 +434,137 @@ export const chipDetail = (id: string, status?: string) => {
     : base.uid === 'chip_vendas' ? [{ groupId: 'g1', name: 'Método Aurora', role: 'fallback' }] : [];
   const { groupsCount: _count, ...rest } = base;
   return { number: { ...rest, status: status ?? base.status, usedBy } };
+};
+
+// ---- Payments API cards (invented) ----
+
+export const payApiLimits = {
+  object: 'limits', livemode: false, window_seconds: 60, max_amount_cents: 500000,
+  buckets: [
+    { id: 'create_per_key', scope: 'key', action: 'create', limit: 10, used: 3, window_seconds: 60, resets_in_seconds: 41 },
+    { id: 'read_per_key', scope: 'key', action: 'read', limit: 60, used: 52, window_seconds: 60, resets_in_seconds: 12 },
+    { id: 'cancel_per_key', scope: 'key', action: 'cancel', limit: 10, used: 10, window_seconds: 60, resets_in_seconds: 5 },
+    { id: 'create_per_seller', scope: 'seller', action: 'create', limit: 20, used: 3, window_seconds: 60, resets_in_seconds: 41 },
+    { id: 'create_per_seller_per_day', scope: 'seller', action: 'create', limit: 500, used: 37, window_seconds: 86400, resets_in_seconds: 51000 },
+  ],
+};
+export const payApiLimitsUnavailable = { object: 'limits_unavailable', available: false, message: 'GET /v1/limits is not available yet.' };
+export const payApiWallets = { object: 'list', data: [
+  { id: 'wal_Ab3dEf6hIj9lMn2pQr5tUv', name: 'Loja Exemplo', active_pix_count: 2 },
+  { id: 'wal_Zy8xWv5uTs2rQp9oNm6lKj', name: 'Carteira sem PIX', active_pix_count: 0 },
+] };
+export const payApiIntents = { object: 'list', has_more: true, next_cursor: 'pi_Cc3dEf6hIj9lMn2pQr5tUvWx', data: [
+  { id: 'pi_Aa3dEf6hIj9lMn2pQr5tUvWx', object: 'payment_intent', livemode: false, status: 'succeeded', amount: 4990, external_reference: 'pedido-1042', created_at: '2026-11-09T15:30:00Z', buyer: { name: 'Ma*** S***' } },
+  { id: 'pi_Bb3dEf6hIj9lMn2pQr5tUvWx', object: 'payment_intent', livemode: false, status: 'requires_action', amount: 12900, external_reference: 'pedido-1043', created_at: '2026-11-09T15:41:00Z', buyer: { name: 'Jo*** P***' } },
+  { id: 'pi_Dd3dEf6hIj9lMn2pQr5tUvWx', object: 'payment_intent', livemode: false, status: 'canceled', amount: 100, external_reference: 'pedido-1044', created_at: '2026-11-09T15:50:00Z', buyer: { name: 'An*** L***' } },
+] };
+
+// ---- Tracking guide and diagnosis: built by the real pure functions, so the texts are the shipped ones ----
+
+const at = (iso: string) => iso;
+const trackingTokens: TrackingToken[] = [
+  {
+    id: 'tk_meta', title: 'Pixel Meta Aurora', type: 'facebook_ads', channel: 'facebook', trackingMode: 'pixel', status: 'active',
+    pixelId: '1234567890123456', health: { hasSucceeded: true, consecutiveFailures: 0, disabledReason: null, disabledAt: null, lastError: null },
+  },
+  {
+    id: 'tk_tiktok', title: 'Pixel TikTok Aurora', type: 'tiktok_ads', channel: 'tiktok', trackingMode: 'both', status: 'disabled',
+    pixelId: 'CABCDEFGHIJKLMNOPQRS',
+    health: { hasSucceeded: true, consecutiveFailures: 3, disabledReason: 'repeated_failures', disabledAt: at('2026-11-08T12:00:00Z'), lastError: 'Access token expired' },
+  },
+  {
+    id: 'tk_utmify', title: 'UTMify Aurora', type: 'utmify', channel: 'utmify', trackingMode: null, status: 'active',
+    pixelId: null, health: { hasSucceeded: true, consecutiveFailures: 0, disabledReason: null, disabledAt: null, lastError: null },
+  },
+];
+const trackingPayment: TrackingPayment = {
+  id: 'pay_preview', status: 'paid', createdAt: at('2026-11-09T15:30:00Z'), funnelId: null, utms: {},
+  clickIds: { fbc: true, fbp: true, ttclid: false, ttp: true },
+  dispatch: {
+    facebook: { ok: true, sent: 1, failed: 0, total: 1, event: 'Purchase', time: at('2026-11-09T15:31:00Z'), details: [] },
+    tiktok: {
+      ok: false, sent: 0, failed: 1, total: 1, event: 'Purchase', time: at('2026-11-09T15:31:00Z'),
+      details: [{ title: 'Pixel TikTok Aurora', code: 'tiktok_ads', ok: false, error: 'Access token expired' }],
+    },
+  },
+  dispatchAt: at('2026-11-09T15:31:00Z'), dispatchSuccess: false,
+  flags: { created: true, paid: true, refunded: false, chargedback: false },
+};
+const facebookErrors: ChannelErrors = {
+  channel: 'facebook', hours: 24,
+  rows: [
+    { channel: 'facebook', paymentId: 'pay_a', event: 'Purchase', subjectTitle: 'Pixel Meta Aurora', subjectCode: 'facebook_ads', errorCode: '190', errorMessage: 'Invalid OAuth access token', createdAt: at('2026-11-09T10:00:00Z') },
+    { channel: 'facebook', paymentId: 'pay_b', event: 'Purchase', subjectTitle: 'Pixel Meta Aurora', subjectCode: 'facebook_ads', errorCode: '190', errorMessage: 'Invalid OAuth access token', createdAt: at('2026-11-09T11:00:00Z') },
+  ],
+};
+const noErrors = (channel: TrackingChannel): ChannelErrors => ({ channel, hours: 24, rows: [] });
+const trackingErrors: Record<TrackingChannel, ChannelErrors | null> = {
+  facebook: facebookErrors, tiktok: noErrors('tiktok'), google: null, utmify: noErrors('utmify'),
+};
+const trackingScope: TrackingScope = { kind: 'checkout', checkoutId: 'ck_preview', title: 'Método Aurora', paymentId: 'pay_preview' };
+const errorSummary = (errors: ChannelErrors | null): TrackingErrorSummary => (
+  errors
+    ? { available: true, hours: errors.hours, total: errors.rows.length, subjects: topSubjects(errors.rows, 5) }
+    : { available: false, hours: 24, total: 0, subjects: [] }
+);
+const { funnelId: _funnelId, ...visiblePayment } = trackingPayment;
+
+export const trackingGuide = (() => {
+  const guide = explainTracking();
+  return { ...guide, sections: guide.sections.slice(0, 2), problems: guide.problems.slice(0, 2) };
+})();
+
+export const trackingDiagnosis: TrackingDiagnosis = {
+  scope: trackingScope,
+  findings: diagnoseTracking({
+    scope: trackingScope,
+    tokens: trackingTokens,
+    checkouts: [{ id: 'ck_preview', title: 'Método Aurora', metricTokenIds: ['tk_meta', 'tk_tiktok'] }],
+    funnel: null,
+    payment: trackingPayment,
+    errors: trackingErrors,
+  }),
+  tokens: trackingTokens.map((t): TrackingTokenView => ({
+    id: t.id, title: t.title, channel: t.channel, trackingMode: t.trackingMode, status: t.status, pixelId: maskId(t.pixelId),
+    health: t.health && { ...t.health, disabledReasonText: disabledReasonText(t.health.disabledReason) },
+  })),
+  payment: visiblePayment,
+  errors: Object.fromEntries(TRACKING_CHANNELS.map((c) => [c, errorSummary(trackingErrors[c])])) as Record<TrackingChannel, TrackingErrorSummary>,
+};
+
+// ---- UTM links (invented) ----
+
+export const utmMeta = {
+  destination: { kind: 'checkout', url: 'https://pay.metodoaurora.com.br/checkout/ck_aurora', title: 'Método Aurora', customDomain: true },
+  platform: 'meta',
+  finalUrl: 'https://pay.metodoaurora.com.br/checkout/ck_aurora?utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_medium={{adset.name}}|{{adset.id}}&utm_content={{ad.name}}|{{ad.id}}&utm_term={{placement}}',
+  adParameters: 'utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_medium={{adset.name}}|{{adset.id}}&utm_content={{ad.name}}|{{ad.id}}&utm_term={{placement}}',
+  where: [
+    'No Gerenciador de Anúncios, abra o anúncio e vá até a etapa de destino.',
+    'No campo "Destino", cole apenas a URL limpa: https://pay.metodoaurora.com.br/checkout/ck_aurora',
+    'Logo abaixo, no campo "Parâmetros de URL", cole o texto de cima, sem o "?" na frente.',
+    'Publique o anúncio e confira o link no relatório de UTMs.',
+  ],
+  notes: ['Não use "|", "#", "&" nem "?" nos nomes de campanha, conjunto e anúncio.', 'Campanhas que já foram publicadas mantêm os nomes antigos.'],
+  params: [
+    { key: 'utm_source', value: 'FB', source: 'template' },
+    { key: 'utm_campaign', value: '{{campaign.name}}|{{campaign.id}}', source: 'template' },
+    { key: 'utm_medium', value: '{{adset.name}}|{{adset.id}}', source: 'template' },
+    { key: 'utm_content', value: '{{ad.name}}|{{ad.id}}', source: 'template' },
+    { key: 'utm_term', value: '{{placement}}', source: 'template' },
+  ],
+};
+export const utmManual = {
+  destination: { kind: 'funnel', url: 'https://ggcheckout.app/quiz/quiz-aurora', title: 'Quiz Aurora', customDomain: false },
+  platform: 'manual',
+  finalUrl: 'https://ggcheckout.app/quiz/quiz-aurora?utm_source=instagram&utm_medium=bio&utm_campaign=Lan%C3%A7amento%20Aurora&sck=story1',
+  adParameters: 'utm_source=instagram&utm_medium=bio&utm_campaign=Lan%C3%A7amento%20Aurora&sck=story1',
+  where: ['Use o link completo onde o cliente vai clicar: bio, e-mail, WhatsApp, página ou anúncio.', 'Cada campo já está codificado para URL, não precisa mexer em nada.'],
+  notes: ['O funil está despublicado: o link só abre depois de publicar.', 'O funil repassa os parâmetros da URL para o checkout que ele abre.', 'Os valores são codificados para URL (espaços e acentos viram %xx).'],
+  params: [
+    { key: 'utm_source', value: 'instagram', source: 'manual' },
+    { key: 'utm_medium', value: 'bio', source: 'manual' },
+    { key: 'utm_campaign', value: 'Lançamento Aurora', source: 'manual' },
+    { key: 'sck', value: 'story1', source: 'manual' },
+  ],
 };

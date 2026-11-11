@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 202 tools across 20 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 206 tools across 22 domains.
 
 ## Overview
 
@@ -79,8 +79,8 @@ export GGCHECKOUT_API_URL="https://your-staging.example.com"
 
 ### Payments API (PIX charges)
 
-The five payments-API tools (`list_wallets`, `create_pix_charge`, `get_payment_intent`,
-`list_payment_intents`, `cancel_payment_intent`) use their own secret key, created in
+The six payments-API tools (`list_wallets`, `create_pix_charge`, `get_payment_intent`,
+`list_payment_intents`, `cancel_payment_intent`, `get_payments_api_limits`) use their own secret key, created in
 **Tools → Gateways → Payments API** (Ferramentas › Gateways › API de pagamentos). They are only registered when it is set, and `GGCHECKOUT_API_KEY` is never
 used for them.
 
@@ -124,7 +124,10 @@ answer as before.
 | Members area | `get_members_area`, `list_modules`, `list_sections`, `list_lessons` | The course tree with the seller's names: an API module is a "carrossel" and a section a "módulo". The area's students, active students and average completion, then carousels, modules and lessons (type, duration, release or lock). Opening a carousel or a module reads the level below. |
 | Telegram flow | `get_telegram_flow`, `list_telegram_flows` | A flow drawn read-only where the bot's flow editor keeps each node: the editor's node cards (category color, icon, preview line, labeled outputs such as Aprovado / Expirou or each button) and the edges colored by the output they leave from; an edge that loops back up or would cross a node runs down its own lane on the right. The list opens any flow in place. |
 | WhatsApp chips | `list_whatsapp_numbers`, `get_whatsapp_number`, `get_pairing_code` | The chips as the dashboard's chip screens: name, masked number, provider (QR Code or Oficial), status, the first session that uses it (read through `list_whatsapp_sessions`, or "Não vinculado") and how many. An active QR code chip in the handshake (where the dashboard shows its QR) is connected in place with a pairing code, since the server never passes the QR on: the seller types the chip's number, types the code on the phone, and the chip is read until it connects. A dropped chip is restarted first ("Reiniciar", which asks first); "Desativar" / "Reativar" go through `update_whatsapp_number`, and the list's "Verificar status" through `check_whatsapp_numbers`. A connected chip lists the sessions that use it. |
-| PIX | `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup`, `pay_invoice` | QR code, copy-and-paste button, time left, and the status, polled every 5 s through `get_payment_intent`, `get_credit_topup`, `list_credits` or `get_invoice` until it is paid or expires. |
+| PIX | `create_pix_charge`, `get_payment_intent`, `cancel_payment_intent`, `add_credit`, `get_credit_topup`, `pay_invoice` | QR code, copy-and-paste button, time left, and the status, polled every 5 s (10 s for test-mode charges, which have a smaller read limit) through `get_payment_intent`, `get_credit_topup`, `list_credits` or `get_invoice` until it is paid or expires. `cancel_payment_intent` draws the canceled charge. |
+| Payments API | `get_payments_api_limits`, `list_wallets`, `list_payment_intents` | Requests per minute per bucket (used / limit, reset time, LIVE/TESTE, max per charge), wallets with their active PIX count, and charges with status; each list starts with the requests-per-minute strip; "Mais" pages, a row opens the charge's PIX view. |
+| Tracking | `explain_tracking`, `diagnose_tracking` | How a sale's metrics travel to Meta, TikTok, Google Ads and UTMify, as sections with expandable items and the common problems; or the diagnosis of an account, checkout, funnel or payment: findings sorted critical, warning, info, ok (icon and text), the tracking tokens with mode and health, the sale's UTMs and click ids, and the last 24 hours of errors. |
+| UTM links | `build_tracking_link` | The link to sell from with UTMs: the text to copy (the ad's "Parâmetros de URL", the Google tracking template, or the whole link for a manual one), the clean destination, "Onde colar" steps, the parameters table with where each came from, and the notes. |
 
 The views run in the client's sandbox with no network access: their data only arrives through
 the client, from the tool result or from the tool calls listed above. All of them are one React
@@ -158,7 +161,7 @@ resource), which picks the view by the tool that answered.
 
 ---
 
-## Available Tools (202)
+## Available Tools (206)
 
 ### Products (19 tools)
 
@@ -655,6 +658,31 @@ The payments API's `list_wallets` lists the same wallets by their public id (`wa
 
 ---
 
+### Tracking (2 tools)
+
+- `explain_tracking`: the pt-BR guide to how a sale's metrics reach Meta, TikTok, Google Ads and UTMify. No API call. Optional `topic`: `paths`, `initiate_checkout`, `purchase`, `utms`, `dedup`, `funnel`, `store`, `errors`.
+- `diagnose_tracking`: optional `checkoutId`, `funnelId`, `paymentId`; none means an account overview. Reads the tracking tokens with their health, the checkout or funnel links, a payment's UTMs and event dispatch, and the last 24 hours of integration errors. It never returns credentials, and a saas route not deployed yet becomes a "não disponível ainda" finding, not an error.
+
+**Example prompts:**
+- "How do my sales metrics reach Meta and TikTok?"
+- "Why does the sale of the course not show in TikTok?"
+
+---
+
+### Tracking links (1 tool)
+
+`build_tracking_link` builds the link to sell from, with UTMs, and says where to paste it. No API write.
+
+- Destination (pick one): `checkoutId`, `funnelId`, `storeId` (plus `productId` for one product) or `url` (any https URL). A checkout, funnel or store opens on the seller's verified custom domain when it has one; otherwise the link uses the `publicUrl` the dashboard API sends, or the GG address the MCP builds itself.
+- `platform`: `meta`, `tiktok`, `google` or `kwai` (UTMify's templates, the platform fills the macros when the ad runs), or `manual` (default), where you fill `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `src` and `sck`.
+- Merge rule: a key the URL already has is not repeated, and values you pass win over the URL and over the template.
+
+**Example prompts:**
+- "Build the link of my checkout to advertise on Meta"
+- "Make a link of the quiz for my Instagram bio, source instagram, medium bio"
+
+---
+
 ### Rewards / Goals (2 tools)
 
 **Example prompts:**
@@ -700,7 +728,7 @@ Bots (`list_telegram_bots`, `get_telegram_bot`, `create_telegram_bot`, `update_t
 
 ---
 
-### Payments API (5 tools)
+### Payments API (6 tools)
 
 Requires `GG_PAYMENTS_API_KEY` (see Configuration). PIX only.
 
@@ -709,7 +737,9 @@ charges per minute (cancels 10, reads 60); a `ggpk_live_` key defaults to 60 cre
 reads per minute. A 429 carries `Retry-After`.
 
 `list_wallets`, `create_pix_charge`, `get_payment_intent`, `list_payment_intents` (filters:
-`status`, `external_reference`, `starting_after`, `limit`) and `cancel_payment_intent`.
+`status`, `external_reference`, `created_gte` as unix seconds, `starting_after`, `limit`),
+`cancel_payment_intent` and `get_payments_api_limits` (requests per minute per bucket for the key in
+use and the maximum per charge; says so when the API has no limits route yet).
 
 `create_pix_charge` takes the wallet id (`wal_…`), the amount **in cents** (`4990` = R$ 49,90),
 `external_reference` (required, e.g. the order id: a repeat with the same one fails instead of

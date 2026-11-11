@@ -14,6 +14,9 @@ import { MembersView } from './members/MembersView';
 import { TelegramFlowView } from './telegram/TelegramFlowView';
 import { ChipsView } from './chips/ChipsView';
 import { PixView } from './pix/PixView';
+import { PayApiView } from './payapi/PayApiView';
+import { TrackingView } from './tracking/TrackingView';
+import { UtmView } from './utm/UtmView';
 
 export function GgApp({ host }: { host: Host }) {
   const state = useSyncExternalStore(host.subscribe, host.getSnapshot, host.getSnapshot);
@@ -48,6 +51,12 @@ export function GgApp({ host }: { host: Host }) {
       return <ChipsView key={state.generation} host={host} state={state} />;
     case 'pix':
       return <PixView key={state.generation} host={host} state={state} />;
+    case 'payapi':
+      return <PayApiView key={state.generation} host={host} state={state} />;
+    case 'tracking':
+      return <TrackingView key={state.generation} host={host} state={state} />;
+    case 'utm':
+      return <UtmView key={state.generation} host={host} state={state} />;
     default:
       return <p className="state" data-tone="error">A resposta não trouxe nada que esta tela desenhe.</p>;
   }
