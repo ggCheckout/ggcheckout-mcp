@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { PaymentService } from '../../../core/services/payment.service.js';
 import { createToolHandler } from '../tool-handler.js';
 import { appMeta, withDrawnNote } from '../apps/apps.js';
+import { ATTRIBUTION_KEYS } from '../../../core/types/payment.js';
 
 export function registerPaymentTools(server: McpServer, service: PaymentService) {
   server.tool(
@@ -69,6 +70,30 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
     withDrawnNote(server, createToolHandler('get_payments_paginated', async ({ businessId, ...options }) => {
       return service.getPaginated(businessId, options);
     })),
+  );
+
+  server.registerTool(
+    'get_sales_attribution',
+    {
+      description:
+        'Sales aggregated by UTM or click-source keys, to see which campaign or ad sells: per combination of keys, '
+        + 'paidCount and paidGrossCents (paid sales) and refundedCount and refundedCents, plus `totals`. Aggregated only, '
+        + 'no buyer data. A `null` key value is the sales that came without that parameter. `utm_content` usually carries the '
+        + 'ad id. Period default: last 7 days, at most 90 days. `truncated: true` means the rows were cut: narrow the period or '
+        + 'group by fewer keys. Cents, as everywhere.',
+      inputSchema: {
+        businessId: z.string().describe('Business ID (get_my_business_id)'),
+        from: z.string().optional().describe('Start of the period, ISO 8601 (default: 7 days before `to`)'),
+        to: z.string().optional().describe('End of the period, ISO 8601 (default: now). At most 90 days after `from`'),
+        groupBy: z.array(z.enum(ATTRIBUTION_KEYS)).min(1).max(3)
+          .refine((keys) => new Set(keys).size === keys.length, 'groupBy keys must be distinct').optional()
+          .describe('1 to 3 distinct keys: utm_source, utm_medium, utm_campaign, utm_content, utm_term, src, sck '
+            + '(default: utm_source, utm_campaign, utm_content)'),
+      },
+    },
+    createToolHandler('get_sales_attribution', async ({ businessId, ...query }) => {
+      return service.getSalesAttribution(businessId, query);
+    }),
   );
 
   server.registerTool(

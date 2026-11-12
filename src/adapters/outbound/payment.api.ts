@@ -8,6 +8,7 @@ import type {
   FulfillmentData,
   UpdateFulfillmentInput,
   PaymentStatusCheckResponse,
+  AttributionResponse,
 } from '../../core/types/payment.js';
 import { NotFoundError } from '../../shared/errors.js';
 import { sanitizePayment } from '../../shared/sanitizer.js';
@@ -71,5 +72,16 @@ export class PaymentApiAdapter implements PaymentPort {
 
   async checkStatus(paymentId: string): Promise<PaymentStatusCheckResponse> {
     return this.http.post<PaymentStatusCheckResponse>(`/api/payments/check-payment/${paymentId}`, {});
+  }
+
+  /** Sales aggregated by UTM / click-source keys; the route answers counts and cents only. */
+  async getAttribution(
+    businessId: string,
+    query: { from: string; to: string; groupBy: string[] },
+  ): Promise<AttributionResponse> {
+    const params = new URLSearchParams({ from: query.from, to: query.to, groupBy: query.groupBy.join(',') });
+    return this.http.get<AttributionResponse>(
+      `/api/get-clients/business/${encodeURIComponent(businessId)}/payments/attribution?${params}`,
+    );
   }
 }

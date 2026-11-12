@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 206 tools across 22 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 210 tools across 23 domains.
 
 ## Overview
 
@@ -161,7 +161,7 @@ resource), which picks the view by the tool that answered.
 
 ---
 
-## Available Tools (206)
+## Available Tools (210)
 
 ### Products (21 tools)
 
@@ -384,7 +384,7 @@ Tags with name and hex color (max 5 per checkout).
 
 ---
 
-### Payments (7 tools)
+### Payments (8 tools)
 
 #### `get_my_business_id`
 
@@ -397,6 +397,20 @@ Tags with name and hex color (max 5 per checkout).
 `list_payments` is the first page of `get_payments_paginated` with no filters (10 payments by
 default, up to 100), with `total` and `nextCursor`; use `get_payments_paginated` to go further or
 to filter.
+
+#### `get_sales_attribution`
+
+Which campaign or ad sells: sales aggregated by 1 to 3 distinct keys among `utm_source`, `utm_medium`,
+`utm_campaign`, `utm_content`, `utm_term`, `src` and `sck` (default `utm_source`, `utm_campaign`,
+`utm_content`). Each row has the key values plus `paidCount`, `paidGrossCents`, `refundedCount` and
+`refundedCents` (cents), and `totals` sums them. Aggregated only: no buyer data and no per-payment UTMs.
+A `null` key value is the sales that came without that parameter; `utm_content` usually carries the ad id.
+`from` and `to` are ISO dates (default: the last 7 days; at most 90 days, checked before the call).
+`truncated: true` means the rows were cut: narrow the period or group by fewer keys.
+
+**Example prompt:** "Which campaigns sold the most in the last 30 days, and how many were refunded?"
+
+#### Payments list
 
 **Example prompts:**
 - "Show me all payments for my business"

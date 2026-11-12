@@ -81,6 +81,10 @@ export const GUIDE_SECTIONS: GuideSection[] = [
         body: 'As UTMs ficam guardadas na venda, junto dos identificadores de clique da Meta (fbc e fbp) e do TikTok (ttclid e ttp).',
       },
       {
+        title: 'Ver quanto cada campanha vendeu',
+        body: 'A ferramenta get_sales_attribution agrupa as vendas por utm_source, utm_campaign, utm_content (o anúncio, em geral) e até 3 chaves, com vendas pagas, valor bruto e reembolsos. Só números agregados, sem dados do comprador. Chave nula significa venda sem aquele parâmetro.',
+      },
+      {
         title: 'utm_source=organic',
         body: 'O script da UTMify grava utm_source=organic quando não encontra nenhum parâmetro, e guarda as UTMs por 7 dias no navegador. Por isso vendas do funil podem aparecer como orgânicas.',
       },

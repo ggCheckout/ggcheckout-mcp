@@ -35,6 +35,11 @@ right now.
 
 ### Added
 
+- `get_sales_attribution` (`GET /api/get-clients/business/{id}/payments/attribution`): sales aggregated by
+  1 to 3 of `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `src`, `sck`, with
+  paid and refunded counts and cents. The period defaults to the last 7 days and is capped at 90 days,
+  both checked before the call. No buyer data. `explain_tracking` points to it (topic `utms`). It needs
+  the release of the API that has the route.
 - `create_checkout` and `update_checkout` take `checkoutModel` (`v2` to `v6`), `customDomainId` (an id
   from `list_custom_domains`, `null` unbinds), `analytics { clarity { projectId } | null }`, and typed
   `timer` and `salesNotifications` parameters with an `enabled` flag.

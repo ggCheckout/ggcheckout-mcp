@@ -36,3 +36,36 @@ describe('list_payments', () => {
     expect(service.getPaginated).toHaveBeenCalledWith('biz-1', { pageSize: 100 });
   });
 });
+
+describe('get_sales_attribution', () => {
+  let client: Client;
+  const service = { getSalesAttribution: vi.fn() } as any;
+
+  beforeAll(async () => {
+    const server = new McpServer({ name: 'test', version: '0.0.1' });
+    registerPaymentTools(server, service);
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    client = new Client({ name: 'test-client', version: '0.0.1' });
+    await client.connect(clientTransport);
+  });
+
+  beforeEach(() => service.getSalesAttribution.mockReset().mockResolvedValue({ rows: [], totals: {}, truncated: false }));
+
+  it('passes the business and the query to the service', async () => {
+    await client.callTool({
+      name: 'get_sales_attribution',
+      arguments: { businessId: 'biz-1', from: '2026-11-01T00:00:00Z', groupBy: ['utm_campaign', 'utm_content'] },
+    });
+
+    expect(service.getSalesAttribution).toHaveBeenCalledWith('biz-1', { from: '2026-11-01T00:00:00Z', groupBy: ['utm_campaign', 'utm_content'] });
+  });
+
+  it('refuses an unknown key, a repeated key and more than 3 keys', async () => {
+    for (const groupBy of [['utm_x'], ['src', 'src'], ['src', 'sck', 'utm_term', 'utm_source'], []]) {
+      const result = await client.callTool({ name: 'get_sales_attribution', arguments: { businessId: 'b', groupBy } });
+      expect(result.isError, JSON.stringify(groupBy)).toBe(true);
+    }
+    expect(service.getSalesAttribution).not.toHaveBeenCalled();
+  });
+});

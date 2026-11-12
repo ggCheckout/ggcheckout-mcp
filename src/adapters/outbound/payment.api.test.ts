@@ -69,4 +69,17 @@ describe('PaymentApiAdapter', () => {
     expect(http.post).toHaveBeenCalledWith('/api/payments/check-payment/pay-1', {});
     expect(result.data.status).toBe('paid');
   });
+
+  it('getAttribution calls the attribution route with the period and the comma-joined keys', async () => {
+    vi.mocked(http.get).mockResolvedValue({ rows: [] });
+
+    await adapter.getAttribution('biz-1', { from: '2026-11-05T00:00:00.000Z', to: '2026-11-12T00:00:00.000Z', groupBy: ['utm_source', 'utm_content'] });
+
+    const url = vi.mocked(http.get).mock.calls[0][0] as string;
+    expect(url.startsWith('/api/get-clients/business/biz-1/payments/attribution?')).toBe(true);
+    const query = new URLSearchParams(url.split('?')[1]);
+    expect(query.get('from')).toBe('2026-11-05T00:00:00.000Z');
+    expect(query.get('to')).toBe('2026-11-12T00:00:00.000Z');
+    expect(query.get('groupBy')).toBe('utm_source,utm_content');
+  });
 });

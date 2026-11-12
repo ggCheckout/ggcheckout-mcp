@@ -214,3 +214,40 @@ export interface PaymentStatusCheckResponse {
     [key: string]: unknown;
   };
 }
+
+/** The columns a sale can be grouped by: the UTMs and the two click-source keys of the checkout link. */
+export const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'src', 'sck'] as const;
+export type AttributionKey = (typeof ATTRIBUTION_KEYS)[number];
+
+export const ATTRIBUTION_MAX_DAYS = 90;
+export const ATTRIBUTION_DEFAULT_DAYS = 7;
+export const DEFAULT_ATTRIBUTION_GROUP_BY: AttributionKey[] = ['utm_source', 'utm_campaign', 'utm_content'];
+
+export interface AttributionQuery {
+  from?: string;
+  to?: string;
+  groupBy?: AttributionKey[];
+}
+
+/** Aggregated counts and cents, no buyer data. */
+export interface AttributionTotals {
+  paidCount: number;
+  paidGrossCents: number;
+  refundedCount: number;
+  refundedCents: number;
+}
+
+export interface AttributionRow extends AttributionTotals {
+  /** One entry per `groupBy` key; `null` is the sales that came without that parameter. */
+  keys: Record<string, string | null>;
+}
+
+export interface AttributionResponse {
+  from: string;
+  to: string;
+  groupBy: AttributionKey[];
+  rows: AttributionRow[];
+  totals: AttributionTotals;
+  /** The route cut the rows to its limit: narrow the period or group by fewer keys. */
+  truncated: boolean;
+}
