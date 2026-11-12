@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ProductService } from '../../../core/services/product.service.js';
 import { createToolHandler } from '../tool-handler.js';
 import { appMeta, withDrawnNote } from '../apps/apps.js';
+import { upsellFields, downsellFields, downsellPrice } from './offer-schemas.js';
 import { isSellerPageUrl } from '../../../shared/external-offer-snippet.js';
 
 export function registerProductTools(server: McpServer, service: ProductService) {
@@ -187,7 +188,8 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'list_upsells',
     {
-      description: 'List all upsells for a product, in funnel order (`order`); prices in cents',
+      description: 'List all upsells for a product, in funnel order (`order`); prices in cents. `effectivePriceCents` is what the buyer '
+        + 'is charged; the top-level `price` is only a display snapshot. Each has `uid` and `id`; the other upsell tools take either',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
       },
@@ -202,23 +204,15 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'create_upsell',
     {
-      description: 'Create an upsell for a product. Requires upsellProductId (the product being offered as upsell) and a unique upsellId.',
+      description: 'Create an upsell for a product. Requires upsellProductId (the product being offered) and a unique upsellId. '
+        + 'The buyer is charged `price` (cents) when sent, else the offered product\'s own price. Images and videos show '
+        + 'per mediaType (see customImage, videosSection).',
       inputSchema: {
         productId: z.string().describe('Product ID (uid) the upsell belongs to'),
         upsellId: z.string().describe('Unique ID for this upsell'),
         upsellProductId: z.string().describe('Product ID being offered as upsell'),
         title: z.string().max(200).describe('Upsell title'),
-        description: z.string().max(5000).optional().describe('Upsell description'),
-        price: z.number().min(0).optional().describe('Upsell price in cents'),
-        originalPrice: z.number().min(0).optional().describe('Original price in cents (for showing discount)'),
-        discount: z.string().max(50).optional().describe('Discount label (e.g., "30% OFF")'),
-        imageUrl: z.string().url().optional().describe('Upsell image URL'),
-        mediaType: z.enum(['image', 'video']).optional().describe('Media type'),
-        deliveryMethod: z.enum(['url', 'file', 'whatsapp']).optional().describe('Delivery method'),
-        timerEnabled: z.boolean().optional().describe('Enable countdown timer'),
-        timerMinutes: z.number().min(0).max(525600).optional().describe('Timer duration in minutes'),
-        status: z.enum(['active', 'inactive']).optional().describe('Upsell status (default: active)'),
-        order: z.number().int().min(1).max(1000).optional().describe('Position in the funnel, 1-based (default: after the existing upsells)'),
+        ...upsellFields,
       },
     },
     createToolHandler('create_upsell', async (args) => {
@@ -229,12 +223,31 @@ export function registerProductTools(server: McpServer, service: ProductService)
   );
 
   server.registerTool(
+    'update_upsell',
+    {
+      description: 'Edit an upsell: send only the fields to change, the rest is kept (media sections merge). `upsellId` is its '
+        + '`uid` or `id` from list_upsells. `price` (cents) is the charged price of the offered product; the offered product '
+        + 'itself cannot change (delete and recreate).',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid) the upsell belongs to'),
+        upsellId: z.string().describe('The upsell `uid` or `id`, from list_upsells'),
+        title: z.string().max(200).optional().describe('Upsell title'),
+        ...upsellFields,
+      },
+    },
+    createToolHandler('update_upsell', async ({ productId, upsellId, ...input }) => {
+      const upsell = await service.updateUpsell(productId, upsellId, input);
+      return { success: true, upsell };
+    }),
+  );
+
+  server.registerTool(
     'delete_upsell',
     {
-      description: 'Delete an upsell from a product',
+      description: 'Delete an upsell from a product. `upsellId` is its `uid` or `id` from list_upsells; an unknown one is an error',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        upsellId: z.string().describe('Upsell ID'),
+        upsellId: z.string().describe('Upsell `uid` or `id`'),
       },
     },
     createToolHandler('delete_upsell', async ({ productId, upsellId }) => {
@@ -247,13 +260,12 @@ export function registerProductTools(server: McpServer, service: ProductService)
     'reorder_upsells',
     {
       description:
-        'Reorder the upsells of a product: send every upsell id, in the order you want. Returns the '
-        + 'positions as stored. Ids are taken from list_upsells; an id that does not belong to the '
-        + 'product is refused.',
+        'Reorder the upsells of a product: send every upsell, in the order you want, each as its `uid` or `id` '
+        + 'from list_upsells. Returns the positions as stored. One that does not belong to the product is an error.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
         upsellIds: z.array(z.string()).min(1).max(50)
-          .describe('All upsell ids, in the desired order'),
+          .describe('All upsell uids or ids, in the desired order'),
       },
     },
     createToolHandler('reorder_upsells', async ({ productId, upsellIds }) => {
@@ -267,7 +279,8 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'list_downsells',
     {
-      description: 'List all downsells for a product, in funnel order (`order`); prices in cents. They show when the '
+      description: 'List all downsells for a product, in funnel order (`order`); prices in cents (`effectivePriceCents` is what is charged; top-level `price` is a snapshot). Each has `uid` and `id`; '
+        + 'the other downsell tools take either. They show when the '
         + 'buyer declines an upsell of the product whose chainBehavior is stop_on_decline',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
@@ -283,23 +296,15 @@ export function registerProductTools(server: McpServer, service: ProductService)
   server.registerTool(
     'create_downsell',
     {
-      description: 'Create a downsell for a product. Requires downsellProductId and a unique downsellId.',
+      description: 'Create a downsell for a product. Requires downsellProductId, a unique downsellId and `price`, the CHARGED '
+        + 'price of the offered product in cents.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid) the downsell belongs to'),
         downsellId: z.string().describe('Unique ID for this downsell'),
         downsellProductId: z.string().describe('Product ID being offered as downsell'),
         title: z.string().max(200).describe('Downsell title'),
-        description: z.string().max(5000).optional().describe('Downsell description'),
-        headline: z.string().max(200).optional().describe('Downsell headline'),
-        price: z.number().min(0).describe('Downsell price in cents'),
-        originalPrice: z.number().min(0).optional().describe('Original price in cents'),
-        discount: z.string().max(50).optional().describe('Discount label'),
-        timerEnabled: z.boolean().optional().describe('Enable countdown timer'),
-        timerMinutes: z.number().min(0).max(525600).optional().describe('Timer duration in minutes'),
-        mediaType: z.enum(['image', 'video']).optional().describe('Media type'),
-        status: z.enum(['active', 'inactive']).optional().describe('Downsell status'),
-        chainBehavior: z.enum(['continue', 'stop']).optional().describe('Chain behavior after this downsell'),
-        order: z.number().int().min(1).max(1000).optional().describe('Position in the sequence, 1-based (default: after the existing downsells)'),
+        price: downsellPrice,
+        ...downsellFields,
       },
     },
     createToolHandler('create_downsell', async (args) => {
@@ -310,12 +315,32 @@ export function registerProductTools(server: McpServer, service: ProductService)
   );
 
   server.registerTool(
+    'update_downsell',
+    {
+      description: 'Edit a downsell: send only the fields to change, the rest is kept (media sections merge). `downsellId` is '
+        + 'its `uid` or `id` from list_downsells. `price` (cents) is the charged price of the offered product; the offered '
+        + 'product itself cannot change (delete and recreate).',
+      inputSchema: {
+        productId: z.string().describe('Product ID (uid) the downsell belongs to'),
+        downsellId: z.string().describe('The downsell `uid` or `id`, from list_downsells'),
+        title: z.string().max(200).optional().describe('Downsell title'),
+        price: downsellPrice.optional(),
+        ...downsellFields,
+      },
+    },
+    createToolHandler('update_downsell', async ({ productId, downsellId, ...input }) => {
+      const downsell = await service.updateDownsell(productId, downsellId, input);
+      return { success: true, downsell };
+    }),
+  );
+
+  server.registerTool(
     'delete_downsell',
     {
-      description: 'Delete a downsell from a product',
+      description: 'Delete a downsell from a product. `downsellId` is its `uid` or `id` from list_downsells; an unknown one is an error',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        downsellId: z.string().describe('Downsell ID'),
+        downsellId: z.string().describe('Downsell `uid` or `id`'),
       },
     },
     createToolHandler('delete_downsell', async ({ productId, downsellId }) => {
@@ -328,11 +353,11 @@ export function registerProductTools(server: McpServer, service: ProductService)
     'reorder_downsells',
     {
       description:
-        'Reorder the downsells of a product. Returns the positions as stored. An id that does not '
-        + 'belong to the product is refused.',
+        'Reorder the downsells of a product, each as its `uid` or `id` from list_downsells. Returns the positions as '
+        + 'stored. One that does not belong to the product is an error.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
-        order: z.array(z.string()).min(1).max(100).describe('All downsell ids, in the desired order'),
+        order: z.array(z.string()).min(1).max(100).describe('All downsell uids or ids, in the desired order'),
       },
     },
     createToolHandler('reorder_downsells', async ({ productId, order }) => {

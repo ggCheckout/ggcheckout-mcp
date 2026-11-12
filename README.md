@@ -163,7 +163,7 @@ resource), which picks the view by the tool that answered.
 
 ## Available Tools (206)
 
-### Products (19 tools)
+### Products (21 tools)
 
 #### `list_products`
 
@@ -234,18 +234,34 @@ not, the answer carries `fileDeleteError` and the product stays unlinked.
 
 **Example prompt:** "Attach ebook.pdf (2MB, application/pdf) to product abc123"
 
-#### `list_upsells` / `create_upsell` / `delete_upsell` / `reorder_upsells`
+#### `list_upsells` / `create_upsell` / `update_upsell` / `delete_upsell` / `reorder_upsells`
 
-Manage upsells for a product.
+Manage upsells for a product. Every upsell has two keys, `uid` and `id` (the row's UUID); `update_upsell`,
+`delete_upsell` and `reorder_upsells` take either one and send the `uid` the API works with. A key that
+matches nothing is an error that names both keys, never a silent success.
+
+- **Price is in cents, and one field is charged.** The page and the purchase charge
+  `productOverrides[offeredProductId].price`, else the offered product's own price; the offer's top-level
+  `price` is a display snapshot. `price`, `originalPrice` and `discount` write the override and keep the
+  snapshot in step. `list_upsells` adds `effectivePriceCents`, the amount a buyer is charged.
+- **Image:** the page reads `customImage { enabled, url }`; `imageUrl` is a shortcut for it.
+- **Videos:** `videosSection { enabled, title?, titleColor?, videos[] }`, up to 4 videos
+  (`sourceType` `embed` needs `provider` + `providerId`, `url` / `upload` needs `url`). They show only when
+  `mediaType` is `video` (set for you when the section enables videos and `mediaType` is not sent);
+  `videos[0]` is the offer card's main video, the rest show above the footer.
+- `update_upsell` has no PATCH behind it: the tool reads the offer, merges the fields you send (the media
+  sections merge, the video list replaces) and saves the whole offer. The offered product does not change.
 
 **Example prompts:**
 - "Show me the upsells for product abc123"
-- "Create an upsell for product abc123 offering product xyz789 at R$29.90"
+- "Create an upsell for product abc123 offering product xyz789 at R$29.90" (`price: 2990`)
+- "Change the price of upsell u1 to R$19.90 and add a YouTube video"
 - "Reorder the upsells for product abc123"
 
-#### `list_downsells` / `create_downsell` / `delete_downsell` / `reorder_downsells`
+#### `list_downsells` / `create_downsell` / `update_downsell` / `delete_downsell` / `reorder_downsells`
 
-Manage downsells for a product.
+Manage downsells for a product. Same rules as the upsells: either key (`uid` or `id`), `price` in cents
+is the charged price of the offered product, `customImage` and `videosSection` as above.
 
 **Example prompt:** "Add a downsell to product abc123 with a 50% discount headline"
 

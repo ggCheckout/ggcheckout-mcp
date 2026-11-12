@@ -35,6 +35,15 @@ right now.
 
 ### Added
 
+- `update_upsell` and `update_downsell` edit an offer in place. The API has no PATCH for offers, so the
+  tool reads the offer, merges the fields sent and saves the whole of it. They take the same fields as
+  the create tools, and `create_upsell` gained `headline`, `chainBehavior`, `customImage` and
+  `videosSection`; `create_downsell` gained `customImage` and `videosSection`.
+- `videosSection` on upsells and downsells in the shape the offer page reads: `{ enabled, title?,
+  titleColor?, videos[] }` with up to 4 videos, validated (`embed` needs `provider` and `providerId`,
+  `url` / `upload` needs `url`), each given an `id` when it has none. `customImage { enabled, url }` is
+  exposed too.
+- `list_upsells` and `list_downsells` carry `effectivePriceCents`, the amount a buyer is charged.
 - Inline views (MCP Apps, spec 2026-01-26) for clients that draw them: a sales panel on
   `get_dashboard_charts`, and a PIX view (QR, copy-and-paste, time left, live status) on
   `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup` and `pay_invoice`.
@@ -134,6 +143,15 @@ right now.
 
 ### Fixed
 
+- `delete_upsell` and `delete_downsell` reported success without deleting when given the row `id` (the
+  API deletes by `uid`). The upsell and downsell tools now take either key, resolved through the list
+  and sent as the `uid`; a key that matches nothing, or a 404, is an error. `reorder_upsells` and
+  `reorder_downsells` accept both keys too (they failed with row ids), and `get_offer_snippets` and
+  `set_offer_product_page` as well.
+- The price of an upsell or downsell was written to the top-level `price`, which is only a display
+  snapshot. The offer page and the purchase charge `productOverrides[offeredProductId].price`, so
+  `price`, `originalPrice` and `discount` now write that override (in cents, as before) and keep the
+  snapshot in step. An upsell's `imageUrl` was ignored by the page; it is now stored as `customImage`.
 - `redeem_reward` takes only `whatsapp_group_5000`: the route it calls redeems only the WhatsApp
   group, and the bracelet and plaques are shipped, so the dashboard redeems them with the address.
   The description promised all of them.
