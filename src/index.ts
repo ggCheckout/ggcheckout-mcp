@@ -14,6 +14,7 @@ import { CheckoutApiAdapter } from './adapters/outbound/checkout.api.js';
 import { WebhookApiAdapter } from './adapters/outbound/webhook.api.js';
 import { StoreApiAdapter } from './adapters/outbound/store.api.js';
 import { FunnelApiAdapter } from './adapters/outbound/funnel.api.js';
+import { MediaApiAdapter } from './adapters/outbound/media.api.js';
 import { MembersAreaApiAdapter } from './adapters/outbound/members-area.api.js';
 import { DiscountApiAdapter } from './adapters/outbound/discount.api.js';
 import { WhatsAppApiAdapter } from './adapters/outbound/whatsapp.api.js';
@@ -36,6 +37,7 @@ import { CheckoutService } from './core/services/checkout.service.js';
 import { WebhookService } from './core/services/webhook.service.js';
 import { StoreService } from './core/services/store.service.js';
 import { FunnelService } from './core/services/funnel.service.js';
+import { MediaService } from './core/services/media.service.js';
 import { MembersAreaService } from './core/services/members-area.service.js';
 import { DiscountService } from './core/services/discount.service.js';
 import { WhatsAppService } from './core/services/whatsapp.service.js';
@@ -60,6 +62,7 @@ import { registerCheckoutTools } from './adapters/inbound/tools/checkout.tools.j
 import { registerWebhookTools } from './adapters/inbound/tools/webhook.tools.js';
 import { registerStoreTools } from './adapters/inbound/tools/store.tools.js';
 import { registerFunnelTools } from './adapters/inbound/tools/funnel.tools.js';
+import { registerMediaTools } from './adapters/inbound/tools/media.tools.js';
 import { registerMembersAreaTools } from './adapters/inbound/tools/members-area.tools.js';
 import { registerDiscountTools } from './adapters/inbound/tools/discount.tools.js';
 import { registerWhatsAppTools } from './adapters/inbound/tools/whatsapp.tools.js';
@@ -123,6 +126,7 @@ const webhookAdapter = new WebhookApiAdapter(httpClient);
 const storeAdapter = new StoreApiAdapter(httpClient);
 const funnelAdapter = new FunnelApiAdapter(httpClient);
 const trackingAdapter = new TrackingApiAdapter(httpClient);
+const mediaAdapter = new MediaApiAdapter(httpClient);
 const membersAreaAdapter = new MembersAreaApiAdapter(httpClient);
 const discountAdapter = new DiscountApiAdapter(httpClient, authAdapter);
 const whatsappAdapter = new WhatsAppApiAdapter(httpClient);
@@ -150,6 +154,7 @@ const membersAreaService = new MembersAreaService(
   authAdapter,
   process.env.GGCHECKOUT_UPLOAD_ROOT || undefined,
 );
+const mediaService = new MediaService(mediaAdapter, process.env.GGCHECKOUT_UPLOAD_ROOT || undefined);
 const discountService = new DiscountService(discountAdapter);
 const whatsappService = new WhatsAppService(whatsappAdapter);
 const billingService = new BillingService(billingAdapter);
@@ -178,6 +183,7 @@ registerStoreTools(server, storeService);
 registerFunnelTools(server, funnelService);
 registerTrackingTools(server, trackingService);
 registerMembersAreaTools(server, membersAreaService);
+registerMediaTools(server, mediaService);
 registerDiscountTools(server, discountService);
 registerWhatsAppTools(server, whatsappService);
 registerBillingTools(server, billingService);

@@ -10,7 +10,7 @@ import type {
   UpdateCheckoutPayload,
 } from '../types/checkout.js';
 import type { Product } from '../types/product.js';
-import { AppError, NotFoundError, ValidationError } from '../../shared/errors.js';
+import { AppError, EdgeBlockedError, NotFoundError, ValidationError } from '../../shared/errors.js';
 import { parsePriceToCents } from '../../shared/validation.js';
 import { mergeDeep } from '../../shared/merge.js';
 
@@ -66,7 +66,7 @@ export class CheckoutService {
       return await this.productPort.getById(productId);
     } catch (error) {
       const status = error instanceof AppError ? error.statusCode : undefined;
-      if (status !== 403 && status !== 404) throw error;
+      if (error instanceof EdgeBlockedError || (status !== 403 && status !== 404)) throw error;
       throw new NotFoundError('Product', productId, PRODUCT_HINT);
     }
   }

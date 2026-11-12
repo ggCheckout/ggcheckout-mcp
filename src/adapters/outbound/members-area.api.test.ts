@@ -8,7 +8,7 @@ const { putToSignedUrl } = await import('./signed-upload.js');
 import type { HttpClient } from './http-client.js';
 
 function createMockHttp(): HttpClient {
-  return { get: vi.fn(), post: vi.fn(), postForm: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() } as any;
+  return { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() } as any;
 }
 
 const lessons = '/api/members-area/a1/modules/m1/sections/s1/lessons';
@@ -67,19 +67,21 @@ describe('MembersAreaApiAdapter', () => {
     expect(result).toEqual({ url: 'https://r2/get?sig', filePath: 'deliverables/u/members-area-a1/x.pdf' });
   });
 
-  it('uploadImage sends a multipart form with the file and the preset', async () => {
-    vi.mocked(http.postForm).mockResolvedValue({ success: true, url: '/api/r2-proxy/uploads/u/logo.webp', path: 'p' });
+  it('uploadImage presigns, sends the bytes to storage, then confirms, and answers the relative url', async () => {
+    vi.mocked(http.post)
+      .mockResolvedValueOnce({ uploadUrl: 'https://r2/put', filePath: 'uploads/u/logo.png', headers: { 'x-amz-meta': 'a' }, expiresIn: 600 })
+      .mockResolvedValueOnce({ success: true, url: '/api/r2-proxy/uploads/u/logo.webp', path: 'uploads/u/logo.webp' });
+    const file = { path: '/i/logo.png', fileName: 'logo.png', fileType: 'image/png', fileSize: 9 };
 
-    const result = await adapter.uploadImage(
-      { path: '/i/logo.png', fileName: 'logo.png', fileType: 'image/png', fileSize: 9 },
-      'banner',
-    );
+    const result = await adapter.uploadImage(file, 'banner');
 
-    const [url, form] = vi.mocked(http.postForm).mock.calls[0] as [string, FormData];
-    expect(url).toBe('/api/uploads-r2');
-    expect((form.get('file') as File).name).toBe('logo.png');
-    expect((form.get('file') as File).type).toBe('image/png');
-    expect(form.get('preset')).toBe('banner');
+    expect(http.post).toHaveBeenNthCalledWith(1, '/api/uploads-r2/presigned-upload', {
+      fileName: 'logo.png', contentType: 'image/png', size: 9,
+    });
+    expect(putToSignedUrl).toHaveBeenCalledWith('https://r2/put', file, { 'x-amz-meta': 'a' });
+    expect(http.post).toHaveBeenNthCalledWith(2, '/api/uploads-r2/complete-upload', {
+      filePath: 'uploads/u/logo.png', preset: 'banner',
+    });
     expect(result).toEqual({ url: '/api/r2-proxy/uploads/u/logo.webp' });
   });
 

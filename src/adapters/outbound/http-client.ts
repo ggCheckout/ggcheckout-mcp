@@ -4,6 +4,7 @@ import { observeVersionHeaders } from '../../shared/update-notice.js';
 import {
   ApiError,
   AuthenticationError,
+  EdgeBlockedError,
   NetworkError,
   RateLimitError,
   TemporarilyUnavailableError,
@@ -100,6 +101,12 @@ export class HttpClient {
         };
 
         if (status === 401) throw new AuthenticationError(safeMessage, error);
+        // The API's own 403s are JSON ("Não autorizado"). A 403 with an HTML or empty body never came
+        // from it: the edge (Cloudflare WAF) answered in front of the API.
+        if (status === 403 && (typeof error.response.data !== 'object' || error.response.data === null
+          || Array.isArray(error.response.data) || (error.response.headers as any)?.['cf-mitigated'])) {
+          throw new EdgeBlockedError(error);
+        }
         if (status === 429) throw new RateLimitError(withRetry(safeMessage), error);
         // 503 is the rate-limiter failing closed (its backing store is degraded), not the API
         // being down — a down backend surfaces as 502. Neither means the request was rejected on
@@ -139,17 +146,6 @@ export class HttpClient {
   async post<T>(url: string, data?: any): Promise<T> {
     logger.info('HTTP', `POST ${url}`);
     const response = await this.client.post<T>(url, data);
-    return response.data;
-  }
-
-  /**
-   * Multipart POST. `postForm` sets the multipart content type: with the instance's JSON default,
-   * axios would serialize the form into JSON and the file would never arrive. The bytes pass through
-   * the API, which processes images before storing them, so the wait is longer than a JSON call's.
-   */
-  async postForm<T>(url: string, form: FormData): Promise<T> {
-    logger.info('HTTP', `POST ${url} (multipart)`);
-    const response = await this.client.postForm<T>(url, form, { timeout: 120_000 });
     return response.data;
   }
 

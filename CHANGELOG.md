@@ -35,6 +35,9 @@ right now.
 
 ### Added
 
+- `upload_media` uploads an image from the machine running the server (inside `GGCHECKOUT_UPLOAD_ROOT`)
+  and answers `{ url, path }`, the relative `/api/r2-proxy/...` path that checkout `image` and
+  `bannerUrl`, offer `customImage.url` and similar fields take.
 - `update_upsell` and `update_downsell` edit an offer in place. The API has no PATCH for offers, so the
   tool reads the offer, merges the fields sent and saves the whole of it. They take the same fields as
   the create tools, and `create_upsell` gained `headline`, `chainBehavior`, `customImage` and
@@ -143,6 +146,13 @@ right now.
 
 ### Fixed
 
+- Image uploads (`upload_members_area_file` with `kind: "image"`, `upload_media`) use the presigned flow
+  (`/api/uploads-r2/presigned-upload`, a PUT to storage, `/api/uploads-r2/complete-upload`) instead of a
+  multipart POST to `/api/uploads-r2`, which the Cloudflare WAF blocked with a bare "API Error (403)".
+- A 403 whose body is not the API's JSON (HTML or empty, from the firewall) is reported as "Blocked at
+  the network edge", not as a permissions problem, with the advice to wait about 1 minute and retry and
+  to contact support if it persists. JSON 403s stay permission errors. Rate limits already answer 429
+  with the wait.
 - `delete_upsell` and `delete_downsell` reported success without deleting when given the row `id` (the
   API deletes by `uid`). The upsell and downsell tools now take either key, resolved through the list
   and sent as the `uid`; a key that matches nothing, or a 404, is an error. `reorder_upsells` and

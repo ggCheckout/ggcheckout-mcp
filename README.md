@@ -94,7 +94,7 @@ refuses to start otherwise.
 
 ### Upload folder
 
-`upload_members_area_file` reads files from the machine running this server, and only from the
+`upload_media` and `upload_members_area_file` read files from the machine running this server, and only from the
 folder named here. Without it the tool refuses every upload: what an agent reads (a page, a PDF) can
 carry instructions, so the server never reads an arbitrary path. A file that is itself a symbolic
 link is refused, and a path that leads outside the folder through a link is too.
@@ -674,6 +674,21 @@ The payments API's `list_wallets` lists the same wallets by their public id (`wa
 
 ---
 
+### Media (1 tool)
+
+#### `upload_media`
+
+Uploads an image from the machine running this server (inside `GGCHECKOUT_UPLOAD_ROOT`, see
+[Upload folder](#upload-folder)) and answers `{ url, path }`, where `url` is the relative
+`/api/r2-proxy/...` path. Pass it as a checkout's `image` or `bannerUrl`, an offer's `customImage.url`,
+or any image field that takes it. The bytes go straight to storage through a presigned URL (not through a
+multipart POST to the API, which the firewall blocks) and the API sanitizes the image when the upload is
+confirmed. `upload_members_area_file` takes the same route for `kind: "image"`.
+
+**Example prompt:** "Upload ~/gg/banner.png and use it as the banner of checkout abc123"
+
+---
+
 ### Tracking (2 tools)
 
 - `explain_tracking`: the pt-BR guide to how a sale's metrics reach Meta, TikTok, Google Ads and UTMify. No API call. Optional `topic`: `paths`, `initiate_checkout`, `purchase`, `utms`, `dedup`, `funnel`, `store`, `errors`.
@@ -838,6 +853,11 @@ Retry-After: 23
 | `product_upload` | 35 | 1h | Max 35 file uploads per hour |
 
 Always use the `retry_after` value from the body (or the `Retry-After` header) instead of guessing.
+
+**A 403 that is not from the API.** The API's own 403s are JSON (`Não autorizado`) and mean a permission
+problem. A 403 with an HTML or empty body was answered by the firewall in front of the API (Cloudflare
+WAF): the server reports it as "Blocked at the network edge", says it is not a permissions problem, and
+asks you to wait about 1 minute and retry, then contact support if it persists.
 
 ### Bulk operations and migrations
 

@@ -10,6 +10,7 @@ import { registerDiscordTools } from './discord.tools.js';
 import { registerDiscountTools } from './discount.tools.js';
 import { registerFunnelTools } from './funnel.tools.js';
 import { registerGatewayTools } from './gateway.tools.js';
+import { registerMediaTools } from './media.tools.js';
 import { registerMembersAreaTools } from './members-area.tools.js';
 import { registerPaymentTools } from './payment.tools.js';
 import { registerPaymentsApiTools } from './payments-api.tools.js';
@@ -66,7 +67,7 @@ describe('collection size limits', () => {
     registerFunnelTools(server, services.funnel);
     registerPaymentsApiTools(server, spyService(), 'test');
     for (const register of [
-      registerBillingTools, registerCheckoutTools, registerCustomDomainTools, registerDashboardTools,
+      registerBillingTools, registerCheckoutTools, registerMediaTools, registerCustomDomainTools, registerDashboardTools,
       registerDiscordTools, registerDiscountTools, registerGatewayTools, registerPaymentTools,
       registerProductTools, registerProfileTools, registerPushTools, registerRewardsTools,
       registerShippingTools, registerStoreTools, registerWebhookTools, registerWhatsAppTools,
