@@ -35,6 +35,11 @@ right now.
 
 ### Added
 
+- `create_checkout` and `update_checkout` take `checkoutModel` (`v2` to `v6`), `customDomainId` (an id
+  from `list_custom_domains`, `null` unbinds), `analytics { clarity { projectId } | null }`, and typed
+  `timer` and `salesNotifications` parameters with an `enabled` flag.
+- `image` and `bannerUrl` of a checkout also accept the relative `/api/r2-proxy/...` path that
+  `upload_media` returns (they took only `z.string().url()`).
 - `upload_media` uploads an image from the machine running the server (inside `GGCHECKOUT_UPLOAD_ROOT`)
   and answers `{ url, path }`, the relative `/api/r2-proxy/...` path that checkout `image` and
   `bannerUrl`, offer `customImage.url` and similar fields take.
@@ -146,6 +151,13 @@ right now.
 
 ### Fixed
 
+- The checkout timer and sales pop-ups are stored inverted (`checkout.timer.disabled`,
+  `checkout.salesNotifications.disabled`) and nothing reads `enabled`, so an agent that sent
+  `timer.enabled: false` got a visible timer. `timer` and `salesNotifications` map `enabled` to
+  `disabled = !enabled`, as does an `enabled` sent inside the free-form `checkout`. `create_checkout`
+  turns the sales pop-ups off unless they are enabled.
+- `metricToken` accepts an array of credential ids as well as one (the API stores either), instead of
+  only a string.
 - Image uploads (`upload_members_area_file` with `kind: "image"`, `upload_media`) use the presigned flow
   (`/api/uploads-r2/presigned-upload`, a PUT to storage, `/api/uploads-r2/complete-upload`) instead of a
   multipart POST to `/api/uploads-r2`, which the Cloudflare WAF blocked with a bare "API Error (403)".

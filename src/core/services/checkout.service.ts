@@ -5,8 +5,9 @@ import type {
   Checkout,
   CheckoutPaymentMethods,
   CheckoutTag,
-  CreateCheckoutInput,
-  UpdateCheckoutInput,
+  CheckoutPageFeaturesInput,
+  CreateCheckoutRequest,
+  UpdateCheckoutRequest,
   UpdateCheckoutPayload,
 } from '../types/checkout.js';
 import type { Product } from '../types/product.js';
@@ -34,7 +35,8 @@ export class CheckoutService {
     return this.checkoutPort.getById(id);
   }
 
-  async create(input: Omit<CreateCheckoutInput, 'uuidOwner'>): Promise<Checkout> {
+  async create(request: CreateCheckoutRequest): Promise<Checkout> {
+    const { timer, salesNotifications, ...input } = request;
     refuseNestedPaymentMethods(input.checkout);
     // Independent lookups: the product resolution needs only the input, the business id
     // needs nothing from it.
@@ -45,6 +47,8 @@ export class CheckoutService {
     ]);
     return this.checkoutPort.create({
       ...input,
+      // A new checkout has no sales pop-ups unless the caller turns them on.
+      checkout: withPageFeatures(input.checkout, { timer, salesNotifications }, { salesNotificationsOffByDefault: true }) ?? {},
       uuidOwner: businessId,
       price: parsePriceToCents(input.price),
       ...(orderBumps ? { orderBumps } : {}),
@@ -90,7 +94,8 @@ export class CheckoutService {
     }));
   }
 
-  async update(id: string, input: UpdateCheckoutInput): Promise<Checkout> {
+  async update(id: string, request: UpdateCheckoutRequest): Promise<Checkout> {
+    const { timer, salesNotifications, ...input } = request;
     refuseNestedPaymentMethods(input.checkout);
     const current = await this.checkoutPort.getById(id);
     if (!current.productId) {
@@ -101,6 +106,7 @@ export class CheckoutService {
     }
     if (input.paymentMethods) refuseDroppedMethods(id, current.paymentMethods, input.paymentMethods);
     const orderBumps = await this.serializeOrderBumps(input.orderBumps);
+    const pageSetup = withPageFeatures(input.checkout, { timer, salesNotifications });
     // The write keeps every key absent from the body as stored (field mask), so only the
     // checkout's identity (title, owner, product, price, re-sent unchanged) and what the caller
     // changed travel. Nothing else is echoed from the read: it does not necessarily carry every
@@ -113,7 +119,7 @@ export class CheckoutService {
       productId: current.productId,
       price: current.price,
       ...input,
-      ...(input.checkout !== undefined ? { checkout: mergePageSetup(current.checkout, input.checkout) } : {}),
+      ...(pageSetup !== undefined ? { checkout: mergePageSetup(current.checkout, pageSetup) } : {}),
       ...(input.price !== undefined ? { price: parsePriceToCents(input.price) } : {}),
       ...(orderBumps ? { orderBumps } : {}),
     };
@@ -153,6 +159,51 @@ function mergePageSetup(
 ): Record<string, unknown> {
   const { paymentMethods: _readCopy, ...setup } = stored ?? {};
   return mergeDeep(setup, edit);
+}
+
+/** The page features whose stored flag is the inverse of what an agent says: `disabled`, never `enabled`. */
+const INVERTED_FLAG_KEYS = ['timer', 'salesNotifications'] as const;
+
+/** `{ enabled }` becomes `{ disabled: !enabled }`; a `disabled` that contradicts `enabled` is refused. */
+function toStoredFlag(key: string, source: Record<string, unknown>): Record<string, unknown> {
+  const { enabled, ...rest } = source;
+  if (enabled === undefined) return rest;
+  if (typeof enabled !== 'boolean') {
+    throw new ValidationError(`${key}.enabled must be true or false, got ${JSON.stringify(enabled)}.`);
+  }
+  if (rest.disabled !== undefined && rest.disabled === enabled) {
+    throw new ValidationError(`${key} has enabled: ${enabled} and disabled: ${String(rest.disabled)}, which contradict each other. Send only \`enabled\`.`);
+  }
+  return { ...rest, disabled: !enabled };
+}
+
+/**
+ * Puts the timer and the sales pop-ups into the page setup the way they are stored. Both are kept as a
+ * `disabled` flag, and nothing reads `enabled`: a body with `timer.enabled: false` used to store a stray
+ * key and leave the timer visible. The typed `timer` / `salesNotifications` and a raw one inside the
+ * free-form `checkout` are both mapped (the typed one wins on a clash).
+ *
+ * Returns undefined when there is nothing to write, so an update without a `checkout` stays that way.
+ */
+function withPageFeatures(
+  setup: Record<string, unknown> | undefined,
+  features: CheckoutPageFeaturesInput,
+  options: { salesNotificationsOffByDefault?: boolean } = {},
+): Record<string, unknown> | undefined {
+  const result: Record<string, unknown> = { ...(setup ?? {}) };
+  for (const key of INVERTED_FLAG_KEYS) {
+    const raw = result[key];
+    const typed = features[key] as Record<string, unknown> | undefined;
+    if (typed === undefined && !(raw && typeof raw === 'object' && !Array.isArray(raw))) continue;
+    result[key] = {
+      ...toStoredFlag(`checkout.${key}`, (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>),
+      ...(typed ? toStoredFlag(key, typed) : {}),
+    };
+  }
+  if (options.salesNotificationsOffByDefault && !('salesNotifications' in result)) {
+    result.salesNotifications = { disabled: true };
+  }
+  return setup === undefined && Object.keys(result).length === 0 ? undefined : result;
 }
 
 /**

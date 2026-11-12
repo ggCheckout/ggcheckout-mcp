@@ -7,14 +7,16 @@ import { appMeta, withDrawnNote } from '../apps/apps.js';
 export function registerCustomDomainTools(server: McpServer, service: CustomDomainService) {
   server.registerTool('list_custom_domains', {
     description: 'List all custom domains: { domains, total, limit }. Each has `status` (pending, verified, failed, '
-      + 'disabled); the DNS instructions are only in get_custom_domain.',
+      + 'disabled); the DNS instructions are only in get_custom_domain. A verified domain\'s `id` is the `customDomainId` '
+      + 'of create_checkout / update_checkout (null there unbinds it).',
     _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('list_custom_domains', async () => service.list())));
 
   server.registerTool('add_custom_domain', {
     description: 'Add a custom domain for the checkouts. Subdomains only (checkout.example.com, not example.com), '
       + 'at most 5 per account and 5 additions per 24 hours. Answers the domain with its `dnsInstructions`: the '
-      + 'seller creates the CNAME it lists at their DNS provider, then calls verify_custom_domain.',
+      + 'seller creates the CNAME it lists at their DNS provider, then calls verify_custom_domain. Once verified, bind '
+      + 'it to a checkout with `customDomainId` (its `id`) in create_checkout / update_checkout.',
     inputSchema: { domain: z.string().max(200).describe('Domain name (e.g., "checkout.example.com")') },
     _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('add_custom_domain', async ({ domain }) => {

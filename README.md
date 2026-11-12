@@ -333,6 +333,23 @@ longer lists its own gateways. PayPal stays per checkout, outside the wallet:
 `paymentMethods.paypal` takes `{ "token": "<PayPal credential id from list_tokens>", "type": "paypal" }`,
 and `null` turns it off. An unknown method key is refused instead of being dropped.
 
+**Timer and sales pop-ups.** The API stores both inverted (`checkout.timer.disabled`,
+`checkout.salesNotifications.disabled`) and nothing reads `enabled`, so they have typed top-level
+parameters: `timer { enabled, time "HH:MM:SS", text, bgColor, barColor, textColor, enableSticky }` and
+`salesNotifications { enabled, position, defaultMessages, customMessages, minMessages, interval, colors }`.
+The server maps `enabled` to `disabled = !enabled`; an `enabled` sent inside the free-form `checkout` is
+mapped the same way. A new checkout has its sales pop-ups off unless `salesNotifications.enabled` is true.
+
+**Layout, domain, analytics, images.**
+- `checkoutModel` is `v2` to `v6` (the backend default stays `v2`; `v6` is the button/embed checkout and is
+  refused for a checkout with shipping).
+- `customDomainId` is the `id` of a verified domain from `list_custom_domains`; `null` unbinds it.
+- `analytics: { clarity: { projectId } | null }` sets or removes Microsoft Clarity (`projectId` is 10 to 64
+  lowercase letters and digits).
+- `metricToken` is one credential id from `list_tokens`, or an array of them to fire several pixels.
+- `image` and `bannerUrl` take an absolute https URL or the `/api/r2-proxy/...` path `upload_media`
+  returns. The API silently drops a rejected `bannerUrl`, so read the checkout back after setting it.
+
 **Example prompt:** "Create a checkout page for my React Course priced at R$99.90"
 
 #### `update_checkout`
@@ -348,6 +365,10 @@ off; a body that leaves one of them out (an edit of `installments` alone, say) i
 write, since the API would delete that method and could unpublish the checkout. A method the API hides
 from the read (one that cannot charge today) is not visible here; the API refuses a body that leaves
 it out (`HIDDEN_PAYMENT_METHOD_OMITTED`, ggCheckout/saas-checkout#2183), and `null` turns it off.
+
+The same `timer`, `salesNotifications`, `checkoutModel`, `customDomainId`, `analytics`, `metricToken`,
+`image` and `bannerUrl` parameters as `create_checkout` apply here; `timer` and `salesNotifications` merge
+into the stored ones, so `{ "timer": { "enabled": false } }` hides the countdown and keeps its time and text.
 
 **Example prompt:** "Update checkout abc123 price to R$79.90 and unpublish it"
 
@@ -665,6 +686,9 @@ The payments API's `list_wallets` lists the same wallets by their public id (`wa
 ---
 
 ### Custom Domains (5 tools)
+
+A verified domain is bound to a checkout with `customDomainId` (the domain's `id`) in `create_checkout` or
+`update_checkout`; `null` unbinds it.
 
 **Example prompts:**
 - "List my custom domains"
