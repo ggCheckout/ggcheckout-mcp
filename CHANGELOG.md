@@ -209,11 +209,12 @@ right now.
   The payments public API keeps 0.5.0 as its minimum on purpose: its tools (`create_pix_charge`,
   `get_payment_intent`, `list_payment_intents`, `cancel_payment_intent`, `list_wallets`) send the same
   requests in 0.5.0 and 0.6.0, and the core only announces 0.6.0 as the latest.
-  The reason is `create_whatsapp_template`: a 0.5.x install sends the legacy `sessionId`, the saas
-  wraps it into `sessionIds: [sessionId]`, and the template is linked to an id that is not a session,
-  so it is saved and never fires, with no error. The other changed writes do not need the minimum:
-  0.5.x `pay_invoice` fails loudly (500 `LEGACY_BILLING_READ_RETIRED`), and the removed WhatsApp tools
-  answer 403 or 404. Release order: publish 0.6.0 to npm first; only then raise
+  The reason is to give a 0.5.x install the update notice instead of broken tools: its `pay_invoice`
+  would fail with 500 `LEGACY_BILLING_READ_RETIRED`, and its WhatsApp tools are the old ones. The
+  removed ones answer 403 or 404, and `create_whatsapp_template` sends the legacy `sessionId`, which
+  the saas wraps into `sessionIds: [sessionId]`, so the template is linked to an id that is not a
+  session and is saved but never fires, with no error. Refusing 0.5.x by version tells the user to
+  update before any of that happens. Release order: publish 0.6.0 to npm first; only then raise
   `MIN_SUPPORTED_GGCHECKOUT_MCP_VERSION` and `LATEST_GGCHECKOUT_MCP_VERSION` in saas-checkout and
   `DEFAULT_MCP_LATEST_VERSION` in ggcheckout-core to 0.6.0. Raising the minimum before the release
   would refuse every install with nothing to upgrade to.
