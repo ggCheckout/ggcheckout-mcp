@@ -83,8 +83,8 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
         + 'group by fewer keys. Cents, as everywhere.',
       inputSchema: {
         businessId: z.string().describe('Business ID (get_my_business_id)'),
-        from: z.string().optional().describe('Start of the period, ISO 8601 (default: 7 days before `to`)'),
-        to: z.string().optional().describe('End of the period, ISO 8601 (default: now). At most 90 days after `from`'),
+        from: z.string().optional().describe('Start of the period: ISO 8601, or a plain date YYYY-MM-DD meaning that day in Sao Paulo, from 00:00 (default: 7 days before `to`)'),
+        to: z.string().optional().describe('End of the period: ISO 8601, or a plain date YYYY-MM-DD meaning that day in Sao Paulo, inclusive through 23:59:59.999 (default: now). At most 90 days after `from`'),
         groupBy: z.array(z.enum(ATTRIBUTION_KEYS)).min(1).max(3)
           .refine((keys) => new Set(keys).size === keys.length, 'groupBy keys must be distinct').optional()
           .describe('1 to 3 distinct keys: utm_source, utm_medium, utm_campaign, utm_content, utm_term, src, sck '
