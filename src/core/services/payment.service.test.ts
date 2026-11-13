@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PaymentService } from './payment.service.js';
-import { ValidationError } from '../../shared/errors.js';
+import { RateLimitError, ValidationError } from '../../shared/errors.js';
 
 describe('PaymentService.getSalesAttribution', () => {
   const answer = { from: 'f', to: 't', groupBy: [], rows: [], totals: {}, truncated: false };
@@ -57,5 +57,86 @@ describe('PaymentService.getSalesAttribution', () => {
 
   it('answers what the route answers', async () => {
     expect(await service.getSalesAttribution('b')).toBe(answer);
+  });
+});
+
+describe('PaymentService.listAll', () => {
+  const pageOf = (n: number, nextCursor: string | null, total = 450) => ({
+    payments: [{ id: `p${n}` }], total, nextCursor,
+  });
+  let port: any;
+  let sleep: ReturnType<typeof vi.fn>;
+  let service: PaymentService;
+
+  beforeEach(() => {
+    port = { getPaginated: vi.fn() };
+    sleep = vi.fn().mockResolvedValue(undefined);
+    service = new PaymentService(port, { getMyBusinessId: vi.fn() } as any, sleep);
+  });
+
+  it('walks pages of 100 until the last one and reports the total of the first page', async () => {
+    port.getPaginated
+      .mockResolvedValueOnce(pageOf(1, 'c1', 3))
+      .mockResolvedValueOnce(pageOf(2, 'c2', 2))
+      .mockResolvedValueOnce(pageOf(3, null, 1));
+
+    const answer = await service.listAll('biz');
+
+    expect(answer).toEqual({ payments: [{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }], total: 3, nextCursor: null, complete: true });
+    expect(port.getPaginated.mock.calls).toEqual([
+      ['biz', { pageSize: 100 }],
+      ['biz', { pageSize: 100, lastCreatedAt: 'c1' }],
+      ['biz', { pageSize: 100, lastCreatedAt: 'c2' }],
+    ]);
+  });
+
+  it('stops after 5 pages and hands back the cursor', async () => {
+    port.getPaginated.mockImplementation(async (_: string, o: any) => pageOf(1, `after-${o.lastCreatedAt ?? 'start'}`));
+
+    const answer = await service.listAll('biz');
+
+    expect(port.getPaginated).toHaveBeenCalledTimes(5);
+    expect(answer.payments).toHaveLength(5);
+    expect(answer.complete).toBe(false);
+    expect(answer.nextCursor).toBe('after-after-after-after-after-start');
+  });
+
+  it('resumes from the given cursor', async () => {
+    port.getPaginated.mockResolvedValue(pageOf(1, null));
+    await service.listAll('biz', { lastCreatedAt: 'resume' });
+    expect(port.getPaginated).toHaveBeenCalledWith('biz', { pageSize: 100, lastCreatedAt: 'resume' });
+  });
+
+  it('waits between pages and never before the first', async () => {
+    port.getPaginated.mockResolvedValueOnce(pageOf(1, 'c1')).mockResolvedValueOnce(pageOf(2, null));
+    sleep.mockImplementation(async () => expect(port.getPaginated).toHaveBeenCalledTimes(1));
+
+    await service.listAll('biz');
+
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(sleep).toHaveBeenCalledWith(2500);
+
+    sleep.mockClear();
+    port.getPaginated.mockReset().mockResolvedValue(pageOf(1, null));
+    await service.listAll('biz');
+    expect(sleep).not.toHaveBeenCalled();
+  });
+
+  it('keeps the pages read when the API rate-limits mid-walk', async () => {
+    port.getPaginated
+      .mockResolvedValueOnce(pageOf(1, 'c1'))
+      .mockRejectedValueOnce(new RateLimitError());
+
+    expect(await service.listAll('biz')).toEqual({
+      payments: [{ id: 'p1' }], total: 450, nextCursor: 'c1', complete: false, stoppedBy: 'rate_limit',
+    });
+  });
+
+  it('propagates a rate limit on the first page and any other error', async () => {
+    port.getPaginated.mockRejectedValueOnce(new RateLimitError());
+    await expect(service.listAll('biz')).rejects.toBeInstanceOf(RateLimitError);
+
+    port.getPaginated.mockResolvedValueOnce(pageOf(1, 'c1')).mockRejectedValueOnce(new Error('boom'));
+    await expect(service.listAll('biz')).rejects.toThrow('boom');
   });
 });

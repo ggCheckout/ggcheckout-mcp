@@ -69,6 +69,21 @@ export function toPaymentRow(p: Payload): PaymentRow {
   };
 }
 
+/** The page size of list_payments when the call gives none, and of get_payments_paginated. */
+export const LIST_PAYMENTS_PAGE_SIZE = 50;
+export const PAGINATED_PAGE_SIZE = 10;
+/** The API's cap, which an `all` walk reads at. */
+export const ALL_PAGE_SIZE = 100;
+
+/**
+ * Rows per page of a list: the call's own `pageSize`, else the default of the tool that was called.
+ * A host that drops the tool name gets the paginated default (the smaller one).
+ */
+export function pageSizeOf(toolName: string | undefined, args: Record<string, unknown>): number {
+  if (args.all === true) return ALL_PAGE_SIZE;
+  return Number(args.pageSize) || (toolName === 'list_payments' ? LIST_PAYMENTS_PAGE_SIZE : PAGINATED_PAGE_SIZE);
+}
+
 /** A page of payments (get_payments_paginated, list_payments); null for anything else. */
 export function summarizePaymentsPage(data: unknown): PaymentsPage | null {
   if (!isPayload(data) || !Array.isArray(data.payments)) return null;

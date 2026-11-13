@@ -10,7 +10,7 @@ const page = { payments: [{ id: 'p1' }], total: 2852, totalCapped: false, nextCu
 
 describe('list_payments', () => {
   let client: Client;
-  const service = { getPaginated: vi.fn() } as any;
+  const service = { getPaginated: vi.fn(), listAll: vi.fn() } as any;
 
   beforeAll(async () => {
     const server = new McpServer({ name: 'test', version: '0.0.1' });
@@ -21,19 +21,28 @@ describe('list_payments', () => {
     await client.connect(clientTransport);
   });
 
-  beforeEach(() => service.getPaginated.mockReset().mockResolvedValue(page));
+  beforeEach(() => {
+    service.getPaginated.mockReset().mockResolvedValue(page);
+    service.listAll.mockReset().mockResolvedValue({ ...page, complete: true });
+  });
 
   // The legacy list route stopped at a fixed count with no total and no cursor, so the view told a
   // seller with 2852 payments that there were 100. The first page carries both.
   it('answers the first page of the paginated route, with total and cursor', async () => {
     const result = await client.callTool({ name: 'list_payments', arguments: { businessId: 'biz-1' } });
-    expect(service.getPaginated).toHaveBeenCalledWith('biz-1', { pageSize: 10 });
+    expect(service.getPaginated).toHaveBeenCalledWith('biz-1', { pageSize: 50 });
     expect(result.structuredContent).toMatchObject({ total: 2852, nextCursor: page.nextCursor });
   });
 
   it('passes pageSize through', async () => {
     await client.callTool({ name: 'list_payments', arguments: { businessId: 'biz-1', pageSize: 100 } });
     expect(service.getPaginated).toHaveBeenCalledWith('biz-1', { pageSize: 100 });
+  });
+
+  it('walks every page with all, resuming from the cursor', async () => {
+    await client.callTool({ name: 'list_payments', arguments: { businessId: 'biz-1', all: true, lastCreatedAt: 'c1' } });
+    expect(service.listAll).toHaveBeenCalledWith('biz-1', { lastCreatedAt: 'c1' });
+    expect(service.getPaginated).not.toHaveBeenCalled();
   });
 });
 

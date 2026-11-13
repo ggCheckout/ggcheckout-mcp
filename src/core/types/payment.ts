@@ -148,6 +148,15 @@ export interface PaymentsPaginatedResponse {
   coverageCapped?: boolean;
 }
 
+/** Page size of `list_payments` when the caller gives none. */
+export const LIST_PAYMENTS_DEFAULT_PAGE_SIZE = 50;
+/** The API's hard cap on `pageSize`; an `all` walk reads full pages. */
+export const PAYMENTS_MAX_PAGE_SIZE = 100;
+/** Pages one `all` call reads before it stops and hands back a cursor (500 payments, about 10 s of waits). */
+export const LIST_ALL_MAX_PAGES = 5;
+/** Wait between pages of an `all` walk: 24 requests a minute at most, under the API key limit of 30. */
+export const LIST_ALL_PAGE_DELAY_MS = 2500;
+
 export interface PaginationOptions {
   pageSize?: number;
   dateFrom?: string;
@@ -250,4 +259,16 @@ export interface AttributionResponse {
   totals: AttributionTotals;
   /** The route cut the rows to its limit: narrow the period or group by fewer keys. */
   truncated: boolean;
+}
+
+/** What `list_payments` answers for `all: true`: the pages gathered, joined. */
+export interface PaymentsListAllResponse {
+  payments: Payment[];
+  /** The count reported by the first page read. */
+  total: number;
+  /** Continue with `list_payments` `all: true` and `lastCreatedAt` = this; null once the last page is in. */
+  nextCursor: string | null;
+  complete: boolean;
+  /** Set when the walk stopped early because the API rate-limited it. */
+  stoppedBy?: 'rate_limit';
 }

@@ -422,9 +422,11 @@ Tags with name and hex color (max 5 per checkout).
 
 #### `list_payments` / `get_payments_paginated` / `get_payment`
 
-`list_payments` is the first page of `get_payments_paginated` with no filters (10 payments by
+`list_payments` is the first page of `get_payments_paginated` with no filters (50 payments by
 default, up to 100), with `total` and `nextCursor`; use `get_payments_paginated` to go further or
-to filter.
+to filter. With `all: true` (when you ask for all payments) it reads pages of 100 with a pause
+between them, so the API does not rate-limit the key, and stops after 500 payments; `complete` is
+false while more remain, and `lastCreatedAt` = `nextCursor` resumes the walk.
 
 #### `get_sales_attribution`
 

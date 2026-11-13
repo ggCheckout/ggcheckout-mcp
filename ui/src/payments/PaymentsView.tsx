@@ -17,7 +17,7 @@ import { gatewayName } from '../lib/gateways';
 import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
 import {
   formatPeriodDay, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment,
-  countScope, periodLabel, summarizePaymentsCount, summarizePaymentsPage, type PaymentRow, type PaymentsPage,
+  countScope, pageSizeOf, periodLabel, summarizePaymentsCount, summarizePaymentsPage, type PaymentRow, type PaymentsPage,
 } from './model';
 
 /** Rows per page when list_payments hands over the whole list (the paginated tool's default). */
@@ -199,10 +199,19 @@ interface CursorPages {
   cursors: (string | null)[];
 }
 
-/** The call's args without the filters the list owns (the active search) and the cursor. */
+/** The call's args without the filters the list owns (the active search), the cursor and `all`
+ *  (a list_payments flag the paginated tool does not know). */
 function baseArgs(args: Record<string, unknown>): Record<string, unknown> {
-  const { searchTerm: _, lastCreatedAt: __, ...rest } = args;
+  const { searchTerm: _, lastCreatedAt: __, all: ___, ...rest } = args;
   return rest;
+}
+
+/** An `all` answer holds up to 500 rows: cut it into pages of `size`, the cursor on the last cut only. */
+function walkOf(page: PaymentsPage, size: number): CursorPages {
+  const pages: PaymentRow[][] = [];
+  for (let i = 0; i < page.payments.length; i += size) pages.push(page.payments.slice(i, i + size));
+  if (!pages.length) pages.push([]);
+  return { pages, cursors: pages.map((_, i) => (i === pages.length - 1 ? page.nextCursor : null)) };
 }
 
 /** PaymentsListCard + the footer of the payments page, for get_payments_paginated and list_payments. */
@@ -220,8 +229,13 @@ function PaymentsList({ host, state, first, onOpen }: {
   const [query, setQuery] = useState(opened);
   const [applied, setApplied] = useState(opened);
   const [page, setPage] = useState(1);
+  // The rows per page, and the size every further page is asked for (list_payments defaults to 50).
+  const all = state.args.all === true;
+  const sized = pageSizeOf(state.toolName, state.args);
+  // Never below what the host handed over, in case it sized the page itself (an `all` answer is cut at 100).
+  const pageSize = local ? LOCAL_PAGE_SIZE : all ? sized : Math.max(first.payments.length, sized);
   const [data, setData] = useState<{ head: PaymentsPage; walk: CursorPages }>(() => ({
-    head: first, walk: { pages: [first.payments], cursors: [first.nextCursor] },
+    head: first, walk: walkOf(first, pageSize),
   }));
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -236,7 +250,6 @@ function PaymentsList({ host, state, first, onOpen }: {
       .some((field) => field?.toLowerCase().includes(needle)));
   }, [local, applied, first]);
 
-  const pageSize = local ? LOCAL_PAGE_SIZE : Math.max(first.payments.length, Number(state.args.pageSize) || 10);
   const total = local ? filtered.length : data.head.total;
   const totalPages = total == null ? null : Math.max(1, Math.ceil(total / pageSize));
   const rows = local ? filtered.slice((page - 1) * pageSize, page * pageSize) : data.walk.pages[page - 1] ?? [];
@@ -263,7 +276,7 @@ function PaymentsList({ host, state, first, onOpen }: {
     if (local || target <= data.walk.pages.length) return setPage(target);
     const cursor = data.walk.cursors[target - 2];
     if (!cursor || busy) return;
-    const next = await fetchPage({ ...baseArgs(state.args), ...(applied ? { searchTerm: applied } : {}), lastCreatedAt: cursor });
+    const next = await fetchPage({ ...baseArgs(state.args), pageSize, ...(applied ? { searchTerm: applied } : {}), lastCreatedAt: cursor });
     if (!next) return;
     setData((d) => ({ ...d, walk: { pages: [...d.walk.pages, next.payments], cursors: [...d.walk.cursors, next.nextCursor] } }));
     setPage(target);
@@ -279,11 +292,11 @@ function PaymentsList({ host, state, first, onOpen }: {
       return;
     }
     if (!remote) return;
-    const rest = baseArgs(state.args);
+    const rest = { ...baseArgs(state.args), pageSize };
     const head = await fetchPage(term ? { ...rest, searchTerm: term } : rest);
     if (!head) return;
     setApplied(term);
-    setData({ head, walk: { pages: [head.payments], cursors: [head.nextCursor] } });
+    setData({ head, walk: walkOf(head, pageSize) });
     setPage(1);
   }
 

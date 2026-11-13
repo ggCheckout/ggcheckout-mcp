@@ -23,11 +23,15 @@ right now.
     keys (403), so they could never work. Create and delete sessions in the dashboard.
   - Removed `send_whatsapp_message`: it only reached legacy sessions and answered 404 for every
     session or chip of the dashboard.
-- `list_payments` answers the first page of `get_payments_paginated` (10 payments by default,
+- `list_payments` answers the first page of `get_payments_paginated` (50 payments by default,
   `pageSize` up to 100) with `total` and `nextCursor`, instead of a capped list from the legacy
   route. That route stopped at a fixed number of payments (500, or 100 on QA) with no count and no
   cursor, so "list all payments" silently missed the older ones and the view said the account had
-  100. Page further with `get_payments_paginated`.
+  100. For "all payments" it takes `all: true`: the call reads pages of 100 with a 2.5 s pause
+  between them (the API key allows 30 requests a minute) and stops after 500 payments, answering
+  `complete`, `nextCursor` and, when the API pushed back, `stoppedBy: "rate_limit"`. Resume with
+  `all: true` and `lastCreatedAt` = `nextCursor`. Filtered or custom paging stays on
+  `get_payments_paginated`.
 - `get_billing_balance` follows the API's balance contract: `nextChargeAt` is gone (the API never
   sent it), `closingAt` is the payments engine's next cycle close, `cycleStartAt` the start of the
   open cycle, and both are `null` when the engine did not answer. `usageCents` and

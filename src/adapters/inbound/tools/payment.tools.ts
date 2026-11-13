@@ -3,7 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { PaymentService } from '../../../core/services/payment.service.js';
 import { createToolHandler } from '../tool-handler.js';
 import { appMeta, withDrawnNote } from '../apps/apps.js';
-import { ATTRIBUTION_KEYS } from '../../../core/types/payment.js';
+import { ATTRIBUTION_KEYS, LIST_PAYMENTS_DEFAULT_PAGE_SIZE } from '../../../core/types/payment.js';
 
 export function registerPaymentTools(server: McpServer, service: PaymentService) {
   server.tool(
@@ -20,17 +20,26 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
     {
       description:
         'List the newest payments of a business, newest first. The answer is the first page of '
-        + '`get_payments_paginated` with no filters: `total` counts every payment, and `nextCursor` '
-        + '(null on the last page) continues the list through `get_payments_paginated`.',
+        + '`get_payments_paginated` with no filters (50 by default): `total` counts every payment, and '
+        + '`nextCursor` (null on the last page) continues the list through `get_payments_paginated`. '
+        + 'Set `all: true` only when the user asks for all payments: the call then reads pages of 100 with a '
+        + 'pause between them, so the API does not rate-limit the key, and stops after 500 payments. When '
+        + '`complete` is false (the answer carries `nextCursor`, and `stoppedBy: "rate_limit"` if the API '
+        + 'pushed back), call `list_payments` again with `all: true` and `lastCreatedAt` = `nextCursor` to '
+        + 'continue; do not loop `get_payments_paginated` quickly instead, that is what trips the rate limit.',
       inputSchema: {
         businessId: z.string().describe('Business ID to list payments for'),
         pageSize: z.number().min(1).max(100).optional()
-          .describe('Number of payments to return (default: 10, max 100)'),
+          .describe(`Number of payments to return (default: ${LIST_PAYMENTS_DEFAULT_PAGE_SIZE}, max 100); ignored with all`),
+        all: z.boolean().optional().describe('Set when the user asks for all payments'),
+        lastCreatedAt: z.string().optional()
+          .describe('With all: the `nextCursor` of the previous answer, to resume a walk that stopped'),
       },
       _meta: appMeta(),
     },
-    withDrawnNote(server, createToolHandler('list_payments', async ({ businessId, pageSize }) => {
-      return service.getPaginated(businessId, { pageSize: pageSize ?? 10 });
+    withDrawnNote(server, createToolHandler('list_payments', async ({ businessId, pageSize, all, lastCreatedAt }) => {
+      if (all) return service.listAll(businessId, { lastCreatedAt });
+      return service.getPaginated(businessId, { pageSize: pageSize ?? LIST_PAYMENTS_DEFAULT_PAGE_SIZE });
     })),
   );
 

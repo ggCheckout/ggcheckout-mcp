@@ -10,18 +10,23 @@ import type {
   PaymentStatusCheckResponse,
   AttributionQuery,
   AttributionResponse,
+  PaymentsListAllResponse,
 } from '../types/payment.js';
 import {
   ATTRIBUTION_DEFAULT_DAYS,
   ATTRIBUTION_MAX_DAYS,
   DEFAULT_ATTRIBUTION_GROUP_BY,
+  LIST_ALL_MAX_PAGES,
+  LIST_ALL_PAGE_DELAY_MS,
+  PAYMENTS_MAX_PAGE_SIZE,
 } from '../types/payment.js';
-import { ValidationError } from '../../shared/errors.js';
+import { RateLimitError, ValidationError } from '../../shared/errors.js';
 
 export class PaymentService {
   constructor(
     private readonly paymentPort: PaymentPort,
     private readonly authPort: AuthPort,
+    private readonly sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   ) {}
 
   async getMyBusinessId(): Promise<string> {
@@ -33,6 +38,39 @@ export class PaymentService {
     options?: PaginationOptions,
   ): Promise<PaymentsPaginatedResponse | { total: number }> {
     return this.paymentPort.getPaginated(businessId, options);
+  }
+
+  /**
+   * Walks the list newest first in pages of 100, waiting between pages so the API key stays under its
+   * request limit, and stops at the last page or after LIST_ALL_MAX_PAGES. `nextCursor` resumes a walk
+   * that stopped. A rate limit mid-walk keeps the pages already read instead of throwing them away.
+   */
+  async listAll(businessId: string, options: { lastCreatedAt?: string } = {}): Promise<PaymentsListAllResponse> {
+    const payments: Payment[] = [];
+    let total = 0;
+    let cursor: string | null = options.lastCreatedAt ?? null;
+
+    for (let pagesRead = 0; pagesRead < LIST_ALL_MAX_PAGES; pagesRead++) {
+      if (pagesRead > 0) await this.sleep(LIST_ALL_PAGE_DELAY_MS);
+      let page: PaymentsPaginatedResponse;
+      try {
+        page = (await this.paymentPort.getPaginated(businessId, {
+          pageSize: PAYMENTS_MAX_PAGE_SIZE,
+          ...(cursor ? { lastCreatedAt: cursor } : {}),
+        })) as PaymentsPaginatedResponse;
+      } catch (error) {
+        if (error instanceof RateLimitError && pagesRead > 0) {
+          return { payments, total, nextCursor: cursor, complete: false, stoppedBy: 'rate_limit' };
+        }
+        throw error;
+      }
+      if (pagesRead === 0) total = page.total;
+      payments.push(...page.payments);
+      cursor = page.nextCursor;
+      if (cursor === null) break;
+    }
+
+    return { payments, total, nextCursor: cursor, complete: cursor === null };
   }
 
   async getById(businessId: string, paymentId: string): Promise<Payment> {

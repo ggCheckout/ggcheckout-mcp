@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatPeriodDay, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment, summarizePaymentsCount, summarizePaymentsPage, countScope,
+  formatPeriodDay, initials, methodName, pageWindow, statusLabel, statusVariant, summarizePayment, summarizePaymentsCount, summarizePaymentsPage, countScope, pageSizeOf,
 } from './model';
 import { parseDate } from '../lib/format';
 
@@ -117,5 +117,19 @@ describe('summarizePaymentsCount', () => {
     expect(countScope({ dateFrom: '2026-11-01', dateTo: '2026-11-10', status: 'paid', searchTerm: 'ana' }))
       .toEqual(['Período: 01/11/2026 - 10/11/2026', 'Status: Pago', 'Busca: "ana"']);
     expect(countScope({ status: 'all' })).toEqual([]);
+  });
+});
+
+describe('pageSizeOf', () => {
+  it('uses the default of the tool that was called', () => {
+    expect(pageSizeOf('list_payments', {})).toBe(50);
+    expect(pageSizeOf('get_payments_paginated', {})).toBe(10);
+    expect(pageSizeOf(undefined, {})).toBe(10);
+  });
+
+  it('lets an explicit pageSize win, and reads an all walk at 100', () => {
+    expect(pageSizeOf('list_payments', { pageSize: 20 })).toBe(20);
+    expect(pageSizeOf('get_payments_paginated', { pageSize: 30 })).toBe(30);
+    expect(pageSizeOf('list_payments', { all: true, pageSize: 20 })).toBe(100);
   });
 });
