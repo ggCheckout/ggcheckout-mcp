@@ -1,0 +1,69 @@
+/* Payments API cards (limits, wallets, charges) on the shared tokens of styles/base.css. */
+
+.payapi-stack { display: flex; flex-direction: column; gap: 12px; }
+.payapi-view .pa-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.payapi-view .pa-title { margin: 4px 0 14px; font-size: 20px; line-height: 1.15; }
+.payapi-view .pa-head .pa-title { margin-bottom: 14px; }
+.payapi-view .pa-quiet { margin: 0; font-size: 13px; color: var(--muted); }
+.payapi-view .pa-error { margin: 0 0 12px; font-size: 13px; color: var(--danger); }
+
+.pa-badge {
+  flex: 0 0 auto; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  border: 1px dashed var(--faint); color: var(--muted);
+}
+.pa-badge[data-live] { border-style: solid; border-color: var(--selected-fg); color: var(--selected-fg); }
+
+/* Requests-per-minute buckets: a bar, the numbers and, past 80%, a word. */
+.pa-buckets { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.pa-buckets[data-compact] { gap: 10px; }
+.pa-bucket-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.pa-bucket-label { color: var(--ink); font-weight: 600; }
+.pa-bucket-count { color: var(--muted); }
+.pa-bar { margin-top: 6px; height: 8px; border-radius: 999px; background: var(--row); border: 1px solid var(--row-border); overflow: hidden; }
+.pa-bar span { display: block; height: 100%; border-radius: inherit; background: var(--selected-fg); min-width: 0; }
+.pa-bucket[data-level='high'] .pa-bar span, .pa-bucket[data-level='full'] .pa-bar span { background: var(--danger); }
+.pa-bucket-note { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.pa-bucket[data-level='high'] .pa-bucket-note strong, .pa-bucket[data-level='full'] .pa-bucket-note strong { color: var(--danger); }
+.pa-fields { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--row-border); }
+.pa-fields .field { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.pa-fields dt { color: var(--muted); }
+.pa-fields dd { margin: 0; font-weight: 700; }
+
+.pa-strip { padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--row-border); background: var(--row); }
+.pa-strip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.pa-strip-title { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: var(--muted); }
+
+/* Rows of wallets and charges. */
+.pa-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pa-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 10px 12px;
+  border-radius: 10px; border: 1px solid var(--row-border); background: var(--row); text-align: left;
+}
+.pa-row-button { cursor: pointer; }
+.pa-row-button:hover:not(:disabled) { border-color: var(--selected-fg); }
+.pa-row-button:disabled { cursor: progress; opacity: 0.7; }
+.pa-row-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pa-row-name { font-weight: 700; font-size: 14px; color: var(--ink); }
+.pa-row-sub { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.pa-chevron { flex: 0 0 auto; color: var(--faint); }
+.pa-mono { font: 12px/1.4 var(--font-mono); }
+.pa-copy { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 2px 0; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.pa-copy:hover { color: var(--ink); }
+.pa-copy-note { font-size: 12px; }
+
+.pa-pill {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; background: var(--row); border: 1px solid var(--row-border); color: var(--muted);
+}
+.pa-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pa-pill[data-status='requires_action'], .pa-pill[data-status='processing'] { color: var(--selected-fg); }
+.pa-pill[data-status='succeeded'], .pa-pill[data-tone='ok'] { color: var(--success); }
+.pa-pill[data-status='expired'], .pa-pill[data-status='canceled'], .pa-pill[data-status='failed'], .pa-pill[data-tone='warn'] { color: var(--danger); }
+@media (max-width: 460px) { .pa-row { flex-wrap: wrap; } }
+
+.pa-more {
+  display: block; margin: 14px auto 0; padding: 8px 18px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--row-border); background: var(--row); color: var(--ink); font-weight: 600; font-size: 13px;
+}
+.pa-more:hover:not(:disabled) { border-color: var(--selected-fg); color: var(--selected-fg); }
+.pa-more:disabled { cursor: progress; opacity: 0.7; }

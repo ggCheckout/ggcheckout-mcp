@@ -1,21 +1,26 @@
 {
   "name": "ggcheckout-mcp",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "MCP server for GG Checkout - Manage your products via AI agents",
   "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
   "type": "module",
   "bin": {
     "ggcheckout-mcp": "dist/index.js"
   },
   "scripts": {
     "prebuild": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
-    "build": "tsc",
+    "build": "npm run build -w ui && tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "prepublishOnly": "npm run build",
-    "test": "vitest run",
+    "test": "vitest run && npm test -w ui",
     "test:watch": "vitest",
-    "test:e2e": "vitest run --config vitest.e2e.config.ts"
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "pretest": "npm run build -w ui"
   },
   "keywords": [
     "mcp",
@@ -28,7 +33,10 @@
     "anthropic",
     "checkout",
     "payments",
-    "ecommerce"
+    "ecommerce",
+    "brazilian",
+    "pix",
+    "infoproduct"
   ],
   "author": "GG Checkout Team",
   "license": "MIT",
@@ -36,7 +44,7 @@
     "type": "git",
     "url": "git+https://github.com/ggCheckout/ggcheckout-mcp.git"
   },
-  "homepage": "https://github.com/ggCheckout/ggcheckout-mcp#readme",
+  "homepage": "https://docs.ggcheckout.com/help/vendedor/ferramentas-avancadas/mcp",
   "bugs": {
     "url": "https://github.com/ggCheckout/ggcheckout-mcp/issues"
   },
@@ -60,5 +68,8 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "mcpName": "io.github.ggCheckout/ggcheckout-mcp"
+  "mcpName": "io.github.ggCheckout/ggcheckout-mcp",
+  "workspaces": [
+    "ui"
+  ]
 }

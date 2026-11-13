@@ -1,0 +1,186 @@
+import { Ban, Check, CheckCheck, Clock, Eye, Send, X, type LucideIcon } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import '../styles/dashboard.css';
+import './deliveries.css';
+import type { Host, HostSnapshot } from '../host';
+import { ConfirmPanel } from '../lib/ConfirmPanel';
+import { formatDateTime, plural } from '../lib/format';
+import { messageOf } from '../lib/messageOf';
+import { isResendAnswer, statusBadge, summarizeDeliveries, summarizeResend, type Deliveries, type Delivery } from './model';
+
+/** formatBrazilDateTime: dd/mm/yyyy hh:mm:ss in São Paulo. */
+const brazilDateTime = (iso: string | null) => formatDateTime(iso, { seconds: true });
+
+const STATUS_ICONS: Record<string, LucideIcon> = {
+  pending: Clock, queued: Clock, sending: Send, sent: Check, delivered: CheckCheck, read: Eye, failed: X, permanent_failure: Ban,
+};
+
+function StatusBadge({ delivery }: { delivery: Delivery }) {
+  const { tone, label, hint } = statusBadge(delivery);
+  const Icon = STATUS_ICONS[delivery.status];
+  return (
+    <span className="dlv-badge" data-tone={tone} title={hint}>
+      {Icon && <Icon size={12} aria-hidden />}
+      {label}
+    </span>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="dlv-field">
+      <span>{label}</span>
+      <span className="mono">{value}</span>
+    </div>
+  );
+}
+
+/** DeliveryCard, without the Sync button (that route has no tool). */
+function DeliveryCard({ delivery }: { delivery: Delivery }) {
+  return (
+    <li className="dlv-card">
+      <div className="dlv-card-head">
+        <span className="dlv-type">{delivery.label}</span>
+        <span className="dlv-provider">{delivery.provider === 'meta' ? 'API oficial' : 'Número conectado'}</span>
+      </div>
+      <div className="dlv-field">
+        <span>Status:</span>
+        <StatusBadge delivery={delivery} />
+      </div>
+      {delivery.unconfirmed && <p className="dlv-note">Enviado ao servidor, mas ainda não confirmado no dispositivo</p>}
+      {delivery.phone && <Field label="Telefone:" value={delivery.phone} />}
+      {delivery.sentAt && <Field label="Enviado:" value={brazilDateTime(delivery.sentAt)} />}
+      {delivery.deliveredAt && <Field label="Entregue:" value={brazilDateTime(delivery.deliveredAt)} />}
+      {delivery.readAt && <Field label="Lido:" value={brazilDateTime(delivery.readAt)} />}
+      {delivery.retryCount > 0 && <Field label="Tentativas:" value={String(delivery.retryCount)} />}
+      {delivery.error && (
+        <div className="dlv-error">
+          <p className="dlv-error-title">Erro:</p>
+          <p>{delivery.error}</p>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function SummaryRow({ label, mark, n, tone }: { label: string; mark: string; n: number; tone: string }) {
+  if (n <= 0) return null;
+  return (
+    <div className="dlv-sum-row">
+      <span>{label}</span>
+      <span className="num" data-tone={tone}>{`${mark} ${n}`}</span>
+    </div>
+  );
+}
+
+/** "Dados do WhatsApp": the summary card and a card per message, with the resend behind a confirmation. */
+function DeliveriesPanel({ host, data, canCallTools, notice }: { host: Host; data: Deliveries; canCallTools: boolean; notice?: string | null }) {
+  const [state, setState] = useState(data);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(notice ? { ok: true, text: notice } : null);
+  const { summary, deliveries } = state;
+  const sentBefore = deliveries.length > 0;
+
+  async function resend() {
+    if (!state.paymentId || busy) return;
+    setBusy(true);
+    try {
+      const result = summarizeResend(await host.callTool('resend_delivery', { paymentId: state.paymentId }));
+      const text = result.message;
+      setMessage({ ok: result.status === 'confirmed', text });
+      if (result.status === 'confirmed') host.tellModel(`O vendedor reenviou pelo chat o WhatsApp do pagamento ${state.paymentId}.`);
+      // The message is out: a failed refresh must not read as a failed resend (a second click would send it twice).
+      try {
+        const fresh = summarizeDeliveries(await host.callTool('get_delivery_status', { paymentId: state.paymentId }));
+        if (fresh) setState(fresh);
+      } catch {
+        setMessage({ ok: result.status === 'confirmed', text: `${text} Não foi possível atualizar a lista agora.` });
+      }
+    } catch (e) {
+      const text = messageOf(e);
+      setMessage({ ok: false, text: text || 'Não foi possível reenviar a mensagem WhatsApp.' });
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <section className="surface dlv-panel">
+      <h2 className="card-title">Dados do WhatsApp</h2>
+      {deliveries.length ? (
+        <>
+          <div className="dlv-summary">
+            <div className="dlv-sum-head">
+              <span>Resumo WhatsApp:</span>
+              <span className="mono">{plural(summary.total, 'mensagem', 'mensagens')}</span>
+            </div>
+            <div className="dlv-sum-grid">
+              <SummaryRow label="Enviadas:" mark="✓" n={summary.sent} tone="green" />
+              <SummaryRow label="Entregues:" mark="✓✓" n={summary.delivered} tone="green" />
+              <SummaryRow label="Lidas:" mark="✓✓" n={summary.read} tone="blue" />
+              <SummaryRow label="Pendentes:" mark="•" n={summary.pending} tone="yellow" />
+              <SummaryRow label="Falharam:" mark="✗" n={summary.failed} tone="red" />
+            </div>
+          </div>
+          <ul className="dlv-list">{deliveries.map((d) => <DeliveryCard key={d.id} delivery={d} />)}</ul>
+        </>
+      ) : (
+        <div className="dlv-empty">
+          <div className="dlv-field"><span>Status:</span><span>Não enviado</span></div>
+          <p>Nenhuma mensagem WhatsApp foi enviada para este pagamento.</p>
+        </div>
+      )}
+      {message && <p className="dlv-message" data-tone={message.ok ? 'ok' : 'error'} role="status">{message.text}</p>}
+      {canCallTools && state.paymentId && (
+        confirming ? (
+          <ConfirmPanel
+            label="Confirmar envio do WhatsApp"
+            title={sentBefore ? 'Confirmar Reenvio do WhatsApp' : 'Confirmar Envio do WhatsApp'}
+            message={sentBefore ? 'A mensagem com o produto já foi enviada anteriormente. Tem certeza que deseja reenviar via WhatsApp?' : 'Enviar produto via WhatsApp?'}
+            confirmLabel="Confirmar"
+            busyLabel="Reenviando..."
+            busy={busy}
+            onConfirm={resend}
+            onCancel={() => setConfirming(false)}
+          />
+        ) : (
+          <button type="button" className="cta dlv-resend" onClick={() => setConfirming(true)}>
+            {sentBefore ? 'Reenviar WhatsApp do entregável' : 'Enviar WhatsApp do entregável'}
+          </button>
+        )
+      )}
+    </section>
+  );
+}
+
+/** Deliveries view: get_delivery_status, and resend_delivery (the list is read again after it). */
+export function DeliveriesView({ host, state }: { host: Host; state: HostSnapshot }) {
+  const data = useMemo(() => summarizeDeliveries(state.payload), [state.payload]);
+  const isResend = !data && (state.toolName === 'resend_delivery' || isResendAnswer(state.payload));
+  const resent = useMemo(() => (isResend ? summarizeResend(state.payload) : null), [isResend, state.payload]);
+  const paymentId = typeof state.args.paymentId === 'string' ? state.args.paymentId : null;
+  const [after, setAfter] = useState<Deliveries | null>(null);
+
+  useEffect(() => {
+    if (data) host.tellModel(`Entregas do WhatsApp do pagamento ${data.paymentId ?? paymentId ?? ''} abertas na tela do chat.`.trim());
+  }, [host, data, paymentId]);
+
+  useEffect(() => {
+    if (resent?.status !== 'confirmed' || !paymentId || !state.canCallTools) return;
+    host.callTool('get_delivery_status', { paymentId }).then((d) => setAfter(summarizeDeliveries(d))).catch(() => {});
+  }, [host, resent?.status, paymentId, state.canCallTools]);
+
+  if (data) return <div className="dashboard deliveries"><DeliveriesPanel host={host} data={{ ...data, paymentId: data.paymentId ?? paymentId }} canCallTools={state.canCallTools} /></div>;
+  if (resent) {
+    return (
+      <div className="dashboard deliveries">
+        {after
+          ? <DeliveriesPanel key="after" host={host} data={{ ...after, paymentId: after.paymentId ?? paymentId }} canCallTools={state.canCallTools} notice={resent.message} />
+          : <section className="surface dlv-panel"><p className="dlv-message" data-tone={resent.status === 'confirmed' ? 'ok' : 'error'}>{resent.message}</p></section>}
+      </div>
+    );
+  }
+  return <p className="state" data-tone="error">A resposta não trouxe entregas do WhatsApp.</p>;
+}

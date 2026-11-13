@@ -94,4 +94,42 @@ describe('FunnelService', () => {
     await expect(service.update('f-1', { design: { colors: { primary: '#f00' } } })).rejects.toThrow('404');
     expect(mockPort.update).not.toHaveBeenCalled();
   });
+
+  it('names each analytics step by its title in the funnel', async () => {
+    mockPort.getLeadAnalytics = vi.fn().mockResolvedValue({
+      steps: [
+        { stepId: 's-1', visitors: 10, exits: 4, dropOffRate: 40 },
+        { stepId: 's-2', visitors: 6, exits: 0, dropOffRate: 0 },
+      ],
+      totalVisitors: 10, totalCompleted: 6, overallConversionRate: 60,
+    });
+    mockPort.getById = vi.fn().mockResolvedValue({ id: 'f-1', title: 'Quiz', steps: [{ id: 's-1', title: 'Boas-vindas' }, { id: 's-2', title: '' }] });
+
+    const analytics = await service.getLeadAnalytics('f-1');
+
+    expect(analytics.funnelTitle).toBe('Quiz');
+    expect(analytics.steps.map((s) => s.title)).toEqual(['Boas-vindas', 'Etapa 2']);
+    expect(analytics.overallConversionRate).toBe(60);
+  });
+
+  // The titles only enrich the report: a funnel that cannot be read must not take it down.
+  it('still answers the analytics with generic titles when the funnel cannot be read', async () => {
+    mockPort.getLeadAnalytics = vi.fn().mockResolvedValue({
+      steps: [{ stepId: 's-1', visitors: 10, exits: 4, dropOffRate: 40 }],
+      totalVisitors: 10, totalCompleted: 6, overallConversionRate: 60,
+    });
+    mockPort.getById = vi.fn().mockRejectedValue(new Error('funnel down'));
+
+    const analytics = await service.getLeadAnalytics('f-1');
+
+    expect(analytics.funnelTitle).toBeUndefined();
+    expect(analytics.steps.map((s) => s.title)).toEqual(['Etapa 1']);
+  });
+
+  it('fails when the analytics cannot be read', async () => {
+    mockPort.getLeadAnalytics = vi.fn().mockRejectedValue(new Error('analytics down'));
+    mockPort.getById = vi.fn().mockResolvedValue({ id: 'f-1', title: 'Quiz', steps: [] });
+
+    await expect(service.getLeadAnalytics('f-1')).rejects.toThrow('analytics down');
+  });
 });

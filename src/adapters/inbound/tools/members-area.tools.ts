@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MembersAreaService } from '../../../core/services/members-area.service.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 import { acceptedExtensions } from '../../../shared/local-file.js';
 
 /** When a module or section unlocks for a student, counted from the reference date. */
@@ -72,12 +73,13 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
   );
 
   server.registerTool('get_members_area', {
-    description: 'Get full details of a members area (settings, stats, customization)',
+    description: "Get full details of a members area (settings, stats, customization). The seller's UI calls the area's modules \"carrosséis\" and its sections \"módulos\"",
     inputSchema: { areaId: z.string().describe('Members area ID') },
-  }, createToolHandler('get_members_area', async ({ areaId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_members_area', async ({ areaId }) => {
     const area = await service.getById(areaId);
     return { area };
-  }));
+  })));
 
   server.registerTool('create_members_area', {
     description: 'Create a new members area linked to a product',
@@ -161,12 +163,13 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
 
   // --- Modules ---
   server.registerTool('list_modules', {
-    description: 'List all modules in a members area',
+    description: "List all modules of a members area (position in `order`), with their section and lesson counts. The seller's UI calls these modules \"carrosséis\"",
     inputSchema: { areaId: z.string().describe('Members area ID') },
-  }, createToolHandler('list_modules', async ({ areaId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_modules', async ({ areaId }) => {
     const modules = await service.listModules(areaId);
     return { modules };
-  }));
+  })));
 
   server.registerTool('create_module', {
     description: 'Create a new module in a members area',
@@ -196,15 +199,16 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
 
   // --- Sections ---
   server.registerTool('list_sections', {
-    description: 'List all sections in a module',
+    description: "List all sections of a module (position in `order`), with their lesson counts. The seller's UI calls these sections \"módulos\"",
     inputSchema: {
       areaId: z.string().describe('Members area ID'),
       moduleId: z.string().describe('Module ID'),
     },
-  }, createToolHandler('list_sections', async ({ areaId, moduleId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_sections', async ({ areaId, moduleId }) => {
     const sections = await service.listSections(areaId, moduleId);
     return { sections };
-  }));
+  })));
 
   server.registerTool('create_section', {
     description: 'Create a new section in a module',
@@ -239,16 +243,17 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
 
   // --- Lessons ---
   server.registerTool('list_lessons', {
-    description: 'List all lessons in a section',
+    description: 'List all lessons of a section (position in `order`; type, lock, duration in seconds)',
     inputSchema: {
       areaId: z.string().describe('Members area ID'),
       moduleId: z.string().describe('Module ID'),
       sectionId: z.string().describe('Section ID'),
     },
-  }, createToolHandler('list_lessons', async ({ areaId, moduleId, sectionId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_lessons', async ({ areaId, moduleId, sectionId }) => {
     const lessons = await service.listLessons(areaId, moduleId, sectionId);
     return { lessons };
-  }));
+  })));
 
   server.registerTool('create_lesson', {
     description: 'Create a new lesson in a section',
@@ -476,7 +481,8 @@ export function registerMembersAreaTools(server: McpServer, service: MembersArea
       + '`filePath` for video and file) to pass on:\n'
       + '- kind "image" (' + acceptedExtensions('image').join(' ') + '): update_members_area branding '
       + '(logoUrl, heroBannerUrl, favicon…), create_module imageUrl, create_section / create_lesson thumbnailUrl. '
-      + 'Use preset "banner" for tall banners so they are not cropped.\n'
+      + 'Use preset "banner" for tall banners so they are not cropped. Images for checkouts, offers or '
+      + 'anything else outside a members area: use upload_media.\n'
       + '- kind "video" (' + acceptedExtensions('video').join(' ') + ', up to 500 MB): create_lesson type '
       + '"video" with videoUrl = url and content { videoUrl: url, videoSourceType: "upload" }.\n'
       + '- kind "file" (' + acceptedExtensions('file').join(' ') + ', up to 100 MB, needs areaId): '

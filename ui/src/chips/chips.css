@@ -1,0 +1,82 @@
+/* The WhatsApp chips (saas settings/whatsapp/sections/chips): the chips as rows with WaStatus and the
+   provider badge, and ChipDetailPage with the code to connect in place of its QR card. */
+.dashboard.chips { display: flex; flex-direction: column; gap: 12px; }
+.dashboard .ch-card { border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.dashboard .ch-list-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.dashboard .ch-health { --tone: #64748b; padding: 10px 14px; border-radius: 8px; font-size: 13px; border: 1px solid color-mix(in srgb, var(--tone) 35%, transparent); background: color-mix(in srgb, var(--tone) 8%, transparent); }
+.dashboard .ch-health[data-tone='success'] { --tone: #10b981; }
+.dashboard .ch-health[data-tone='danger'] { --tone: #dc2626; }
+.dashboard .ch-health p { margin: 0; }
+.dashboard .ch-health-title { font-weight: 600; margin-bottom: 2px !important; }
+.dashboard .ch-list-head { padding-bottom: 14px; border-bottom: 1px solid var(--d-line); }
+.dashboard .ch-icon { flex: 0 0 auto; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; color: var(--d-accent); background: color-mix(in srgb, var(--season-blue) 12%, transparent); }
+.dashboard .ch-icon.big { width: 48px; height: 48px; border-radius: 12px; }
+.dashboard .ch-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; font-size: 12px; color: var(--d-muted); }
+
+/* WaStatus: a dot and the label in the state's color. */
+.dashboard .ch-status { --tone: var(--d-muted); display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--tone); white-space: nowrap; }
+.dashboard .ch-status[data-tone='success'] { --tone: #047857; }
+.dashboard .ch-status[data-tone='info'] { --tone: #05329d; }
+.dashboard .ch-status[data-tone='warning'] { --tone: #92400e; }
+.dashboard .ch-status[data-tone='alert'] { --tone: #9a3412; }
+.dashboard .ch-status[data-tone='danger'] { --tone: #b91c1c; }
+:root[data-theme='dark'] .dashboard .ch-status[data-tone='success'] { --tone: #34d399; }
+:root[data-theme='dark'] .dashboard .ch-status[data-tone='info'] { --tone: #a8c4ff; }
+:root[data-theme='dark'] .dashboard .ch-status[data-tone='warning'] { --tone: #fbbf24; }
+:root[data-theme='dark'] .dashboard .ch-status[data-tone='alert'] { --tone: #fb923c; }
+:root[data-theme='dark'] .dashboard .ch-status[data-tone='danger'] { --tone: #f87171; }
+.dashboard .ch-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.dashboard .ch-dot[data-pulse] { animation: ch-pulse 1.6s ease-in-out infinite; }
+@keyframes ch-pulse { 50% { opacity: 0.35; } }
+
+.dashboard .ch-provider { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 500; color: var(--d-muted); border: 1px solid var(--d-line); }
+.dashboard .ch-provider[data-meta] { border-color: transparent; color: #05329d; background: color-mix(in srgb, var(--season-blue) 12%, transparent); }
+:root[data-theme='dark'] .dashboard .ch-provider[data-meta] { color: #a8c4ff; }
+
+.dashboard .ch-rows { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.dashboard .ch-row { border-radius: 8px; border: 1px solid var(--d-row-border); background: var(--d-row); overflow: hidden; }
+.dashboard .ch-row[aria-busy='true'] { opacity: 0.6; }
+.dashboard .ch-row-btn { display: flex; width: 100%; align-items: center; gap: 12px; padding: 14px 16px; border: 0; background: transparent; color: var(--d-fg); text-align: left; font: inherit; }
+.dashboard button.ch-row-btn { cursor: pointer; transition: background-color 150ms ease; }
+.dashboard button.ch-row-btn:hover { background: color-mix(in srgb, var(--season-blue) 6%, transparent); }
+.dashboard button.ch-row-btn:focus-visible { outline: 2px solid var(--season-blue); outline-offset: -2px; }
+.dashboard .ch-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dashboard .ch-row-name { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.dashboard .ch-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.dashboard .ch-session { max-width: 160px; font-size: 12px; font-weight: 500; color: var(--d-accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dashboard .ch-session[data-none] { font-weight: 400; color: var(--d-muted); }
+.dashboard .ch-count { font-size: 12px; color: var(--d-muted); }
+.dashboard .ch-chevron { flex: 0 0 auto; color: var(--d-muted); }
+
+.dashboard .ch-detail { display: flex; flex-direction: column; gap: 10px; }
+.dashboard .ch-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.dashboard .ch-head-main { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 4px; }
+.dashboard .ch-name { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.dashboard .ch-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.dashboard .ch-ghost { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); color: var(--d-fg); cursor: pointer; font: inherit; font-size: 13px; font-weight: 500; }
+.dashboard .ch-ghost:hover { border-color: var(--season-blue); }
+.dashboard .ch-ghost:disabled { opacity: 0.6; cursor: progress; }
+
+
+.dashboard .ch-panel { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 10px; border: 1px solid var(--d-row-border); background: var(--d-row); }
+.dashboard .ch-panel-title { margin: 0; font-size: 15px; font-weight: 600; }
+.dashboard .ch-hint { margin: 0; font-size: 13px; color: var(--d-muted); }
+.dashboard .ch-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.dashboard .ch-code { align-self: center; display: inline-flex; align-items: center; gap: 12px; margin: 6px 0 0; padding: 12px 18px; border-radius: 10px; border: 1px dashed color-mix(in srgb, var(--season-blue) 55%, transparent); background: color-mix(in srgb, var(--season-blue) 8%, var(--d-bg)); color: var(--d-fg); font-size: 26px; font-weight: 700; letter-spacing: 0.12em; cursor: pointer; }
+.dashboard .ch-code svg { color: var(--d-muted); }
+.dashboard .ch-code .ch-copied { color: #10b981; }
+.dashboard .ch-waiting { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; font-size: 12px; color: var(--d-accent); }
+.dashboard .ch-form { display: flex; flex-direction: column; gap: 6px; }
+.dashboard .ch-label { font-size: 12px; font-weight: 500; }
+.dashboard .ch-form-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.dashboard .ch-input { flex: 1; min-width: 180px; height: 38px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); color: var(--d-fg); font: inherit; font-size: 14px; }
+.dashboard .ch-input:focus-visible { outline: 2px solid var(--season-blue); outline-offset: 1px; }
+
+.dashboard .ch-uses { margin: 0; padding: 0; list-style: none; border: 1px solid var(--d-line); border-radius: 8px; }
+.dashboard .ch-uses li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; font-size: 13px; }
+.dashboard .ch-uses li + li { border-top: 1px solid var(--d-line); }
+.dashboard .ch-tag { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; color: var(--d-muted); background: var(--d-muted-bg); }
+.dashboard .ch-note { margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 12px; background: color-mix(in srgb, var(--d-muted-bg) 50%, transparent); }
+.dashboard .ch-alert { margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 12px; border: 1px solid rgb(220 38 38 / 0.3); background: rgb(220 38 38 / 0.08); }
+
+@media (prefers-reduced-motion: reduce) { .dashboard .ch-dot[data-pulse] { animation: none; } }

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BillingApiAdapter } from './billing.api.js';
 import type { HttpClient } from './http-client.js';
 import { ApiError } from '../../shared/errors.js';
+import type { BalanceResponse } from '../../core/types/billing.js';
 
 function createMockHttp(): HttpClient {
   return { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() } as any;
@@ -23,6 +24,20 @@ describe('BillingApiAdapter', () => {
     expect(result.currentBalanceCents).toBe(5000);
   });
 
+  // closingAt and cycleStartAt come null when the payments engine did not answer; they pass through
+  // untouched.
+  it('getBalance passes null cycle dates through', async () => {
+    const body: BalanceResponse = {
+      currentBalanceCents: 0, creditBalanceCents: 0, netBalanceCents: 820, level: 5, limitCents: 7000,
+      limitWithToleranceCents: 8050, usagePercent: 12, usageCents: 820, usageLimitCents: 7000,
+      closingAt: null, cycleStartAt: null,
+    };
+    vi.mocked(http.get).mockResolvedValue(body);
+    const result = await adapter.getBalance();
+    expect(result.closingAt).toBeNull();
+    expect(result.cycleStartAt).toBeNull();
+  });
+
   it('listInvoices passes status and limit filters', async () => {
     vi.mocked(http.get).mockResolvedValue({ invoices: [], total: 0 });
     await adapter.listInvoices({ status: 'pending', limit: 10 });
@@ -31,11 +46,103 @@ describe('BillingApiAdapter', () => {
     expect(url).toContain('limit=10');
   });
 
-  it('payInvoice POSTs with method in body', async () => {
-    vi.mocked(http.post).mockResolvedValue({ success: true, qrCode: 'qr123' });
-    const result = await adapter.payInvoice('inv-1', 'pix');
-    expect(http.post).toHaveBeenCalledWith('/api/billing/invoices/inv-1/pay', { method: 'pix' });
-    expect(result.qrCode).toBe('qr123');
+  describe('payInvoice', () => {
+    const open = { id: 'inv-1', status: 'overdue', track: 'sales' };
+    const future = new Date(Date.now() + 3_600_000).toISOString();
+    const pix = { invoiceId: 'inv-1', amountCents: 1460, status: 'overdue', pix: { emv: 'emv', qrBase64: 'qr', gateway: 'efi', expiresAt: 'x' } };
+    const livePix = { ...pix, pix: { ...pix.pix, expiresAt: future } };
+    // The open invoice is this one, but it has no PIX yet (or an expired one): only then does the POST run.
+    const noPix = { invoiceId: 'inv-1', pix: null };
+    // payments has no open invoice for the track: the saas answers no `invoiceId` at all.
+    const noOpenInvoice = { pix: null };
+
+    /** The invoice read, then the read-only PIX lookup. */
+    function mockReads(invoice: object, lookup: object) {
+      vi.mocked(http.get).mockImplementation(async (url: string) => (url.startsWith('/api/billing/pix') ? lookup : invoice) as any);
+    }
+
+    it('asks for the PIX of the invoice track and normalizes it', async () => {
+      mockReads(open, noPix);
+      vi.mocked(http.post).mockResolvedValue(pix);
+
+      expect(await adapter.payInvoice('inv-1')).toEqual({
+        invoiceId: 'inv-1', amountCents: 1460, status: 'overdue', pixCode: 'emv', pixQrBase64: 'qr', expiresAt: 'x',
+      });
+      expect(http.get).toHaveBeenCalledWith('/api/billing/invoices/inv-1');
+      expect(http.get).toHaveBeenCalledWith('/api/billing/pix?track=sales');
+      expect(http.post).toHaveBeenCalledWith('/api/billing/pix?track=sales');
+    });
+
+    it('returns the live PIX of the invoice without spending the POST limit', async () => {
+      mockReads(open, livePix);
+
+      expect(await adapter.payInvoice('inv-1')).toEqual({
+        invoiceId: 'inv-1', amountCents: 1460, status: 'overdue', pixCode: 'emv', pixQrBase64: 'qr', expiresAt: future,
+      });
+      expect(http.post).not.toHaveBeenCalled();
+    });
+
+    it('issues a new PIX when the one on file is expired', async () => {
+      mockReads(open, { ...pix, pix: { ...pix.pix, expiresAt: new Date(Date.now() - 1000).toISOString() } });
+      vi.mocked(http.post).mockResolvedValue(livePix);
+
+      expect((await adapter.payInvoice('inv-1')).expiresAt).toBe(future);
+      expect(http.post).toHaveBeenCalledTimes(1);
+    });
+
+    it('routes a WhatsApp invoice to its own track', async () => {
+      mockReads({ ...open, track: 'whatsapp' }, noPix);
+      vi.mocked(http.post).mockResolvedValue(pix);
+      await adapter.payInvoice('inv-1');
+      expect(http.get).toHaveBeenCalledWith('/api/billing/pix?track=whatsapp');
+      expect(http.post).toHaveBeenCalledWith('/api/billing/pix?track=whatsapp');
+    });
+
+    it('does not issue a PIX for a paid invoice', async () => {
+      vi.mocked(http.get).mockResolvedValue({ ...open, status: 'paid' });
+      await expect(adapter.payInvoice('inv-1')).rejects.toThrow('already paid');
+      expect(http.post).not.toHaveBeenCalled();
+    });
+
+    // The route pays the open invoice of the track, whichever it is: handing that PIX back for
+    // another id would have the seller pay an invoice they did not ask about. The GET names it
+    // for free, so the limited POST is never spent on it.
+    it('refuses another invoice from the read, names the open one and never POSTs', async () => {
+      mockReads({ ...open, id: 'inv-old' }, livePix);
+      await expect(adapter.payInvoice('inv-old')).rejects.toThrow('only inv-1 can be paid now');
+      expect(http.post).not.toHaveBeenCalled();
+    });
+
+    it('refuses a POST answer that pays another invoice', async () => {
+      mockReads({ ...open, id: 'inv-old' }, { invoiceId: 'inv-old', pix: null });
+      vi.mocked(http.post).mockResolvedValue(pix);
+      await expect(adapter.payInvoice('inv-old')).rejects.toThrow('only inv-1 can be paid now');
+    });
+
+    // The POST would 404 the same way and spend the seller's 10 per hour, so it is never sent.
+    it('says so and never POSTs when the read names no open invoice', async () => {
+      mockReads(open, noOpenInvoice);
+      await expect(adapter.payInvoice('inv-1')).rejects.toThrow('has no PIX to pay');
+      expect(http.post).not.toHaveBeenCalled();
+    });
+
+    it('says so when the POST answers no PIX', async () => {
+      mockReads(open, noPix);
+      vi.mocked(http.post).mockResolvedValue({ pix: null });
+      await expect(adapter.payInvoice('inv-1')).rejects.toThrow('has no PIX to pay');
+    });
+
+    it('explains the PIX rate limit', async () => {
+      mockReads(open, noPix);
+      vi.mocked(http.post).mockRejectedValue(new ApiError(429, 'pix_refused'));
+      await expect(adapter.payInvoice('inv-1')).rejects.toThrow('10 per hour');
+    });
+
+    it('explains a gateway refusal', async () => {
+      mockReads(open, noPix);
+      vi.mocked(http.post).mockRejectedValue(new ApiError(422, 'refused'));
+      await expect(adapter.payInvoice('inv-1')).rejects.toThrow('gateway refused');
+    });
   });
 
   it('addCredit POSTs amountCents', async () => {

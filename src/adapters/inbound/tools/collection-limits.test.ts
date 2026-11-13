@@ -10,6 +10,7 @@ import { registerDiscordTools } from './discord.tools.js';
 import { registerDiscountTools } from './discount.tools.js';
 import { registerFunnelTools } from './funnel.tools.js';
 import { registerGatewayTools } from './gateway.tools.js';
+import { registerMediaTools } from './media.tools.js';
 import { registerMembersAreaTools } from './members-area.tools.js';
 import { registerPaymentTools } from './payment.tools.js';
 import { registerPaymentsApiTools } from './payments-api.tools.js';
@@ -49,6 +50,8 @@ const cases: Array<{ tool: string; field: string; max: number; args: Record<stri
   { tool: 'update_telegram_flow', field: 'nodes', max: 500, args: { flowId: 'f' } },
   { tool: 'update_telegram_flow', field: 'edges', max: 1000, args: { flowId: 'f' } },
   { tool: 'update_telegram_flow', field: 'variables', max: 100, args: { flowId: 'f' } },
+  { tool: 'set_whatsapp_session_products', field: 'productIds', max: 500, args: { sessionId: 's' } },
+  { tool: 'update_whatsapp_session', field: 'fallbackNumberIds', max: 2, args: { sessionId: 's' } },
 ];
 
 describe('collection size limits', () => {
@@ -64,7 +67,7 @@ describe('collection size limits', () => {
     registerFunnelTools(server, services.funnel);
     registerPaymentsApiTools(server, spyService(), 'test');
     for (const register of [
-      registerBillingTools, registerCheckoutTools, registerCustomDomainTools, registerDashboardTools,
+      registerBillingTools, registerCheckoutTools, registerMediaTools, registerCustomDomainTools, registerDashboardTools,
       registerDiscordTools, registerDiscountTools, registerGatewayTools, registerPaymentTools,
       registerProductTools, registerProfileTools, registerPushTools, registerRewardsTools,
       registerShippingTools, registerStoreTools, registerWebhookTools, registerWhatsAppTools,

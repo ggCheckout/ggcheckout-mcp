@@ -65,3 +65,22 @@ export class ApiError extends AppError {
     this.name = 'ApiError';
   }
 }
+
+/**
+ * A 403 whose body is not the API's JSON (HTML or empty): the request was stopped at the network
+ * edge (Cloudflare WAF) before it reached the API, so it says nothing about the caller's permissions.
+ * It is usually transient, which is why the message says to wait and retry before contacting support.
+ */
+export class EdgeBlockedError extends AppError {
+  constructor(cause?: Error) {
+    super(
+      'Blocked at the network edge (HTTP 403 from the firewall in front of the API, not from the API): this is '
+      + 'not a permissions problem and nothing was changed. Wait about 1 minute and retry; if it keeps '
+      + 'happening, contact GG Checkout support.',
+      'EDGE_BLOCKED',
+      403,
+      cause,
+    );
+    this.name = 'EdgeBlockedError';
+  }
+}

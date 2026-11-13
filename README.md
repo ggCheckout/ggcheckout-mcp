@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 196 tools across 20 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 210 tools across 23 domains.
 
 ## Overview
 
@@ -79,8 +79,8 @@ export GGCHECKOUT_API_URL="https://your-staging.example.com"
 
 ### Payments API (PIX charges)
 
-The five payments-API tools (`list_wallets`, `create_pix_charge`, `get_payment_intent`,
-`list_payment_intents`, `cancel_payment_intent`) use their own secret key, created in
+The six payments-API tools (`list_wallets`, `create_pix_charge`, `get_payment_intent`,
+`list_payment_intents`, `cancel_payment_intent`, `get_payments_api_limits`) use their own secret key, created in
 **Tools → Gateways → Payments API** (Ferramentas › Gateways › API de pagamentos). They are only registered when it is set, and `GGCHECKOUT_API_KEY` is never
 used for them.
 
@@ -94,7 +94,7 @@ refuses to start otherwise.
 
 ### Upload folder
 
-`upload_members_area_file` reads files from the machine running this server, and only from the
+`upload_media` and `upload_members_area_file` read files from the machine running this server, and only from the
 folder named here. Without it the tool refuses every upload: what an agent reads (a page, a PDF) can
 carry instructions, so the server never reads an arbitrary path. A file that is itself a symbolic
 link is refused, and a path that leads outside the folder through a link is too.
@@ -103,12 +103,44 @@ link is refused, and a path that leads outside the folder through a link is too.
 export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 ```
 
+### Inline views (MCP Apps)
+
+In a client that supports [MCP Apps](https://modelcontextprotocol.io/extensions/apps) (Claude
+Desktop and claude.ai, among others), some tools also draw their answer inside the chat. Nothing
+needs configuring, and clients without MCP Apps (Claude Code, Cursor) keep receiving the same text
+answer as before.
+
+| View | Tools | What it shows |
+|------|-------|---------------|
+| Sales | `get_dashboard_stats`, `get_dashboard_charts` | Only the part the user asked about: the period's numbers with the change against the previous one (`get_dashboard_stats`), or the `focus` of `get_dashboard_charts` (`revenue` over time with a hover tooltip, `approval` per method, top `products`, `states`, `refunds`). Without a `focus`, the whole panel. The period buttons call the same tool, with the same focus, again. |
+| Funnel | `get_funnel_lead_stats`, `get_funnel_lead_analytics` | As the funnel editor's Leads tab: the five lead cards (visitors, leads, interaction rate, qualified, completed), or the conversion per step, each bar sized by its visitors and colored by its drop-off (the worst one red). |
+| Payments | `get_payments_paginated`, `list_payments`, `get_payment` | As the dashboard's payments list: customer and offer, date, amount, status badge, gateway with its logo and method. The search and the next page call `get_payments_paginated` again (with `searchTerm` and the `nextCursor`); `list_payments` answers that same first page, so it pages and searches the same way. A row opens the payment's detail (customer, payment, order bumps), which `get_payment` draws on its own. |
+| Billing | `get_billing_status`, `get_billing_balance`, `list_invoices`, `get_invoice`, `list_credits` | As the seller's billing page: the account balance (signed, green credit or red to pay), the use of the credit limit with its 15% tolerance, the credit level and the next one, and the grace or blocked banner (`get_billing_status`, `get_billing_balance`). The invoice history with status badges, a row opening the invoice's breakdown (`list_invoices`, `get_invoice`). The credit statement (`list_credits`), each closing drawn as its receipt, with older lines loaded through `before`. |
+| Domains | `list_custom_domains`, `get_custom_domain`, `add_custom_domain`, `verify_custom_domain` | As the domain settings: each domain with its status badge, created date and what is missing; a row opens the DNS instructions (the CNAME's name and value, each copied on a click, and the notes). "Verificar DNS" calls `verify_custom_domain` and says what is still missing: the CNAME not seen yet, or the certificate still being issued. |
+| WhatsApp deliveries | `get_delivery_status`, `resend_delivery` | As the payment detail's WhatsApp data: the summary and a card per message (kind, status badge, sent, delivered and read times, attempts, error). The resend button asks first and calls `resend_delivery`, then reads the deliveries again. |
+| Gateways | `list_checkout_wallets`, `get_gateway_fallback_stats` | As the charge order: each wallet with its PIX and card gateways in order (logo, Principal or Reserva, locked, disconnected) and each one's last-day rate colored on the Seasons scale, read through `get_gateway_fallback_stats`. The stats alone draw the stability ranking, by stability or by paid PIX, flagging the unstable gateways. |
+| Rewards | `calculate_rewards`, `redeem_reward` | As the rewards trail: total revenue, the way to the next stop, and each stop (community, WhatsApp group, bracelet, plaques) with its art and state (conquered, "Você está aqui", locked with what is missing). The unlocked WhatsApp group is redeemed through `redeem_reward` and its invite opened by the client. |
+| Offers | `list_upsells`, `list_downsells` | The product's post-purchase funnel in order: checkout, each upsell (price with the original struck, timer, number of products, active), what declining it does, the downsells a declined "stop" upsell opens, and success. Either tool reads the other list of the same product to complete the map. |
+| Members area | `get_members_area`, `list_modules`, `list_sections`, `list_lessons` | The course tree with the seller's names: an API module is a "carrossel" and a section a "módulo". The area's students, active students and average completion, then carousels, modules and lessons (type, duration, release or lock). Opening a carousel or a module reads the level below. |
+| Telegram flow | `get_telegram_flow`, `list_telegram_flows` | A flow drawn read-only where the bot's flow editor keeps each node: the editor's node cards (category color, icon, preview line, labeled outputs such as Aprovado / Expirou or each button) and the edges colored by the output they leave from; an edge that loops back up or would cross a node runs down its own lane on the right. The list opens any flow in place. |
+| WhatsApp chips | `list_whatsapp_numbers`, `get_whatsapp_number`, `get_pairing_code` | The chips as the dashboard's chip screens: name, masked number, provider (QR Code or Oficial), status, the first session that uses it (read through `list_whatsapp_sessions`, or "Não vinculado") and how many. An active QR code chip in the handshake (where the dashboard shows its QR) is connected in place with a pairing code, since the server never passes the QR on: the seller types the chip's number, types the code on the phone, and the chip is read until it connects. A dropped chip is restarted first ("Reiniciar", which asks first); "Desativar" / "Reativar" go through `update_whatsapp_number`, and the list's "Verificar status" through `check_whatsapp_numbers`. A connected chip lists the sessions that use it. |
+| PIX | `create_pix_charge`, `get_payment_intent`, `cancel_payment_intent`, `add_credit`, `get_credit_topup`, `pay_invoice` | QR code, copy-and-paste button, time left, and the status, polled every 5 s (10 s for test-mode charges, which have a smaller read limit) through `get_payment_intent`, `get_credit_topup`, `list_credits` or `get_invoice` until it is paid or expires. `cancel_payment_intent` draws the canceled charge. |
+| Payments API | `get_payments_api_limits`, `list_wallets`, `list_payment_intents` | Requests per minute per bucket (used / limit, reset time, LIVE/TESTE, max per charge), wallets with their active PIX count, and charges with status; each list starts with the requests-per-minute strip; "Mais" pages, a row opens the charge's PIX view. |
+| Tracking | `explain_tracking`, `diagnose_tracking` | How a sale's metrics travel to Meta, TikTok, Google Ads and UTMify, as sections with expandable items and the common problems; or the diagnosis of an account, checkout, funnel or payment: findings sorted critical, warning, info, ok (icon and text), the tracking tokens with mode and health, the sale's UTMs and click ids, and the last 24 hours of errors. |
+| UTM links | `build_tracking_link` | The link to sell from with UTMs: the text to copy (the ad's "Parâmetros de URL", the Google tracking template, or the whole link for a manual one), the clean destination, "Onde colar" steps, the parameters table with where each came from, and the notes. |
+
+The views run in the client's sandbox with no network access: their data only arrives through
+the client, from the tool result or from the tool calls listed above. All of them are one React
+app (`ui/`, built into `dist/views/app.html` and served as the `ui://ggcheckout/app.html`
+resource), which picks the view by the tool that answered.
+
 ### Versioning and the API
 
 - Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>`, so the API
   knows which release is calling.
-- The API refuses every request from versions below the minimum it supports (0.5.0 from this
-  release). The refusal says so and asks you to update.
+- Each API refuses every request from versions below the minimum it supports: the dashboard API
+  (saas) from 0.6.0 on this release, the payments public API from 0.5.0 (its tools did not change).
+  The refusal says so and asks you to update.
 - Both APIs tell an outdated install so in their response headers (`X-GG-MCP-Latest` and
   `X-GG-MCP-Update`); the tool result then ends with a short `update:` line so your assistant can
   suggest updating. The version must be a newer semver and the text is fixed (with `@latest` in the
@@ -129,9 +161,37 @@ export GGCHECKOUT_UPLOAD_ROOT="/home/me/course-import"
 
 ---
 
-## Available Tools (196)
+## Example prompts / Exemplos de pedidos
 
-### Products (19 tools)
+Ask in Portuguese or English; the assistant picks the tools. The tools listed next to each prompt
+are enough to fulfil it. Tools that create something act on your real account; the PIX charge in the
+last row is simulated with a test key (see the note after the table).
+
+Peça em português ou em inglês; o assistente escolhe as ferramentas. As ferramentas listadas ao
+lado de cada pedido bastam para atendê-lo. As que criam algo agem na sua conta de verdade; a
+cobrança PIX da última linha é simulada com uma chave de teste (veja a nota depois da tabela).
+
+| Português | English | Tools |
+|---|---|---|
+| "Liste todos os meus produtos" | "Show me all my products" | `list_products` |
+| "Crie o produto 'Curso de Excel': descrição 'Do básico ao avançado', R$ 97,00, sem desconto, entrega em https://example.com/excel" | "Create the product 'Excel Course': description 'From basics to advanced', R$97.00, no discount, delivered at https://example.com/excel" | `create_product` |
+| "Crie um checkout para o produto 'Curso de Excel' a R$ 97,00, cobrando PIX e cartão pela carteira 'Principal'" | "Create a checkout for the 'Excel Course' product at R$97.00, charging PIX and card through my 'Principal' wallet" | `list_products`, `list_checkout_wallets`, `create_checkout` |
+| "Quanto eu vendi hoje?" | "How much did I sell today?" | `get_dashboard_stats` |
+| "Mostre os últimos 20 pagamentos aprovados deste mês" | "Show the last 20 paid payments from this month" | `get_my_business_id`, `get_payments_paginated` |
+| "Procure os pagamentos do e-mail maria@example.com" | "Find the payments from maria@example.com" | `get_my_business_id`, `get_payments_paginated` |
+| "Crie o cupom BEMVINDO10 com 10% de desconto em todos os produtos" | "Create the coupon WELCOME10 with 10% off all products" | `create_discount` |
+| "Crie um webhook em https://example.com/webhook para os eventos pix.paid e card.paid" | "Create a webhook at https://example.com/webhook for the pix.paid and card.paid events" | `create_webhook` |
+| "Crie uma cobrança PIX de R$ 49,90 do pedido 1234 na carteira 'Loja' para Maria Souza (maria@example.com, CPF 000.000.000-00, telefone 11000000000)" | "Create a R$49.90 PIX charge for order 1234 on my 'Loja' wallet for Maria Souza (maria@example.com, CPF 000.000.000-00, phone 11000000000)" | `list_wallets`, `create_pix_charge` |
+
+The last one needs `GG_PAYMENTS_API_KEY` ([Payments API](#payments-api-pix-charges)); a `ggpk_test_`
+key creates a simulated charge, a `ggpk_live_` key a real one. / O último precisa da
+`GG_PAYMENTS_API_KEY` ([Payments API](#payments-api-pix-charges)): com uma chave `ggpk_test_` a cobrança é simulada; com `ggpk_live_`, é real.
+
+---
+
+## Available Tools (210)
+
+### Products (21 tools)
 
 #### `list_products`
 
@@ -202,18 +262,34 @@ not, the answer carries `fileDeleteError` and the product stays unlinked.
 
 **Example prompt:** "Attach ebook.pdf (2MB, application/pdf) to product abc123"
 
-#### `list_upsells` / `create_upsell` / `delete_upsell` / `reorder_upsells`
+#### `list_upsells` / `create_upsell` / `update_upsell` / `delete_upsell` / `reorder_upsells`
 
-Manage upsells for a product.
+Manage upsells for a product. Every upsell has two keys, `uid` and `id` (the row's UUID); `update_upsell`,
+`delete_upsell` and `reorder_upsells` take either one and send the `uid` the API works with. A key that
+matches nothing is an error that names both keys, never a silent success.
+
+- **Price is in cents, and one field is charged.** The page and the purchase charge
+  `productOverrides[offeredProductId].price`, else the offered product's own price; the offer's top-level
+  `price` is a display snapshot. `price`, `originalPrice` and `discount` write the override and keep the
+  snapshot in step. `list_upsells` adds `effectivePriceCents`, the amount a buyer is charged.
+- **Image:** the page reads `customImage { enabled, url }`; `imageUrl` is a shortcut for it.
+- **Videos:** `videosSection { enabled, title?, titleColor?, videos[] }`, up to 4 videos
+  (`sourceType` `embed` needs `provider` + `providerId`, `url` / `upload` needs `url`). They show only when
+  `mediaType` is `video` (set for you when the section enables videos and `mediaType` is not sent);
+  `videos[0]` is the offer card's main video, the rest show above the footer.
+- `update_upsell` has no PATCH behind it: the tool reads the offer, merges the fields you send (the media
+  sections merge, the video list replaces) and saves the whole offer. The offered product does not change.
 
 **Example prompts:**
 - "Show me the upsells for product abc123"
-- "Create an upsell for product abc123 offering product xyz789 at R$29.90"
+- "Create an upsell for product abc123 offering product xyz789 at R$29.90" (`price: 2990`)
+- "Change the price of upsell u1 to R$19.90 and add a YouTube video"
 - "Reorder the upsells for product abc123"
 
-#### `list_downsells` / `create_downsell` / `delete_downsell` / `reorder_downsells`
+#### `list_downsells` / `create_downsell` / `update_downsell` / `delete_downsell` / `reorder_downsells`
 
-Manage downsells for a product.
+Manage downsells for a product. Same rules as the upsells: either key (`uid` or `id`), `price` in cents
+is the charged price of the offered product, `customImage` and `videosSection` as above.
 
 **Example prompt:** "Add a downsell to product abc123 with a 50% discount headline"
 
@@ -235,7 +311,7 @@ own kind of page.
 Each snippet works only for its own product, when the funnel order reaches it. Pages must be https;
 plain http only works for localhost against a development server.
 
-**Example prompt:** "Put the second product of upsell u1 of product abc123 on https://seller.com/oferta
+**Example prompt:** "Put the second product of upsell u1 of product abc123 on https://example.com/oferta
 with a green button saying 'Quero!', then give me the HTML to paste on that page"
 
 #### `manage_tags`
@@ -285,6 +361,23 @@ longer lists its own gateways. PayPal stays per checkout, outside the wallet:
 `paymentMethods.paypal` takes `{ "token": "<PayPal credential id from list_tokens>", "type": "paypal" }`,
 and `null` turns it off. An unknown method key is refused instead of being dropped.
 
+**Timer and sales pop-ups.** The API stores both inverted (`checkout.timer.disabled`,
+`checkout.salesNotifications.disabled`) and nothing reads `enabled`, so they have typed top-level
+parameters: `timer { enabled, time "HH:MM:SS", text, bgColor, barColor, textColor, enableSticky }` and
+`salesNotifications { enabled, position, defaultMessages, customMessages, minMessages, interval, colors }`.
+The server maps `enabled` to `disabled = !enabled`; an `enabled` sent inside the free-form `checkout` is
+mapped the same way. A new checkout has its sales pop-ups off unless `salesNotifications.enabled` is true.
+
+**Layout, domain, analytics, images.**
+- `checkoutModel` is `v2` to `v6` (the backend default stays `v2`; `v6` is the button/embed checkout and is
+  refused for a checkout with shipping).
+- `customDomainId` is the `id` of a verified domain from `list_custom_domains`; `null` unbinds it.
+- `analytics: { clarity: { projectId } | null }` sets or removes Microsoft Clarity (`projectId` is 10 to 64
+  lowercase letters and digits).
+- `metricToken` is one credential id from `list_tokens`, or an array of them to fire several pixels.
+- `image` and `bannerUrl` take an absolute https URL or the `/api/r2-proxy/...` path `upload_media`
+  returns. The API silently drops a rejected `bannerUrl`, so read the checkout back after setting it.
+
 **Example prompt:** "Create a checkout page for my React Course priced at R$99.90"
 
 #### `update_checkout`
@@ -301,6 +394,10 @@ write, since the API would delete that method and could unpublish the checkout. 
 from the read (one that cannot charge today) is not visible here; the API refuses a body that leaves
 it out (`HIDDEN_PAYMENT_METHOD_OMITTED`, ggCheckout/saas-checkout#2183), and `null` turns it off.
 
+The same `timer`, `salesNotifications`, `checkoutModel`, `customDomainId`, `analytics`, `metricToken`,
+`image` and `bannerUrl` parameters as `create_checkout` apply here; `timer` and `salesNotifications` merge
+into the stored ones, so `{ "timer": { "enabled": false } }` hides the countdown and keeps its time and text.
+
 **Example prompt:** "Update checkout abc123 price to R$79.90 and unpublish it"
 
 #### `delete_checkout`
@@ -315,7 +412,7 @@ Tags with name and hex color (max 5 per checkout).
 
 ---
 
-### Payments (7 tools)
+### Payments (8 tools)
 
 #### `get_my_business_id`
 
@@ -324,6 +421,26 @@ Tags with name and hex color (max 5 per checkout).
 **Pro Tip:** Use it in follow-up prompts: "Get my business ID, then show me all payments"
 
 #### `list_payments` / `get_payments_paginated` / `get_payment`
+
+`list_payments` is the first page of `get_payments_paginated` with no filters (50 payments by
+default, up to 100), with `total` and `nextCursor`; use `get_payments_paginated` to go further or
+to filter. With `all: true` (when you ask for all payments) it reads pages of 100 with a pause
+between them, so the API does not rate-limit the key, and stops after 500 payments; `complete` is
+false while more remain, and `lastCreatedAt` = `nextCursor` resumes the walk.
+
+#### `get_sales_attribution`
+
+Which campaign or ad sells: sales aggregated by 1 to 3 distinct keys among `utm_source`, `utm_medium`,
+`utm_campaign`, `utm_content`, `utm_term`, `src` and `sck` (default `utm_source`, `utm_campaign`,
+`utm_content`). Each row has the key values plus `paidCount`, `paidGrossCents`, `refundedCount` and
+`refundedCents` (cents), and `totals` sums them. Aggregated only: no buyer data and no per-payment UTMs.
+A `null` key value is the sales that came without that parameter; `utm_content` usually carries the ad id.
+`from` and `to` are ISO dates (default: the last 7 days; at most 90 days, checked before the call).
+`truncated: true` means the rows were cut: narrow the period or group by fewer keys.
+
+**Example prompt:** "Which campaigns sold the most in the last 30 days, and how many were refunded?"
+
+#### Payments list
 
 **Example prompts:**
 - "Show me all payments for my business"
@@ -349,7 +466,7 @@ Manage physical order fulfillment.
 
 **Example prompts:**
 - "Show me all my webhooks"
-- "Create a webhook for pix.paid events at https://myapp.com/webhook"
+- "Create a webhook for pix.paid events at https://example.com/webhook"
 - "Update webhook abc123 to also listen for card.paid"
 - "Delete webhook abc123"
 - "Send a test pix.paid event to webhook abc123"
@@ -526,18 +643,25 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 
 ---
 
-### WhatsApp (13 tools)
+### WhatsApp (19 tools)
+
+Follows the dashboard: **chips** are the connected numbers, and a **session** is a primary chip
+with up to two fallbacks that sends for a set of products. Templates belong to sessions. Creating
+or deleting a chip or a session, and connecting an official (Meta) number, are refused to API keys
+on purpose: do those in the dashboard.
 
 **Example prompts:**
+- "Which WhatsApp chips are connected?"
+- "Connect chip abc123 to 5511999999999 with a pairing code"
+- "Restart chip abc123"
+- "Check whether my WhatsApp chips are really connected"
 - "List my WhatsApp sessions"
-- "Create a new WhatsApp session called 'Sales'"
-- "Get a pairing code for session abc123 with phone number 5511999999999"
-- "List all message templates"
-- "Create a template for the 'paid' event: 'Hi {nome}, thanks for purchasing {produto}!'"
+- "Make chip def456 the primary of session 'Sales' and abc123 its fallback"
+- "Send session 'Sales' for products p1 and p2"
+- "Create a template for the 'upsell_paid' event in session 'Sales': 'Hi {{nome}}, thanks for purchasing {{produto}}!'"
 - "Disable template abc123"
 - "Check the WhatsApp delivery status for payment xyz789"
 - "Resend the WhatsApp delivery for payment xyz789"
-- "Send a message to 5511999887766 via session abc123: 'Hello!'"
 
 ---
 
@@ -547,7 +671,7 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 - "What's my current billing balance?"
 - "What's my billing status?"
 - "Show me my invoices"
-- "Pay invoice abc123 via PIX"
+- "Generate the PIX for my open invoice"
 - "Add R$100 in billing credits"
 - "Do I have a card on file?"
 - "Remove my saved card"
@@ -600,17 +724,61 @@ The payments API's `list_wallets` lists the same wallets by their public id (`wa
 **Example prompts:**
 - "Show me my sales stats for today"
 - "Show me the revenue chart for this month"
+- "Which payment method approves the most this week?" (`focus: approval`)
 - "Refresh my dashboard cache"
 
 ---
 
 ### Custom Domains (5 tools)
 
+A verified domain is bound to a checkout with `customDomainId` (the domain's `id`) in `create_checkout` or
+`update_checkout`; `null` unbinds it.
+
 **Example prompts:**
 - "List my custom domains"
-- "Add domain checkout.mysite.com"
+- "Add domain checkout.example.com"
 - "Verify DNS for domain abc123"
 - "Remove domain abc123"
+
+---
+
+### Media (1 tool)
+
+#### `upload_media`
+
+Uploads an image from the machine running this server (inside `GGCHECKOUT_UPLOAD_ROOT`, see
+[Upload folder](#upload-folder)) and answers `{ url, path }`, where `url` is the relative
+`/api/r2-proxy/...` path. Pass it as a checkout's `image` or `bannerUrl`, an offer's `customImage.url`,
+or any image field that takes it. The bytes go straight to storage through a presigned URL (not through a
+multipart POST to the API, which the firewall blocks) and the API sanitizes the image when the upload is
+confirmed. `upload_members_area_file` takes the same route for `kind: "image"`.
+
+**Example prompt:** "Upload ~/gg/banner.png and use it as the banner of checkout abc123"
+
+---
+
+### Tracking (2 tools)
+
+- `explain_tracking`: the pt-BR guide to how a sale's metrics reach Meta, TikTok, Google Ads and UTMify. No API call. Optional `topic`: `paths`, `initiate_checkout`, `purchase`, `utms`, `dedup`, `funnel`, `store`, `errors`.
+- `diagnose_tracking`: optional `checkoutId`, `funnelId`, `paymentId`; none means an account overview. Reads the tracking tokens with their health, the checkout or funnel links, a payment's UTMs and event dispatch, and the last 24 hours of integration errors. It never returns credentials, and a saas route not deployed yet becomes a "não disponível ainda" finding, not an error.
+
+**Example prompts:**
+- "How do my sales metrics reach Meta and TikTok?"
+- "Why does the sale of the course not show in TikTok?"
+
+---
+
+### Tracking links (1 tool)
+
+`build_tracking_link` builds the link to sell from, with UTMs, and says where to paste it. No API write.
+
+- Destination (pick one): `checkoutId`, `funnelId`, `storeId` (plus `productId` for one product) or `url` (any https URL). A checkout, funnel or store opens on the seller's verified custom domain when it has one; otherwise the link uses the `publicUrl` the dashboard API sends, or the GG address the MCP builds itself.
+- `platform`: `meta`, `tiktok`, `google` or `kwai` (UTMify's templates, the platform fills the macros when the ad runs), or `manual` (default), where you fill `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `src` and `sck`.
+- Merge rule: a key the URL already has is not repeated, and values you pass win over the URL and over the template.
+
+**Example prompts:**
+- "Build the link of my checkout to advertise on Meta"
+- "Make a link of the quiz for my Instagram bio, source instagram, medium bio"
 
 ---
 
@@ -632,7 +800,7 @@ endpoint, and a cache miss is rate limited to 10 per hour.
 - "Show me my profile"
 - "Update my name to 'John Doe'"
 - "List my support emails"
-- "Add support@mystore.com as a support email"
+- "Add support@example.com as a support email"
 - "What's my KYC status?"
 
 ---
@@ -659,7 +827,7 @@ Bots (`list_telegram_bots`, `get_telegram_bot`, `create_telegram_bot`, `update_t
 
 ---
 
-### Payments API (5 tools)
+### Payments API (6 tools)
 
 Requires `GG_PAYMENTS_API_KEY` (see Configuration). PIX only.
 
@@ -668,7 +836,9 @@ charges per minute (cancels 10, reads 60); a `ggpk_live_` key defaults to 60 cre
 reads per minute. A 429 carries `Retry-After`.
 
 `list_wallets`, `create_pix_charge`, `get_payment_intent`, `list_payment_intents` (filters:
-`status`, `external_reference`, `starting_after`, `limit`) and `cancel_payment_intent`.
+`status`, `external_reference`, `created_gte` as unix seconds, `starting_after`, `limit`),
+`cancel_payment_intent` and `get_payments_api_limits` (requests per minute per bucket for the key in
+use and the maximum per charge; says so when the API has no limits route yet).
 
 `create_pix_charge` takes the wallet id (`wal_…`), the amount **in cents** (`4990` = R$ 49,90),
 `external_reference` (required, e.g. the order id: a repeat with the same one fails instead of
@@ -686,7 +856,7 @@ charge or a cancel.
 
 **Example prompts:**
 - "List my wallets"
-- "Create a R$ 49,90 PIX charge for order 1234 on wallet wal_8f3kQ2mN7xR4tY9pL6aBcD for Maria Souza (maria@example.com, CPF 123.456.789-09, phone 11987654321)"
+- "Create a R$ 49,90 PIX charge for order 1234 on wallet wal_8f3kQ2mN7xR4tY9pL6aBcD for Maria Souza (maria@example.com, CPF 000.000.000-00, phone 11000000000)"
 - "Did the charge for order 1234 get paid?"
 
 ---
@@ -752,6 +922,11 @@ Retry-After: 23
 
 Always use the `retry_after` value from the body (or the `Retry-After` header) instead of guessing.
 
+**A 403 that is not from the API.** The API's own 403s are JSON (`Não autorizado`) and mean a permission
+problem. A 403 with an HTML or empty body was answered by the firewall in front of the API (Cloudflare
+WAF): the server reports it as "Blocked at the network edge", says it is not a permissions problem, and
+asks you to wait about 1 minute and retry, then contact support if it persists.
+
 ### Bulk operations and migrations
 
 If you need to create or update many resources in sequence (e.g. importing products, cloning checkouts), follow these guidelines to avoid hitting the limits:
@@ -795,9 +970,10 @@ GGCHECKOUT_UPLOAD_ROOT=/path/to/import    # needed by upload_members_area_file, 
 
 ```bash
 npm run dev          # Development with hot reload
-npm run build        # TypeScript build
+npm run build        # Views (ui/) and TypeScript build
 npm start            # Run compiled build
-npm test             # Unit tests (173 tests)
+npm test             # Unit tests of the server and of the views
+npm run dev -w ui    # Views preview at http://localhost:6040/preview/index.html
 npm run test:e2e     # E2E against staging (requires .env)
 ```
 
@@ -808,6 +984,24 @@ GGCHECKOUT_API_KEY=ggck_live_... npx @modelcontextprotocol/inspector -- npx tsx 
 ```
 
 Opens a browser UI to test any tool interactively.
+
+### Views (`ui/`)
+
+The inline views are an npm workspace: React, built by Vite into one self-contained HTML
+(`vite-plugin-singlefile`; every script, style, font and image inline, since hosts give it no
+network), talking to the host through the official `@modelcontextprotocol/ext-apps` `App`.
+
+- `src/GgApp.tsx` picks the view; `src/views.ts` maps each tool to its view, and a server test
+  checks that this list matches the tools whose `_meta.ui` points to the app.
+- Each view has a folder in `src/` (`dashboard/`, `pix/`, and so on, one per row of the table above)
+  with its pure model (`model.ts`, unit tested), its components and its stylesheet, scoped to the
+  view's root class.
+- The look follows the seller dashboard of saas-checkout (Seasons tokens, the dashboard cards);
+  colors and assets are copied from there and say where from.
+- `preview/` is a real MCP Apps host (`AppBridge`) over invented fixtures, light and dark side by
+  side, answering the views' tool calls (period buttons, PIX polling). `?only=<scenario>` and
+  `?theme=light|dark` narrow it.
+- `npm run build -w ui` fails if the HTML would load anything from outside or grow past 1.5 MB.
 
 ---
 

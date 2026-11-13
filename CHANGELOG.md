@@ -5,6 +5,231 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## 0.6.0
+
+### Breaking
+
+- The WhatsApp tools follow the dashboard's model: chips (the connected numbers) and sessions
+  (a primary chip with up to two fallbacks, sending for a set of products). They read the
+  `/api/whatsapp/numbers` and `/api/whatsapp/groups` routes; the legacy `/api/whatsapp/sessions`
+  data they read before is no longer what the dashboard shows, so `list_whatsapp_sessions` came
+  back empty for sellers with sessions.
+  - `list_whatsapp_sessions` and `get_whatsapp_session` answer the dashboard's sessions
+    (`name`, `primaryNumberId`, `fallbackNumberIds`, `assignedProducts`, `isActive`).
+  - `get_pairing_code` takes `numberId` (a chip) instead of `sessionId`.
+  - `create_whatsapp_template` takes `sessionIds` (a list of sessions, possibly empty) instead of
+    `sessionId`, and templates answer `sessionIds`.
+  - Removed `create_whatsapp_session` and `delete_whatsapp_session`: the API refuses both to API
+    keys (403), so they could never work. Create and delete sessions in the dashboard.
+  - Removed `send_whatsapp_message`: it only reached legacy sessions and answered 404 for every
+    session or chip of the dashboard.
+- `list_payments` answers the first page of `get_payments_paginated` (50 payments by default,
+  `pageSize` up to 100) with `total` and `nextCursor`, instead of a capped list from the legacy
+  route. That route stopped at a fixed number of payments (500, or 100 on QA) with no count and no
+  cursor, so "list all payments" silently missed the older ones and the view said the account had
+  100. For "all payments" it takes `all: true`: the call reads pages of 100 with a 2.5 s pause
+  between them (the API key allows 30 requests a minute) and stops after 500 payments, answering
+  `complete`, `nextCursor` and, when the API pushed back, `stoppedBy: "rate_limit"`. Resume with
+  `all: true` and `lastCreatedAt` = `nextCursor`. Filtered or custom paging stays on
+  `get_payments_paginated`.
+- `get_billing_balance` follows the API's balance contract: `nextChargeAt` is gone (the API never
+  sent it), `closingAt` is the payments engine's next cycle close, `cycleStartAt` the start of the
+  open cycle, and both are `null` when the engine did not answer. `usageCents` and
+  `usageLimitCents` are the pair that measured `usagePercent`.
+
+### Added
+
+- `get_sales_attribution` (`GET /api/get-clients/business/{id}/payments/attribution`): sales aggregated by
+  1 to 3 of `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `src`, `sck`, with
+  paid and refunded counts and cents. The period defaults to the last 7 days and is capped at 90 days,
+  both checked before the call. No buyer data. `explain_tracking` points to it (topic `utms`). It needs
+  the release of the API that has the route.
+- `create_checkout` and `update_checkout` take `checkoutModel` (`v2` to `v6`), `customDomainId` (an id
+  from `list_custom_domains`, `null` unbinds), `analytics { clarity { projectId } | null }`, and typed
+  `timer` and `salesNotifications` parameters with an `enabled` flag.
+- `image` and `bannerUrl` of a checkout also accept the relative `/api/r2-proxy/...` path that
+  `upload_media` returns (they took only `z.string().url()`).
+- `upload_media` uploads an image from the machine running the server (inside `GGCHECKOUT_UPLOAD_ROOT`)
+  and answers `{ url, path }`, the relative `/api/r2-proxy/...` path that checkout `image` and
+  `bannerUrl`, offer `customImage.url` and similar fields take.
+- `update_upsell` and `update_downsell` edit an offer in place. The API has no PATCH for offers, so the
+  tool reads the offer, merges the fields sent and saves the whole of it. They take the same fields as
+  the create tools, and `create_upsell` gained `headline`, `chainBehavior`, `customImage` and
+  `videosSection`; `create_downsell` gained `customImage` and `videosSection`.
+- `videosSection` on upsells and downsells in the shape the offer page reads: `{ enabled, title?,
+  titleColor?, videos[] }` with up to 4 videos, validated (`embed` needs `provider` and `providerId`,
+  `url` / `upload` needs `url`), each given an `id` when it has none. `customImage { enabled, url }` is
+  exposed too.
+- `list_upsells` and `list_downsells` carry `effectivePriceCents`, the amount a buyer is charged.
+- Inline views (MCP Apps, spec 2026-01-26) for clients that draw them: a sales panel on
+  `get_dashboard_charts`, and a PIX view (QR, copy-and-paste, time left, live status) on
+  `create_pix_charge`, `get_payment_intent`, `add_credit`, `get_credit_topup` and `pay_invoice`.
+- `get_dashboard_charts` takes an optional `focus` (`revenue`, `approval`, `products`, `states`,
+  `refunds`): the answer carries only that part, and the sales view draws only it. Without `focus`
+  the answer is the whole payload, as before. `get_dashboard_stats` is drawn by the same view, as
+  the period's numbers against the previous period.
+- The approval view follows the dashboard's ApprovalRate card: each method opens into its gateways,
+  with the gateway logos. In a client that draws the views (it announces
+  `io.modelcontextprotocol/ui` in `initialize`), every tool with a view starts its answer with
+  a note asking the model not to restate the card as text. Text-only clients get the same answer
+  as before.
+- The sales view mirrors the seller dashboard cards one to one: `get_dashboard_stats` as StatsCards
+  (sales, revenue, pending and expired, with the change against the previous period), the revenue
+  as SalesChart, products and order bumps as SalesByProduct (search, sort, selection, "Ver mais")
+  and states as SalesByState (map and list).
+- The views are one React app in the `ui/` workspace (Vite, single-file build, the official
+  `@modelcontextprotocol/ext-apps` client), served as `ui://ggcheckout/app.html` for every tool
+  with a view, with the dashboard's Urbanist font bundled. `npm run dev -w ui` opens a preview
+  host with invented data.
+- `get_funnel_lead_analytics` names each step by its title in the funnel (`title`, "Etapa N" when it
+  has none) and carries the funnel's `funnelTitle`; before, a step was only its id.
+- Funnel view on `get_funnel_lead_stats` and `get_funnel_lead_analytics`, as the funnel editor's
+  Leads tab: the lead cards, or the conversion bar per step colored by its drop-off.
+- Payments view on `get_payments_paginated`, `list_payments` and `get_payment`, as the dashboard's
+  payments list and detail: search and paging through the tool, a row opens the payment's detail.
+- Billing view on `get_billing_status`, `get_billing_balance`, `list_invoices`, `get_invoice` and
+  `list_credits`, as the seller's billing page: the account balance with the use of the credit
+  limit and the credit level, the invoice history with each invoice's breakdown, and the credit
+  statement, paged through the tool.
+- Domains view on `list_custom_domains`, `get_custom_domain`, `add_custom_domain` and
+  `verify_custom_domain`, as the domain settings: the domains with their status, the DNS
+  instructions with copy buttons, and "Verificar DNS" through the tool, saying what is still missing.
+- Chip tools: `list_whatsapp_numbers`, `get_whatsapp_number` (with the sessions that use it and its
+  role), `update_whatsapp_number` (on/off), `restart_whatsapp_number` and `check_whatsapp_numbers`
+  (the dashboard's "Verificar status": each chip checked against its live connection and corrected).
+- Session tools: `update_whatsapp_session` (name, pause, primary and fallback chips),
+  `add_whatsapp_session_number`, `remove_whatsapp_session_number` and
+  `set_whatsapp_session_products`.
+- Templates take every event the dashboard has (`upsell_*`, `downsell_*`,
+  `recovery_abandoned_cart`, `recovery_card_refused`, `recovery_card_cancelled`), a sending window
+  (`allowedHoursStart`, `allowedHoursEnd`) and `paymentMethods`; `update_whatsapp_template` can
+  relink `sessionIds`.
+
+- WhatsApp deliveries view on `get_delivery_status` and `resend_delivery`, as the payment detail's
+  WhatsApp data: the summary, a card per message with its status, and a confirmed resend.
+- Every write from a view card asks for a confirmation inside the card first: resend a WhatsApp
+  message, restart, deactivate or reactivate a chip, and redeem the WhatsApp group reward. They share
+  one `ConfirmPanel` that says what the action does; nothing is sent until it is confirmed.
+- Gateways view on `list_checkout_wallets` and `get_gateway_fallback_stats`, as the charge order
+  (each wallet's PIX and card gateways in order, with their last-day rate) and the stability
+  ranking. `get_gateway_fallback_stats` describes its units and its `ranking`.
+- Rewards view on `calculate_rewards` and `redeem_reward`, as the rewards trail, with the WhatsApp
+  group redeemed in place. Views can ask the client to open a link (`openLink`).
+- Offers view on `list_upsells` and `list_downsells`: the product's post-purchase funnel, from
+  checkout through the upsells and downsells to success, with what each decline does.
+- Members area view on `get_members_area`, `list_modules`, `list_sections` and `list_lessons`: the
+  course tree in the seller's names (carousels, modules, lessons), each level read when opened.
+- Telegram flow view on `get_telegram_flow` and `list_telegram_flows`: the flow drawn as the bot's
+  flow editor lays it out, read-only, with published state and unpublished changes.
+- WhatsApp chips view on `list_whatsapp_numbers`, `get_whatsapp_number` and `get_pairing_code`:
+  the chips with their status, and a disconnected QR code chip connected in place with a pairing
+  code, read until it connects.
+- `get_payments_api_limits`: requests per minute per bucket of the key in use (live or test) and the
+  maximum per charge. Reads GET /v1/limits; while the API has no such route it answers
+  `available: false` instead of an error.
+- `list_payment_intents` takes `created_gte` (unix seconds).
+- New payapi view for `get_payments_api_limits`, `list_wallets` and `list_payment_intents`, each
+  list with a requests-per-minute strip on top; `cancel_payment_intent` draws a canceled charge in
+  the PIX view.
+- The PIX view polls test-mode charges every 10 s (was 5 s), so a test key (60 reads/min) is not
+  spent 12 times a minute per open card.
+- `explain_tracking`: pt-BR guide (browser and server paths, InitiateCheckout, Purchase, UTMs,
+  dedup, funnel, store, errors) with common problems and fixes. No API call.
+- `diagnose_tracking`: tokens with health, checkout/funnel token links, a payment's UTMs and event
+  dispatch, last 24 h integration errors; findings sorted critical, warning, info, ok, each with
+  what to do. Never credentials, buyer data or untruncated provider errors. A saas route not
+  deployed yet becomes a finding, not an error. The error history covers at most 10 pixels/tokens
+  per channel, so an empty list does not prove the others are healthy.
+- Tracking view for both tools.
+- `build_tracking_link`: the link to sell from, with UTMs, for a checkout, funnel, store (or one of
+  its products) or any https URL, on Meta, TikTok, Google and Kwai (UTMify's templates) or manual.
+  The link comes from the dashboard's own `publicUrl` when the API sends it; otherwise the MCP
+  builds it (verified custom domain, else the GG address), so check it in the panel. No API write.
+  UTM links view for it.
+- Types: `Checkout.metricToken` is `string | string[] | null`; `Checkout` gained `publicId`,
+  `checkoutModel`, `customDomain` and `publicUrl`; `FunnelSettings` gained `utmify`.
+
+### Changed
+
+- `get_credit_topup` says what the route answers: the latest top-up, which may be long finished
+  (only a pending one is open), or null when the seller never opened one. The PIX view shows a
+  finished top-up past its PIX window as "Nenhuma recarga em aberto" instead of drawing it as the
+  current one.
+- `pay_invoice` answers the PIX of the open invoice (`invoiceId`, `amountCents`, `status`, `pixCode`,
+  `pixQrBase64`, `expiresAt`) and no longer takes `method`. It used `/api/billing/invoices/{id}/pay`,
+  which the dashboard retired with the legacy billing and now fails for every seller; it now goes
+  through `/api/billing/pix`, as the dashboard's "Pagar Fatura" does. PIX is the only way left to
+  pay an invoice: card charges are retired and credit is applied on its own (`add_credit` tops it
+  up). Only the open invoice of its track can be paid, and the error names it otherwise.
+
+### Fixed
+
+- The checkout timer and sales pop-ups are stored inverted (`checkout.timer.disabled`,
+  `checkout.salesNotifications.disabled`) and nothing reads `enabled`, so an agent that sent
+  `timer.enabled: false` got a visible timer. `timer` and `salesNotifications` map `enabled` to
+  `disabled = !enabled`, as does an `enabled` sent inside the free-form `checkout`. `create_checkout`
+  turns the sales pop-ups off unless they are enabled.
+- `metricToken` accepts an array of credential ids as well as one (the API stores either), instead of
+  only a string.
+- Image uploads (`upload_members_area_file` with `kind: "image"`, `upload_media`) use the presigned flow
+  (`/api/uploads-r2/presigned-upload`, a PUT to storage, `/api/uploads-r2/complete-upload`) instead of a
+  multipart POST to `/api/uploads-r2`, which the Cloudflare WAF blocked with a bare "API Error (403)".
+- A 403 whose body is not the API's JSON (HTML or empty, from the firewall) is reported as "Blocked at
+  the network edge", not as a permissions problem, with the advice to wait about 1 minute and retry and
+  to contact support if it persists. JSON 403s stay permission errors. Rate limits already answer 429
+  with the wait.
+- `delete_upsell` and `delete_downsell` reported success without deleting when given the row `id` (the
+  API deletes by `uid`). The upsell and downsell tools now take either key, resolved through the list
+  and sent as the `uid`; a key that matches nothing, or a 404, is an error. `reorder_upsells` and
+  `reorder_downsells` accept both keys too (they failed with row ids), and `get_offer_snippets` and
+  `set_offer_product_page` as well.
+- The price of an upsell or downsell was written to the top-level `price`, which is only a display
+  snapshot. The offer page and the purchase charge `productOverrides[offeredProductId].price`, so
+  `price`, `originalPrice` and `discount` now write that override (in cents, as before) and keep the
+  snapshot in step. An upsell's `imageUrl` was ignored by the page; it is now stored as `customImage`.
+- `redeem_reward` takes only `whatsapp_group_5000`: the route it calls redeems only the WhatsApp
+  group, and the bracelet and plaques are shipped, so the dashboard redeems them with the address.
+  The description promised all of them.
+- The custom domain types and descriptions follow the API: a domain has `status` (pending, verified,
+  failed, disabled) and `dnsInstructions`, not `verified` / `dnsRecords`; `verify_custom_domain`
+  answers `status`, `checks` and `cloudflare` and is limited to 10 per minute, not 5 per hour; and
+  `add_custom_domain` takes subdomains only.
+- `get_payment` no longer returns the buyer's encrypted CPF and phone (`cpfEnc`, `phoneEnc`) next to
+  the masked ones: every `*Enc` field is dropped from payment answers.
+- `get_telegram_flow` reads the flow out of the API's `{ flow }` envelope, as its type always said,
+  and answers `{ flow }`. Flow and bot ids are encoded in the path and query.
+
+### Security
+
+- Chips never carry their QR code (it links a device to the account), the worker, or a Meta chip's
+  token, secret and webhook token; the phone stays masked.
+
+- Minimum-version decision for this release: **0.6.0**. From 0.6.0 on, the saas API refuses 0.5.x
+  by version (read from the `User-Agent`) and tells the user to update with `npx -y ggcheckout-mcp@latest`.
+  The payments public API keeps 0.5.0 as its minimum on purpose: its tools (`create_pix_charge`,
+  `get_payment_intent`, `list_payment_intents`, `cancel_payment_intent`, `list_wallets`) send the same
+  requests in 0.5.0 and 0.6.0, and the core only announces 0.6.0 as the latest.
+  The reason is to give a 0.5.x install the update notice instead of broken tools: its `pay_invoice`
+  would fail with 500 `LEGACY_BILLING_READ_RETIRED`, and its WhatsApp tools are the old ones. The
+  removed ones answer 403 or 404, and `create_whatsapp_template` sends the legacy `sessionId`, which
+  the saas wraps into `sessionIds: [sessionId]`, so the template is linked to an id that is not a
+  session and is saved but never fires, with no error. Refusing 0.5.x by version tells the user to
+  update before any of that happens. Release order: publish 0.6.0 to npm first; only then raise
+  `MIN_SUPPORTED_GGCHECKOUT_MCP_VERSION` and `LATEST_GGCHECKOUT_MCP_VERSION` in saas-checkout and
+  `DEFAULT_MCP_LATEST_VERSION` in ggcheckout-core to 0.6.0. Raising the minimum before the release
+  would refuse every install with nothing to upgrade to.
+
+### Docs
+
+- `package.json`: `homepage` points to the MCP page of the help center (https://docs.ggcheckout.com/help/vendedor/ferramentas-avancadas/mcp) (`repository` and `bugs` stay on
+  GitHub), and the keywords gain `brazilian`, `pix` and `infoproduct`.
+- README: a section of example prompts in Portuguese and English, each with the tools that are enough
+  to fulfil it.
+- README: the example prompts use the reserved `example.com` domain for URLs and e-mails, so a copied
+  prompt does not point a webhook, a custom domain or a support e-mail at someone else's site. The PIX
+  example uses a CPF with a wrong check digit and a phone number that does not exist, so a copied
+  prompt cannot charge a real person.
+
 ## 0.5.0
 
 ### Breaking

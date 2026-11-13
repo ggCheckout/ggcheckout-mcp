@@ -6,6 +6,7 @@ import {
   AuthenticationError,
   RateLimitError,
   ApiError,
+  EdgeBlockedError,
   TemporarilyUnavailableError,
 } from '../../shared/errors.js';
 
@@ -70,6 +71,39 @@ describe('HttpClient', () => {
     };
 
     expect(() => errorHandler(axiosError)).toThrow(AuthenticationError);
+  });
+
+  describe('403', () => {
+    const errorHandlerOf = () => {
+      new HttpClient('https://api.test.com', 'key', '1.0.0');
+      return mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+    };
+
+    it('keeps a JSON 403 from the API as a permission error', () => {
+      const handler = errorHandlerOf();
+      const error = { response: { status: 403, data: { error: 'Não autorizado' }, headers: {} }, message: 'x' };
+
+      expect(() => handler(error)).toThrow(ApiError);
+      expect(() => handler(error)).toThrow('Não autorizado');
+    });
+
+    it.each([
+      ['an HTML page', '<html><body>Attention Required! | Cloudflare</body></html>'],
+      ['an empty body', ''],
+    ])('turns a 403 with %s into an edge block, not a permission error', (_name, data) => {
+      const handler = errorHandlerOf();
+      const error = { response: { status: 403, data, headers: {} }, message: 'x' };
+
+      expect(() => handler(error)).toThrow(EdgeBlockedError);
+      expect(() => handler(error)).toThrow(/not a permissions problem.*Wait about 1 minute.*contact GG Checkout support/s);
+    });
+
+    it('treats a cf-mitigated 403 as an edge block even with a JSON body', () => {
+      const handler = errorHandlerOf();
+      const error = { response: { status: 403, data: { error: 'blocked' }, headers: { 'cf-mitigated': 'challenge' } }, message: 'x' };
+
+      expect(() => handler(error)).toThrow(EdgeBlockedError);
+    });
   });
 
   it('maps 429 to RateLimitError', () => {
@@ -174,8 +208,10 @@ describe('HttpClient', () => {
       expect.unreachable('should have thrown');
     } catch (e: any) {
       expect(e).toBeInstanceOf(TemporarilyUnavailableError);
-      expect(e.message).toContain('Retry after 5 seconds');
-      expect(e.message).toContain('nothing was changed');
+      expect(e.message).toBe(
+        'service_unavailable. The API is refusing requests while its rate-limit backend is degraded; '
+        + 'nothing was changed. Retry after 5 seconds.',
+      );
     }
   });
 

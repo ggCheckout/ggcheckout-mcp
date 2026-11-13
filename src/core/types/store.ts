@@ -29,7 +29,6 @@ export interface StoreAnalytics {
     google_analytics?: { enabled: boolean; measurementId?: string };
     facebook_pixel?: { enabled: boolean; pixelId?: string };
     tiktok_pixel?: { enabled: boolean; pixelId?: string };
-    utmify?: { enabled: boolean; token?: string };
   };
 }
 
@@ -277,7 +276,12 @@ export interface StoreLayoutUpdate {
 export type StoreConfigPatch = Record<string, unknown>;
 
 /** The owner's full store document, unpublished stores included; payment tokens are removed. */
-export type StoreAdminConfig = Record<string, unknown> & { id?: string; published?: boolean };
+export type StoreAdminConfig = Record<string, unknown> & {
+  id?: string;
+  published?: boolean;
+  /** The absolute public link the API computes, beside the config; only on a read, absent on an API that predates it. */
+  publicUrl?: string;
+};
 
 export interface StoreAdminCategory {
   id: string;

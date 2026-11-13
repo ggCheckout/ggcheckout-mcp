@@ -4,7 +4,9 @@ export type UpsellChainBehavior = 'continue' | 'stop_on_decline';
 export type DownsellChainBehavior = 'continue' | 'stop';
 export type UpsellStatus = 'active' | 'inactive';
 
+/** The offer page reads `customImage` (not a top-level `imageUrl`) and shows it when `enabled` is true. */
 export interface UpsellCustomImageConfig {
+  enabled?: boolean;
   url?: string;
   alt?: string;
 }
@@ -16,9 +18,36 @@ export interface UpsellVideoConfig {
   aspectRatio?: string;
 }
 
+export type UpsellVideoSourceType = 'url' | 'upload' | 'embed';
+export type UpsellVideoProvider = 'youtube' | 'vturb' | 'wistia' | 'vimeo' | 'panda' | '';
+export type UpsellVideoAspectRatio = '16:9' | '9:16' | '1:1';
+
+/** One video of a `videosSection`: embed needs `provider` + `providerId`, url/upload needs `url`. */
+export interface UpsellVideoItem {
+  id: string;
+  sourceType?: UpsellVideoSourceType;
+  url?: string;
+  provider?: UpsellVideoProvider;
+  providerId?: string;
+  /** Account/library id, needed by VTurb and Panda. */
+  libraryId?: string;
+  aspectRatio?: UpsellVideoAspectRatio;
+}
+
+/**
+ * The offer page uses it only when `mediaType` is `video`: `videos[0]` is the main video, the rest
+ * render above the footer. At most 4 videos.
+ */
 export interface UpsellVideosSectionConfig {
-  enabled?: boolean;
-  videos?: Array<{ url: string; title?: string }>;
+  enabled: boolean;
+  title?: string;
+  titleColor?: string;
+  videos: UpsellVideoItem[];
+}
+
+/** What a caller sends: the video `id` is generated when missing, and a partial edit may leave out the list. */
+export interface UpsellVideosSectionInput extends Omit<UpsellVideosSectionConfig, 'videos'> {
+  videos?: Array<Omit<UpsellVideoItem, 'id'> & { id?: string }>;
 }
 
 export interface WhatsAppDeliveryConfig {
@@ -169,10 +198,14 @@ export interface Upsell {
    */
   productOverrides?: Record<string, OfferProductOverride | undefined>;
   title: string;
+  headline?: string;
   description?: string;
+  /** Display snapshot, in cents. What is charged is `productOverrides[upsellProductId].price`, else the product's own price. */
   price?: number;
   originalPrice?: number;
   discount?: string;
+  /** Computed by the MCP on list: the cents a buyer is charged (the override price, else the product's base price). */
+  effectivePriceCents?: number | null;
   imageUrl?: string;
   mediaType?: UpsellMediaType;
   customImage?: UpsellCustomImageConfig;
@@ -224,14 +257,19 @@ export interface DownsellConfig {
 export interface CreateUpsellInput {
   upsellProductId: string;
   title: string;
+  headline?: string;
   description?: string;
+  /** Cents charged for the offered product: written to `productOverrides[upsellProductId].price`. */
   price?: number;
   originalPrice?: number;
   discount?: string;
+  /** Shortcut for `customImage: { enabled: true, url }`. */
   imageUrl?: string;
   mediaType?: UpsellMediaType;
   customImage?: UpsellCustomImageConfig;
   video?: UpsellVideoConfig;
+  videosSection?: UpsellVideosSectionInput;
+  chainBehavior?: UpsellChainBehavior;
   paymentMethods?: Upsell['paymentMethods'];
   deliveryMethod?: 'url' | 'file' | 'whatsapp';
   timerEnabled?: boolean;
@@ -243,15 +281,18 @@ export interface CreateUpsellInput {
 }
 
 /** What the API stores for an upsell: the input plus the keys the dashboard editor always writes. */
-export interface CreateUpsellPayload extends CreateUpsellInput {
+export interface CreateUpsellPayload extends Omit<CreateUpsellInput, 'imageUrl'> {
   uid: string;
   id: string;
   upsellProductIds: string[];
+  productOverrides?: Record<string, OfferProductOverride | undefined>;
   order: number;
 }
 
 export interface DownsellSequenceItem {
   uid: string;
+  /** The row's own UUID; the API deletes and reorders by `uid`, never by this. */
+  id?: string;
   order: number;
   status: UpsellStatus;
   chainBehavior: DownsellChainBehavior;
@@ -266,14 +307,17 @@ export interface DownsellSequenceItem {
   title: string;
   headline?: string;
   description?: string;
+  /** Display snapshot, in cents. What is charged is `productOverrides[downsellProductId].price`, else the product's own price. */
   price: number;
   originalPrice?: number;
   discount?: string;
+  /** Computed by the MCP on list: the cents a buyer is charged (the override price, else the product's base price). */
+  effectivePriceCents?: number | null;
   timerEnabled?: boolean;
   timerMinutes?: number;
   mediaType?: UpsellMediaType;
   customImage?: UpsellCustomImageConfig;
-  videosSection?: UpsellVideosSectionConfig;
+  videosSection?: UpsellVideosSectionInput;
   uuidOwner: string;
   createdAt: string;
   updatedAt: string;
@@ -284,6 +328,7 @@ export interface CreateDownsellInput {
   title: string;
   description?: string;
   headline?: string;
+  /** Cents charged for the offered product: written to `productOverrides[downsellProductId].price`. */
   price: number;
   originalPrice?: number;
   discount?: string;
@@ -291,6 +336,7 @@ export interface CreateDownsellInput {
   timerMinutes?: number;
   mediaType?: UpsellMediaType;
   customImage?: UpsellCustomImageConfig;
+  videosSection?: UpsellVideosSectionInput;
   status?: UpsellStatus;
   chainBehavior?: DownsellChainBehavior;
   /** Position in the sequence, 1-based. Defaults to the end of the current list. */
@@ -298,6 +344,10 @@ export interface CreateDownsellInput {
 }
 
 export type OfferKind = 'upsell' | 'downsell';
+
+/** The fields an upsell edit may carry: everything the create takes except the offered product. */
+export type UpdateUpsellInput = Partial<Omit<CreateUpsellInput, 'upsellProductId' | 'downsell'>>;
+export type UpdateDownsellInput = Partial<Omit<CreateDownsellInput, 'downsellProductId'>>;
 
 /** Where one offered product opens in the post-purchase funnel: the GG offer page or the seller's. */
 export type OfferDisplayMode = 'native' | 'external';
@@ -339,5 +389,6 @@ export interface CreateDownsellPayload extends CreateDownsellInput {
   uid: string;
   id: string;
   downsellProductIds: string[];
+  productOverrides?: Record<string, OfferProductOverride | undefined>;
   order: number;
 }

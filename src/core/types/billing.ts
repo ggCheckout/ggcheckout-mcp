@@ -21,8 +21,13 @@ export interface BalanceResponse {
   limitCents: number;
   limitWithToleranceCents: number;
   usagePercent: number;
-  nextChargeAt: string | null;
-  cycleStartAt: string;
+  /** The pair that measured usagePercent (the payments cap when it answered). */
+  usageCents: number;
+  usageLimitCents: number;
+  /** Next cycle close from the payments engine; null when the source did not answer. */
+  closingAt: string | null;
+  /** Start of the open cycle (the last close); null when unknown. */
+  cycleStartAt: string | null;
 }
 
 export interface BillingStatusResponse {
@@ -58,6 +63,8 @@ export interface SellerInvoice {
   dueAt: string;
   paidAt: string | null;
   paymentIds?: string[];
+  /** Which bill it is: the sales fee or the WhatsApp messages. Each has its own open invoice. */
+  track?: 'sales' | 'whatsapp';
 }
 
 /** What a credit ledger line is: the v2 statement, kept in the payments service. */
@@ -110,6 +117,23 @@ export interface CreditTopup {
   expiresAt: string | null;
   /** Which route served it — `topup` is the Postgres-backed one. */
   via: 'legacy' | 'topup';
+}
+
+/**
+ * The PIX that pays a seller invoice. Only the invoice that is open (closed and not paid yet) has
+ * one: payments mints it in its charge loop and `POST /api/billing/pix` hands back the one still
+ * valid, or a new one once it expired.
+ */
+export interface InvoicePixPayment {
+  invoiceId: string;
+  amountCents: number;
+  /** The open invoice's state in payments: still charging, overdue, blocked, or already paid. */
+  status: 'charging' | 'overdue' | 'paid' | 'blocked';
+  /** PIX copy-and-paste string. */
+  pixCode: string | null;
+  /** QR image as base64, with no `data:` prefix. */
+  pixQrBase64: string | null;
+  expiresAt: string | null;
 }
 
 export interface BillingCredit {

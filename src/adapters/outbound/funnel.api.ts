@@ -19,13 +19,23 @@ export class FunnelApiAdapter implements FunnelPort {
     return data.funnels.map(sanitizeFunnel);
   }
 
+  /**
+   * The funnel as the agent reads it. `publicUrl` is derived by the API and sits beside the document
+   * in the envelope; it is attached here, after sanitizing, and never on `getRawForMerge`, so it
+   * cannot reach an update.
+   */
   async getById(funnelId: string): Promise<Funnel> {
-    return sanitizeFunnel(await this.getRawForMerge(funnelId));
+    const data = await this.readEnvelope(funnelId);
+    const funnel = sanitizeFunnel(data.funnel);
+    return typeof data.publicUrl === 'string' ? { ...funnel, publicUrl: data.publicUrl } : funnel;
   }
 
   async getRawForMerge(funnelId: string): Promise<Funnel> {
-    const data = await this.http.get<{ funnel: Funnel }>(`/api/funnels/${encodeURIComponent(funnelId)}`);
-    return data.funnel;
+    return (await this.readEnvelope(funnelId)).funnel;
+  }
+
+  private readEnvelope(funnelId: string) {
+    return this.http.get<{ funnel: Funnel; publicUrl?: unknown }>(`/api/funnels/${encodeURIComponent(funnelId)}`);
   }
 
   async listCheckouts(method?: 'pix' | 'credit_card'): Promise<FunnelCheckoutOptions> {

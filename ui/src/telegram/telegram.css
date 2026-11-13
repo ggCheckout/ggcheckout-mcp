@@ -1,0 +1,54 @@
+/* The bot's flows (saas components/telegram): the flows tab as rows, and a flow drawn read-only as the
+   flow editor lays it out, with TelegramFlowNode's card (category edge, tinted icon, handle labels). */
+.dashboard.telegram { display: flex; flex-direction: column; gap: 12px; }
+.dashboard .tg-card { border-radius: 12px; padding: 20px; }
+.dashboard .tg-detail { display: flex; flex-direction: column; gap: 10px; }
+.dashboard .tg-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.dashboard .tg-head .card-sub { margin: 0; }
+.dashboard .tg-name-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.dashboard .tg-name { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.dashboard .tg-hint { margin: 4px 0 0; font-size: 12px; color: var(--d-muted); }
+
+.dashboard .tg-badge { --tint: var(--d-muted-bg); --ink: var(--d-muted); display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; background: var(--tint); color: var(--ink); }
+.dashboard .tg-badge[data-tone='success'] { --tint: rgb(16 185 129 / 0.1); --ink: #047857; }
+.dashboard .tg-badge[data-tone='warning'] { --tint: rgb(245 158 11 / 0.1); --ink: #92400e; }
+:root[data-theme='dark'] .dashboard .tg-badge[data-tone='success'] { --ink: #6ee7b7; }
+:root[data-theme='dark'] .dashboard .tg-badge[data-tone='warning'] { --ink: #fcd34d; }
+
+/* The canvas: the editor's dotted background, scrolling when the graph cannot shrink further. */
+.dashboard .tg-canvas { overflow: auto; max-height: 620px; border-radius: 10px; border: 1px solid var(--d-row-border);
+  background-color: var(--d-bg); background-image: radial-gradient(color-mix(in srgb, var(--d-muted) 28%, transparent) 1px, transparent 1px); background-size: 18px 18px; }
+.dashboard .tg-canvas:focus-visible { outline: 2px solid var(--season-blue, #0e51f2); outline-offset: 2px; }
+.dashboard .tg-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.dashboard .tg-plane { position: relative; transform-origin: 0 0; }
+.dashboard .tg-edges { position: absolute; inset: 0; overflow: visible; }
+.dashboard .tg-edges path { fill: none; stroke-width: 2; opacity: 0.85; }
+
+.dashboard .tg-node { position: absolute; display: flex; flex-direction: column; border-radius: 12px; border: 1px solid var(--d-row-border); border-left: 3px solid var(--node); background: var(--d-row); box-shadow: 0 8px 18px -10px rgb(0 0 0 / 0.25); }
+.dashboard .tg-node-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+.dashboard .tg-node-icon { flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; color: var(--d-fg); background: color-mix(in srgb, var(--node) 14%, transparent); }
+.dashboard .tg-node-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dashboard .tg-node-label { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.dashboard .tg-node-preview { font-size: 12px; line-height: 1.35; color: var(--d-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.dashboard .tg-handles { flex: 0 0 auto; height: 28px; display: flex; align-items: center; justify-content: space-around; gap: 6px; padding: 0 8px; border-top: 1px solid var(--d-line); overflow: hidden; }
+.dashboard .tg-handle { display: inline-flex; align-items: center; gap: 4px; min-width: 0; font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dashboard .tg-handle::before { content: ''; flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: var(--handle); }
+.dashboard .tg-port-in { position: absolute; top: -6px; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; border: 2px solid var(--d-bg); background: var(--d-muted); }
+
+/* The flows tab. */
+.dashboard .tg-list-head { padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--d-line); }
+.dashboard .tg-rows { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.dashboard .tg-row { border-radius: 8px; border: 1px solid var(--d-row-border); background: var(--d-row); overflow: hidden; }
+.dashboard .tg-row[aria-busy='true'] { opacity: 0.6; }
+.dashboard .tg-row-btn { display: flex; width: 100%; align-items: center; gap: 12px; padding: 14px 16px; border: 0; background: transparent; color: var(--d-fg); text-align: left; font: inherit; }
+.dashboard button.tg-row-btn { cursor: pointer; transition: background-color 150ms ease; }
+.dashboard button.tg-row-btn:hover { background: color-mix(in srgb, var(--season-blue) 6%, transparent); }
+.dashboard button.tg-row-btn:focus-visible { outline: 2px solid var(--season-blue); outline-offset: -2px; }
+.dashboard .tg-row-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; color: var(--d-accent); background: color-mix(in srgb, var(--season-blue) 12%, transparent); }
+.dashboard .tg-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.dashboard .tg-row-main .card-sub { margin: 0; }
+.dashboard .tg-row-name { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.dashboard .tg-chevron { flex: 0 0 auto; color: var(--d-muted); }
+.dashboard .tg-empty { padding: 28px 0; text-align: center; }
+.dashboard .tg-empty-title { margin: 0; font-size: 15px; font-weight: 600; }
+.dashboard .tg-alert { margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 12px; border: 1px solid rgb(220 38 38 / 0.3); background: rgb(220 38 38 / 0.08); }
