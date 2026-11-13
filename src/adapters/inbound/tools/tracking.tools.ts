@@ -23,7 +23,7 @@ export function registerTrackingTools(server: McpServer, service: TrackingServic
     description:
       'Diagnose why sales metrics do not arrive (Meta, TikTok, Google Ads, UTMify): reads the tracking '
       + 'tokens with their health, the checkout\'s or funnel\'s token links, a payment\'s UTMs and event '
-      + 'dispatch, and the integration errors of the last 24 hours. Findings come sorted critical, warning, '
+      + 'dispatch, and the integration errors of the last 24 hours (at most 10 pixels/tokens per channel, so an empty error list does not prove the others are healthy). Findings come sorted critical, warning, '
       + 'info, ok, each with what to do. With none of `checkoutId`, `funnelId`, `paymentId` it is an account '
       + 'overview. To link a pixel to a checkout, `update_checkout` takes a single token id in `metricToken`. Never returns credentials. A part the API cannot answer yet shows up as a '
       + '"não disponível ainda" finding.',

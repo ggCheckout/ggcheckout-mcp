@@ -346,7 +346,7 @@ export function errorRules(errors: Record<TrackingChannel, ChannelErrors | null>
       severity: 'ok',
       code: 'no_recent_errors',
       title: `Sem erros nas últimas ${hours} horas`,
-      detail: 'Nenhum canal registrou erro de envio no período.',
+      detail: 'Nenhum canal registrou erro de envio no período. O histórico cobre no máximo 10 pixels ou tokens por canal, então a ausência de erros não prova que os demais estão saudáveis.',
       fix: '',
     });
   }

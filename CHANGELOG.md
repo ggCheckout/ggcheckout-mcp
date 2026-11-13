@@ -131,7 +131,8 @@ right now.
 - `diagnose_tracking`: tokens with health, checkout/funnel token links, a payment's UTMs and event
   dispatch, last 24 h integration errors; findings sorted critical, warning, info, ok, each with
   what to do. Never credentials, buyer data or untruncated provider errors. A saas route not
-  deployed yet becomes a finding, not an error.
+  deployed yet becomes a finding, not an error. The error history covers at most 10 pixels/tokens
+  per channel, so an empty list does not prove the others are healthy.
 - Tracking view for both tools.
 - `build_tracking_link`: the link to sell from, with UTMs, for a checkout, funnel, store (or one of
   its products) or any https URL, on Meta, TikTok, Google and Kwai (UTMify's templates) or manual.
