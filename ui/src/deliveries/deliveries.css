@@ -32,8 +32,3 @@
 .dashboard .dlv-message { margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 13px; background: rgb(16 185 129 / 0.1); }
 .dashboard .dlv-message[data-tone='error'] { background: rgb(239 68 68 / 0.1); color: var(--danger); }
 .dashboard .dlv-resend { align-self: flex-start; }
-.dashboard .dlv-confirm { padding: 14px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); font-size: 13px; }
-.dashboard .dlv-confirm p { margin: 0; }
-.dashboard .dlv-confirm-title { font-weight: 600; margin-bottom: 4px !important; }
-.dashboard .dlv-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
-.dashboard .dlv-cancel { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--d-line); background: transparent; cursor: pointer; font-weight: 600; }

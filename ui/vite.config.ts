@@ -21,5 +21,5 @@ export default defineConfig({
     outDir: resolve(root, '../dist/views'),
     rollupOptions: { input: resolve(root, 'app/app.html') },
   },
-  test: { root, include: ['src/**/*.test.ts'] },
+  test: { root, include: ['src/**/*.test.{ts,tsx}'] },
 });

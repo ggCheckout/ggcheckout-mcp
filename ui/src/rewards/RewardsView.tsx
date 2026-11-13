@@ -1,6 +1,7 @@
 import { Check, Lock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
+import { ConfirmPanel } from '../lib/ConfirmPanel';
 import { messageOf } from '../lib/messageOf';
 import './rewards.css';
 import community from '../art/reward-community.avif';
@@ -50,6 +51,7 @@ function GroupRedeem({ host, stop }: { host: Host; stop: Stop }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   async function redeem() {
     if (busy || !stop.rewardId) return;
@@ -65,13 +67,26 @@ function GroupRedeem({ host, stop }: { host: Host; stop: Stop }) {
       setError(messageOf(e) || 'Ocorreu um erro ao tentar resgatar a recompensa');
     } finally {
       setBusy(false);
+      setConfirming(false);
     }
   }
 
   if (link) return <a className="rw-link" href={link} target="_blank" rel="noreferrer" onClick={(e) => { e.preventDefault(); void host.openLink(link); }}>Abrir o grupo</a>;
   return (
     <>
-      <button type="button" className="cta rw-redeem" onClick={redeem} disabled={busy}>{busy ? 'Carregando...' : 'Entrar no grupo'}</button>
+      {confirming ? (
+        <ConfirmPanel
+          label="Resgatar recompensa"
+          message="Isso resgata a recompensa e abre o convite do grupo."
+          confirmLabel="Resgatar"
+          busyLabel="Carregando..."
+          busy={busy}
+          onConfirm={redeem}
+          onCancel={() => setConfirming(false)}
+        />
+      ) : (
+        <button type="button" className="cta rw-redeem" onClick={() => setConfirming(true)}>Entrar no grupo</button>
+      )}
       {error && <p className="rw-error" role="alert">{error}</p>}
     </>
   );

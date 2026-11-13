@@ -107,6 +107,9 @@ right now.
 
 - WhatsApp deliveries view on `get_delivery_status` and `resend_delivery`, as the payment detail's
   WhatsApp data: the summary, a card per message with its status, and a confirmed resend.
+- Every write from a view card asks for a confirmation inside the card first: resend a WhatsApp
+  message, restart, deactivate or reactivate a chip, and redeem the WhatsApp group reward. They share
+  one `ConfirmPanel` that says what the action does; nothing is sent until it is confirmed.
 - Gateways view on `list_checkout_wallets` and `get_gateway_fallback_stats`, as the charge order
   (each wallet's PIX and card gateways in order, with their last-day rate) and the stability
   ranking. `get_gateway_fallback_stats` describes its units and its `ranking`.

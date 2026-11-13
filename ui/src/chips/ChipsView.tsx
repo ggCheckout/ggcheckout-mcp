@@ -4,6 +4,7 @@ import '../styles/dashboard.css';
 import './chips.css';
 import type { Host, HostSnapshot } from '../host';
 import { BackButton } from '../lib/BackButton';
+import { ConfirmPanel } from '../lib/ConfirmPanel';
 import { plural } from '../lib/format';
 import { messageOf } from '../lib/messageOf';
 import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
@@ -164,7 +165,8 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
     setChipState(next);
     onChange?.(next);
   }, [onChange]);
-  const [confirming, setConfirming] = useState(false);
+  // One confirmation at a time: the action that is waiting for its "yes".
+  const [confirming, setConfirming] = useState<'restart' | 'toggle' | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [round, setRound] = useState(0);
@@ -187,7 +189,7 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
       setError('Falha ao reiniciar chip. Tenta de novo em alguns segundos.');
     } finally {
       setBusy(false);
-      setConfirming(false);
+      setConfirming(null);
     }
   }
 
@@ -204,6 +206,7 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
       setError(`${wasActive ? 'Falha ao desativar chip' : 'Falha ao reativar chip'}. Tenta de novo em alguns segundos.`);
     } finally {
       setBusy(false);
+      setConfirming(null);
     }
   }
 
@@ -221,22 +224,37 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
           {canCallTools && !confirming && (
             <div className="ch-actions">
               {chip.provider === 'waha' && (
-                <button type="button" className="ch-ghost" onClick={() => setConfirming(true)} disabled={busy}><RefreshCw size={14} aria-hidden />Reiniciar</button>
+                <button type="button" className="ch-ghost" onClick={() => setConfirming('restart')} disabled={busy}><RefreshCw size={14} aria-hidden />Reiniciar</button>
               )}
-              <button type="button" className="ch-ghost" onClick={toggleActive} disabled={busy}>
+              <button type="button" className="ch-ghost" onClick={() => setConfirming('toggle')} disabled={busy}>
                 {chip.isActive ? <><PowerOff size={14} aria-hidden />Desativar</> : <><Power size={14} aria-hidden />Reativar</>}
               </button>
             </div>
           )}
         </header>
-        {confirming && (
-          <div className="ch-confirm" role="alertdialog" aria-label="Reiniciar chip">
-            <p>{connected ? 'Reiniciar desconecta este chip: ele para de enviar até ser conectado de novo.' : 'Reiniciar volta o chip ao início da conexão. Use quando ele travar.'}</p>
-            <div className="ch-confirm-actions">
-              <button type="button" className="ch-ghost" onClick={() => setConfirming(false)} disabled={busy}>Cancelar</button>
-              <button type="button" className="cta" onClick={restart} disabled={busy}>{busy ? 'Reiniciando…' : 'Reiniciar'}</button>
-            </div>
-          </div>
+        {confirming === 'restart' && (
+          <ConfirmPanel
+            label="Reiniciar chip"
+            tone="warning"
+            message={connected ? 'Reiniciar desconecta este chip: ele para de enviar até ser conectado de novo.' : 'Reiniciar volta o chip ao início da conexão. Use quando ele travar.'}
+            confirmLabel="Reiniciar"
+            busyLabel="Reiniciando…"
+            busy={busy}
+            onConfirm={restart}
+            onCancel={() => setConfirming(null)}
+          />
+        )}
+        {confirming === 'toggle' && (
+          <ConfirmPanel
+            label={chip.isActive ? 'Desativar chip' : 'Reativar chip'}
+            tone={chip.isActive ? 'warning' : undefined}
+            message={chip.isActive ? 'Desativar faz este chip parar de enviar mensagens até ser reativado.' : 'Reativar faz este chip voltar a enviar mensagens pelas sessões que o usam.'}
+            confirmLabel={chip.isActive ? 'Desativar' : 'Reativar'}
+            busyLabel={chip.isActive ? 'Desativando…' : 'Reativando…'}
+            busy={busy}
+            onConfirm={toggleActive}
+            onCancel={() => setConfirming(null)}
+          />
         )}
         {error && <p className="ch-alert" role="alert">{error}</p>}
         {chip.errorMessage && ['error', 'banned', 'disconnected'].includes(chip.status) && <p className="ch-alert">{chip.errorMessage}</p>}

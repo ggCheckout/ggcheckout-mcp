@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
 import './deliveries.css';
 import type { Host, HostSnapshot } from '../host';
+import { ConfirmPanel } from '../lib/ConfirmPanel';
 import { formatDateTime, plural } from '../lib/format';
 import { messageOf } from '../lib/messageOf';
 import { isResendAnswer, statusBadge, summarizeDeliveries, summarizeResend, type Deliveries, type Delivery } from './model';
@@ -134,14 +135,16 @@ function DeliveriesPanel({ host, data, canCallTools, notice }: { host: Host; dat
       {message && <p className="dlv-message" data-tone={message.ok ? 'ok' : 'error'} role="status">{message.text}</p>}
       {canCallTools && state.paymentId && (
         confirming ? (
-          <div className="dlv-confirm">
-            <p className="dlv-confirm-title">{sentBefore ? 'Confirmar Reenvio do WhatsApp' : 'Confirmar Envio do WhatsApp'}</p>
-            <p>{sentBefore ? 'A mensagem com o produto já foi enviada anteriormente. Tem certeza que deseja reenviar via WhatsApp?' : 'Enviar produto via WhatsApp?'}</p>
-            <div className="dlv-confirm-actions">
-              <button type="button" className="dlv-cancel" onClick={() => setConfirming(false)} disabled={busy}>Cancelar</button>
-              <button type="button" className="cta" onClick={resend} disabled={busy}>{busy ? 'Reenviando...' : 'Confirmar'}</button>
-            </div>
-          </div>
+          <ConfirmPanel
+            label="Confirmar envio do WhatsApp"
+            title={sentBefore ? 'Confirmar Reenvio do WhatsApp' : 'Confirmar Envio do WhatsApp'}
+            message={sentBefore ? 'A mensagem com o produto já foi enviada anteriormente. Tem certeza que deseja reenviar via WhatsApp?' : 'Enviar produto via WhatsApp?'}
+            confirmLabel="Confirmar"
+            busyLabel="Reenviando..."
+            busy={busy}
+            onConfirm={resend}
+            onCancel={() => setConfirming(false)}
+          />
         ) : (
           <button type="button" className="cta dlv-resend" onClick={() => setConfirming(true)}>
             {sentBefore ? 'Reenviar WhatsApp do entregável' : 'Enviar WhatsApp do entregável'}
