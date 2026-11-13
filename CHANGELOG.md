@@ -210,6 +210,17 @@ right now.
   `DEFAULT_MCP_LATEST_VERSION` in ggcheckout-core to 0.6.0. Raising the minimum before the release
   would refuse every install with nothing to upgrade to.
 
+### Docs
+
+- `package.json`: `homepage` points to the MCP page of the help center (https://docs.ggcheckout.com/help/vendedor/ferramentas-avancadas/mcp) (`repository` and `bugs` stay on
+  GitHub), and the keywords gain `brazilian`, `pix` and `infoproduct`.
+- README: a section of example prompts in Portuguese and English, each with the tools that are enough
+  to fulfil it.
+- README: the example prompts use the reserved `example.com` domain for URLs and e-mails, so a copied
+  prompt does not point a webhook, a custom domain or a support e-mail at someone else's site. The PIX
+  example uses a CPF with a wrong check digit and a phone number that does not exist, so a copied
+  prompt cannot charge a real person.
+
 ## 0.5.0
 
 ### Breaking

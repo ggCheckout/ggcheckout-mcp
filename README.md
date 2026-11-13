@@ -161,6 +161,34 @@ resource), which picks the view by the tool that answered.
 
 ---
 
+## Example prompts / Exemplos de pedidos
+
+Ask in Portuguese or English; the assistant picks the tools. The tools listed next to each prompt
+are enough to fulfil it. Tools that create something act on your real account; the PIX charge in the
+last row is simulated with a test key (see the note after the table).
+
+Peça em português ou em inglês; o assistente escolhe as ferramentas. As ferramentas listadas ao
+lado de cada pedido bastam para atendê-lo. As que criam algo agem na sua conta de verdade; a
+cobrança PIX da última linha é simulada com uma chave de teste (veja a nota depois da tabela).
+
+| Português | English | Tools |
+|---|---|---|
+| "Liste todos os meus produtos" | "Show me all my products" | `list_products` |
+| "Crie o produto 'Curso de Excel': descrição 'Do básico ao avançado', R$ 97,00, sem desconto, entrega em https://example.com/excel" | "Create the product 'Excel Course': description 'From basics to advanced', R$97.00, no discount, delivered at https://example.com/excel" | `create_product` |
+| "Crie um checkout para o produto 'Curso de Excel' a R$ 97,00, cobrando PIX e cartão pela carteira 'Principal'" | "Create a checkout for the 'Excel Course' product at R$97.00, charging PIX and card through my 'Principal' wallet" | `list_products`, `list_checkout_wallets`, `create_checkout` |
+| "Quanto eu vendi hoje?" | "How much did I sell today?" | `get_dashboard_stats` |
+| "Mostre os últimos 20 pagamentos aprovados deste mês" | "Show the last 20 paid payments from this month" | `get_my_business_id`, `get_payments_paginated` |
+| "Procure os pagamentos do e-mail maria@example.com" | "Find the payments from maria@example.com" | `get_my_business_id`, `get_payments_paginated` |
+| "Crie o cupom BEMVINDO10 com 10% de desconto em todos os produtos" | "Create the coupon WELCOME10 with 10% off all products" | `create_discount` |
+| "Crie um webhook em https://example.com/webhook para os eventos pix.paid e card.paid" | "Create a webhook at https://example.com/webhook for the pix.paid and card.paid events" | `create_webhook` |
+| "Crie uma cobrança PIX de R$ 49,90 do pedido 1234 na carteira 'Loja' para Maria Souza (maria@example.com, CPF 000.000.000-00, telefone 11000000000)" | "Create a R$49.90 PIX charge for order 1234 on my 'Loja' wallet for Maria Souza (maria@example.com, CPF 000.000.000-00, phone 11000000000)" | `list_wallets`, `create_pix_charge` |
+
+The last one needs `GG_PAYMENTS_API_KEY` ([Payments API](#payments-api-pix-charges)); a `ggpk_test_`
+key creates a simulated charge, a `ggpk_live_` key a real one. / O último precisa da
+`GG_PAYMENTS_API_KEY` ([Payments API](#payments-api-pix-charges)): com uma chave `ggpk_test_` a cobrança é simulada; com `ggpk_live_`, é real.
+
+---
+
 ## Available Tools (210)
 
 ### Products (21 tools)
@@ -283,7 +311,7 @@ own kind of page.
 Each snippet works only for its own product, when the funnel order reaches it. Pages must be https;
 plain http only works for localhost against a development server.
 
-**Example prompt:** "Put the second product of upsell u1 of product abc123 on https://seller.com/oferta
+**Example prompt:** "Put the second product of upsell u1 of product abc123 on https://example.com/oferta
 with a green button saying 'Quero!', then give me the HTML to paste on that page"
 
 #### `manage_tags`
@@ -436,7 +464,7 @@ Manage physical order fulfillment.
 
 **Example prompts:**
 - "Show me all my webhooks"
-- "Create a webhook for pix.paid events at https://myapp.com/webhook"
+- "Create a webhook for pix.paid events at https://example.com/webhook"
 - "Update webhook abc123 to also listen for card.paid"
 - "Delete webhook abc123"
 - "Send a test pix.paid event to webhook abc123"
@@ -706,7 +734,7 @@ A verified domain is bound to a checkout with `customDomainId` (the domain's `id
 
 **Example prompts:**
 - "List my custom domains"
-- "Add domain checkout.mysite.com"
+- "Add domain checkout.example.com"
 - "Verify DNS for domain abc123"
 - "Remove domain abc123"
 
@@ -770,7 +798,7 @@ endpoint, and a cache miss is rate limited to 10 per hour.
 - "Show me my profile"
 - "Update my name to 'John Doe'"
 - "List my support emails"
-- "Add support@mystore.com as a support email"
+- "Add support@example.com as a support email"
 - "What's my KYC status?"
 
 ---
@@ -826,7 +854,7 @@ charge or a cancel.
 
 **Example prompts:**
 - "List my wallets"
-- "Create a R$ 49,90 PIX charge for order 1234 on wallet wal_8f3kQ2mN7xR4tY9pL6aBcD for Maria Souza (maria@example.com, CPF 123.456.789-09, phone 11987654321)"
+- "Create a R$ 49,90 PIX charge for order 1234 on wallet wal_8f3kQ2mN7xR4tY9pL6aBcD for Maria Souza (maria@example.com, CPF 000.000.000-00, phone 11000000000)"
 - "Did the charge for order 1234 get paid?"
 
 ---

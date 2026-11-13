@@ -33,7 +33,10 @@
     "anthropic",
     "checkout",
     "payments",
-    "ecommerce"
+    "ecommerce",
+    "brazilian",
+    "pix",
+    "infoproduct"
   ],
   "author": "GG Checkout Team",
   "license": "MIT",
@@ -41,7 +44,7 @@
     "type": "git",
     "url": "git+https://github.com/ggCheckout/ggcheckout-mcp.git"
   },
-  "homepage": "https://github.com/ggCheckout/ggcheckout-mcp#readme",
+  "homepage": "https://docs.ggcheckout.com/help/vendedor/ferramentas-avancadas/mcp",
   "bugs": {
     "url": "https://github.com/ggCheckout/ggcheckout-mcp/issues"
   },
