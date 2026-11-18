@@ -164,6 +164,8 @@ right now.
 
 ### Fixed
 
+- `diagnose_tracking` no longer reports a Google channel as a failed dispatch when every send was
+  skipped for lack of a click id (an organic sale); only sends that actually failed are critical.
 - The checkout timer and sales pop-ups are stored inverted (`checkout.timer.disabled`,
   `checkout.salesNotifications.disabled`) and nothing reads `enabled`, so an agent that sent
   `timer.enabled: false` got a visible timer. `timer` and `salesNotifications` map `enabled` to

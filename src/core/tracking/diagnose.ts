@@ -230,9 +230,11 @@ export function paymentRules(payment: TrackingPayment, viaFunnel: boolean): Trac
     for (const channel of TRACKING_CHANNELS) {
       const entry = dispatch[channel];
       if (!entry || entry.ok !== false) continue;
+      // A channel whose sends were all skipped (no click id) did not fail.
+      if (entry.failed === 0 && (entry.skipped ?? 0) > 0) continue;
       failed = true;
       const errors = entry.details
-        .filter((d) => d.ok === false && d.error)
+        .filter((d) => d.ok === false && d.skipped !== true && d.error)
         .slice(0, 3)
         .map((d) => `${d.title ?? 'envio'}${d.code ? ` (${d.code})` : ''}: ${clip(d.error)}`);
       findings.push({

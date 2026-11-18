@@ -80,7 +80,7 @@ function toCheckout(raw: Raw): TrackingCheckout | null {
 }
 
 function toDetail(raw: Raw): DispatchDetail {
-  return { title: clip(raw.title, 80), code: str(raw.code), ok: bool(raw.ok), error: clip(raw.error) };
+  return { title: clip(raw.title, 80), code: str(raw.code), ok: bool(raw.ok), skipped: bool(raw.skipped), error: clip(raw.error) };
 }
 
 function toDispatch(raw: unknown): ChannelDispatch | null {
@@ -89,6 +89,7 @@ function toDispatch(raw: unknown): ChannelDispatch | null {
     ok: bool(raw.ok),
     sent: num(raw.sent),
     failed: num(raw.failed),
+    skipped: num(raw.skipped),
     total: num(raw.total),
     event: str(raw.event),
     time: str(raw.time),

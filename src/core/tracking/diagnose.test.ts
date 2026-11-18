@@ -22,7 +22,7 @@ function payment(over: Partial<TrackingPayment> = {}): TrackingPayment {
     utms: { utm_source: 'facebook', utm_campaign: 'black' },
     clickIds: { fbc: true, fbp: true, ttclid: false, ttp: false },
     dispatch: {
-      facebook: { ok: true, sent: 1, failed: 0, total: 1, event: 'Purchase', time: null, details: [] },
+      facebook: { ok: true, sent: 1, failed: 0, skipped: null, total: 1, event: 'Purchase', time: null, details: [] },
     },
     dispatchAt: null, dispatchSuccess: true,
     flags: { created: true, paid: true, refunded: null, chargedback: null },
@@ -101,7 +101,7 @@ describe('tokenRules', () => {
       checkouts: [{ id: 'c', title: 'C', metricTokenIds: [] }, { id: 'd', title: 'D', metricTokenIds: ['gone'] }],
       missingCheckoutId: 'zzz',
       funnel: null,
-      payment: payment({ utms: {}, dispatch: { tiktok: { ok: false, sent: 0, failed: 1, total: 1, event: 'Purchase', time: null, details: [] } } }),
+      payment: payment({ utms: {}, dispatch: { tiktok: { ok: false, sent: 0, failed: 1, skipped: null, total: 1, event: 'Purchase', time: null, details: [] } } }),
       errors: { facebook: { channel: 'facebook', hours: 24, rows: [{ channel: 'facebook', paymentId: 'p', event: 'Purchase', subjectTitle: 'P', subjectCode: 'A', errorCode: '1', errorMessage: 'x', createdAt: '2026-11-10T10:00:00Z' }] }, tiktok: null, google: null, utmify: null },
     };
     const out = diagnoseTracking(ctx).map((f) => `${f.title}\n${f.detail}\n${f.fix}`).join('\n');
@@ -185,8 +185,8 @@ describe('paymentRules', () => {
     const failed = payment({
       dispatch: {
         tiktok: {
-          ok: false, sent: 0, failed: 1, total: 1, event: 'Purchase', time: null,
-          details: [{ title: 'Pixel TikTok', code: 'AB12…YZ89', ok: false, error: 'Access token is invalid' }],
+          ok: false, sent: 0, failed: 1, skipped: null, total: 1, event: 'Purchase', time: null,
+          details: [{ title: 'Pixel TikTok', code: 'AB12…YZ89', ok: false, skipped: null, error: 'Access token is invalid' }],
         },
       },
     });
@@ -194,6 +194,36 @@ describe('paymentRules', () => {
     expect(findings[0]).toMatchObject({ severity: 'critical', code: 'dispatch_failed_tiktok' });
     expect(findings[0].detail).toContain('Access token is invalid');
     expect(findings[0].detail).toContain('AB12…YZ89');
+  });
+
+  it('does not fail a Google channel whose every send was skipped', () => {
+    const skipped = payment({
+      dispatch: {
+        google: {
+          ok: false, sent: 0, failed: 0, skipped: 1, total: 1, event: 'Purchase', time: null,
+          details: [{ title: 'Google Ads', code: null, ok: false, skipped: true, error: 'No click id' }],
+        },
+      },
+    });
+    expect(codes(paymentRules(skipped, false))).not.toContain('dispatch_failed_google');
+  });
+
+  it('keeps a Google channel critical when a send failed beside a skipped one, listing only the failed send', () => {
+    const mixed = payment({
+      dispatch: {
+        google: {
+          ok: false, sent: 0, failed: 1, skipped: 1, total: 2, event: 'Purchase', time: null,
+          details: [
+            { title: 'Conta A', code: null, ok: false, skipped: true, error: 'No click id' },
+            { title: 'Conta B', code: null, ok: false, skipped: null, error: 'Invalid developer token' },
+          ],
+        },
+      },
+    });
+    const finding = paymentRules(mixed, false).find((f) => f.code === 'dispatch_failed_google');
+    expect(finding).toMatchObject({ severity: 'critical' });
+    expect(finding!.detail).toContain('Invalid developer token');
+    expect(finding!.detail).not.toContain('No click id');
   });
 
   it('warns about a paid payment whose paid dispatch flag is false', () => {

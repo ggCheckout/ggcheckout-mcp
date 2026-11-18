@@ -66,6 +66,8 @@ export interface DispatchDetail {
   title: string | null;
   code: string | null;
   ok: boolean | null;
+  /** The send was not attempted (a sale without a click id on Google): not a failure. */
+  skipped: boolean | null;
   error: string | null;
 }
 
@@ -73,6 +75,8 @@ export interface ChannelDispatch {
   ok: boolean | null;
   sent: number | null;
   failed: number | null;
+  /** Sends not attempted (Google sale without a click id); `null` when the API does not send it. */
+  skipped: number | null;
   total: number | null;
   event: string | null;
   time: string | null;

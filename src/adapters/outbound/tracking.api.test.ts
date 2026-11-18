@@ -107,6 +107,21 @@ describe('TrackingApiAdapter.getPayment', () => {
     expect(out).not.toMatch(/Maria|maria@|12345678900|31999990000|fb\.1\./);
   });
 
+  it('carries skipped for Google and gives null when the API omits it', async () => {
+    http.get.mockResolvedValueOnce({ payments: [{
+      id: 'p', status: 'paid',
+      trackingDispatch: {
+        google: { ok: false, sent: 0, failed: 0, skipped: 1, total: 1, details: [{ ok: false, skipped: true, error: 'No click id' }] },
+        tiktok: { ok: true, sent: 1, failed: 0, skipped: null, total: 1, details: [{ ok: true, skipped: null }] },
+        facebook: { ok: true, sent: 1, failed: 0, total: 1, details: [{ ok: true }] },
+      },
+    }] });
+    const dispatch = (await adapter.getPayment('biz', 'p')).dispatch!;
+    expect(dispatch.google).toMatchObject({ skipped: 1, details: [{ skipped: true }] });
+    expect(dispatch.tiktok).toMatchObject({ skipped: null, details: [{ skipped: null }] });
+    expect(dispatch.facebook).toMatchObject({ skipped: null, details: [{ skipped: null }] });
+  });
+
   it('has a null dispatch when the row does not carry one', async () => {
     http.get.mockResolvedValueOnce({ payments: [{ id: 'p', status: 'paid' }] });
     expect((await adapter.getPayment('biz', 'p')).dispatch).toBeNull();
