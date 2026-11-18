@@ -126,7 +126,8 @@ right now.
   code, read until it connects.
 - `get_payments_api_limits`: requests per minute per bucket of the key in use (live or test) and the
   maximum per charge. Reads GET /v1/limits; while the API has no such route it answers
-  `available: false` instead of an error.
+  `available: false` instead of an error. The windows slide, so `next_slot_in_seconds` is when one
+  request frees up, not when the bucket empties; the view shows it only on a full bucket.
 - `list_payment_intents` takes `created_gte` (unix seconds).
 - New payapi view for `get_payments_api_limits`, `list_wallets` and `list_payment_intents`, each
   list with a requests-per-minute strip on top; `cancel_payment_intent` draws a canceled charge in

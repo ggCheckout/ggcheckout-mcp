@@ -9,7 +9,7 @@ import { messageOf } from '../lib/messageOf';
 import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
 import { PixView } from '../pix/PixView';
 import {
-  formatReset, intentDate, levelText, summarizeLimits, summarizePayApi,
+  intentDate, levelText, nextSlotNote, summarizeLimits, summarizePayApi,
   type IntentRow, type IntentsPage, type LimitBucket, type LimitsInfo, type LimitsResult, type WalletRow,
 } from './model';
 
@@ -19,7 +19,7 @@ function Buckets({ buckets, compact }: { buckets: LimitBucket[]; compact?: boole
   return (
     <ul className="pa-buckets" data-compact={compact ? '' : undefined}>
       {buckets.map((b) => {
-        const reset = formatReset(b.resetsInSeconds);
+        const nextSlot = nextSlotNote(b);
         const level = levelText(b.level);
         return (
           <li key={b.id} className="pa-bucket" data-level={b.level}>
@@ -34,11 +34,11 @@ function Buckets({ buckets, compact }: { buckets: LimitBucket[]; compact?: boole
             >
               <span style={{ width: `${Math.round(b.ratio * 100)}%` }} />
             </div>
-            {(level || (!compact && reset)) && (
+            {(level || (!compact && nextSlot)) && (
               <p className="pa-bucket-note">
                 {level && <strong>{level}</strong>}
-                {level && !compact && reset && ' · '}
-                {!compact && reset}
+                {level && !compact && nextSlot && ' · '}
+                {!compact && nextSlot}
               </p>
             )}
           </li>

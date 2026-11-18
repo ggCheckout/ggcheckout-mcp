@@ -10,7 +10,8 @@ export interface LimitBucket {
   used: number;
   limit: number;
   windowSeconds: number | null;
-  resetsInSeconds: number | null;
+  /** When the oldest request leaves the sliding window and frees one slot (not the whole bucket). */
+  nextSlotInSeconds: number | null;
   /** used / limit, capped at 1; 0 when the limit is not positive. */
   ratio: number;
   level: 'ok' | 'high' | 'full';
@@ -89,7 +90,7 @@ function summarizeBucket(raw: unknown): LimitBucket | null {
     used,
     limit,
     windowSeconds: finite(raw.window_seconds),
-    resetsInSeconds: finite(raw.resets_in_seconds),
+    nextSlotInSeconds: finite(raw.next_slot_in_seconds),
     ratio,
     level: limit > 0 && used >= limit ? 'full' : ratio >= HIGH_RATIO ? 'high' : 'ok',
   };
@@ -171,12 +172,16 @@ export function summarizePayApi(data: unknown, toolName?: string): PayApiData | 
   return null;
 }
 
-/** "reinicia em 41 s", "em 3 min", "em 2 h"; null when there is nothing to wait for. */
-export function formatReset(seconds: number | null): string | null {
-  if (seconds === null || seconds <= 0) return null;
-  if (seconds < 90) return `reinicia em ${Math.ceil(seconds)} s`;
-  if (seconds < 5400) return `reinicia em ${Math.round(seconds / 60)} min`;
-  return `reinicia em ${Math.round(seconds / 3600)} h`;
+/**
+ * "libera 1 em 41 s", "em 3 min", "em 2 h" on a full bucket; null otherwise. The windows slide, so
+ * the wait frees one request, not the whole bucket, and a bucket with room has nothing to wait for.
+ */
+export function nextSlotNote(bucket: Pick<LimitBucket, 'level' | 'nextSlotInSeconds'>): string | null {
+  const seconds = bucket.nextSlotInSeconds;
+  if (bucket.level !== 'full' || seconds === null || seconds <= 0) return null;
+  if (seconds < 90) return `libera 1 em ${Math.ceil(seconds)} s`;
+  if (seconds < 5400) return `libera 1 em ${Math.round(seconds / 60)} min`;
+  return `libera 1 em ${Math.round(seconds / 3600)} h`;
 }
 
 /** The word that rides next to the bar, so the level is never color alone. */

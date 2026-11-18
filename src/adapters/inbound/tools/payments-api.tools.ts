@@ -67,8 +67,9 @@ export function registerPaymentsApiTools(server: McpServer, client: PaymentsApiC
   server.registerTool('get_payments_api_limits', {
     description:
       'Requests per minute of the payments API key in use (live or test): for each bucket (create, read, cancel per key; '
-      + 'create per seller; per day on a test key) `limit`, `used`, `window_seconds` and `resets_in_seconds`, plus '
-      + '`max_amount_cents`, the largest amount per charge. Spends one read of the key\'s read bucket. '
+      + 'create per seller; per day on a test key) `limit`, `used`, `window_seconds` and `next_slot_in_seconds`, plus '
+      + '`max_amount_cents`, the largest amount per charge. The windows slide: `next_slot_in_seconds` is when ONE request frees up, '
+      + 'not when the bucket empties. Spends one read of the key\'s read bucket. '
       + 'Answers `available: false` while the API has no limits route yet: say so, it is not an error.',
     inputSchema: {},
     _meta: appMeta(),

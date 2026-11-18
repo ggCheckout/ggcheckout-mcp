@@ -441,11 +441,11 @@ export const chipDetail = (id: string, status?: string) => {
 export const payApiLimits = {
   object: 'limits', livemode: false, window_seconds: 60, max_amount_cents: 500000,
   buckets: [
-    { id: 'create_per_key', scope: 'key', action: 'create', limit: 10, used: 3, window_seconds: 60, resets_in_seconds: 41 },
-    { id: 'read_per_key', scope: 'key', action: 'read', limit: 60, used: 52, window_seconds: 60, resets_in_seconds: 12 },
-    { id: 'cancel_per_key', scope: 'key', action: 'cancel', limit: 10, used: 10, window_seconds: 60, resets_in_seconds: 5 },
-    { id: 'create_per_seller', scope: 'seller', action: 'create', limit: 20, used: 3, window_seconds: 60, resets_in_seconds: 41 },
-    { id: 'create_per_seller_per_day', scope: 'seller', action: 'create', limit: 500, used: 37, window_seconds: 86400, resets_in_seconds: 51000 },
+    { id: 'create_per_key', scope: 'key', action: 'create', limit: 10, used: 3, window_seconds: 60, next_slot_in_seconds: 41 },
+    { id: 'read_per_key', scope: 'key', action: 'read', limit: 60, used: 52, window_seconds: 60, next_slot_in_seconds: 12 },
+    { id: 'cancel_per_key', scope: 'key', action: 'cancel', limit: 10, used: 10, window_seconds: 60, next_slot_in_seconds: 5 },
+    { id: 'create_per_seller', scope: 'seller', action: 'create', limit: 20, used: 3, window_seconds: 60, next_slot_in_seconds: 41 },
+    { id: 'create_per_seller_per_day', scope: 'seller', action: 'create', limit: 500, used: 37, window_seconds: 86400, next_slot_in_seconds: 51000 },
   ],
 };
 export const payApiLimitsUnavailable = { object: 'limits_unavailable', available: false, message: 'GET /v1/limits is not available yet.' };

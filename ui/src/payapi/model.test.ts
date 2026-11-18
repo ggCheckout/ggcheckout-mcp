@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { formatReset, levelText, summarizeIntents, summarizeLimits, summarizePayApi, summarizeWallets } from './model';
+import { levelText, nextSlotNote, summarizeIntents, summarizeLimits, summarizePayApi, summarizeWallets } from './model';
 
 // Invented data in the shape the spec gives for GET /v1/limits.
 const limits = {
   object: 'limits', livemode: true, window_seconds: 60, max_amount_cents: 500000,
   buckets: [
-    { id: 'create_per_key', scope: 'key', action: 'create', limit: 60, used: 3, window_seconds: 60, resets_in_seconds: 41 },
-    { id: 'read_per_key', scope: 'key', action: 'read', limit: 300, used: 255, window_seconds: 60, resets_in_seconds: 12 },
-    { id: 'cancel_per_key', scope: 'key', action: 'cancel', limit: 60, used: 60, window_seconds: 60, resets_in_seconds: 5 },
-    { id: 'create_per_seller_per_day', scope: 'seller', action: 'create', limit: 500, used: 0, window_seconds: 86400, resets_in_seconds: 0 },
+    { id: 'create_per_key', scope: 'key', action: 'create', limit: 60, used: 3, window_seconds: 60, next_slot_in_seconds: 41 },
+    { id: 'read_per_key', scope: 'key', action: 'read', limit: 300, used: 255, window_seconds: 60, next_slot_in_seconds: 12 },
+    { id: 'cancel_per_key', scope: 'key', action: 'cancel', limit: 60, used: 60, window_seconds: 60, next_slot_in_seconds: 5 },
+    { id: 'create_per_seller_per_day', scope: 'seller', action: 'create', limit: 500, used: 0, window_seconds: 86400, next_slot_in_seconds: 0 },
     { id: 'future_bucket', scope: 'seller', action: 'cancel', limit: 10, used: 1 },
   ],
 };
@@ -102,13 +102,19 @@ describe('summarizePayApi', () => {
   });
 });
 
-describe('formatReset / levelText', () => {
-  it('speaks seconds, minutes and hours; nothing when there is no wait', () => {
-    expect(formatReset(41)).toBe('reinicia em 41 s');
-    expect(formatReset(300)).toBe('reinicia em 5 min');
-    expect(formatReset(7200)).toBe('reinicia em 2 h');
-    expect(formatReset(0)).toBeNull();
-    expect(formatReset(null)).toBeNull();
+describe('nextSlotNote / levelText', () => {
+  it('speaks seconds, minutes and hours of the one slot a full bucket frees', () => {
+    const full = (nextSlotInSeconds: number | null) => nextSlotNote({ level: 'full', nextSlotInSeconds });
+    expect(full(41)).toBe('libera 1 em 41 s');
+    expect(full(300)).toBe('libera 1 em 5 min');
+    expect(full(7200)).toBe('libera 1 em 2 h');
+    expect(full(0)).toBeNull();
+    expect(full(null)).toBeNull();
+  });
+
+  it('says nothing while the bucket has room', () => {
+    expect(nextSlotNote({ level: 'ok', nextSlotInSeconds: 41 })).toBeNull();
+    expect(nextSlotNote({ level: 'high', nextSlotInSeconds: 12 })).toBeNull();
   });
 
   it('words the level', () => {
