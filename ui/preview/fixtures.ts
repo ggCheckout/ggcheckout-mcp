@@ -481,10 +481,14 @@ const trackingPayment: TrackingPayment = {
   id: 'pay_preview', status: 'paid', createdAt: at('2026-11-09T15:30:00Z'), funnelId: null, utms: {},
   clickIds: { fbc: true, fbp: true, ttclid: false, ttp: true },
   dispatch: {
-    facebook: { ok: true, sent: 1, failed: 0, total: 1, event: 'Purchase', time: at('2026-11-09T15:31:00Z'), details: [] },
+    facebook: { ok: true, sent: 1, failed: 0, skipped: null, total: 1, event: 'Purchase', time: at('2026-11-09T15:31:00Z'), details: [] },
     tiktok: {
-      ok: false, sent: 0, failed: 1, total: 1, event: 'Purchase', time: at('2026-11-09T15:31:00Z'),
-      details: [{ title: 'Pixel TikTok Aurora', code: 'tiktok_ads', ok: false, error: 'Access token expired' }],
+      ok: false, sent: 0, failed: 1, skipped: null, total: 1, event: 'Purchase', time: at('2026-11-09T15:31:00Z'),
+      details: [{ title: 'Pixel TikTok Aurora', code: 'tiktok_ads', ok: false, skipped: null, error: 'Access token expired' }],
+    },
+    google: {
+      ok: false, sent: 0, failed: 0, skipped: 1, total: 1, event: 'purchase', time: at('2026-11-09T15:31:00Z'),
+      details: [{ title: 'Conversão Aurora', code: 'AW-1...9012', ok: false, skipped: true, error: 'Venda sem click id' }],
     },
   },
   dispatchAt: at('2026-11-09T15:31:00Z'), dispatchSuccess: false,

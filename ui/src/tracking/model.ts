@@ -65,7 +65,25 @@ export interface PaymentModel {
   createdAt: string;
   utms: Array<[string, string]>;
   clickIds: Array<{ label: string; present: boolean }>;
-  dispatch: Array<{ channelLabel: string; ok: boolean | null; event: string | null; failed: number | null; total: number | null }>;
+  dispatch: DispatchModel[];
+}
+
+/** `skipped`: every send of the channel was skipped (Google sale without a click id), not a failure. */
+export type DispatchState = 'sent' | 'failed' | 'skipped' | 'unknown';
+
+export interface DispatchModel {
+  channelLabel: string;
+  state: DispatchState;
+  event: string | null;
+  failed: number | null;
+  total: number | null;
+}
+
+/** Same rule as `diagnose.ts`: `ok: false` with no failed send and some skipped is not a failure. */
+function dispatchState(ok: unknown, failed: number | null, skipped: number | null): DispatchState {
+  if (ok === true) return 'sent';
+  if (ok !== false) return 'unknown';
+  return failed === 0 && (skipped ?? 0) > 0 ? 'skipped' : 'failed';
 }
 
 export interface ErrorsModel {
@@ -152,7 +170,7 @@ function toPayment(raw: Payload): PaymentModel {
       .map(([key, label]) => ({ label, present: click[key] === true })),
     dispatch: Object.entries(dispatch).filter(([, v]) => isPayload(v)).map(([channel, v]) => ({
       channelLabel: CHANNEL_LABEL[channel] ?? channel,
-      ok: typeof v.ok === 'boolean' ? v.ok : null,
+      state: dispatchState(v.ok, finite(v.failed), finite(v.skipped)),
       event: text(v.event),
       failed: finite(v.failed),
       total: finite(v.total),

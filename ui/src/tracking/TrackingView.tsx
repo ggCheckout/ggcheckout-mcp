@@ -7,7 +7,7 @@ import { ViewHeader } from '../dashboard/parts';
 import { Field } from '../lib/Field';
 import {
   countsLabel, summarizeDiagnosis, summarizeGuide,
-  type DiagnosisModel, type ErrorsModel, type FindingModel, type GuideModel, type PaymentModel, type Severity, type TokenModel,
+  type DiagnosisModel, type DispatchState, type ErrorsModel, type FindingModel, type GuideModel, type PaymentModel, type Severity, type TokenModel,
 } from './model';
 
 const SEVERITY_ICON: Record<Severity, LucideIcon> = {
@@ -15,6 +15,13 @@ const SEVERITY_ICON: Record<Severity, LucideIcon> = {
   warning: TriangleAlert,
   info: Info,
   ok: CircleCheck,
+};
+
+const DISPATCH_BADGE: Record<DispatchState, { severity: Severity; label: string }> = {
+  sent: { severity: 'ok', label: 'Enviado' },
+  failed: { severity: 'critical', label: 'Falhou' },
+  skipped: { severity: 'info', label: 'Sem click id' },
+  unknown: { severity: 'info', label: 'Sem resultado' },
 };
 
 /** Icon and word together: the tone is never the only signal. */
@@ -159,8 +166,8 @@ function Payment({ payment }: { payment: PaymentModel }) {
           <ul className="trk-dispatch">
             {payment.dispatch.map((d) => (
               <li key={d.channelLabel}>
-                <SeverityBadge severity={d.ok === false ? 'critical' : d.ok ? 'ok' : 'info'} label={d.ok === false ? 'Falhou' : d.ok ? 'Enviado' : 'Sem resultado'} />
-                <span>{`${d.channelLabel}${d.event ? `, ${d.event}` : ''}${d.ok === false && d.total ? ` (${d.failed ?? '?'} de ${d.total})` : ''}`}</span>
+                <SeverityBadge severity={DISPATCH_BADGE[d.state].severity} label={DISPATCH_BADGE[d.state].label} />
+                <span>{`${d.channelLabel}${d.event ? `, ${d.event}` : ''}${d.state === 'failed' && d.total ? ` (${d.failed ?? '?'} de ${d.total})` : ''}`}</span>
               </li>
             ))}
           </ul>

@@ -79,7 +79,16 @@ describe('summarizeDiagnosis', () => {
   it('reads the payment attribution and dispatch', () => {
     expect(model.payment!.utms).toEqual([['utm_source', 'facebook']]);
     expect(model.payment!.clickIds.find((c) => c.label.startsWith('fbc'))!.present).toBe(true);
-    expect(model.payment!.dispatch[0]).toMatchObject({ channelLabel: 'Meta', ok: false, event: 'Purchase' });
+    expect(model.payment!.dispatch[0]).toMatchObject({ channelLabel: 'Meta', state: 'failed', event: 'Purchase' });
+  });
+
+  it('reads a channel whose sends were all skipped (no click id) as skipped, not failed', () => {
+    const google = (failed: number) => summarizeDiagnosis({
+      ...diagnosis,
+      payment: { ...diagnosis.payment, dispatch: { google: { ok: false, event: 'purchase', failed, skipped: 1, total: 2, details: [] } } },
+    })!.payment!.dispatch[0];
+    expect(google(0)).toMatchObject({ channelLabel: 'Google Ads', state: 'skipped' });
+    expect(google(1)).toMatchObject({ channelLabel: 'Google Ads', state: 'failed' });
   });
 
   it('reads the errors per channel, with an unavailable one', () => {
