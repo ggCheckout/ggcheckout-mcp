@@ -1,0 +1,48 @@
+/* The rewards trail (saas components/roadmap: ProgressHeader and RewardsTrail). */
+.dashboard.rewards { display: flex; flex-direction: column; gap: 12px; }
+.dashboard .rw-head, .dashboard .rw-trail { border-radius: 12px; padding: 20px; }
+.dashboard .rw-head-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+.dashboard .rw-total { margin: 6px 0 0; font-size: 2.5rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+.dashboard .rw-currency { margin-right: 4px; font-size: 1rem; font-weight: 600; color: var(--d-muted); }
+.dashboard .rw-head-side { text-align: right; font-size: 13px; }
+.dashboard .rw-head-side p { margin: 0; }
+.dashboard .rw-bar { height: 8px; margin-top: 16px; border-radius: 999px; overflow: hidden; background: var(--d-muted-bg); }
+.dashboard .rw-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #0e51f2, #a8c4ff); }
+.dashboard .rw-way { margin: 8px 0 0; font-size: 13px; color: var(--d-muted); }
+.dashboard .rw-way strong { color: var(--d-fg); }
+.dashboard .rw-trail .card-sub { margin-top: 6px; }
+.dashboard .rw-stops { position: relative; margin: 16px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.dashboard .rw-stop { position: relative; display: grid; grid-template-columns: 22px 64px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; border: 1px solid var(--d-row-border); background: var(--d-row); }
+.dashboard .rw-stop[data-state='current'] { border-color: var(--season-blue); box-shadow: 0 0 0 1px var(--season-blue) inset; }
+.dashboard .rw-stop[data-state='locked'] { opacity: 0.8; }
+.dashboard .rw-node { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; border: 2px solid var(--d-line); color: var(--d-muted); }
+.dashboard .rw-stop[data-state='unlocked'] .rw-node { border-color: var(--season-blue); color: var(--season-blue); }
+.dashboard .rw-stop[data-state='current'] .rw-node { border-color: var(--season-blue); background: var(--season-blue); }
+:root[data-theme='dark'] .dashboard .rw-stop[data-state='unlocked'] .rw-node { color: #a8c4ff; border-color: #a8c4ff; }
+.dashboard .rw-art { position: relative; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: var(--d-card); }
+.dashboard .rw-art img { width: 100%; height: 100%; object-fit: contain; }
+.dashboard .rw-stop[data-state='locked'] .rw-art img { filter: grayscale(1); opacity: 0.55; }
+.dashboard .rw-art-lock { position: absolute; color: var(--d-fg); }
+.dashboard .rw-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dashboard .rw-title-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.dashboard .rw-title { font-size: 15px; font-weight: 700; }
+.dashboard .rw-here { padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: #ffffff; background: var(--season-blue); }
+.dashboard .rw-target { font-size: 12px; color: var(--d-accent); font-weight: 600; }
+.dashboard .rw-desc { margin: 0; font-size: 12px; color: var(--d-muted); }
+.dashboard .rw-hint { font-size: 12px; color: var(--d-fg); }
+.dashboard .rw-redeem { align-self: flex-start; min-height: 36px; margin-top: 6px; padding: 0 18px; font-size: 13px; }
+.dashboard .rw-link { align-self: flex-start; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--d-accent); }
+.dashboard .rw-error { margin: 4px 0 0; font-size: 12px; color: var(--danger); }
+.dashboard .rw-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.dashboard .rw-done { font-size: 12px; font-weight: 700; color: var(--d-accent); }
+.dashboard .rw-missing-label { font-size: 11px; color: var(--d-muted); }
+.dashboard .rw-missing { font-size: 14px; font-weight: 700; }
+.dashboard .rw-stop[data-state='locked'] .rw-missing { color: var(--d-muted); }
+.dashboard .rw-mini { display: block; width: 72px; height: 4px; border-radius: 999px; overflow: hidden; background: var(--d-muted-bg); }
+.dashboard .rw-mini span { display: block; height: 100%; background: var(--season-blue); }
+.dashboard .rw-foot { margin: 14px 0 0; font-size: 12px; color: var(--d-muted); }
+@media (max-width: 460px) {
+  .dashboard .rw-stop { grid-template-columns: 22px 48px minmax(0, 1fr); }
+  .dashboard .rw-art { width: 48px; height: 48px; }
+  .dashboard .rw-side { grid-column: 3; align-items: flex-start; text-align: left; }
+}

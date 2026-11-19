@@ -1,0 +1,27 @@
+/* The post-purchase map: checkout, upsells, downsells and success, in funnel order. */
+.dashboard .of-map { border-radius: 12px; padding: 20px; }
+.dashboard .of-map .card-sub { margin-top: 6px; }
+.dashboard .of-flow { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; align-items: stretch; }
+.dashboard .of-map > .of-flow { margin-top: 16px; }
+.dashboard .of-group { display: contents; }
+.dashboard .of-step { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--d-line); }
+.dashboard .of-step-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: var(--d-accent); background: color-mix(in srgb, var(--season-blue) 12%, transparent); }
+.dashboard .of-step-title { display: block; font-size: 14px; font-weight: 700; }
+.dashboard .of-step-sub { display: block; font-size: 12px; color: var(--d-muted); }
+.dashboard .of-arrow { display: flex; align-items: center; gap: 6px; padding: 6px 0 6px 18px; font-size: 12px; color: var(--d-muted); }
+.dashboard .of-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--d-row-border); background: var(--d-row); border-left: 3px solid var(--d-line); }
+.dashboard .of-card[data-kind='upsell'][data-active] { border-left-color: var(--season-blue); }
+.dashboard .of-card[data-kind='downsell'][data-active] { border-left-color: #f59e0b; }
+.dashboard .of-card:not([data-active]) { opacity: 0.6; }
+.dashboard .of-card-top { display: flex; justify-content: space-between; gap: 8px; }
+.dashboard .of-ordinal { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--d-muted); }
+.dashboard .of-status { font-size: 11px; color: var(--d-muted); }
+.dashboard .of-status[data-on] { color: #059669; font-weight: 600; }
+.dashboard .of-title { font-size: 15px; font-weight: 700; }
+.dashboard .of-headline { font-size: 12px; color: var(--d-muted); }
+.dashboard .of-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+.dashboard .of-price { display: inline-flex; gap: 6px; font-size: 14px; font-weight: 700; color: var(--d-accent); }
+.dashboard .of-price s { font-weight: 500; color: var(--d-muted); }
+.dashboard .of-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11px; color: var(--d-muted); background: var(--d-muted-bg); }
+.dashboard .of-empty { padding: 12px 0 12px 18px; font-size: 13px; color: var(--d-muted); }
+.dashboard .of-warn, .dashboard .of-note { margin: 8px 0; padding: 8px 12px; border-radius: 8px; font-size: 12px; list-style: none; border: 1px solid rgb(245 158 11 / 0.35); background: rgb(245 158 11 / 0.08); }

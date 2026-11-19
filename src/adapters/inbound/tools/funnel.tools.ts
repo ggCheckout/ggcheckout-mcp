@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { FunnelService } from '../../../core/services/funnel.service.js';
 import type { UpdateFunnelInput } from '../../../core/types/funnel.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 const slugSchema = z
   .string()
@@ -239,27 +240,33 @@ export function registerFunnelTools(server: McpServer, service: FunnelService) {
   server.registerTool(
     'get_funnel_lead_analytics',
     {
-      description: 'Get funnel analytics: per-step visitors, exits, drop-off rate, and overall conversion',
+      description:
+        'Get the funnel drop-off report: per step (with its title) visitors, exits and drop-off rate, '
+        + 'total visitors, completions and overall conversion. Rates are integer percent points (33 = 33%).',
       inputSchema: {
         funnelId: z.string().describe('Funnel ID'),
       },
+      _meta: appMeta(),
     },
-    createToolHandler('get_funnel_lead_analytics', async ({ funnelId }) => {
+    withDrawnNote(server, createToolHandler('get_funnel_lead_analytics', async ({ funnelId }) => {
       return service.getLeadAnalytics(funnelId);
-    }),
+    })),
   );
 
   server.registerTool(
     'get_funnel_lead_stats',
     {
-      description: 'Get funnel lead statistics: visitors, leads, qualified, completed, interaction rate',
+      description:
+        'Get funnel lead statistics: visitors, leads, qualified, completed, and the interaction rate '
+        + '(integer percent points).',
       inputSchema: {
         funnelId: z.string().describe('Funnel ID'),
       },
+      _meta: appMeta(),
     },
-    createToolHandler('get_funnel_lead_stats', async ({ funnelId }) => {
+    withDrawnNote(server, createToolHandler('get_funnel_lead_stats', async ({ funnelId }) => {
       const stats = await service.getLeadStats(funnelId);
       return { stats };
-    }),
+    })),
   );
 }

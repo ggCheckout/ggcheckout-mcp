@@ -1,0 +1,58 @@
+/* The members area content screen (saas members-area/owner/ModulesTab): carousels, their modules and
+   the lessons, as nested rows with the release on the right. */
+.dashboard.members { display: flex; flex-direction: column; gap: 12px; }
+.dashboard .mb-card { border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+.dashboard .mb-area { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--d-line); }
+.dashboard .mb-area-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: var(--d-accent); background: color-mix(in srgb, var(--season-blue) 12%, transparent); }
+.dashboard .mb-area-main { flex: 1; min-width: 180px; }
+.dashboard .mb-area-name { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dashboard .mb-area-name h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.dashboard .mb-stats { display: flex; gap: 8px; margin: 0; }
+.dashboard .mb-stats > div { min-width: 84px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--d-row-border); background: var(--d-row); }
+.dashboard .mb-stats dt { font-size: 11px; color: var(--d-muted); }
+.dashboard .mb-stats dd { margin: 2px 0 0; font-size: 18px; font-weight: 700; color: var(--d-accent); }
+
+.dashboard .mb-head .card-sub { margin-top: 4px; }
+.dashboard .mb-content { display: flex; flex-direction: column; gap: 14px; }
+.dashboard .mb-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.dashboard .mb-node { display: flex; flex-direction: column; gap: 8px; }
+/* The sublevel hangs from its parent with a guide line, as MembersSublevel. */
+.dashboard .mb-sub { margin-left: 15px; padding-left: 14px; border-left: 2px solid var(--d-line); }
+
+.dashboard .mb-row { display: flex; width: 100%; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--d-row-border); background: var(--d-row); color: var(--d-fg); text-align: left; font: inherit; }
+.dashboard button.mb-row { cursor: pointer; transition: border-color 150ms ease, background-color 150ms ease; }
+.dashboard button.mb-row:hover { border-color: var(--season-blue); }
+.dashboard button.mb-row:focus-visible { outline: 2px solid var(--season-blue); outline-offset: 2px; }
+.dashboard .mb-row[data-level='carousel'] { padding: 14px 16px; border-left: 3px solid var(--season-blue); }
+.dashboard .mb-row[data-level='lesson'] { padding: 10px 12px; }
+.dashboard .mb-icon { flex: 0 0 auto; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: var(--d-accent); background: color-mix(in srgb, var(--season-blue) 10%, transparent); }
+.dashboard .mb-row[data-level='lesson'] .mb-icon { width: 26px; height: 26px; color: var(--d-muted); background: var(--d-muted-bg); }
+.dashboard .mb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dashboard .mb-title { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.dashboard .mb-row[data-level='carousel'] .mb-title { font-size: 15px; font-weight: 700; }
+.dashboard .mb-secondary { font-size: 12px; color: var(--d-muted); }
+.dashboard .mb-side { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.dashboard .mb-meta { font-size: 12px; color: var(--d-muted); }
+.dashboard .mb-chevron { flex: 0 0 auto; color: var(--d-muted); transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1); }
+.dashboard .mb-chevron[data-open] { transform: rotate(180deg); }
+
+.dashboard .mb-status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; white-space: nowrap; color: #047857; background: rgb(16 185 129 / 0.1); }
+.dashboard .mb-status[data-locked] { color: #92400e; background: rgb(245 158 11 / 0.12); }
+:root[data-theme='dark'] .dashboard .mb-status { color: #6ee7b7; }
+:root[data-theme='dark'] .dashboard .mb-status[data-locked] { color: #fcd34d; }
+
+.dashboard .mb-loading { height: 52px; border-radius: 10px; }
+.dashboard .mb-empty { margin: 0; padding: 10px 2px; font-size: 13px; color: var(--d-muted); }
+.dashboard .mb-empty-block { padding: 24px 0; text-align: center; }
+.dashboard .mb-empty-title { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.dashboard .mb-failed { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 12px; border: 1px solid rgb(220 38 38 / 0.3); background: rgb(220 38 38 / 0.08); }
+.dashboard .mb-failed button { border: 0; padding: 0; background: none; cursor: pointer; font: inherit; font-weight: 600; color: var(--d-accent); text-decoration: underline; }
+
+@media (max-width: 520px) {
+  .dashboard .mb-stats { width: 100%; }
+  .dashboard .mb-stats > div { flex: 1; min-width: 0; }
+  .dashboard .mb-row { flex-wrap: wrap; }
+  .dashboard .mb-side { flex-direction: row; align-items: center; width: 100%; padding-left: 42px; }
+}
+@media (prefers-reduced-motion: reduce) { .dashboard .mb-chevron { transition: none; } }

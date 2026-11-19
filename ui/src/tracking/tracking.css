@@ -1,0 +1,73 @@
+/* The tracking view (explain_tracking guide and diagnose_tracking findings), on the shared
+   dashboard tokens of styles/dashboard.css. Status is icon plus word; the tint only reinforces it. */
+.dashboard.tracking { display: flex; flex-direction: column; gap: 12px; }
+.dashboard .trk-card { border-radius: 12px; padding: 18px 20px; }
+.dashboard .trk-h2 { margin: 0 0 8px; font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+.dashboard .trk-h3 { margin: 16px 0 8px; font-size: 13px; font-weight: 600; }
+.dashboard .trk-summary { margin: 0 0 12px; font-size: 13px; color: var(--d-muted); }
+.dashboard .trk-scope { margin: -4px 0 0; font-size: 13px; color: var(--d-muted); }
+.dashboard .trk-counts { margin: 0 0 12px; font-size: 14px; font-weight: 600; }
+.dashboard .trk-empty { margin: 0; font-size: 13px; color: var(--d-muted); }
+.dashboard .trk-label { margin: 10px 0 4px; font-size: 12px; font-weight: 600; color: var(--d-muted); }
+.dashboard .trk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Expandable rows: native <details>, the chevron turns when open. */
+.dashboard .trk-list, .dashboard .trk-findings { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.dashboard .trk-item, .dashboard .trk-finding { border-radius: 8px; border: 1px solid var(--d-row-border); background: var(--d-row); }
+.dashboard .trk-item summary, .dashboard .trk-finding summary {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; list-style: none;
+  font-size: 14px; font-weight: 600; border-radius: 8px;
+}
+.dashboard .trk-item summary::-webkit-details-marker, .dashboard .trk-finding summary::-webkit-details-marker { display: none; }
+.dashboard .trk-item summary > span:first-child, .dashboard .trk-finding-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.dashboard .trk-item summary svg:last-child, .dashboard .trk-finding summary svg:last-child { flex: 0 0 auto; color: var(--d-muted); transition: transform 150ms ease; }
+.dashboard details[open] > summary > svg:last-child { transform: rotate(180deg); }
+.dashboard .trk-item summary:hover, .dashboard .trk-finding summary:hover { background: color-mix(in srgb, var(--season-blue) 6%, transparent); }
+.dashboard .trk-item summary:focus-visible, .dashboard .trk-finding summary:focus-visible { outline: 2px solid var(--d-accent); outline-offset: -2px; }
+.dashboard .trk-item > p, .dashboard .trk-problem, .dashboard .trk-detail, .dashboard .trk-fix { margin: 0; padding: 0 14px 14px; font-size: 13px; line-height: 1.5; }
+.dashboard .trk-problem ul { margin: 0; padding-left: 18px; }
+.dashboard .trk-problem li + li { margin-top: 2px; }
+.dashboard .trk-detail { overflow-wrap: anywhere; }
+.dashboard .trk-fix { padding-top: 0; }
+.dashboard .trk-fix .trk-label { margin-top: 0; }
+.dashboard .trk-fix-text { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+
+/* The state edge of a finding, like the dashboard rows. */
+.dashboard .trk-finding { --accent: var(--d-line); position: relative; overflow: hidden; }
+.dashboard .trk-finding::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--accent); }
+.dashboard .trk-finding[data-tone='critical'] { --accent: #ef4444; }
+.dashboard .trk-finding[data-tone='warning'] { --accent: #f59e0b; }
+.dashboard .trk-finding[data-tone='ok'] { --accent: #10b981; }
+.dashboard .trk-finding[data-tone='info'] { --accent: #3b82f6; }
+
+.dashboard .trk-badge { --tint: var(--d-muted-bg); --ink: var(--d-muted); display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--tint); color: var(--ink); white-space: nowrap; }
+.dashboard .trk-badge[data-tone='ok'] { --tint: rgb(16 185 129 / 0.1); --ink: #047857; }
+.dashboard .trk-badge[data-tone='warning'] { --tint: rgb(245 158 11 / 0.1); --ink: #92400e; }
+.dashboard .trk-badge[data-tone='critical'] { --tint: rgb(239 68 68 / 0.1); --ink: #b91c1c; }
+.dashboard .trk-badge[data-tone='info'] { --tint: rgb(59 130 246 / 0.1); --ink: #1d4ed8; }
+:root[data-theme='dark'] .dashboard .trk-badge[data-tone='ok'] { --ink: #6ee7b7; }
+:root[data-theme='dark'] .dashboard .trk-badge[data-tone='warning'] { --ink: #fcd34d; }
+:root[data-theme='dark'] .dashboard .trk-badge[data-tone='critical'] { --ink: #fca5a5; }
+:root[data-theme='dark'] .dashboard .trk-badge[data-tone='info'] { --ink: #a8c4ff; }
+
+/* Tables scroll inside their card on a narrow screen. */
+.dashboard .trk-table-wrap { overflow-x: auto; }
+.dashboard .trk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dashboard .trk-table th, .dashboard .trk-table td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--d-line); }
+.dashboard .trk-table thead th { font-size: 12px; font-weight: 600; color: var(--d-muted); white-space: nowrap; }
+.dashboard .trk-table tbody th { font-weight: 600; }
+.dashboard .trk-note { display: block; margin-top: 4px; font-size: 12px; color: var(--d-muted); overflow-wrap: anywhere; }
+.dashboard .trk-table .mono { overflow-wrap: anywhere; }
+
+.dashboard .trk-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 0; }
+.dashboard .trk-facts .field dt { font-size: 12px; color: var(--d-muted); }
+.dashboard .trk-facts .field dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.dashboard .trk-chips, .dashboard .trk-dispatch, .dashboard .trk-errors { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.dashboard .trk-chip { padding: 3px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--d-line); color: var(--d-muted); }
+.dashboard .trk-chip[data-present='true'] { color: var(--d-fg); background: var(--d-muted-bg); }
+.dashboard .trk-dispatch, .dashboard .trk-errors { flex-direction: column; align-items: stretch; }
+.dashboard .trk-dispatch li, .dashboard .trk-errors li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard .trk-item summary svg:last-child, .dashboard .trk-finding summary svg:last-child { transition: none; }
+}

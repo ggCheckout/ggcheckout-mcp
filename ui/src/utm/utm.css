@@ -1,0 +1,37 @@
+/* The UTM link card: the text to paste, the clean destination, the steps, the params table and the
+   notes, on the shared dashboard tokens of styles/dashboard.css. Secondary text mixes the foreground
+   into the card so it keeps AA contrast in both themes (the muted token is a hair under 4.5:1). */
+.dashboard.utm { --utm-sub: color-mix(in srgb, var(--d-fg) 75%, var(--d-card)); display: flex; flex-direction: column; gap: 12px; }
+.dashboard .utm-card { border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.dashboard .utm-h { margin: 0; font-size: 15px; font-weight: 600; }
+.dashboard .utm-platform { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--d-fg); background: var(--d-muted-bg); white-space: nowrap; }
+
+.dashboard .utm-code { align-self: stretch; margin: 0; padding: 12px 14px; border-radius: 8px; color: var(--d-fg); background: var(--d-muted-bg); overflow-wrap: anywhere; word-break: break-word; user-select: all; }
+
+.dashboard .utm-copy-wrap { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.dashboard .utm-copy { display: inline-flex; align-items: center; gap: 8px; }
+.dashboard .utm-copy-quiet { padding: 8px 12px; border: 1px solid var(--d-line); border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--d-fg); background: var(--d-row); transition: background-color 150ms ease; }
+.dashboard .utm-copy-quiet:hover { background: color-mix(in srgb, var(--season-blue) 10%, var(--d-row)); }
+.dashboard .utm-copy:focus-visible { outline: 2px solid var(--d-accent); outline-offset: 2px; }
+
+.dashboard .utm-fields { align-self: stretch; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.dashboard .utm-fields .field { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 13px; }
+.dashboard .utm-fields dt { color: var(--utm-sub); }
+.dashboard .utm-fields dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+.dashboard .utm-steps { align-self: stretch; margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.45; }
+
+.dashboard .utm-table-wrap { align-self: stretch; overflow-x: auto; }
+.dashboard .utm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dashboard .utm-table th, .dashboard .utm-table td { padding: 8px 10px 8px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--d-line); overflow-wrap: anywhere; }
+.dashboard .utm-table thead th { font-size: 12px; font-weight: 600; color: var(--utm-sub); }
+.dashboard .utm-table tbody th { font-weight: 500; white-space: nowrap; }
+.dashboard .utm-table tbody tr:last-child th, .dashboard .utm-table tbody tr:last-child td { border-bottom: 0; }
+
+.dashboard .utm-notes { padding: 12px 14px; border-radius: 8px; border: 1px solid rgb(245 158 11 / 0.35); background: rgb(245 158 11 / 0.08); font-size: 13px; color: var(--d-fg); }
+.dashboard .utm-notes-title { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+.dashboard .utm-notes ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+
+@media (max-width: 480px) {
+  .dashboard .utm-fields .field { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}

@@ -15,6 +15,20 @@ describe('FunnelApiAdapter', () => {
     adapter = new FunnelApiAdapter(http);
   });
 
+  it('getById attaches the publicUrl of the envelope, only when it is a string', async () => {
+    vi.mocked(http.get).mockResolvedValue({ funnel: { id: 'f1', slug: 'q' }, publicUrl: 'https://ggcheckout.app/quiz/q' });
+    expect(await adapter.getById('f1')).toMatchObject({ id: 'f1', publicUrl: 'https://ggcheckout.app/quiz/q' });
+    vi.mocked(http.get).mockResolvedValue({ funnel: { id: 'f1', slug: 'q' } });
+    expect(await adapter.getById('f1')).not.toHaveProperty('publicUrl');
+    vi.mocked(http.get).mockResolvedValue({ funnel: { id: 'f1' }, publicUrl: 42 });
+    expect(await adapter.getById('f1')).not.toHaveProperty('publicUrl');
+  });
+
+  it('getRawForMerge never carries the publicUrl, so it cannot reach an update', async () => {
+    vi.mocked(http.get).mockResolvedValue({ funnel: { id: 'f1' }, publicUrl: 'https://ggcheckout.app/quiz/q' });
+    expect(await adapter.getRawForMerge('f1')).toEqual({ id: 'f1' });
+  });
+
   it('list extracts funnels from response wrapper', async () => {
     vi.mocked(http.get).mockResolvedValue({ funnels: [{ id: 'f1' }] });
     const result = await adapter.list();

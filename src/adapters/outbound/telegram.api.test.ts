@@ -89,9 +89,9 @@ describe('TelegramApiAdapter', () => {
     expect(http.get).toHaveBeenCalledWith('/api/telegram/flows?botId=b1');
   });
 
-  it('getFlow GETs /api/telegram/flows/{id}', async () => {
-    vi.mocked(http.get).mockResolvedValue({ id: 'f1', name: 'Flow', nodes: [] });
-    await adapter.getFlow('f1');
+  it('getFlow GETs /api/telegram/flows/{id} and unwraps { flow }', async () => {
+    vi.mocked(http.get).mockResolvedValue({ flow: { id: 'f1', name: 'Flow', nodes: [] } });
+    expect(await adapter.getFlow('f1')).toMatchObject({ id: 'f1', name: 'Flow' });
     expect(http.get).toHaveBeenCalledWith('/api/telegram/flows/f1');
   });
 

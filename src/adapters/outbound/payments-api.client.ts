@@ -24,6 +24,15 @@ export interface ListPaymentIntentsInput {
   external_reference?: string;
   starting_after?: string;
   limit?: number;
+  /** Unix seconds: only intents created at or after it. */
+  created_gte?: number;
+}
+
+/** What `getLimits` answers while the core has no `GET /v1/limits` (404): a result, not an error. */
+export interface LimitsUnavailable {
+  object: 'limits_unavailable';
+  available: false;
+  message: string;
 }
 
 // The reference is unique per seller across test and live, while list_payment_intents shows only the key's mode
@@ -57,6 +66,25 @@ export class PaymentsApiClient {
 
   listWallets() {
     return this.request('GET', '/wallets');
+  }
+
+  /**
+   * Requests-per-minute buckets of the key in use and its maximum per charge. A 404 means the core has
+   * no such route yet, which is a state to report, not a failure.
+   */
+  async getLimits(): Promise<Record<string, any> | LimitsUnavailable> {
+    try {
+      return await this.request('GET', '/limits');
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 404) {
+        return {
+          object: 'limits_unavailable',
+          available: false,
+          message: 'The payments API does not expose GET /v1/limits yet. Rate limits cannot be read from here; do not treat this as an error.',
+        };
+      }
+      throw err;
+    }
   }
 
   /** `idempotencyKey` is only passed to repeat a call that may have landed; each call gets a fresh one otherwise. */

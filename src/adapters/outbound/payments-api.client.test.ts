@@ -58,6 +58,22 @@ describe('PaymentsApiClient', () => {
     expect(String(f.mock.calls[0][0])).toBe('https://api.test/v1/payment_intents?status=succeeded&starting_after=c1&limit=5');
   });
 
+  it('reads the limits, and turns a 404 into a typed not-available result', async () => {
+    const ok = reply(200, { object: 'limits', buckets: [] });
+    expect(await client(ok).getLimits()).toEqual({ object: 'limits', buckets: [] });
+    expect(String(ok.mock.calls[0][0])).toBe('https://api.test/v1/limits');
+    const missing = reply(404, { error: { type: 'invalid_request_error', code: 'not_found', message: 'no route' } });
+    expect(await client(missing).getLimits()).toMatchObject({ object: 'limits_unavailable', available: false });
+    await expect(client(reply(401, { error: { type: 'authentication_error', code: 'invalid_key', message: 'no' } })).getLimits())
+      .rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('passes created_gte when listing intents', async () => {
+    const f = reply(200, { object: 'list', data: [] });
+    await client(f).listPaymentIntents({ created_gte: 1760000000, status: 'succeeded' });
+    expect(new URL(String(f.mock.calls[0][0])).searchParams.get('created_gte')).toBe('1760000000');
+  });
+
   it('gets and cancels by id', async () => {
     const f = reply(200, {});
     await client(f).getPaymentIntent('pi_1');

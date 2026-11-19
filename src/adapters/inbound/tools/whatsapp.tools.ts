@@ -1,59 +1,139 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { WhatsAppService } from '../../../core/services/whatsapp.service.js';
+import { PAYMENT_EVENT_TYPES } from '../../../core/types/whatsapp.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 
+const IN_DASHBOARD = 'Creating or deleting it is refused to API keys by design (403): that happens in the dashboard.';
+
+const sessionIds = z.array(z.string()).max(50)
+  .describe('Sessions (ids from list_whatsapp_sessions) the template sends for. Empty leaves it unlinked: it never fires');
+const templateFields = {
+  attachedProducts: z.array(z.string()).max(100).optional().describe('Only for these product IDs; absent means every product of the sessions'),
+  customFileUrl: z.string().url().optional().describe('Custom file URL (for text_with_file)'),
+  customImageUrl: z.string().url().optional().describe('Custom image URL (for text_with_image)'),
+  delayMinutes: z.number().min(0).max(525600).optional().describe('Delay in minutes before sending'),
+  allowedHoursStart: z.number().int().min(0).max(23).optional().describe('Sending window start, Brasília hour (0-23)'),
+  allowedHoursEnd: z.number().int().min(0).max(23).optional().describe('Sending window end, Brasília hour (0-23)'),
+  sendToCustomer: z.boolean().optional().describe('Send to customer (default: true)'),
+  sendToAdmin: z.boolean().optional().describe('Also send to admin'),
+  adminPhone: z.string().max(20).optional().describe('Admin phone number'),
+  paymentMethods: z.array(z.enum(['pix', 'credit_card'])).max(2).optional().describe('Only for these payment methods; absent or empty means all'),
+};
+
+/**
+ * WhatsApp as the dashboard models it: chips are the connected numbers, and a session is a primary
+ * chip with up to two fallbacks that sends for a set of products. Templates belong to sessions.
+ */
 export function registerWhatsAppTools(server: McpServer, service: WhatsAppService) {
+  // --- Chips ---
+  server.registerTool('list_whatsapp_numbers', {
+    description: `List the WhatsApp chips (connected numbers): status (pending, qr_code, authenticated, disconnected, banned, error), provider (waha = QR code, meta = official API), isActive and how many sessions use each. ${IN_DASHBOARD}`,
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_whatsapp_numbers', async () => ({ numbers: await service.listNumbers() }))));
+
+  server.registerTool('get_whatsapp_number', {
+    description: 'Get a WhatsApp chip with its live status and the sessions that use it (usedBy, with its role: primary or fallback)',
+    inputSchema: { numberId: z.string().describe('Chip ID (from list_whatsapp_numbers)') },
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_whatsapp_number', async ({ numberId }) => ({ number: await service.getNumber(numberId) }))));
+
+  server.registerTool('update_whatsapp_number', {
+    description: 'Turn a WhatsApp chip on or off. An inactive chip does not send for any session',
+    inputSchema: {
+      numberId: z.string().describe('Chip ID'),
+      isActive: z.boolean().describe('true to send with it, false to pause it'),
+    },
+  }, createToolHandler('update_whatsapp_number', async ({ numberId, isActive }) => ({
+    success: true, number: await service.setNumberActive(numberId, isActive),
+  })));
+
+  server.registerTool('get_pairing_code', {
+    description:
+      'Get a code to connect a QR code chip (provider waha) without scanning: on the phone, WhatsApp > Linked devices > '
+      + 'Link a device > Link with phone number instead, then type the code. Then poll get_whatsapp_number until its '
+      + 'status is authenticated. Fails for a Meta chip or one already connected',
+    inputSchema: {
+      numberId: z.string().describe('Chip ID (from list_whatsapp_numbers)'),
+      phoneNumber: z.string().max(20).describe('The phone number of the WhatsApp to connect, with country and area code (e.g., "5511999999999")'),
+    },
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_pairing_code', async ({ numberId, phoneNumber }) => service.getPairingCode(numberId, phoneNumber))));
+
+  server.registerTool('restart_whatsapp_number', {
+    description: 'Restart a QR code chip (provider waha) that is stuck or disconnected: it goes back to pending and needs connecting again (get_pairing_code)',
+    inputSchema: { numberId: z.string().describe('Chip ID') },
+  }, createToolHandler('restart_whatsapp_number', async ({ numberId }) => service.restartNumber(numberId)));
+
+  server.registerTool('check_whatsapp_numbers', {
+    description:
+      'Check every chip against its live connection, as the dashboard\'s "Verificar status": a chip whose stored '
+      + 'status was wrong is corrected, and one the connection no longer knows is marked disconnected and inactive. '
+      + 'Answers a summary (total, connected, disconnected, divergent) and each chip\'s stored and real status',
+  }, createToolHandler('check_whatsapp_numbers', async () => service.checkNumbersHealth()));
+
   // --- Sessions ---
-  server.tool('list_whatsapp_sessions', 'List all WhatsApp sessions',
-    createToolHandler('list_whatsapp_sessions', async () => {
-      const sessions = await service.listSessions();
-      return { sessions };
-    }),
+  server.tool('list_whatsapp_sessions',
+    `List the WhatsApp sessions: each sends for its assignedProducts with its primary chip (primaryNumberId) and up to two fallbacks in order (fallbackNumberIds). ${IN_DASHBOARD}`,
+    createToolHandler('list_whatsapp_sessions', async () => ({ sessions: await service.listSessions() })),
   );
 
   server.registerTool('get_whatsapp_session', {
-    description: 'Get detailed status of a WhatsApp session',
-    inputSchema: { sessionId: z.string().describe('Session ID') },
-  }, createToolHandler('get_whatsapp_session', async ({ sessionId }) => {
-    const session = await service.getSession(sessionId);
-    return { session };
-  }));
+    description: 'Get a WhatsApp session: its chips (primary and fallbacks), products and whether it is active',
+    inputSchema: { sessionId: z.string().describe('Session ID (from list_whatsapp_sessions)') },
+  }, createToolHandler('get_whatsapp_session', async ({ sessionId }) => ({ session: await service.getSession(sessionId) })));
 
-  server.registerTool('create_whatsapp_session', {
+  server.registerTool('update_whatsapp_session', {
     description:
-      'Create a new WhatsApp session. NOT AVAILABLE TO API KEYS: the route classes this as sensitive '
-      + 'and answers 403 for any API key, by design. Create the session in the dashboard; every other '
-      + 'WhatsApp tool here (list, delete, pairing code, templates, send) does work with the API key.',
-    inputSchema: { sessionName: z.string().max(200).describe('Session name') },
-  }, createToolHandler('create_whatsapp_session', async ({ sessionName }) => {
-    const session = await service.createSession(sessionName);
-    return { success: true, session };
-  }));
-
-  server.registerTool('delete_whatsapp_session', {
-    description: 'Delete a WhatsApp session',
-    inputSchema: { sessionId: z.string().describe('Session ID') },
-  }, createToolHandler('delete_whatsapp_session', async ({ sessionId }) => {
-    await service.deleteSession(sessionId);
-    return { success: true, message: `Session ${sessionId} deleted` };
-  }));
-
-  server.registerTool('get_pairing_code', {
-    description: 'Get a pairing code to connect WhatsApp without QR code scanning',
+      'Rename, pause or resume a WhatsApp session, or set its chips. primaryNumberId and fallbackNumberIds go together: '
+      + 'send both to reorder or swap roles. A paused session sends with none of its chips',
     inputSchema: {
       sessionId: z.string().describe('Session ID'),
-      phoneNumber: z.string().max(20).describe('Phone number with country code (e.g., "5511999999999")'),
+      name: z.string().min(1).max(60).optional().describe('Session name'),
+      isActive: z.boolean().optional().describe('false pauses the session'),
+      primaryNumberId: z.string().optional().describe('Chip that sends first'),
+      fallbackNumberIds: z.array(z.string()).max(2).optional().describe('Up to two chips that take over, in order'),
     },
-  }, createToolHandler('get_pairing_code', async ({ sessionId, phoneNumber }) => {
-    return service.getPairingCode(sessionId, phoneNumber);
-  }));
+  }, createToolHandler('update_whatsapp_session', async ({ sessionId, ...update }) => ({
+    success: true, session: await service.updateSession(sessionId, update),
+  })));
+
+  server.registerTool('add_whatsapp_session_number', {
+    description: 'Add a chip to a WhatsApp session, as its last fallback (at most two fallbacks)',
+    inputSchema: {
+      sessionId: z.string().describe('Session ID'),
+      numberId: z.string().describe('Chip ID'),
+    },
+  }, createToolHandler('add_whatsapp_session_number', async ({ sessionId, numberId }) => ({
+    success: true, session: await service.addSessionNumber(sessionId, numberId),
+  })));
+
+  server.registerTool('remove_whatsapp_session_number', {
+    description: 'Remove a chip from a WhatsApp session. Removing the primary promotes the first fallback; the last chip cannot be removed',
+    inputSchema: {
+      sessionId: z.string().describe('Session ID'),
+      numberId: z.string().describe('Chip ID'),
+    },
+  }, createToolHandler('remove_whatsapp_session_number', async ({ sessionId, numberId }) => ({
+    success: true, session: await service.removeSessionNumber(sessionId, numberId),
+  })));
+
+  server.registerTool('set_whatsapp_session_products', {
+    description: 'Set the products a WhatsApp session sends for. Replaces the whole list: send every product to keep',
+    inputSchema: {
+      sessionId: z.string().describe('Session ID'),
+      productIds: z.array(z.string()).max(500).describe('Product IDs; an empty list leaves the session without products'),
+    },
+  }, createToolHandler('set_whatsapp_session_products', async ({ sessionId, productIds }) => ({
+    success: true, session: await service.setSessionProducts(sessionId, productIds),
+  })));
 
   // --- Templates ---
   server.registerTool('list_whatsapp_templates', {
-    description: 'List WhatsApp message templates, optionally filtered by session',
+    description: 'List WhatsApp message templates, optionally only those of one session',
     inputSchema: {
-      sessionId: z.string().optional().describe('Filter by session ID'),
+      sessionId: z.string().optional().describe('Session ID (from list_whatsapp_sessions)'),
     },
   }, createToolHandler('list_whatsapp_templates', async ({ sessionId }) => {
     const templates = await service.listTemplates(sessionId);
@@ -61,19 +141,13 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   }));
 
   server.registerTool('create_whatsapp_template', {
-    description: 'Create a WhatsApp message template for a specific event type',
+    description: 'Create a WhatsApp message template for a payment event, sent by the sessions it is linked to',
     inputSchema: {
-      sessionId: z.string().describe('Session ID'),
-      eventType: z.enum(['paid', 'product_delivery', 'pending', 'expired', 'cancelled', 'refunded', 'failed', 'recovery_pix_unpaid', 'recovery_pix_expired']).describe('Payment event that triggers this template'),
-      messageText: z.string().max(10000).describe('Message text (supports variables like {nome}, {produto}, {link})'),
+      sessionIds,
+      eventType: z.enum(PAYMENT_EVENT_TYPES).describe('Payment event that triggers this template'),
+      messageText: z.string().max(10000).describe('Message text (supports variables like {{nome}}, {{produto}}, {{valor}}, {{checkout_url}})'),
       sendType: z.enum(['text_only', 'text_with_file', 'text_with_image']).describe('Message format'),
-      attachedProducts: z.array(z.string()).max(100).optional().describe('Product IDs this template applies to'),
-      customFileUrl: z.string().url().optional().describe('Custom file URL (for text_with_file)'),
-      customImageUrl: z.string().url().optional().describe('Custom image URL (for text_with_image)'),
-      delayMinutes: z.number().min(0).max(525600).optional().describe('Delay in minutes before sending'),
-      sendToCustomer: z.boolean().optional().describe('Send to customer (default: true)'),
-      sendToAdmin: z.boolean().optional().describe('Also send to admin'),
-      adminPhone: z.string().max(20).optional().describe('Admin phone number'),
+      ...templateFields,
     },
   }, createToolHandler('create_whatsapp_template', async (args) => {
     const template = await service.createTemplate(args);
@@ -81,18 +155,13 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   }));
 
   server.registerTool('update_whatsapp_template', {
-    description: 'Update a WhatsApp message template. Only provide fields to change.',
+    description: 'Update a WhatsApp message template. Only provide fields to change; sessionIds replaces the linked sessions',
     inputSchema: {
       templateId: z.string().describe('Template ID'),
+      sessionIds: sessionIds.optional(),
       messageText: z.string().max(10000).optional().describe('Message text'),
       sendType: z.enum(['text_only', 'text_with_file', 'text_with_image']).optional().describe('Message format'),
-      attachedProducts: z.array(z.string()).max(100).optional().describe('Product IDs'),
-      customFileUrl: z.string().url().optional().describe('Custom file URL'),
-      customImageUrl: z.string().url().optional().describe('Custom image URL'),
-      delayMinutes: z.number().min(0).max(525600).optional().describe('Delay in minutes'),
-      sendToCustomer: z.boolean().optional().describe('Send to customer'),
-      sendToAdmin: z.boolean().optional().describe('Send to admin'),
-      adminPhone: z.string().max(20).optional().describe('Admin phone'),
+      ...templateFields,
     },
   }, createToolHandler('update_whatsapp_template', async ({ templateId, ...input }) => {
     const template = await service.updateTemplate(templateId, input);
@@ -119,30 +188,16 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   server.registerTool('get_delivery_status', {
     description: 'Get WhatsApp delivery status for a payment (sent, delivered, read, failed)',
     inputSchema: { paymentId: z.string().describe('Payment ID') },
-  }, createToolHandler('get_delivery_status', async ({ paymentId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_delivery_status', async ({ paymentId }) => {
     return service.getDeliveryStatus(paymentId);
-  }));
+  })));
 
   server.registerTool('resend_delivery', {
     description: 'Resend WhatsApp delivery for a payment (rate limited: 50/hour per user)',
     inputSchema: { paymentId: z.string().describe('Payment ID') },
-  }, createToolHandler('resend_delivery', async ({ paymentId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('resend_delivery', async ({ paymentId }) => {
     return service.resendDelivery(paymentId);
-  }));
-
-  // --- Send ---
-  server.registerTool('send_whatsapp_message', {
-    description: 'Send a direct WhatsApp message via a session (text or file)',
-    inputSchema: {
-      sessionId: z.string().describe('Session ID to send from'),
-      phone: z.string().max(20).describe('Recipient phone number with country code'),
-      message: z.string().max(10000).describe('Message text'),
-      type: z.enum(['text', 'file']).optional().describe('Message type (default: text)'),
-      fileUrl: z.string().url().optional().describe('File URL (for file type)'),
-      fileName: z.string().max(200).optional().describe('File name'),
-      fileType: z.string().optional().describe('File MIME type'),
-    },
-  }, createToolHandler('send_whatsapp_message', async (args) => {
-    return service.sendMessage(args);
-  }));
+  })));
 }

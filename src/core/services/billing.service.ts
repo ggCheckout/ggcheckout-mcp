@@ -13,7 +13,7 @@ export class BillingService {
   async getHistory(options?: { limit?: number; type?: string }) { return this.port.getHistory(options); }
   async listInvoices(options?: { status?: string; limit?: number }) { return this.port.listInvoices(options); }
   async getInvoice(id: string) { return this.port.getInvoice(id); }
-  async payInvoice(id: string, method: 'pix' | 'card' | 'credits') { return this.port.payInvoice(id, method); }
+  async payInvoice(id: string) { return this.port.payInvoice(id); }
   async listCredits(options?: { status?: string; limit?: number; before?: string }) {
     return this.port.listCredits(options);
   }

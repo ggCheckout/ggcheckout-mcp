@@ -66,16 +66,80 @@ export interface Checkout {
   published?: boolean;
   orderBumps?: string[];
   checkout?: Record<string, unknown>;
-  metricToken?: string | null;
+  /**
+   * Ids of the metric credentials (`list_tokens`) the checkout fires. The API stores one id or a
+   * list of them (one per platform), so a read can answer any of the three.
+   */
+  metricToken?: string | string[] | null;
   emailProviderToken?: string;
   paymentMethods?: CheckoutPaymentMethods;
   price: number;
   image?: string;
   createBy?: string;
+  /** The id in the public checkout link (`/checkout/{publicId}`); the link uses `uid` when absent. */
+  publicId?: string;
+  /** Which checkout layout the page renders (the same field `FunnelCheckoutSummary` reports). */
+  checkoutModel?: string;
+  /** Hostname of the verified custom domain the checkout opens on; null or absent on the app origin. */
+  customDomain?: string | null;
+  /** The absolute public link the API computes (the dashboard's own link); absent on an API that predates it. */
+  publicUrl?: string;
   tags?: CheckoutTag[];
   createdAt?: string;
   updatedAt?: string;
 }
+
+/** The layouts a checkout renders; v6 is the button/embed checkout, which is refused with shipping. */
+export type CheckoutModel = 'v2' | 'v3' | 'v4' | 'v5' | 'v6';
+
+/**
+ * Microsoft Clarity for the checkout page; `null` removes it. Top level, not inside `checkout`.
+ */
+export interface CheckoutAnalytics {
+  clarity: { projectId: string } | null;
+}
+
+/**
+ * The countdown bar. The stored flag is inverted (`checkout.timer.disabled`); `enabled` is what callers
+ * say and the service maps it to `disabled = !enabled`.
+ */
+export interface CheckoutTimerInput {
+  enabled?: boolean;
+  /** Countdown start, `HH:MM:SS`. */
+  time?: string;
+  text?: string;
+  bgColor?: string;
+  barColor?: string;
+  textColor?: string;
+  enableSticky?: boolean;
+}
+
+/** The "someone just bought" pop-ups; stored inverted (`checkout.salesNotifications.disabled`) like the timer. */
+export interface CheckoutSalesNotificationsInput {
+  enabled?: boolean;
+  position?: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
+  defaultMessages?: string[];
+  customMessages?: Array<string | { text: string; enabled?: boolean }>;
+  minMessages?: string | number;
+  interval?: string | number;
+  bgColor?: string;
+  borderColor?: string;
+  textColor?: string;
+  iconColor?: string;
+  iconBgColor?: string;
+}
+
+/** `timer` and `salesNotifications` are mapped into the stored `checkout` object by the service. */
+export interface CheckoutPageFeaturesInput {
+  timer?: CheckoutTimerInput;
+  salesNotifications?: CheckoutSalesNotificationsInput;
+}
+
+/** What a caller sends to create a checkout; the service turns it into a {@link CreateCheckoutInput}. */
+export type CreateCheckoutRequest = Omit<CreateCheckoutInput, 'uuidOwner'> & CheckoutPageFeaturesInput;
+
+/** What a caller sends to update a checkout; the service turns it into an {@link UpdateCheckoutPayload}. */
+export type UpdateCheckoutRequest = UpdateCheckoutInput & CheckoutPageFeaturesInput;
 
 export interface CreateCheckoutInput {
   title: string;
@@ -91,11 +155,17 @@ export interface CreateCheckoutInput {
   /** Uids of the products offered as bumps. Serialized into JSON snapshots by the service. */
   orderBumps?: string[];
   checkout: Record<string, unknown>;
-  metricToken?: string | null;
+  /** Id of a metric credential from `list_tokens`, or a list of them (one per platform). */
+  metricToken?: string | string[] | null;
   emailProviderToken?: string;
   paymentMethods: CheckoutPaymentMethods;
   price: number;
   image?: string;
+  /** The layout; the API's default is `v2`. */
+  checkoutModel?: CheckoutModel;
+  /** Id of a verified custom domain (`list_custom_domains`) the checkout opens on; `null` unbinds it. */
+  customDomainId?: string | null;
+  analytics?: CheckoutAnalytics;
 }
 
 export interface UpdateCheckoutInput {
@@ -108,11 +178,14 @@ export interface UpdateCheckoutInput {
   published?: boolean;
   orderBumps?: string[];
   checkout?: Record<string, unknown>;
-  metricToken?: string | null;
+  metricToken?: string | string[] | null;
   emailProviderToken?: string;
   paymentMethods?: CheckoutPaymentMethods;
   price?: number;
   image?: string;
+  checkoutModel?: CheckoutModel;
+  customDomainId?: string | null;
+  analytics?: CheckoutAnalytics;
 }
 
 /**
@@ -138,4 +211,12 @@ export interface UpdateCheckoutPayload {
   sellerName?: string | null;
   currency?: string;
   internationalizeCheckout?: boolean;
+  bannerUrl?: string;
+  image?: string;
+  socialCard?: CheckoutSocialCard[];
+  metricToken?: string | string[] | null;
+  emailProviderToken?: string;
+  checkoutModel?: CheckoutModel;
+  customDomainId?: string | null;
+  analytics?: CheckoutAnalytics;
 }

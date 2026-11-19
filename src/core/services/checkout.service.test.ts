@@ -122,7 +122,7 @@ describe('CheckoutService', () => {
       paymentMethods: { pix: true },
       checkout: {
         theme: 'dark',
-        timerEnabled: false,
+        timer: { time: '00:10:00', text: 'Acaba logo', disabled: false },
         coupon: { enabled: true, code: 'VOLTA10' },
         shipping: { type: 'fixed', enabled: true, fixedValue: 1500, fixedLabel: 'Frete' },
         // The copy of the methods the read nests inside `checkout`.
@@ -187,12 +187,12 @@ describe('CheckoutService', () => {
     // `checkout` is the whole page setup. Replacing it with the one key a caller sets would wipe the
     // timer, the coupon and the rest with a 200.
     it('merges a partial checkout object into the stored one, keeping coupon and shipping', async () => {
-      await service.update('ck-1', { checkout: { timerEnabled: true, shipping: { fixedValue: 990 } } });
+      await service.update('ck-1', { checkout: { theme: 'light', shipping: { fixedValue: 990 } } });
 
       const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
       expect(payload.checkout).toEqual({
-        theme: 'dark',
-        timerEnabled: true,
+        theme: 'light',
+        timer: { time: '00:10:00', text: 'Acaba logo', disabled: false },
         coupon: { enabled: true, code: 'VOLTA10' },
         shipping: { type: 'fixed', enabled: true, fixedValue: 990, fixedLabel: 'Frete' },
       });
@@ -201,7 +201,7 @@ describe('CheckoutService', () => {
     // Without a top-level `paymentMethods` the API rewrites the methods from `checkout.paymentMethods`,
     // and the read's copy of them is not everything that is stored.
     it('does not carry the stored checkout.paymentMethods along with an edit of the timer', async () => {
-      await service.update('ck-1', { checkout: { timerEnabled: true } });
+      await service.update('ck-1', { timer: { enabled: true } });
 
       const [, payload] = vi.mocked(mockCheckoutPort.update).mock.calls[0];
       expect(payload.checkout).not.toHaveProperty('paymentMethods');
@@ -286,5 +286,124 @@ describe('CheckoutService', () => {
 
     expect(mockCheckoutPort.getById).not.toHaveBeenCalled();
     expect(mockCheckoutPort.delete).toHaveBeenCalledWith('ck-1');
+  });
+});
+
+describe('CheckoutService page features, model, domain and analytics', () => {
+  let service: CheckoutService;
+  let checkoutPort: CheckoutPort;
+
+  beforeEach(() => {
+    checkoutPort = {
+      list: vi.fn(),
+      getById: vi.fn().mockResolvedValue({
+        productId: 'prod-1', uid: 'ck-1', title: 'T', uuidOwner: 'o', price: 5000,
+        checkout: { theme: 'dark', timer: { time: '00:10:00', text: 'Corra', disabled: false }, salesNotifications: { disabled: true, position: 'bottom-left' } },
+      }),
+      create: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      delete: vi.fn(),
+      manageTags: vi.fn(),
+    };
+    service = new CheckoutService(
+      checkoutPort,
+      { getMyBusinessId: vi.fn().mockResolvedValue('biz') },
+      { getById: vi.fn().mockResolvedValue({ uid: 'prod-1', title: 'P', price: 100 }) } as unknown as ProductPort,
+    );
+  });
+
+  const created = () => vi.mocked(checkoutPort.create).mock.calls[0][0];
+  const updated = () => vi.mocked(checkoutPort.update).mock.calls[0][1];
+
+  describe('create', () => {
+    it('stores the timer as `disabled`, never as `enabled`', async () => {
+      await service.create({ ...baseInput, timer: { enabled: false, time: '00:15:00' } });
+
+      expect(created().checkout.timer).toEqual({ time: '00:15:00', disabled: true });
+      expect(created()).not.toHaveProperty('timer');
+    });
+
+    it('turns sales pop-ups off unless the caller enables them', async () => {
+      await service.create(baseInput);
+      expect(created().checkout.salesNotifications).toEqual({ disabled: true });
+    });
+
+    it('enables the sales pop-ups when asked, keeping their settings', async () => {
+      await service.create({ ...baseInput, salesNotifications: { enabled: true, position: 'top-right', interval: 20 } });
+
+      expect(created().checkout.salesNotifications).toEqual({ disabled: false, position: 'top-right', interval: 20 });
+    });
+
+    it('does not override a raw salesNotifications the caller put inside checkout', async () => {
+      await service.create({ ...baseInput, checkout: { salesNotifications: { position: 'top-left' } } });
+
+      expect(created().checkout.salesNotifications).toEqual({ position: 'top-left' });
+    });
+
+    it('maps a raw `enabled` inside the free-form checkout instead of storing a stray key', async () => {
+      await service.create({ ...baseInput, checkout: { timer: { enabled: false, time: '00:05:00' } } });
+
+      expect(created().checkout.timer).toEqual({ time: '00:05:00', disabled: true });
+    });
+
+    it('lets the typed field win over a raw one inside checkout', async () => {
+      await service.create({ ...baseInput, checkout: { timer: { enabled: true, text: 'raw' } }, timer: { enabled: false } });
+
+      expect(created().checkout.timer).toEqual({ text: 'raw', disabled: true });
+    });
+
+    it('refuses an `enabled` that contradicts a `disabled` sent next to it', async () => {
+      await expect(service.create({ ...baseInput, timer: { enabled: true, disabled: true } as any }))
+        .rejects.toBeInstanceOf(ValidationError);
+      expect(checkoutPort.create).not.toHaveBeenCalled();
+    });
+
+    it('forwards the model, the custom domain, analytics and several metric tokens', async () => {
+      await service.create({
+        ...baseInput,
+        checkoutModel: 'v6',
+        customDomainId: 'dom-1',
+        analytics: { clarity: { projectId: 'abcdefghij1' } },
+        metricToken: ['tok-1', 'tok-2'],
+      });
+
+      expect(created()).toMatchObject({
+        checkoutModel: 'v6',
+        customDomainId: 'dom-1',
+        analytics: { clarity: { projectId: 'abcdefghij1' } },
+        metricToken: ['tok-1', 'tok-2'],
+      });
+    });
+  });
+
+  describe('update', () => {
+    it('turns the stored timer off without touching its time or the rest of the setup', async () => {
+      await service.update('ck-1', { timer: { enabled: false } });
+
+      expect(updated().checkout).toEqual({
+        theme: 'dark',
+        timer: { time: '00:10:00', text: 'Corra', disabled: true },
+        salesNotifications: { disabled: true, position: 'bottom-left' },
+      });
+      expect(updated()).not.toHaveProperty('timer');
+    });
+
+    it('enables the sales pop-ups and merges their settings into the stored ones', async () => {
+      await service.update('ck-1', { salesNotifications: { enabled: true, interval: 30 } });
+
+      expect(updated().checkout.salesNotifications).toEqual({ disabled: false, position: 'bottom-left', interval: 30 });
+    });
+
+    it('sends no checkout when nothing about the setup changed', async () => {
+      await service.update('ck-1', { title: 'New' });
+
+      expect(updated()).not.toHaveProperty('checkout');
+    });
+
+    it('binds, changes and unbinds the custom domain, and clears Clarity with null', async () => {
+      await service.update('ck-1', { customDomainId: null, analytics: { clarity: null }, checkoutModel: 'v3' });
+
+      expect(updated()).toMatchObject({ customDomainId: null, analytics: { clarity: null }, checkoutModel: 'v3' });
+    });
   });
 });

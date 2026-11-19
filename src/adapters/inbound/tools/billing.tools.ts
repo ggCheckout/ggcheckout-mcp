@@ -6,15 +6,18 @@ import {
   type BillingService,
 } from '../../../core/services/billing.service.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 
 export function registerBillingTools(server: McpServer, service: BillingService) {
-  server.tool('get_billing_balance', 'Get current billing balance, credit, usage %, and next charge date',
-    createToolHandler('get_billing_balance', async () => service.getBalance()),
-  );
+  server.registerTool('get_billing_balance', {
+    description: 'Get current billing balance, credit, usage %, and the next cycle close (closingAt, null when unknown)',
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_billing_balance', async () => service.getBalance())));
 
-  server.tool('get_billing_status', 'Get billing status (active, pending_card, grace_period, blocked)',
-    createToolHandler('get_billing_status', async () => service.getStatus()),
-  );
+  server.registerTool('get_billing_status', {
+    description: 'Get billing status (active, pending_card, grace_period, blocked)',
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_billing_status', async () => service.getStatus())));
 
   server.registerTool('get_billing_history', {
     description: 'Get billing history (charges, credits, payments)',
@@ -30,23 +33,31 @@ export function registerBillingTools(server: McpServer, service: BillingService)
       status: z.enum(['pending', 'processing', 'paid', 'failed', 'overdue']).optional().describe('Filter by invoice status'),
       limit: z.number().min(1).max(1000).optional().describe('Max invoices to return (default: 50)'),
     },
-  }, createToolHandler('list_invoices', async (args) => service.listInvoices(args)));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_invoices', async (args) => service.listInvoices(args))));
 
   server.registerTool('get_invoice', {
     description: 'Get details of a specific invoice (fees, transaction count, volume, status)',
     inputSchema: { invoiceId: z.string().describe('Invoice ID') },
-  }, createToolHandler('get_invoice', async ({ invoiceId }) => {
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_invoice', async ({ invoiceId }) => {
     const invoice = await service.getInvoice(invoiceId);
     return { invoice };
-  }));
+  })));
 
   server.registerTool('pay_invoice', {
-    description: 'Pay an invoice via PIX, card, or credits',
+    description:
+      'Get the PIX that pays an open invoice (closed and not paid yet). Returns { invoiceId, amountCents, '
+      + 'status, pixCode, pixQrBase64, expiresAt }: `pixCode` is the copy-and-paste string and `pixQrBase64` '
+      + 'the QR image (base64, no `data:` prefix). Calling it again hands back the same PIX while it is '
+      + 'valid. PIX is the only way to pay an invoice: card charges are retired and credit is applied '
+      + 'automatically, so to pay with credit use add_credit instead. Only the open invoice of its track can '
+      + 'be paid; for another one the error names the invoice that can.',
     inputSchema: {
-      invoiceId: z.string().describe('Invoice ID'),
-      method: z.enum(['pix', 'card', 'credits']).describe('Payment method'),
+      invoiceId: z.string().min(1).describe('Invoice ID (from list_invoices)'),
     },
-  }, createToolHandler('pay_invoice', async ({ invoiceId, method }) => service.payInvoice(invoiceId, method)));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('pay_invoice', async ({ invoiceId }) => service.payInvoice(invoiceId))));
 
   server.registerTool('list_credits', {
     description:
@@ -64,7 +75,8 @@ export function registerBillingTools(server: McpServer, service: BillingService)
       before: z.string().optional()
         .describe('Ledger cursor: the `nextBefore` from the previous page (RFC3339)'),
     },
-  }, createToolHandler('list_credits', async (args) => service.listCredits(args)));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_credits', async (args) => service.listCredits(args))));
 
   server.registerTool('add_credit', {
     description:
@@ -85,14 +97,17 @@ export function registerBillingTools(server: McpServer, service: BillingService)
           + 'the new billing reads it (without one it dedupes by amount within 2 minutes); the legacy '
           + 'billing ignores it and reuses the PIX already opened for the same amount, for 30 minutes.'),
     },
-  }, createToolHandler('add_credit', async ({ amountCents, idempotencyKey }) => service.addCredit(amountCents, idempotencyKey)));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('add_credit', async ({ amountCents, idempotencyKey }) => service.addCredit(amountCents, idempotencyKey))));
 
-  server.tool('get_credit_topup',
-    'The current credit top-up on the new billing: { creditId, amountCents, status (pending, paid, '
-    + 'expired), pixCode, pixQrBase64, expiresAt }, or null when there is none. A pending top-up is not '
-    + 'in the list_credits ledger until it is paid, so this is where to find one opened by add_credit.',
-    createToolHandler('get_credit_topup', async () => ({ topup: await service.getCreditTopup() })),
-  );
+  server.registerTool('get_credit_topup', {
+    description:
+      'The latest credit top-up on the new billing: { creditId, amountCents, status (pending, paid, '
+      + 'expired), pixCode, pixQrBase64, expiresAt }, or null when the seller never opened one. It may be '
+      + 'long finished: only a pending one is open. A pending top-up is not in the list_credits ledger '
+      + 'until it is paid, so this is where to find one opened by add_credit and to see it turn paid.',
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_credit_topup', async () => ({ topup: await service.getCreditTopup() }))));
 
   server.tool('get_card_status', 'Get saved card status (validated, brand, last four, expiring soon)',
     createToolHandler('get_card_status', async () => service.getCardStatus()),

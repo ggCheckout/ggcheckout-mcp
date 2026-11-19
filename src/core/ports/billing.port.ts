@@ -1,6 +1,7 @@
 import type {
   BalanceResponse, BillingStatusResponse, BillingHistoryEntry,
   SellerInvoice, BillingCredit, BillingCard, CreditLedgerPage, CreditTopup, PendingCreditTopup,
+  InvoicePixPayment,
 } from '../types/billing.js';
 
 export interface BillingPort {
@@ -9,7 +10,7 @@ export interface BillingPort {
   getHistory(options?: { limit?: number; type?: string }): Promise<{ history: BillingHistoryEntry[]; total: number }>;
   listInvoices(options?: { status?: string; limit?: number }): Promise<{ invoices: SellerInvoice[]; total: number }>;
   getInvoice(id: string): Promise<SellerInvoice>;
-  payInvoice(id: string, method: 'pix' | 'card' | 'credits'): Promise<{ success: boolean; qrCode?: string; qrCodeImage?: string }>;
+  payInvoice(id: string): Promise<InvoicePixPayment>;
   listCredits(options?: { status?: string; limit?: number; before?: string }): Promise<{
     credits: BillingCredit[];
     total: number;

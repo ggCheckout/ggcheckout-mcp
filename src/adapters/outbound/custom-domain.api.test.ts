@@ -16,17 +16,17 @@ describe('CustomDomainApiAdapter', () => {
   });
 
   it('add POSTs domain string', async () => {
-    vi.mocked(http.post).mockResolvedValue({ id: 'd1', domain: 'checkout.example.com', verified: false });
+    vi.mocked(http.post).mockResolvedValue({ id: 'd1', domain: 'checkout.example.com', status: 'pending', createdAt: 'x' });
     const result = await adapter.add('checkout.example.com');
     expect(http.post).toHaveBeenCalledWith('/api/custom-domains', { domain: 'checkout.example.com' });
-    expect(result.verified).toBe(false);
+    expect(result.status).toBe('pending');
   });
 
   it('verify POSTs to /verify endpoint', async () => {
-    vi.mocked(http.post).mockResolvedValue({ success: true, verified: true });
+    vi.mocked(http.post).mockResolvedValue({ success: true, status: 'verified' });
     const result = await adapter.verify('d1');
     expect(http.post).toHaveBeenCalledWith('/api/custom-domains/d1/verify');
-    expect(result.verified).toBe(true);
+    expect(result.status).toBe('verified');
   });
 
   it('delete calls correct URL', async () => {

@@ -113,6 +113,8 @@ export interface FunnelSettings {
   /** Ids from list_webhooks; each receives quiz.completed. */
   webhookIds?: string[];
   clarity?: { projectId?: string };
+  /** UTMify's pixel on the quiz page; `utms` turns on its `latest.js`, which keeps the UTMs for 7 days. */
+  utmify?: { pixelId?: string; utms?: boolean };
   postPurchaseUrl?: string | null;
 }
 
@@ -140,6 +142,8 @@ export interface Funnel {
   businessId: string;
   title: string;
   slug: string;
+  /** The absolute public link the API computes (the dashboard's own link); absent on an API that predates it. */
+  publicUrl?: string;
   published: boolean;
   deleted: boolean;
   usesBillingGateway?: boolean;
@@ -221,14 +225,20 @@ export interface FunnelLeadStats {
 
 export interface FunnelStepAnalytics {
   stepId: string;
+  /** The step's title in the funnel, added by the service (the API sends only the id). */
+  title?: string;
   visitors: number;
   exits: number;
+  /** Percent points, an integer (33 = 33%). */
   dropOffRate: number;
 }
 
 export interface FunnelAnalytics {
+  /** The funnel's title, added by the service. */
+  funnelTitle?: string;
   steps: FunnelStepAnalytics[];
   totalVisitors: number;
   totalCompleted: number;
+  /** Percent points, an integer. */
   overallConversionRate: number;
 }

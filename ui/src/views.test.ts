@@ -1,0 +1,73 @@
+import { describe, expect, it } from 'vitest';
+import { pickView } from './views';
+
+describe('pickView', () => {
+  it('follows the tool name when the host gives it', () => {
+    expect(pickView('get_dashboard_stats', {})).toBe('sales');
+    expect(pickView('create_pix_charge', {})).toBe('pix');
+  });
+
+  it('falls back to the payload shape', () => {
+    expect(pickView(undefined, { totalSales: 1, totalRevenue: 100 })).toBe('sales');
+    expect(pickView(undefined, { focus: 'states', byState: [] })).toBe('sales');
+    expect(pickView(undefined, { stats: { visitors: 1, interactionRate: 0 } })).toBe('funnel');
+    expect(pickView(undefined, { steps: [], totalVisitors: 0, overallConversionRate: 0 })).toBe('funnel');
+    expect(pickView(undefined, { payments: [], total: 0 })).toBe('payments');
+    expect(pickView(undefined, { payment: { id: 'p1', status: 'paid' } })).toBe('payments');
+    expect(pickView(undefined, { status: 'active', isDelinquent: false, netBalanceCents: -5 })).toBe('billing');
+    expect(pickView(undefined, { netBalanceCents: -5, limitWithToleranceCents: 11500, level: 6 })).toBe('billing');
+    expect(pickView(undefined, { invoices: [], total: 0 })).toBe('billing');
+    expect(pickView(undefined, { invoice: { id: 'i1', periodStart: '2026-11-01', status: 'paid' } })).toBe('billing');
+    expect(pickView(undefined, { credits: [], total: 0, ledger: { entries: [], nextBefore: null } })).toBe('billing');
+    expect(pickView(undefined, { object: 'payment_intent', id: 'pi_1', status: 'processing' })).toBe('pix');
+    expect(pickView(undefined, { invoiceId: 'inv_1', amountCents: 100, status: 'overdue', pixCode: 'x', pixQrBase64: null })).toBe('pix');
+    expect(pickView(undefined, { domains: [], total: 0, limit: 5 })).toBe('domains');
+    expect(pickView(undefined, { domain: { id: 'd1', domain: 'pay.loja.com', status: 'pending' } })).toBe('domains');
+    expect(pickView(undefined, { success: true, status: 'pending', checks: {} })).toBe('domains');
+    expect(pickView(undefined, { deliveries: [], summary: { total: 0 }, paymentId: 'p1' })).toBe('deliveries');
+    expect(pickView(undefined, { success: true, message: 'ok', remaining: { user: 1, payment: 1 } })).toBe('deliveries');
+    expect(pickView(undefined, { success: true })).toBeNull();
+    expect(pickView(undefined, { total: 42 })).toBeNull();
+    expect(pickView('get_payments_paginated', { total: 42 })).toBe('payments');
+    expect(pickView(undefined, { wallets: [] })).toBe('gateways');
+    expect(pickView(undefined, { stats: {}, ranking: null, cachedAt: null })).toBe('gateways');
+    expect(pickView(undefined, { currentRevenue: 1, milestones: [5000] })).toBe('rewards');
+    expect(pickView(undefined, { success: true, redeemType: 'whatsapp_group', redirectUrl: 'https://x' })).toBe('rewards');
+    expect(pickView(undefined, { upsells: [] })).toBe('offers');
+    expect(pickView(undefined, { downsells: [], count: 0 })).toBe('offers');
+    expect(pickView(undefined, { area: { id: 'a1', name: 'Curso', stats: {} } })).toBe('members');
+    expect(pickView(undefined, { modules: [] })).toBe('members');
+    expect(pickView(undefined, { sections: [] })).toBe('members');
+    expect(pickView(undefined, { lessons: [] })).toBe('members');
+    expect(pickView(undefined, { flow: { id: 'f1', nodes: [], edges: [] } })).toBe('telegram');
+    expect(pickView(undefined, { flows: [] })).toBe('telegram');
+    expect(pickView(undefined, { numbers: [] })).toBe('chips');
+    expect(pickView(undefined, { number: { uid: 'c1', provider: 'waha', status: 'pending' } })).toBe('chips');
+    expect(pickView(undefined, { success: true, code: 'ABCD1234' })).toBe('chips');
+    expect(pickView(undefined, { anything: true })).toBeNull();
+  });
+
+  it('draws the payments API, tracking and UTM answers without stealing other shapes', () => {
+    expect(pickView('get_payments_api_limits', {})).toBe('payapi');
+    expect(pickView('list_wallets', {})).toBe('payapi');
+    expect(pickView('list_payment_intents', {})).toBe('payapi');
+    expect(pickView('cancel_payment_intent', {})).toBe('pix');
+    expect(pickView('explain_tracking', {})).toBe('tracking');
+    expect(pickView('diagnose_tracking', {})).toBe('tracking');
+    expect(pickView('build_tracking_link', {})).toBe('utm');
+
+    expect(pickView(undefined, { object: 'limits', buckets: [] })).toBe('payapi');
+    expect(pickView(undefined, { object: 'limits_unavailable', available: false })).toBe('payapi');
+    expect(pickView(undefined, { object: 'list', data: [{ id: 'wal_1', name: 'Loja', active_pix_count: 0 }] })).toBe('payapi');
+    expect(pickView(undefined, { object: 'list', data: [{ id: 'pi_1', object: 'payment_intent', status: 'succeeded', amount: 100 }], has_more: false })).toBe('payapi');
+    expect(pickView(undefined, { sections: [{ id: 'paths', title: 'Caminhos', summary: '', items: [] }], problems: [] })).toBe('tracking');
+    expect(pickView(undefined, { scope: { kind: 'account' }, findings: [], tokens: [] })).toBe('tracking');
+    expect(pickView(undefined, {
+      destination: { kind: 'checkout', url: 'https://ggcheckout.app/checkout/ck_1' }, platform: 'manual', finalUrl: 'https://ggcheckout.app/checkout/ck_1?utm_source=a',
+    })).toBe('utm');
+
+    // A single charge stays with the PIX view, and a members area tree is not a tracking guide.
+    expect(pickView(undefined, { object: 'payment_intent', id: 'pi_1', status: 'canceled' })).toBe('pix');
+    expect(pickView(undefined, { sections: [] })).toBe('members');
+  });
+});

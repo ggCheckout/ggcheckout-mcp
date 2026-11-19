@@ -15,6 +15,15 @@ describe('StoreApiAdapter', () => {
     adapter = new StoreApiAdapter(http);
   });
 
+  it('getStore attaches the publicUrl of the envelope, only when it is a string', async () => {
+    vi.mocked(http.get).mockResolvedValue({ config: { id: 's1', published: true }, publicUrl: 'https://loja.example.com/' });
+    expect(await adapter.getStore('s1')).toMatchObject({ id: 's1', publicUrl: 'https://loja.example.com/' });
+    vi.mocked(http.get).mockResolvedValue({ config: { id: 's1' } });
+    expect(await adapter.getStore('s1')).not.toHaveProperty('publicUrl');
+    vi.mocked(http.get).mockResolvedValue({ config: { id: 's1' }, publicUrl: null });
+    expect(await adapter.getStore('s1')).not.toHaveProperty('publicUrl');
+  });
+
   it('getConfig extracts config from response wrapper', async () => {
     vi.mocked(http.get).mockResolvedValue({ config: { theme: {}, settings: {} } });
     const result = await adapter.getConfig('store-1');

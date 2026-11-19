@@ -61,6 +61,9 @@ export interface TelegramFlow {
   edges: TelegramFlowEdge[];
   variables: FlowVariable[];
   basicConfig?: Record<string, any>;
+  /** The draft differs from what the bot runs; buyers only see the published version. */
+  hasUnpublishedChanges?: boolean;
+  publishedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

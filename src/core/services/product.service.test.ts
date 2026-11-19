@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProductService } from './product.service.js';
 import type { ProductPort } from '../ports/product.port.js';
+import { ApiError, NotFoundError } from '../../shared/errors.js';
 
 describe('ProductService', () => {
   let service: ProductService;
@@ -526,5 +527,192 @@ describe('ProductService', () => {
     vi.mocked(mockPort.update).mockRejectedValue(new Error('404'));
 
     await expect(service.update('p-1', { title: 'New' })).rejects.toThrow('404');
+  });
+
+  describe('offers: keys, price and media', () => {
+    const upsell = (extra: Record<string, unknown> = {}) => ({
+      uid: 'u-1', id: 'row-uuid-1', order: 1, upsellProductId: 'p-2', upsellProductIds: ['p-2'],
+      title: 'Oferta', price: 1000, ...extra,
+    });
+
+    it('deleteUpsell resolves a row id to the uid the API deletes by', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([upsell()] as any);
+
+      await service.deleteUpsell('p-1', 'row-uuid-1');
+
+      expect(mockPort.deleteUpsell).toHaveBeenCalledWith('p-1', 'u-1');
+    });
+
+    it('deleteUpsell names both keys when nothing matches, and never calls the API', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([upsell()] as any);
+
+      await expect(service.deleteUpsell('p-1', 'nope')).rejects.toThrow(/Upsell nope not found.*`uid` or its `id`/);
+      expect(mockPort.deleteUpsell).not.toHaveBeenCalled();
+    });
+
+    it('deleteDownsell turns an API 404 into a not-found error instead of a success', async () => {
+      vi.mocked(mockPort.listDownsells).mockResolvedValue({ downsells: [{ uid: 'd-1', id: 'row-d' }] as any, count: 1 });
+      vi.mocked(mockPort.deleteDownsell).mockRejectedValue(new ApiError(404, 'Downsell não encontrado'));
+
+      await expect(service.deleteDownsell('p-1', 'd-1')).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('deleteDownsell lets any other failure through unchanged', async () => {
+      vi.mocked(mockPort.listDownsells).mockResolvedValue({ downsells: [{ uid: 'd-1' }] as any, count: 1 });
+      vi.mocked(mockPort.deleteDownsell).mockRejectedValue(new ApiError(500, 'boom'));
+
+      await expect(service.deleteDownsell('p-1', 'd-1')).rejects.toThrow('boom');
+    });
+
+    it('reorderUpsells sends uids, resolving a mix of uids and row ids', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([upsell(), upsell({ uid: 'u-2', id: 'row-2' })] as any);
+      vi.mocked(mockPort.reorderUpsells).mockResolvedValue([]);
+
+      await service.reorderUpsells('p-1', ['row-2', 'u-1']);
+
+      expect(mockPort.reorderUpsells).toHaveBeenCalledWith('p-1', ['u-2', 'u-1']);
+    });
+
+    it('reorderDownsells refuses a key that is not the product\'s, without reordering', async () => {
+      vi.mocked(mockPort.listDownsells).mockResolvedValue({ downsells: [{ uid: 'd-1' }] as any, count: 1 });
+
+      await expect(service.reorderDownsells('p-1', ['d-1', 'x'])).rejects.toThrow(/Downsell x not found/);
+      expect(mockPort.reorderDownsells).not.toHaveBeenCalled();
+    });
+
+    it('createUpsell writes the charged price into productOverrides and keeps the snapshot in step', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([]);
+      vi.mocked(mockPort.createUpsell).mockResolvedValue({} as any);
+
+      await service.createUpsell('p-1', 'u-1', {
+        upsellProductId: 'p-2', title: 'Oferta', price: 1990, originalPrice: 2990, discount: '33% OFF',
+      });
+
+      expect(mockPort.createUpsell).toHaveBeenCalledWith('p-1', 'u-1', expect.objectContaining({
+        price: 1990,
+        originalPrice: 2990,
+        discount: '33% OFF',
+        productOverrides: { 'p-2': { price: 1990, originalPrice: 2990, discount: '33% OFF' } },
+      }));
+    });
+
+    it('createUpsell without a price writes no override, so the product\'s own price is charged', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([]);
+      vi.mocked(mockPort.createUpsell).mockResolvedValue({} as any);
+
+      await service.createUpsell('p-1', 'u-1', { upsellProductId: 'p-2', title: 'Oferta' });
+
+      expect(vi.mocked(mockPort.createUpsell).mock.calls[0][2]).not.toHaveProperty('productOverrides');
+    });
+
+    it('refuses a price that is not a positive integer number of cents', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([]);
+
+      await expect(service.createUpsell('p-1', 'u-1', { upsellProductId: 'p-2', title: 'x', price: 19.9 }))
+        .rejects.toThrow(/in cents/);
+      expect(mockPort.createUpsell).not.toHaveBeenCalled();
+    });
+
+    it('createUpsell maps imageUrl to the customImage the page reads', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([]);
+      vi.mocked(mockPort.createUpsell).mockResolvedValue({} as any);
+
+      await service.createUpsell('p-1', 'u-1', { upsellProductId: 'p-2', title: 'x', imageUrl: 'https://img/a.png' });
+
+      const payload = vi.mocked(mockPort.createUpsell).mock.calls[0][2] as any;
+      expect(payload.customImage).toEqual({ enabled: true, url: 'https://img/a.png' });
+      expect(payload).not.toHaveProperty('imageUrl');
+    });
+
+    it('createUpsell gives every video an id and switches the offer to video media', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([]);
+      vi.mocked(mockPort.createUpsell).mockResolvedValue({} as any);
+
+      await service.createUpsell('p-1', 'u-1', {
+        upsellProductId: 'p-2', title: 'x',
+        videosSection: { enabled: true, videos: [
+          { sourceType: 'embed', provider: 'youtube', providerId: 'abc' },
+          { id: 'keep', sourceType: 'url', url: 'https://v/a.mp4' },
+        ] },
+      });
+
+      const payload = vi.mocked(mockPort.createUpsell).mock.calls[0][2] as any;
+      expect(payload.mediaType).toBe('video');
+      expect(payload.videosSection.videos[0].id).toEqual(expect.any(String));
+      expect(payload.videosSection.videos[0].id).not.toBe('');
+      expect(payload.videosSection.videos[1].id).toBe('keep');
+    });
+
+    it('updateUpsell reads, merges and saves the whole offer under its uid', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([upsell({
+        productOverrides: { 'p-2': { price: 1000, displayMode: 'external' } },
+        customImage: { enabled: true, url: 'https://img/old.png' },
+        mediaType: 'image',
+      })] as any);
+      vi.mocked(mockPort.saveOffer).mockResolvedValue(null);
+
+      await service.updateUpsell('p-1', 'row-uuid-1', { title: 'Nova', price: 1500 });
+
+      expect(mockPort.saveOffer).toHaveBeenCalledWith('p-1', 'upsell', 'u-1', expect.objectContaining({
+        uid: 'u-1',
+        id: 'row-uuid-1',
+        upsellProductId: 'p-2',
+        title: 'Nova',
+        price: 1500,
+        customImage: { enabled: true, url: 'https://img/old.png' },
+        productOverrides: { 'p-2': { price: 1500, displayMode: 'external' } },
+      }));
+    });
+
+    it('updateDownsell merges a partial videosSection into the stored one', async () => {
+      vi.mocked(mockPort.listDownsells).mockResolvedValue({ downsells: [{
+        uid: 'd-1', downsellProductId: 'p-3', downsellProductIds: ['p-3'], title: 'D', price: 500,
+        mediaType: 'video',
+        videosSection: { enabled: true, title: 'Veja', videos: [{ id: 'v1', sourceType: 'url', url: 'https://v/a.mp4' }] },
+      }] as any, count: 1 });
+      vi.mocked(mockPort.saveOffer).mockResolvedValue(null);
+
+      await service.updateDownsell('p-1', 'd-1', { videosSection: { enabled: false } });
+
+      const saved = vi.mocked(mockPort.saveOffer).mock.calls[0][3] as any;
+      expect(saved.videosSection).toEqual({
+        enabled: false, title: 'Veja', videos: [{ id: 'v1', sourceType: 'url', url: 'https://v/a.mp4' }],
+      });
+    });
+
+    it('updateUpsell on an unknown offer saves nothing', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([upsell()] as any);
+
+      await expect(service.updateUpsell('p-1', 'zzz', { title: 'x' })).rejects.toBeInstanceOf(NotFoundError);
+      expect(mockPort.saveOffer).not.toHaveBeenCalled();
+    });
+
+    it('listUpsells adds effectivePriceCents: the override price, else the product\'s own', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([
+        upsell({ productOverrides: { 'p-2': { price: 1990 } }, price: 5000 }),
+        upsell({ uid: 'u-2', upsellProductId: 'p-4', upsellProductIds: ['p-4'], price: 1 }),
+      ] as any);
+      vi.mocked(mockPort.list).mockResolvedValue([{ uid: 'p-4', price: 4200 }] as any);
+
+      const upsells = await service.listUpsells('p-1');
+
+      expect(upsells.map((u) => u.effectivePriceCents)).toEqual([1990, 4200]);
+    });
+
+    it('listUpsells does not read the product list when every offer overrides its price', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([upsell({ productOverrides: { 'p-2': { price: 1990 } } })] as any);
+
+      await service.listUpsells('p-1');
+
+      expect(mockPort.list).not.toHaveBeenCalled();
+    });
+
+    it('getOfferPages and setOfferProductPage accept the row id and answer the uid', async () => {
+      vi.mocked(mockPort.listUpsells).mockResolvedValue([upsell()] as any);
+
+      const result = await service.getOfferPages('p-1', 'upsell', 'row-uuid-1');
+
+      expect(result.offerId).toBe('u-1');
+    });
   });
 });

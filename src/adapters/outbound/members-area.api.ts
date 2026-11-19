@@ -7,11 +7,11 @@ import type {
   LessonAttachment, AddLessonAttachmentInput, PdfLessonInput,
   UpdateModuleInput, UpdateSectionInput, UpdateLessonInput,
 } from '../../core/types/members-area.js';
-import { readFile } from 'node:fs/promises';
 import { sanitizeStudent } from '../../shared/sanitizer.js';
 import type { LocalFile } from '../../shared/local-file.js';
 import { explainMissingRoute, type HttpClient } from './http-client.js';
 import { putToSignedUrl } from './signed-upload.js';
+import { uploadImageViaPresign } from './image-upload.js';
 
 /** What a presign route answers: where to PUT the bytes, and the key that names them afterwards. */
 type PresignResponse = { success: boolean; data: { uploadUrl: string; filePath: string } };
@@ -176,15 +176,12 @@ export class MembersAreaApiAdapter implements MembersAreaPort {
   // Uploads
 
   /**
-   * Images go through the API (it resizes them before storing), as a multipart form. The answer is
-   * the app-relative `/api/r2-proxy/...` URL the dashboard stores for logos, banners and covers.
+   * Images take the presigned flow (see {@link uploadImageViaPresign}); the answer is the app-relative
+   * `/api/r2-proxy/...` URL the dashboard stores for logos, banners and covers.
    */
   async uploadImage(file: LocalFile, preset?: 'banner') {
-    const form = new FormData();
-    form.append('file', new Blob([await readFile(file.path)], { type: file.fileType }), file.fileName);
-    if (preset) form.append('preset', preset);
-    const data = await this.http.postForm<{ success: boolean; url: string; path: string }>('/api/uploads-r2', form);
-    return { url: data.url };
+    const { url } = await uploadImageViaPresign(this.http, file, preset);
+    return { url };
   }
 
   /** The lesson video upload of the dashboard: presign, PUT the bytes to storage, confirm. */

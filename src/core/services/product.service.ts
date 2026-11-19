@@ -7,14 +7,19 @@ import type {
   ReorderResult,
   Upsell,
   CreateUpsellInput,
+  CreateUpsellPayload,
+  UpdateUpsellInput,
   DownsellSequenceItem,
   CreateDownsellInput,
+  CreateDownsellPayload,
+  UpdateDownsellInput,
   ExternalFlow,
   OfferKind,
   OfferProductPage,
 } from '../types/product.js';
 import { validateCreateProductInput, validateUpdateProductInput } from '../../shared/validation.js';
-import { NotFoundError, ValidationError } from '../../shared/errors.js';
+import { AppError, NotFoundError, ValidationError } from '../../shared/errors.js';
+import { composeOffer } from './offer-payload.js';
 import { buildExternalOfferSnippet, externalOfferRef, externalPageOf } from '../../shared/external-offer-snippet.js';
 
 export class ProductService {
@@ -183,8 +188,12 @@ export class ProductService {
     return ((await this.productPort.getById(id)) ?? {}) as unknown as Record<string, unknown>;
   }
 
+  /**
+   * Each offer carries `effectivePriceCents`: what a buyer is charged, which is NOT the top-level
+   * `price` (a display snapshot) but the offered product's override price, else the product's own.
+   */
   async listUpsells(productId: string): Promise<Upsell[]> {
-    return this.productPort.listUpsells(productId);
+    return this.withEffectivePrice(await this.productPort.listUpsells(productId));
   }
 
   /**
@@ -194,45 +203,123 @@ export class ProductService {
    */
   async createUpsell(productId: string, upsellId: string, input: CreateUpsellInput): Promise<Upsell> {
     const order = input.order ?? nextOrder(await this.productPort.listUpsells(productId));
+    const offer = composeOffer('upsell', input.upsellProductId, {}, input as unknown as Record<string, unknown>);
     return this.productPort.createUpsell(productId, upsellId, {
-      ...input,
+      ...offer,
       uid: upsellId,
       id: upsellId,
       upsellProductIds: [input.upsellProductId],
       order,
-    });
+    } as unknown as CreateUpsellPayload);
   }
 
-  async deleteUpsell(productId: string, upsellId: string): Promise<void> {
-    return this.productPort.deleteUpsell(productId, upsellId);
+  /** `upsellKey` is the offer's `uid` or its row `id`, as list_upsells shows them; the API only takes the uid. */
+  async updateUpsell(productId: string, upsellKey: string, input: UpdateUpsellInput): Promise<Upsell> {
+    return this.updateOffer(productId, 'upsell', upsellKey, input as Record<string, unknown>) as Promise<Upsell>;
   }
 
-  async reorderUpsells(productId: string, upsellIds: string[]): Promise<ReorderResult[]> {
-    return this.productPort.reorderUpsells(productId, upsellIds);
+  async deleteUpsell(productId: string, upsellKey: string): Promise<void> {
+    return this.deleteOffer(productId, 'upsell', upsellKey);
+  }
+
+  async reorderUpsells(productId: string, upsellKeys: string[]): Promise<ReorderResult[]> {
+    return this.productPort.reorderUpsells(productId, await this.resolveUids(productId, 'upsell', upsellKeys));
   }
 
   async listDownsells(productId: string): Promise<{ downsells: DownsellSequenceItem[]; count: number }> {
-    return this.productPort.listDownsells(productId);
+    const result = await this.productPort.listDownsells(productId);
+    return { ...result, downsells: await this.withEffectivePrice(result.downsells) };
   }
 
   /** Same editor shape as {@link createUpsell}: `order` is required, products go in `downsellProductIds`. */
   async createDownsell(productId: string, downsellId: string, input: CreateDownsellInput): Promise<DownsellSequenceItem> {
     const order = input.order ?? nextOrder((await this.productPort.listDownsells(productId)).downsells);
+    const offer = composeOffer('downsell', input.downsellProductId, {}, input as unknown as Record<string, unknown>);
     return this.productPort.createDownsell(productId, downsellId, {
-      ...input,
+      ...offer,
       uid: downsellId,
       id: downsellId,
       downsellProductIds: [input.downsellProductId],
       order,
+    } as unknown as CreateDownsellPayload);
+  }
+
+  async updateDownsell(productId: string, downsellKey: string, input: UpdateDownsellInput): Promise<DownsellSequenceItem> {
+    return this.updateOffer(productId, 'downsell', downsellKey, input as Record<string, unknown>) as Promise<DownsellSequenceItem>;
+  }
+
+  async deleteDownsell(productId: string, downsellKey: string): Promise<void> {
+    return this.deleteOffer(productId, 'downsell', downsellKey);
+  }
+
+  async reorderDownsells(productId: string, downsellKeys: string[]): Promise<ReorderResult[]> {
+    return this.productPort.reorderDownsells(productId, await this.resolveUids(productId, 'downsell', downsellKeys));
+  }
+
+  /**
+   * The API replaces the stored offer with what it is sent and has no PATCH, so an edit reads the
+   * offer, applies the caller's fields on top (see {@link composeOffer}) and saves the whole of it.
+   */
+  private async updateOffer(
+    productId: string,
+    kind: OfferKind,
+    key: string,
+    input: Record<string, unknown>,
+  ): Promise<Upsell | DownsellSequenceItem> {
+    const offer = await this.findOffer(productId, kind, key);
+    const [offeredProductId] = offeredProductIds(offer);
+    const doc = {
+      ...composeOffer(kind, offeredProductId, offer as unknown as Record<string, unknown>, input),
+      updatedAt: new Date().toISOString(),
+    };
+    const saved = await this.productPort.saveOffer(productId, kind, offer.uid, doc);
+    return (saved ?? doc) as unknown as Upsell | DownsellSequenceItem;
+  }
+
+  /**
+   * Deletes by `uid`, the only key the API deletes by: given a row `id` it used to answer success
+   * and delete nothing, so the key is resolved through the list first. A 404 is "not found", never a success.
+   */
+  private async deleteOffer(productId: string, kind: OfferKind, key: string): Promise<void> {
+    const offer = await this.findOffer(productId, kind, key);
+    try {
+      if (kind === 'upsell') await this.productPort.deleteUpsell(productId, offer.uid);
+      else await this.productPort.deleteDownsell(productId, offer.uid);
+    } catch (error) {
+      if (error instanceof AppError && error.statusCode === 404 && !error.message.includes('Request failed with status')) {
+        throw new NotFoundError(offerLabel(kind), key, OFFER_KEY_HINT(kind));
+      }
+      throw error;
+    }
+  }
+
+  private async resolveUids(productId: string, kind: OfferKind, keys: string[]): Promise<string[]> {
+    const offers = await this.offers(productId, kind);
+    return keys.map((key) => resolveOffer(offers, kind, key).uid);
+  }
+
+  private async offers(productId: string, kind: OfferKind): Promise<Array<Upsell | DownsellSequenceItem>> {
+    return kind === 'upsell'
+      ? this.productPort.listUpsells(productId)
+      : (await this.productPort.listDownsells(productId)).downsells;
+  }
+
+  /** Adds `effectivePriceCents`; the product list is read only when an offer has no override price. */
+  private async withEffectivePrice<T extends Upsell | DownsellSequenceItem>(offers: T[]): Promise<T[]> {
+    let basePrices: Map<string, number> | undefined;
+    if (offers.some((offer) => overridePrice(offer) === undefined)) {
+      try {
+        const products = (await this.productPort.list()) ?? [];
+        basePrices = new Map(products.filter((p) => p.uid).map((p) => [p.uid as string, p.price]));
+      } catch {
+        basePrices = new Map(); // an enrichment only: a failed product read leaves the price unknown
+      }
+    }
+    return offers.map((offer) => {
+      const [offeredId] = offeredProductIds(offer);
+      const price = overridePrice(offer) ?? basePrices?.get(offeredId);
+      return { ...offer, effectivePriceCents: price ?? null };
     });
-  }
-
-  async deleteDownsell(productId: string, downsellId: string): Promise<void> {
-    return this.productPort.deleteDownsell(productId, downsellId);
-  }
-
-  async reorderDownsells(productId: string, downsellIds: string[]): Promise<ReorderResult[]> {
-    return this.productPort.reorderDownsells(productId, downsellIds);
   }
 
   /**
@@ -249,7 +336,7 @@ export class ProductService {
     offerId: string,
   ): Promise<{ offerId: string; kind: OfferKind; products: OfferProductPage[] }> {
     const offer = await this.findOffer(productId, kind, offerId);
-    return { offerId, kind, products: this.offerPages(productId, kind, offerId, offer) };
+    return { offerId: offer.uid, kind, products: this.offerPages(productId, kind, offer.uid, offer) };
   }
 
   /**
@@ -264,11 +351,12 @@ export class ProductService {
   async setOfferProductPage(
     productId: string,
     kind: OfferKind,
-    offerId: string,
+    offerKey: string,
     offeredProductId: string,
     page: ExternalFlow | null,
   ): Promise<{ offerId: string; kind: OfferKind; products: OfferProductPage[] }> {
-    const offer = await this.findOffer(productId, kind, offerId);
+    const offer = await this.findOffer(productId, kind, offerKey);
+    const offerId = offer.uid;
     if (!offeredProductIds(offer).includes(offeredProductId)) {
       throw new ValidationError(
         `Product ${offeredProductId} is not offered by this ${kind}. Products in the offer: `
@@ -292,17 +380,13 @@ export class ProductService {
     return { offerId, kind, products: this.offerPages(productId, kind, offerId, after) };
   }
 
+  /** Matches by `uid` first, then by row `id`; either key works for the caller, the API only knows the uid. */
   private async findOffer(
     productId: string,
     kind: OfferKind,
-    offerId: string,
+    key: string,
   ): Promise<Upsell | DownsellSequenceItem> {
-    const offers = kind === 'upsell'
-      ? await this.productPort.listUpsells(productId)
-      : (await this.productPort.listDownsells(productId)).downsells;
-    const offer = offers.find((item) => item.uid === offerId);
-    if (!offer) throw new NotFoundError(kind === 'upsell' ? 'Upsell' : 'Downsell', offerId);
-    return offer;
+    return resolveOffer(await this.offers(productId, kind), kind, key);
   }
 
   private offerPages(
@@ -328,6 +412,24 @@ export class ProductService {
   async manageTags(productId: string, tags: ProductTag[]): Promise<{ tags: ProductTag[] }> {
     return this.productPort.manageTags(productId, tags);
   }
+}
+
+const offerLabel = (kind: OfferKind) => (kind === 'upsell' ? 'Upsell' : 'Downsell');
+
+const OFFER_KEY_HINT = (kind: OfferKind) =>
+  `No ${kind} of this product has that value as its \`uid\` or its \`id\`. Use a key from list_${kind}s.`;
+
+function resolveOffer<T extends Upsell | DownsellSequenceItem>(offers: T[], kind: OfferKind, key: string): T {
+  const offer = offers.find((item) => item.uid === key) ?? offers.find((item) => item.id === key);
+  if (!offer) throw new NotFoundError(offerLabel(kind), key, OFFER_KEY_HINT(kind));
+  return offer;
+}
+
+/** The price a buyer is charged for the offer's first product, when the offer overrides it. */
+function overridePrice(offer: Upsell | DownsellSequenceItem): number | undefined {
+  const [offeredId] = offeredProductIds(offer);
+  const price = offer.productOverrides?.[offeredId]?.price;
+  return typeof price === 'number' && price > 0 ? price : undefined;
 }
 
 /** Every product an offer sells, whichever kind it is. */

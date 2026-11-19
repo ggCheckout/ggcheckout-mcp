@@ -8,33 +8,14 @@ import type {
   FulfillmentData,
   UpdateFulfillmentInput,
   PaymentStatusCheckResponse,
+  AttributionResponse,
 } from '../../core/types/payment.js';
-import { ApiError, NotFoundError } from '../../shared/errors.js';
+import { NotFoundError } from '../../shared/errors.js';
 import { sanitizePayment } from '../../shared/sanitizer.js';
 import type { HttpClient } from './http-client.js';
 
 export class PaymentApiAdapter implements PaymentPort {
   constructor(private readonly http: HttpClient) {}
-
-  /**
-   * This route answers 404 "Nenhum cliente encontrado." when the seller has no payments at all —
-   * by design, and it predates the paginated sibling, which returns 200 with an empty list for the
-   * same state. "No sales yet" is an answer, not a failure, so it is normalized to an empty list
-   * here; a 404 that means the business does not exist carries a different message and still throws.
-   */
-  async list(businessId: string): Promise<Payment[]> {
-    try {
-      const data = await this.http.get<PaymentsListResponse>(
-        `/api/get-clients/business/${businessId}/payments`,
-      );
-      return data.payments.map(sanitizePayment);
-    } catch (error) {
-      if (error instanceof ApiError && error.statusCode === 404 && /nenhum cliente/i.test(error.message)) {
-        return [];
-      }
-      throw error;
-    }
-  }
 
   async getPaginated(
     businessId: string,
@@ -91,5 +72,16 @@ export class PaymentApiAdapter implements PaymentPort {
 
   async checkStatus(paymentId: string): Promise<PaymentStatusCheckResponse> {
     return this.http.post<PaymentStatusCheckResponse>(`/api/payments/check-payment/${paymentId}`, {});
+  }
+
+  /** Sales aggregated by UTM / click-source keys; the route answers counts and cents only. */
+  async getAttribution(
+    businessId: string,
+    query: { from: string; to: string; groupBy: string[] },
+  ): Promise<AttributionResponse> {
+    const params = new URLSearchParams({ from: query.from, to: query.to, groupBy: query.groupBy.join(',') });
+    return this.http.get<AttributionResponse>(
+      `/api/get-clients/business/${encodeURIComponent(businessId)}/payments/attribution?${params}`,
+    );
   }
 }

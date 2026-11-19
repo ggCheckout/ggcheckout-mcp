@@ -1,0 +1,32 @@
+/* The funnel editor's Leads tab (saas components/funnels/editor/LeadsTab.tsx StatCard and
+   leads-tab/FunnelConversionViz.tsx), on the shared dashboard tokens of styles/dashboard.css. */
+
+/* StatCard: the `metric` surface (neutral, electric blue), p-4, icon and label on top. */
+.dashboard .funnel-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (min-width: 768px) { .dashboard .funnel-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.dashboard .metric.funnel-stat { padding: 16px; gap: 8px; }
+.dashboard .funnel-stat-label { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.dashboard .funnel-stat-value { font-size: 24px; font-weight: 700; line-height: 1.33; }
+
+/* FunnelConversionViz: a bordered card, one row per step; the label sits above the bar on narrow
+   screens and to its left from 768px. */
+.dashboard .funnel-conversion { padding: 16px; }
+.dashboard .funnel-title { margin: 0 0 12px; font-size: 14px; font-weight: 600; }
+.dashboard .funnel-steps { display: flex; flex-direction: column; gap: 12px; }
+.dashboard .funnel-step { display: flex; flex-direction: column; gap: 6px; }
+.dashboard .funnel-step-name { display: block; font-size: 12px; color: var(--d-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard .funnel-step-track { position: relative; }
+.dashboard .funnel-step-bar { height: 28px; border-radius: 6px; opacity: 0.8; transition: width 200ms ease; }
+.dashboard .funnel-step-nums { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.dashboard .funnel-step-visitors { font-weight: 500; }
+.dashboard .funnel-step-drop { color: #ef4444; }
+@media (min-width: 768px) {
+  .dashboard .funnel-step { flex-direction: row; align-items: center; gap: 12px; }
+  .dashboard .funnel-step-name { flex: 0 0 80px; }
+  .dashboard .funnel-step-track { flex: 1; }
+  .dashboard .funnel-step-nums { flex: 0 0 112px; }
+}
+.dashboard .funnel-foot {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--d-line); font-size: 12px; color: var(--d-muted);
+}
