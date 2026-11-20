@@ -7,21 +7,25 @@ export interface InboxPolling {
   pause: PollPause | null;
   /** One read now, under the same rule as the beats (a 429/503 pauses). */
   read: () => Promise<TickResult>;
-  /** Clears the pause and reads at once; the beats start again. */
+  /** Clears the pause and reads at once; the beats start again with a fresh time cap (the seller is here). */
   resume: () => void;
 }
 
 /**
  * The inbox's reads within the account's API key budget: `load` runs every 10 s while the tab is
- * visible and `held` is false, for 15 minutes; a 429/503 (the message carries the Retry-After) stops
+ * visible and `held` is false, for 15 minutes of visible time; a 429/503 (the message carries the Retry-After) stops
  * them instead of repeating them every beat. Either stop shows as `pause`, and `resume` starts again.
  * `onError` gets every other failure.
  */
 export function useInboxPolling(load: () => Promise<void>, { held = false, onError }: { held?: boolean; onError?: (error: unknown) => void } = {}): InboxPolling {
   const [pause, setPause] = useState<PollPause | null>(null);
+  /** Bumped by `resume`: a new loop, so the time cap counts from the seller's last action. */
+  const [round, setRound] = useState(0);
   // Read through a ref: a new callback each render must not restart the beats.
   const errorSink = useRef(onError);
-  errorSink.current = onError;
+  useEffect(() => {
+    errorSink.current = onError;
+  });
 
   const read = useCallback(async (): Promise<TickResult> => {
     try {
@@ -46,10 +50,11 @@ export function useInboxPolling(load: () => Promise<void>, { held = false, onErr
         if (why === 'idle') setPause({ kind: 'idle' });
       },
     });
-  }, [read, held, pause]);
+  }, [read, held, pause, round]);
 
   const resume = useCallback((): void => {
     setPause(null);
+    setRound((n) => n + 1);
     void read();
   }, [read]);
 

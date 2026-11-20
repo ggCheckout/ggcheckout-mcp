@@ -7,7 +7,7 @@ export type TickResult = 'continue' | 'stop';
 export type PollStop = 'idle' | 'stopped';
 
 export interface PollOptions {
-  /** Reads stop this long after the loop started (time hidden included): a forgotten view stops reading. */
+  /** Reads stop after the document was visible this long since the loop started: a forgotten view stops reading. */
   stopAfterMs: number;
   /** Called once when the loop stops by itself; not when the caller stops it. */
   onStop?: (reason: PollStop) => void;
@@ -19,15 +19,18 @@ export interface PollOptions {
  * Calls `tick` every `intervalMs`, but only while the document is visible: a hidden tab does not
  * read the inbox. The next read starts after the previous one settled, so a slow answer never
  * piles up reads, and showing the tab again reads at once. The reads spend the seller's API key
- * budget (per account, shared by every key), so the loop ends after `stopAfterMs` or when a read
- * returns 'stop', and says why. Returns what stops it.
+ * budget (per account, shared by every key), so the loop ends after `stopAfterMs` of visible time
+ * (hidden time reads nothing, so it does not count) or when a read returns 'stop', and says why.
+ * Returns what stops it.
  */
 export function startVisiblePolling(
   tick: () => Promise<TickResult | void> | TickResult | void,
   intervalMs: number,
   { stopAfterMs, onStop, doc = document, now = Date.now }: PollOptions,
 ): () => void {
-  const startedAt = now();
+  let visibleMs = 0;
+  let visibleSince: number | null = doc.visibilityState === 'visible' ? now() : null;
+  const visibleTime = (): number => visibleMs + (visibleSince === null ? 0 : now() - visibleSince);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
   let running = false;
@@ -54,7 +57,7 @@ export function startVisiblePolling(
   async function run(): Promise<void> {
     timer = undefined;
     if (stopped || running || doc.visibilityState !== 'visible') return;
-    if (now() - startedAt >= stopAfterMs) {
+    if (visibleTime() >= stopAfterMs) {
       halt('idle');
       return;
     }
@@ -71,8 +74,14 @@ export function startVisiblePolling(
     else schedule();
   }
   function onVisibility(): void {
-    if (doc.visibilityState === 'visible') void run();
-    else clear();
+    if (doc.visibilityState === 'visible') {
+      visibleSince ??= now();
+      void run();
+      return;
+    }
+    if (visibleSince !== null) visibleMs += now() - visibleSince;
+    visibleSince = null;
+    clear();
   }
 
   doc.addEventListener('visibilitychange', onVisibility);

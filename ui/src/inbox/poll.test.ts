@@ -108,6 +108,22 @@ describe('startVisiblePolling', () => {
     expect(listeners.size).toBe(0);
   });
 
+  it('counts only visible time toward the cap: a tab hidden for an hour still reads when shown', async () => {
+    const { doc, show } = fakeDocument();
+    const tick = vi.fn().mockResolvedValue(undefined);
+    const onStop = vi.fn();
+    startVisiblePolling(tick, 10_000, { stopAfterMs: 30_000, onStop, doc: doc as any });
+    await vi.advanceTimersByTimeAsync(10_000);
+    show('hidden');
+    await vi.advanceTimersByTimeAsync(3_600_000);
+    show('visible');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(tick).toHaveBeenCalledTimes(2);
+    expect(onStop).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(onStop).toHaveBeenCalledWith('idle');
+  });
+
   it('stops when a read asks it to (the API said to wait)', async () => {
     const { doc } = fakeDocument();
     const tick = vi.fn().mockResolvedValueOnce('continue').mockResolvedValueOnce('stop').mockResolvedValue('continue');
