@@ -29,7 +29,7 @@
 .dashboard .ch-dot[data-pulse] { animation: ch-pulse 1.6s ease-in-out infinite; }
 @keyframes ch-pulse { 50% { opacity: 0.35; } }
 
-.dashboard .ch-provider { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 500; color: var(--d-muted); border: 1px solid var(--d-line); }
+.dashboard .ch-provider { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 500; white-space: nowrap; color: var(--d-muted); border: 1px solid var(--d-line); }
 .dashboard .ch-provider[data-meta] { border-color: transparent; color: #05329d; background: color-mix(in srgb, var(--season-blue) 12%, transparent); }
 :root[data-theme='dark'] .dashboard .ch-provider[data-meta] { color: #a8c4ff; }
 
@@ -79,12 +79,28 @@
 .dashboard .ch-note { margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 12px; background: color-mix(in srgb, var(--d-muted-bg) 50%, transparent); }
 .dashboard .ch-alert { margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 12px; border: 1px solid rgb(220 38 38 / 0.3); background: rgb(220 38 38 / 0.08); }
 
+/* ChipsNeedingAction: the amber row on top of the list, minimizable. */
+.dashboard .ch-pending { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, #f59e0b 45%, transparent); background: color-mix(in srgb, #f59e0b 6%, var(--d-bg)); }
+.dashboard .ch-pending-head { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 0; border: 0; background: transparent; color: var(--d-fg); text-align: left; font: inherit; cursor: pointer; }
+.dashboard .ch-pending-head:focus-visible { outline: 2px solid var(--season-blue); outline-offset: 2px; border-radius: 6px; }
+.dashboard .ch-pending-icon { flex: 0 0 auto; margin-top: 2px; color: #b45309; }
+:root[data-theme='dark'] .dashboard .ch-pending-icon { color: #fbbf24; }
+.dashboard .ch-pending-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dashboard .ch-pending-title { font-size: 14px; font-weight: 600; }
+.dashboard .ch-pending-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--d-muted); }
+.dashboard .ch-pending-toggle svg { transition: transform 150ms ease; }
+.dashboard .ch-pending-toggle svg[data-open] { transform: rotate(180deg); }
+.dashboard .ch-note[data-tone='warning'] { border: 1px solid color-mix(in srgb, #f59e0b 40%, transparent); background: color-mix(in srgb, #f59e0b 8%, transparent); }
+
 /* Narrow (a phone's chat): the side column drops under the name, so the name keeps the row's width. */
 @media (max-width: 480px) {
   .dashboard .ch-row-btn { flex-wrap: wrap; row-gap: 8px; }
   .dashboard .ch-chevron { order: 2; }
   .dashboard .ch-row-side { order: 3; width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding-left: 44px; }
   .dashboard .ch-session { max-width: none; }
+  .dashboard .ch-status { white-space: normal; }
+  /* The word goes, the chevron stays: the title and hint keep the row's width. */
+  .dashboard .ch-pending-word { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) { .dashboard .ch-dot[data-pulse] { animation: none; } }

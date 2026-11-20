@@ -94,7 +94,8 @@ function ChipSlots({ op, chips, canEdit, busy, onMove, onRemove, onAdd }: {
 function ChipPicker({ op, chips, chipsFailed, onPick, onCancel }: {
   op: Operation; chips: ChipsById | null; chipsFailed: boolean; onPick: (chip: Chip) => void; onCancel: () => void;
 }) {
-  const free = chips ? [...chips.values()].filter((c) => !op.chipIds.includes(c.id)) : null;
+  // A chip marked for removal is out of every choice, as in the dashboard.
+  const free = chips ? [...chips.values()].filter((c) => !op.chipIds.includes(c.id) && !c.removalAt) : null;
   return (
     <section className="ch-panel">
       <h3 className="ch-panel-title">Escolha um chip</h3>

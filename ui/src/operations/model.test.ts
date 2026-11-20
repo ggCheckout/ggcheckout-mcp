@@ -7,7 +7,7 @@ import {
 const raw = { uid: 'g1', name: 'Método Aurora', primaryNumberId: 'c1', fallbackNumberIds: ['c2', '', 'c3'], assignedProducts: ['p1', 7], isActive: true };
 const op = (chipIds: string[]): Operation => ({ id: 'g1', name: 'Op', chipIds, productIds: [], isActive: true });
 const chip = (id: string, status: string, isActive = true): Chip => ({
-  id, name: id, phone: null, provider: 'waha', status, isActive, sessionsCount: 1, usedBy: null, errorMessage: null,
+  id, name: id, phone: null, provider: 'waha', status, isActive, sessionsCount: 1, usedBy: null, errorMessage: null, removalAt: null, removalReason: null,
 });
 const chips = (...list: Chip[]) => new Map(list.map((c) => [c.id, c]));
 

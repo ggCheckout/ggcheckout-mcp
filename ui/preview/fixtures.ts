@@ -425,6 +425,8 @@ export const chips = {
     { uid: 'chip_oficial', provider: 'meta', displayName: 'Oficial GG', status: 'authenticated', phoneNumber: '*******0000', isActive: true, groupsCount: 2 },
     { uid: 'chip_reserva', provider: 'waha', displayName: 'Reserva', status: 'disconnected', phoneNumber: '*********2222', isActive: true, groupsCount: 1 },
     { uid: 'chip_antigo', provider: 'waha', displayName: '', status: 'banned', phoneNumber: '*********1111', isActive: false, groupsCount: 1 },
+    // Marked for removal by the seller: deleted in about 23 hours unless undone in the dashboard.
+    { uid: 'chip_fabio', provider: 'waha', displayName: 'Fabio', status: 'authenticated', phoneNumber: '*********1671', isActive: false, groupsCount: 0, removalScheduledAt: new Date(Date.now() + 22.5 * 3_600_000).toISOString(), removalReason: 'seller' },
   ],
 };
 export const chipDetail = (id: string, status?: string) => {

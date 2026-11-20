@@ -5,23 +5,97 @@
 // passes on (it links a device to the account), so the chat connects with the code instead. Pure.
 
 import { type Payload, count, isPayload, text } from '../lib/payload';
+import { plural } from '../lib/format';
 
 export type ChipTone = 'success' | 'info' | 'warning' | 'alert' | 'danger' | 'muted';
 
-/** chipStatus.ts getChipStatusVisual: an inactive chip reads "Desativado" whatever its status. */
-export function chipStatus(status: string, isActive: boolean): { label: string; tone: ChipTone; pulse: boolean } {
-  if (!isActive) return { label: 'Desativado', tone: 'muted', pulse: false };
-  switch (status) {
-    case 'authenticated': return { label: 'Conectado', tone: 'success', pulse: false };
-    case 'qr_code': return { label: 'QR pronto', tone: 'info', pulse: true };
+/** MAX_NUMBERS_PER_USER in the saas: active chips an account may have ("N chips ativos / 20"). */
+export const MAX_ACTIVE_CHIPS = 20;
+
+/** REMOVAL_WINDOW_MS in the saas: a removed chip is deleted 48 hours later, undoable until then. */
+const REMOVAL_WINDOW_MS = 48 * 3_600_000;
+const HOUR_MS = 3_600_000;
+
+/**
+ * chipStatus.ts removalCountdown: the time left, rounded up, capped at the 48-hour window (a clock a
+ * little behind the server would otherwise read "3 dias"); at the deadline the chip awaits deletion.
+ */
+export function removalCountdown(removalAt: string, now: number): string {
+  const remaining = Math.min(Date.parse(removalAt) - now, REMOVAL_WINDOW_MS);
+  if (!(remaining > 0)) return 'Removendo…';
+  const hours = remaining / HOUR_MS;
+  if (hours >= 24) return `Será removido em ${plural(Math.ceil(hours / 24), 'dia', 'dias')}`;
+  if (hours >= 1) return `Será removido em ${plural(Math.ceil(hours), 'hora', 'horas')}`;
+  return 'Será removido em menos de 1 hora';
+}
+
+export interface ChipStatusVisual {
+  label: string;
+  tone: ChipTone;
+  pulse: boolean;
+  /** What the state means and what to do, as the dashboard explains it on hover. */
+  description: string;
+}
+
+const DESCRIPTIONS: Record<string, string> = {
+  authenticated: 'O chip está enviando mensagens normalmente.',
+  inactive: 'Você pausou este chip: ele não envia mensagens. Reative para ele voltar a enviar.',
+  qr_code: 'O chip espera a conexão com o WhatsApp do celular. Abra o chip e conecte pelo código.',
+  pending: 'O chip está ligando; leva alguns segundos.',
+  starting: 'O chip está ligando; leva alguns segundos.',
+  disconnected: 'O chip desconectou e não envia mensagens. Abra o chip, reinicie e conecte de novo.',
+  error: 'O chip falhou e não envia mensagens. Abra o chip, reinicie e conecte de novo.',
+  banned: 'O WhatsApp baniu este número; ele não envia mensagens. Cadastre outro chip e troque-o na operação.',
+};
+/** A Meta chip connects with its credentials in the dashboard and at Meta, never by a code. */
+const META_DESCRIPTIONS: Record<string, string> = {
+  qr_code: 'Confira a conexão da API oficial na tela de Chips do painel e na Meta.',
+  pending: 'A conexão da API oficial está pendente. Confira o status no painel e na Meta.',
+  starting: 'A conexão da API oficial está iniciando. Acompanhe o status no painel e na Meta.',
+  disconnected: 'A API oficial está desconectada e não envia mensagens. Confira a conexão no painel e na Meta.',
+  error: 'A API oficial apresentou uma falha e não envia mensagens. Confira a conexão no painel e na Meta.',
+};
+
+function removalDescription(chip: StatusChip, deadline: string, expired: boolean): string {
+  if (expired) return 'O prazo terminou e o chip está sendo removido. Ele não envia mensagens; cadastre outro chip no painel para continuar.';
+  if (chip.removalReason !== 'disconnected') {
+    return `Você marcou este chip para remover. ${deadline}. Ele não envia mensagens; para mantê-lo, use Desfazer na tela de Chips do painel antes do prazo.`;
+  }
+  return chip.provider === 'meta'
+    ? `O chip está marcado para remoção por desconexão. ${deadline}. Confira a conexão da API oficial no painel e na Meta antes do prazo.`
+    : `O chip está há 7 dias sem conexão e não envia mensagens. ${deadline}. Reinicie e conecte antes do prazo para mantê-lo.`;
+}
+
+type StatusChip = Pick<Chip, 'status' | 'isActive' | 'provider' | 'removalAt' | 'removalReason'>;
+
+/**
+ * chipStatus.ts getNumberStatusVisual: a chip marked for removal reads its countdown whatever its
+ * status, an inactive one reads "Desativado", and the rest their connection state.
+ */
+export function chipStatus(chip: StatusChip, now: number): ChipStatusVisual {
+  if (chip.removalAt) {
+    const label = removalCountdown(chip.removalAt, now);
+    return { label, tone: 'warning', pulse: false, description: removalDescription(chip, label, !(Date.parse(chip.removalAt) > now)) };
+  }
+  if (!chip.isActive) return { label: 'Desativado', tone: 'muted', pulse: false, description: DESCRIPTIONS.inactive };
+  const description = (chip.provider === 'meta' && META_DESCRIPTIONS[chip.status]) || DESCRIPTIONS[chip.status] || '';
+  switch (chip.status) {
+    case 'authenticated': return { label: 'Conectado', tone: 'success', pulse: false, description };
+    case 'qr_code': return { label: 'QR pronto', tone: 'info', pulse: true, description };
     case 'pending':
-    case 'starting': return { label: 'Conectando…', tone: 'warning', pulse: true };
-    case 'disconnected': return { label: 'Desconectado', tone: 'alert', pulse: false };
-    case 'banned': return { label: 'Banido', tone: 'danger', pulse: false };
-    case 'error': return { label: 'Erro', tone: 'danger', pulse: false };
-    default: return { label: status, tone: 'muted', pulse: false };
+    case 'starting': return { label: 'Conectando…', tone: 'warning', pulse: true, description };
+    case 'disconnected': return { label: 'Desconectado', tone: 'alert', pulse: false, description };
+    case 'banned': return { label: 'Banido', tone: 'danger', pulse: false, description };
+    case 'error': return { label: 'Erro', tone: 'danger', pulse: false, description };
+    default: return { label: chip.status, tone: 'muted', pulse: false, description };
   }
 }
+
+/** ChipProviderBadge: the dashboard's names for the two chip types and what each means. */
+export const PROVIDER: Record<'waha' | 'meta', { label: string; description: string }> = {
+  waha: { label: 'WhatsApp GG', description: 'Conectado pelo QR Code, lendo com o WhatsApp do celular, pela conexão da GG. Não precisa de conta de negócio na Meta.' },
+  meta: { label: 'Meta oficial', description: 'Conectado pela API Oficial do WhatsApp, com as suas credenciais da Meta (Cloud API). Mais estável e com os limites oficiais da Meta.' },
+};
 
 export interface ChipUse {
   sessionId: string;
@@ -41,6 +115,10 @@ export interface Chip {
   sessionsCount: number;
   usedBy: ChipUse[] | null;
   errorMessage: string | null;
+  /** When the chip is deleted, if it is marked for removal (48 hours after the mark). */
+  removalAt: string | null;
+  /** Who marked it: the seller (undone in the dashboard) or 7 days without a connection (reconnect to keep it). */
+  removalReason: 'seller' | 'disconnected' | null;
 }
 
 function toChip(n: Payload): Chip {
@@ -61,6 +139,8 @@ function toChip(n: Payload): Chip {
     sessionsCount: usedBy ? usedBy.length : count(n.groupsCount),
     usedBy,
     errorMessage: text(n.errorMessage),
+    removalAt: text(n.removalScheduledAt),
+    removalReason: n.removalScheduledAt ? (n.removalReason === 'disconnected' ? 'disconnected' : 'seller') : null,
   };
 }
 
@@ -83,16 +163,42 @@ export function summarizePairing(data: unknown): string | null {
 }
 
 /**
- * ChipDetailPage `showQR`: an active QR code chip in the handshake (pending, qr_code, starting). The
+ * chipStatus.ts needsChipQr: a QR code chip that may connect is active and not marked for removal, or
+ * marked for removal for lack of a connection (connecting it keeps it). The seller's own mark is
+ * undone in the dashboard; a paused chip is reactivated first.
+ */
+function mayConnect(chip: Chip): boolean {
+  return chip.provider === 'waha' && (chip.removalReason === 'disconnected' || (chip.isActive && !chip.removalAt));
+}
+
+/**
+ * ChipDetailPage `showQR`: a chip that may connect, in the handshake (pending, qr_code, starting). The
  * dashboard shows its QR there; the chat, a pairing code. A disconnected chip is restarted first.
  */
 export function canPair(chip: Chip): boolean {
-  return chip.provider === 'waha' && chip.isActive && ['pending', 'starting', 'qr_code'].includes(chip.status);
+  return mayConnect(chip) && ['pending', 'starting', 'qr_code'].includes(chip.status);
 }
 
 /** A QR code chip that dropped: "Reiniciar" puts it back in the handshake to connect again. */
 export function needsRestart(chip: Chip): boolean {
-  return chip.provider === 'waha' && chip.isActive && chip.status === 'disconnected';
+  return mayConnect(chip) && chip.status === 'disconnected';
+}
+
+/** Statuses of an active chip that stop it from sending until the seller acts (chipStatus.ts ACTION_STATUSES). */
+const ACTION_STATUSES = new Set(['qr_code', 'disconnected', 'banned', 'error']);
+
+/**
+ * chipsNeedingAction: the chips marked for removal, soonest first, then the active ones that do not
+ * send until the seller acts. A paused chip, one still connecting and a connected one stay out.
+ */
+export function chipsNeedingAction(chips: readonly Chip[]): Chip[] {
+  const removals = chips.filter((c) => c.removalAt).sort((a, b) => Date.parse(a.removalAt ?? '') - Date.parse(b.removalAt ?? ''));
+  return [...removals, ...chips.filter((c) => !c.removalAt && c.isActive && ACTION_STATUSES.has(c.status))];
+}
+
+/** The "N chips ativos / 20" count: active and not marked for removal. */
+export function activeChips(chips: readonly Chip[]): number {
+  return chips.filter((c) => c.isActive && !c.removalAt).length;
 }
 
 /** WhatsApp shows the code in two groups of four: "ABCD-EFGH". */
