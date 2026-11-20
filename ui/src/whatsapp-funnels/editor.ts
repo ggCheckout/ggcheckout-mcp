@@ -149,6 +149,19 @@ export function insertStep<S>(steps: readonly S[], index: number, step: S): S[] 
   return [...steps.slice(0, at), step, ...steps.slice(at)];
 }
 
+/**
+ * The step at `index` trades places with its neighbor (`delta` -1 up, 1 down), its wait with it; out of
+ * range leaves the order as it is. The board's positions stay with the place in the sequence, so the
+ * dashboard's drawing keeps its shape and only the content moves.
+ */
+export function moveStep<S>(steps: readonly S[], index: number, delta: -1 | 1): S[] {
+  const to = index + delta;
+  const next = [...steps];
+  if (index < 0 || index >= steps.length || to < 0 || to >= steps.length) return next;
+  [next[index], next[to]] = [next[to], next[index]];
+  return next;
+}
+
 export const canAddStep = (steps: readonly unknown[]): boolean => steps.length < FUNNEL_MAX_STEPS;
 
 /** The minutes from the event to each step (the waits summed). */

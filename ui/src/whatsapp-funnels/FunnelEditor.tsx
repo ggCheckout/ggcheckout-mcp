@@ -7,7 +7,7 @@ import { messageOf } from '../lib/messageOf';
 import { Pills } from '../lib/Pills';
 import { SwitchRow } from '../lib/SwitchRow';
 import {
-  bornEnabled, buildBeats, cumulativeMinutes, draftFrom, funnelProblems, funnelVariables, insertStep, sampleText, saveBlocked, shiftLayout,
+  bornEnabled, buildBeats, cumulativeMinutes, draftFrom, funnelProblems, funnelVariables, insertStep, moveStep, sampleText, saveBlocked, shiftLayout,
   snapshotOf, toInput, unchangedSince, type DraftStep, type FlowSelection, type FunnelDraft, type StepBuilder,
 } from './editor';
 import { ENABLE_FAILED, createFunnel } from './createFunnel';
@@ -84,6 +84,9 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
     });
     setSelection({ kind: 'end' });
   };
+
+  /** The message trades places with its neighbor, its wait with it; the panel stays on it. */
+  const move = (key: string, delta: -1 | 1) => setDraft((d) => ({ ...d, steps: moveStep(d.steps, d.steps.findIndex((s) => s.key === key), delta) }));
 
   const addStep = (index: number, build: StepBuilder) => {
     const step = build(`step_new_${nextKey}`);
@@ -225,8 +228,9 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
         return {
           title: `Mensagem ${index + 1}`,
           body: (
-            <StepPanel step={step} index={index} trigger={draft.trigger} atMinutes={at[index]} variables={variables} renderedLength={render(step.text).length}
-              canRemove={draft.steps.length > 1} onChange={(next) => patchStep(step.key, next)} onRemove={() => removeStep(step.key)} />
+            <StepPanel step={step} index={index} count={draft.steps.length} trigger={draft.trigger} atMinutes={at[index]} variables={variables}
+              renderedLength={render(step.text).length} onChange={(next) => patchStep(step.key, next)} onRemove={() => removeStep(step.key)}
+              onMove={(delta) => move(step.key, delta)} />
           ),
         };
       }

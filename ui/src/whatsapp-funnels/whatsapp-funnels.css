@@ -95,7 +95,10 @@
 .dashboard .fe-step-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: -6px; }
 .dashboard .fe-step-timing { margin: 0; font-size: 12px; color: var(--d-muted); }
 .dashboard .fe-icon-btn { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); color: var(--d-muted); cursor: pointer; }
-.dashboard .fe-icon-btn:hover { border-color: #dc2626; color: #dc2626; }
+.dashboard .fe-step-tools { flex: 0 0 auto; display: flex; gap: 6px; }
+.dashboard .fe-icon-btn:hover:not([aria-disabled='true']) { border-color: var(--season-blue); color: var(--d-accent); }
+.dashboard .fe-icon-danger:hover { border-color: #dc2626; color: #dc2626; }
+.dashboard .fe-icon-btn[aria-disabled='true'] { cursor: not-allowed; }
 .dashboard .fe-icon-btn:focus-visible { outline: 2px solid var(--season-blue); outline-offset: 2px; }
 .dashboard .fe-wait-custom { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .dashboard .fe-field .fe-amount { width: 88px; flex: 0 0 auto; }

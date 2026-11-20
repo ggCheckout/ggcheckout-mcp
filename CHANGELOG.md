@@ -60,7 +60,8 @@ error body) is read as "not released yet".
   messages, its operation ("Pela operação do produto" for an automatic one) and its state ("Ligado" or
   "Desligado"), with "Atualizar", "Carregar mais funis" and "+ Novo funil". A funnel opens in the
   dashboard's editor: the flow of blocks (Começa, Espera, WhatsApp, Fim) with "+ Adicionar" and a "+"
-  between messages (Mensagem, Lembrete com o link, Última chamada com cupom, up to 5), and a panel per
+  between messages (Mensagem, Lembrete com o link, Última chamada com cupom, up to 5), arrows that move
+  a message up or down with its wait, and a panel per
   block with Propriedades (name, trigger, operation of a manual funnel; the wait presets and "Outro";
   the variable chips and the text; "Marcar como lida antes" and "Mostrar digitando"; stop on reply and
   send window; the store's signature, coupon and emoji) and Prévia (the customer's chat with each wait,

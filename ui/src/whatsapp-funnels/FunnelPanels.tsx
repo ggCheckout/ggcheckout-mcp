@@ -1,4 +1,4 @@
-import { Ban, Palette, Plus, Send, ShieldCheck, Trash2, Zap } from 'lucide-react';
+import { ArrowDown, ArrowUp, Ban, Palette, Plus, Send, ShieldCheck, Trash2, Zap } from 'lucide-react';
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { Pills } from '../lib/Pills';
 import { SwitchRow } from '../lib/SwitchRow';
@@ -187,19 +187,31 @@ function MessageEditor({ value, variables, onChange }: { value: string; variable
 }
 
 /** FunnelStepCard: one message, with its wait, its text and the pace it goes out at. */
-export function StepPanel({ step, index, trigger, atMinutes, variables, renderedLength, canRemove, onChange, onRemove }: {
-  step: DraftStep; index: number; trigger: FunnelTrigger; atMinutes: number; variables: readonly FunnelVariable[];
-  renderedLength: number; canRemove: boolean; onChange: (patch: Partial<DraftStep>) => void; onRemove: () => void;
+export function StepPanel({ step, index, count, trigger, atMinutes, variables, renderedLength, onChange, onRemove, onMove }: {
+  step: DraftStep; index: number; count: number; trigger: FunnelTrigger; atMinutes: number; variables: readonly FunnelVariable[];
+  renderedLength: number; onChange: (patch: Partial<DraftStep>) => void; onRemove: () => void; onMove: (delta: -1 | 1) => void;
 }) {
   const number = index + 1;
   return (
     <div className="fe-panel-body">
       <div className="fe-step-head">
         <p className="fe-step-timing">{stepTiming(step, index, trigger, atMinutes)}</p>
-        {canRemove && (
-          <button type="button" className="fe-icon-btn" onClick={onRemove} aria-label={`Remover mensagem ${number}`} title={`Remover mensagem ${number}`}>
-            <Trash2 size={15} aria-hidden />
-          </button>
+        {count > 1 && (
+          <div className="fe-step-tools">
+            {/* The message goes with its wait. At an edge the arrow stays focusable and says why (aria-disabled keeps the
+                tooltip a disabled button would lose); moveStep leaves the order alone there. */}
+            <button type="button" className="fe-icon-btn" onClick={() => onMove(-1)} aria-disabled={index === 0}
+              aria-label={`Mover mensagem ${number} para cima`} title={index === 0 ? 'Já é a primeira mensagem' : 'Mover para cima, com a espera'}>
+              <ArrowUp size={15} aria-hidden />
+            </button>
+            <button type="button" className="fe-icon-btn" onClick={() => onMove(1)} aria-disabled={index === count - 1}
+              aria-label={`Mover mensagem ${number} para baixo`} title={index === count - 1 ? 'Já é a última mensagem' : 'Mover para baixo, com a espera'}>
+              <ArrowDown size={15} aria-hidden />
+            </button>
+            <button type="button" className="fe-icon-btn fe-icon-danger" onClick={onRemove} aria-label={`Remover mensagem ${number}`} title={`Remover mensagem ${number}`}>
+              <Trash2 size={15} aria-hidden />
+            </button>
+          </div>
         )}
       </div>
       <WaitField key={step.key} label={index === 0 ? `Espera depois ${AFTER_EVENT[trigger]}` : 'Espera depois da mensagem anterior'}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   FUNNEL_MODELS, bornEnabled, buildBeats, clipCodePoints, draftFrom, excerpt, funnelProblems, funnelVariables, insertStep, manualWaitMinutes,
-  modelInput, modelSchedule, newDraft, sampleText, saveBlocked, shiftLayout, snapshotOf, stepTiming, toInput, unchangedSince, waitInUnit,
+  modelInput, modelSchedule, moveStep, newDraft, sampleText, saveBlocked, shiftLayout, snapshotOf, stepTiming, toInput, unchangedSince, waitInUnit,
   type FunnelDraft,
 } from './editor';
 import type { FunnelDetail } from './model';
@@ -50,6 +50,14 @@ describe('steps coming in and going out', () => {
     expect(shiftLayout(layout, 1, 1)).toEqual({ start: { x: 0, y: 0 }, 'wait-1': { x: 1, y: 1 }, 'message-3': { x: 2, y: 2 } });
     expect(shiftLayout(layout, 0, -1)).toEqual({ start: { x: 0, y: 0 }, 'message-1': { x: 2, y: 2 } });
     expect(shiftLayout(null, 0, 1)).toBeNull();
+  });
+
+  it('moves a step with its wait, and leaves the order alone at the edges', () => {
+    expect(moveStep(['a', 'b', 'c'], 1, -1)).toEqual(['b', 'a', 'c']);
+    expect(moveStep(['a', 'b', 'c'], 1, 1)).toEqual(['a', 'c', 'b']);
+    expect(moveStep(['a', 'b'], 0, -1)).toEqual(['a', 'b']);
+    expect(moveStep(['a', 'b'], 1, 1)).toEqual(['a', 'b']);
+    expect(moveStep(['a', 'b'], -1, 1)).toEqual(['a', 'b']);
   });
 
   it('notices a draft that differs from what was stored', () => {
