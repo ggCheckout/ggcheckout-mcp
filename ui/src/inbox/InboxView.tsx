@@ -5,12 +5,12 @@ import './inbox.css';
 import type { Host, HostSnapshot } from '../host';
 import { plural } from '../lib/format';
 import {
-  CONVERSATIONS_PAGE, POLL_FOR_MS, POLL_MS, activityLabel, appendConversations, contactLabel, conversationLabels, errorText, mergeConversations,
-  previewOf, summarizeInbox, toConversations, type Conversation, type PollPause,
+  CONVERSATIONS_PAGE, activityLabel, appendConversations, contactLabel, conversationLabels, errorText, mergeConversations,
+  previewOf, summarizeInbox, toConversations, type Conversation,
 } from './model';
 import { PollNote } from './PollNote';
-import { retryAfterSeconds, startVisiblePolling, type TickResult } from './poll';
 import { Thread } from './Thread';
+import { useInboxPolling } from './useInboxPolling';
 
 function Row({ conversation, onOpen }: { conversation: Conversation; onOpen: (c: Conversation) => void }) {
   const labels = conversationLabels(conversation);
@@ -47,7 +47,6 @@ function Inbox({ host }: { host: Host }) {
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selected, setSelected] = useState<Conversation | null>(null);
-  const [pause, setPause] = useState<PollPause | null>(null);
   const rows = useRef<HTMLUListElement>(null);
   /** The conversation the seller came back from: its row takes the focus again. */
   const returnTo = useRef<string | null>(null);
@@ -61,38 +60,13 @@ function Inbox({ host }: { host: Host }) {
     setError(null);
   }, [host]);
 
-  /** One read of the list; a 429/503 pauses the automatic reads instead of repeating them every beat. */
-  const read = useCallback(async (): Promise<TickResult> => {
-    try {
-      await refresh();
-      return 'continue';
-    } catch (e) {
-      const wait = retryAfterSeconds(e);
-      if (wait !== null) {
-        setPause({ kind: 'rate', seconds: wait });
-        return 'stop';
-      }
-      setError(errorText(e));
-      return 'continue';
-    }
-  }, [refresh]);
+  const threadOpen = selected !== null;
+  // The list waits while a thread is open: the thread reads itself.
+  const { pause, read, resume } = useInboxPolling(refresh, { held: threadOpen, onError: (e) => setError(errorText(e)) });
 
   useEffect(() => {
     void read();
   }, [read]);
-
-  const threadOpen = selected !== null;
-  useEffect(() => {
-    if (threadOpen || pause) return undefined;
-    return startVisiblePolling(read, POLL_MS, { stopAfterMs: POLL_FOR_MS, onStop: (why) => {
-      if (why === 'idle') setPause({ kind: 'idle' });
-    } });
-  }, [read, threadOpen, pause]);
-
-  const resume = () => {
-    setPause(null);
-    void read();
-  };
   const back = () => {
     returnTo.current = selected?.key ?? null;
     setSelected(null);

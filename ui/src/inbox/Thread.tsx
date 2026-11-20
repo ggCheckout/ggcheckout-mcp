@@ -5,13 +5,13 @@ import { BackButton } from '../lib/BackButton';
 import { ConfirmPanel } from '../lib/ConfirmPanel';
 import { codePointLength } from '../lib/format';
 import {
-  MAX_REPLY_CHARS, MESSAGES_PAGE, POLL_FOR_MS, POLL_MS, bodyOf, clockLabel, contactLabel, conversationLabels, errorText,
+  MAX_REPLY_CHARS, MESSAGES_PAGE, bodyOf, clockLabel, contactLabel, conversationLabels, errorText,
   latestAutoId, latestIncomingId, mergeMessages, pendingFor, replyProblem, runLabel, startOutcome, toContactRun, toMessages,
-  type Conversation, type FunnelOption, type PendingSend, type PollPause, type Run, type ThreadMessage,
+  type Conversation, type FunnelOption, type PendingSend, type Run, type ThreadMessage,
 } from './model';
 import { PollNote } from './PollNote';
 import { listAllFunnels } from '../whatsapp-funnels/funnelCalls';
-import { retryAfterSeconds, startVisiblePolling, type TickResult } from './poll';
+import { useInboxPolling } from './useInboxPolling';
 
 type Confirming = 'start' | 'stop' | 'optout' | 'optin' | null;
 
@@ -67,7 +67,6 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
   const lastIncoming = useRef<string | null | undefined>(undefined);
   const lastAuto = useRef<string | null | undefined>(undefined);
   const heading = useRef<HTMLHeadingElement>(null);
-  const [pause, setPause] = useState<PollPause | null>(null);
 
   const markRead = useCallback(() => {
     host.callTool('mark_whatsapp_conversation_read', { contactKey: key }).then(() => onRead(key)).catch(() => {});
@@ -105,29 +104,8 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
   // The thread opened from a row that is gone now: the focus starts on the contact's name.
   useEffect(() => heading.current?.focus(), []);
 
-  const poll = useCallback(async (): Promise<TickResult> => {
-    try {
-      await loadHead();
-      return 'continue';
-    } catch (e) {
-      const wait = retryAfterSeconds(e);
-      if (wait === null) return 'continue';
-      setPause({ kind: 'rate', seconds: wait });
-      return 'stop';
-    }
-  }, [loadHead]);
-
-  useEffect(() => {
-    if (pause) return undefined;
-    return startVisiblePolling(poll, POLL_MS, { stopAfterMs: POLL_FOR_MS, onStop: (why) => {
-      if (why === 'idle') setPause({ kind: 'idle' });
-    } });
-  }, [poll, pause]);
-
-  const resume = () => {
-    setPause(null);
-    void poll();
-  };
+  // A failed beat is tried again on the next one; the first read already says when it fails.
+  const { pause, resume } = useInboxPolling(loadHead);
 
   // The contact wrote while the thread is open: it is read, and the run may have stopped on the reply.
   // A funnel step went out: the run moved a step.
@@ -183,8 +161,8 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
       pending.current = null;
       setDraft('');
       stick.current = true;
-      setPause(null);
-      await loadHead().catch(() => {});
+      // The seller is here: the reads start again (after a pause too), the first one now.
+      resume();
     } catch (err) {
       setSendError(errorText(err, 'Não foi possível enviar. Tente de novo: a mensagem não será repetida.'));
     } finally {

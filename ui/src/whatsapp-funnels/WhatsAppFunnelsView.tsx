@@ -5,7 +5,7 @@ import '../chips/chips.css';
 import './whatsapp-funnels.css';
 import type { Host, HostSnapshot } from '../host';
 import { summarizeOperations, type Operation } from '../operations/model';
-import { ENABLE_FAILED, createFunnel, listAllFunnels } from './funnelCalls';
+import { ENABLE_FAILED, createFunnel, listAllFunnels, readFunnel } from './funnelCalls';
 import { modelInput, newDraft, type FunnelModel } from './editor';
 import { FunnelEditor, type EditorStart } from './FunnelEditor';
 import { FunnelStarter, modelTaken } from './FunnelStarter';
@@ -144,9 +144,7 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
     setLoadError(null);
     setNotice(null);
     try {
-      const full = summarizeFunnel(await host.callTool('get_whatsapp_funnel', { funnelId: row.id }));
-      if (!full) throw new Error('no funnel');
-      setScreen({ kind: 'editor', start: { kind: 'stored', funnel: full } });
+      setScreen({ kind: 'editor', start: { kind: 'stored', funnel: await readFunnel(host, row.id) } });
     } catch {
       setLoadError('Não foi possível carregar o funil. Tente novamente.');
     } finally {
