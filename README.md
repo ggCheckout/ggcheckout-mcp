@@ -436,7 +436,9 @@ false while more remain, and `lastCreatedAt` = `nextCursor` resumes the walk.
 Which campaign or ad sells: sales aggregated by 1 to 3 distinct keys among `utm_source`, `utm_medium`,
 `utm_campaign`, `utm_content`, `utm_term`, `src` and `sck` (default `utm_source`, `utm_campaign`,
 `utm_content`). Each row has the key values plus `paidCount`, `paidGrossCents`, `refundedCount` and
-`refundedCents` (cents), and `totals` sums them. Aggregated only: no buyer data and no per-payment UTMs.
+`refundedCents` (BRL cents: a sale in another currency enters as its BRL value), and `totals` sums
+them. Paid and refunded sales are both dated by when the sale was made: a refund counts in the period
+of its sale, not in the one it was refunded. Aggregated only: no buyer data and no per-payment UTMs.
 A `null` key value is the sales that came without that parameter; `utm_content` usually carries the ad id.
 `from` and `to` are ISO dates (default: the last 7 days; at most 90 days, checked before the call).
 `truncated: true` means the rows were cut: narrow the period or group by fewer keys.

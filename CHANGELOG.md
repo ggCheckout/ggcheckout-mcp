@@ -247,6 +247,9 @@ not exist (404 or 405 with no error body) is read as "not released yet".
   on top the chips marked for removal (soonest first) and the active ones that do not send until the
   seller acts, the list shows "N chips ativos / 20" and has "Atualizar". A chip marked for removal is
   left out of the chips an operation can take. Phones stay masked: the model reads the same answer.
+- `get_sales_attribution` says what the amounts and the period mean: BRL cents (a sale in another
+  currency enters as its BRL value), and paid and refunded sales both dated by when the sale was
+  made, so a refund counts in its sale's period and not in the one it was refunded.
 
 ### Fixed
 
