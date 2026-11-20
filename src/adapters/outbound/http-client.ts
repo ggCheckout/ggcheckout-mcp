@@ -15,11 +15,14 @@ import {
  * refusal: the API's own 404s say what is missing ("Upsell não encontrado", `not_found`). Without
  * this the two read the same, and a caller hunts for an offer that exists.
  */
-export function explainMissingRoute(error: unknown, requirement: string): unknown {
-  const routeMissing = error instanceof ApiError
+export function isMissingRoute(error: unknown): error is ApiError {
+  return error instanceof ApiError
     && (error.statusCode === 404 || error.statusCode === 405)
     && error.message.includes('Request failed with status');
-  return routeMissing
+}
+
+export function explainMissingRoute(error: unknown, requirement: string): unknown {
+  return isMissingRoute(error)
     ? new ApiError(error.statusCode ?? 404, `This GG Checkout API has no such route yet: ${requirement}`, error)
     : error;
 }
