@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { Host, HostSnapshot } from '../host';
-import { ChipsView } from './ChipsView';
+import { ChipsView, readChipSessions } from './ChipsView';
 
 const host = (): Host => ({
   getSnapshot: vi.fn(), subscribe: vi.fn(), callTool: vi.fn(), tellModel: vi.fn(), openLink: vi.fn(),
@@ -33,3 +33,21 @@ describe('ChipsView list', () => {
   });
 });
 
+describe('readChipSessions ("Atualizar" reads the operations again)', () => {
+  const answering = (answer: () => Promise<unknown>): Host => ({ ...host(), callTool: vi.fn(answer) });
+
+  it('hands over the operation of each chip when the read works', async () => {
+    const keep = vi.fn();
+    await readChipSessions(answering(() => Promise.resolve({ sessions: [{ name: 'Vendas', primaryNumberId: 'c1', fallbackNumberIds: [] }] })), keep);
+    expect(keep).toHaveBeenCalledWith({ c1: 'Vendas' });
+  });
+
+  it.each([
+    ['fails', () => Promise.reject(new Error('API Error (429): Retry after 30 seconds'))],
+    ['cannot be read', () => Promise.resolve({ nope: true })],
+  ])('keeps the column the list shows when the read %s', async (_, answer) => {
+    const keep = vi.fn();
+    await readChipSessions(answering(answer), keep);
+    expect(keep).not.toHaveBeenCalled();
+  });
+});

@@ -356,6 +356,19 @@ function NeedingAction({ chips, sessions, now, canOpen, busyId, onOpen }: {
 }
 
 /** ChipsSection, as rows: the chips that need the seller first, then every chip, with the active count. */
+/**
+ * Reads which operation uses each chip and hands it to `keep` only when it could be read: a failed
+ * reread ("Atualizar" meeting a 5xx or a 429) keeps the "Operação" column the list already shows.
+ */
+export async function readChipSessions(host: Host, keep: (sessions: Record<string, string>) => void): Promise<void> {
+  try {
+    const sessions = sessionByChip(await host.callTool('list_whatsapp_sessions', {}));
+    if (sessions) keep(sessions);
+  } catch {
+    // The list goes on with the column it had, or without it before the first good read.
+  }
+}
+
 function ChipsList({ chips, sessions, now, canOpen, busyId, onOpen, checking, health, onCheck, refreshing, onRefresh }: {
   chips: Chip[]; sessions: Record<string, string> | null; now: number; canOpen: boolean; busyId: string | null; onOpen: (chip: Chip) => void;
   checking: boolean; health: HealthOutcome | null; onCheck: () => void; refreshing: boolean; onRefresh: () => void;
@@ -429,10 +442,7 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
   }, [host, parts.code, numberId, state.canCallTools]);
 
   /** The list's "Operação": the first operation that uses each chip. */
-  const readSessions = useCallback(
-    () => host.callTool('list_whatsapp_sessions', {}).then((data) => setSessions(sessionByChip(data))).catch(() => setSessions(null)),
-    [host],
-  );
+  const readSessions = useCallback(() => readChipSessions(host, setSessions), [host]);
   useEffect(() => {
     if (parts.chips && state.canCallTools) void readSessions();
   }, [parts.chips, state.canCallTools, readSessions]);
