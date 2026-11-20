@@ -659,11 +659,11 @@ export const inboxFunnels = {
 /** get_whatsapp_funnel: each listed funnel with its messages, signature and coupon (invented). */
 const FUNNEL_STEPS: Record<string, Array<{ waitMinutes: number; text: string }>> = {
   abandoned_cart: [
-    { waitMinutes: 30, text: 'Oi {{customer_name}}! Vi que você parou no {{product_name}} 👀 Ficou alguma dúvida?' },
+    { waitMinutes: 30, text: 'Oi {{customer_name}}! Vi que você parou no {{product_title}} 👀 Ficou alguma dúvida?' },
     { waitMinutes: 1440, text: 'Separei um cupom pra você terminar a compra: {{cupom}}. Vale até amanhã.\n\n{{assinatura}}' },
   ],
   pix_unpaid: [
-    { waitMinutes: 15, text: 'Oi {{customer_name}}, seu PIX do {{product_name}} ainda está aberto. O código expira em breve.' },
+    { waitMinutes: 15, text: 'Oi {{customer_name}}, seu PIX do {{product_title}} ainda está aberto. O código expira em breve.' },
     { waitMinutes: 120, text: 'Precisa de ajuda para pagar? É só responder aqui.' },
     { waitMinutes: 1440, text: 'Último lembrete: o acesso sai assim que o PIX cair. {{assinatura}}' },
   ],

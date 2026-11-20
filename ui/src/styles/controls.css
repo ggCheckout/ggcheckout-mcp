@@ -1,0 +1,22 @@
+/* The dashboard's form controls. SwitchRow (catalog/sections/SwitchRow): the switch on in the Seasons blue, the hint under the name. */
+.dashboard .switch-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.dashboard .switch-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dashboard .switch-label { font-size: 13px; font-weight: 500; color: var(--d-fg); cursor: pointer; }
+.dashboard .switch-hint { margin: 0; font-size: 12px; line-height: 1.4; color: var(--d-muted); }
+.dashboard .switch { flex: 0 0 auto; position: relative; width: 40px; height: 22px; margin-top: 1px; padding: 0; border: 0; border-radius: 999px; cursor: pointer; background: color-mix(in srgb, var(--d-muted) 45%, transparent); transition: background-color 150ms ease; }
+.dashboard .switch[aria-checked='true'] { background: var(--season-blue); }
+.dashboard .switch:focus-visible { outline: 2px solid var(--season-blue); outline-offset: 2px; }
+.dashboard .switch:disabled { cursor: not-allowed; }
+.dashboard .switch-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.2); transition: transform 150ms ease; }
+.dashboard .switch[aria-checked='true'] .switch-thumb { transform: translateX(18px); }
+/* A locked switch keeps its color (the state is said in the hint); only the pointer changes. */
+.dashboard .switch-row:has(.switch:disabled) .switch-label { cursor: not-allowed; }
+
+/* FilterSegments: pills, the picked one filled with the Seasons blue. */
+.dashboard .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.dashboard .pills button { min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--d-line); background: var(--d-bg); color: var(--d-fg); cursor: pointer; font: inherit; font-size: 12px; font-weight: 500; transition: border-color 150ms ease, background-color 150ms ease; }
+.dashboard .pills button:hover { border-color: var(--season-blue); }
+.dashboard .pills button[aria-pressed='true'] { border-color: var(--season-blue); background: var(--season-blue); color: #fff; }
+.dashboard .pills button:focus-visible { outline: 2px solid var(--season-blue); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { .dashboard .switch, .dashboard .switch-thumb { transition: none; } }

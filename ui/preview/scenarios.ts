@@ -87,12 +87,23 @@ const operationStore = new Map<string, PreviewOperation>(
 );
 const operationOf = (id: unknown): PreviewOperation => operationStore.get(String(id)) ?? operationStore.get('g1')!;
 
-/** Funnels the preview turned on or off, and the ones it deleted, so the list shows the writes. */
-const funnelEnabled = new Map<string, boolean>();
-const funnelDeleted = new Set<string>();
+/** The funnels as the preview stores them, so the list and the editor show its writes (newest first). */
+type PreviewFunnel = Record<string, unknown> & { id: string; trigger: string; isEnabled: boolean; steps: unknown[] };
+const funnelStore = new Map<string, PreviewFunnel>(inboxFunnels.items.map((f) => [f.id, waFunnelDetail(f.id).funnel]));
+let funnelOrder = inboxFunnels.items.map((f) => f.id);
+// An edit "made elsewhere" for the drift check: previewFunnelStore.get(id).name = 'Outro' in the console.
+Object.assign(globalThis, { previewFunnelStore: funnelStore });
+const funnelOf = (id: unknown): PreviewFunnel => {
+  const funnel = funnelStore.get(String(id));
+  if (!funnel) throw new Error('API Error (404): Funil não encontrado.');
+  return funnel;
+};
 const funnelPage = () => ({
-  ...inboxFunnels,
-  items: inboxFunnels.items.filter((f) => !funnelDeleted.has(f.id)).map((f) => ({ ...f, isEnabled: funnelEnabled.get(f.id) ?? f.isEnabled })),
+  items: funnelOrder.filter((id) => funnelStore.has(id)).map((id) => {
+    const { steps, stopOnReply: _s, sendWindow: _w, signature: _g, coupon: _c, useEmoji: _e, layout: _l, ...row } = funnelOf(id);
+    return { ...row, stepCount: steps.length };
+  }),
+  nextAfter: null,
 });
 
 /** remove_whatsapp_session_number: the primary's removal promotes the first fallback. */
@@ -167,18 +178,31 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'list_whatsapp_conversations': return inboxConversations;
     case 'list_whatsapp_messages': return inboxMessages(String(args.contactKey));
     case 'list_whatsapp_funnels': return funnelPage();
-    case 'get_whatsapp_funnel': return waFunnelDetail(String(args.funnelId), funnelEnabled.get(String(args.funnelId)));
+    case 'get_whatsapp_funnel': return { funnel: { ...funnelOf(args.funnelId) } };
+    case 'update_whatsapp_funnel': {
+      const { funnelId, ...patch } = args;
+      const next = { ...funnelOf(funnelId), ...patch, updatedAt: new Date().toISOString() } as PreviewFunnel;
+      funnelStore.set(String(funnelId), next);
+      return { success: true, funnel: { ...next } };
+    }
+    case 'create_whatsapp_funnel': {
+      const id = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const created = { sessionGroupId: null, layout: null, trigger: 'manual', steps: [], ...args, id, isEnabled: false, createdAt: now, updatedAt: now } as PreviewFunnel;
+      funnelStore.set(id, created);
+      funnelOrder = [id, ...funnelOrder];
+      return { success: true, funnel: { ...created } };
+    }
     case 'toggle_whatsapp_funnel': {
-      const id = String(args.funnelId);
-      const row = funnelPage().items.find((f) => f.id === id);
+      const funnel = funnelOf(args.funnelId);
       // The API refuses a second funnel on for the same automatic trigger.
-      if (args.enabled === true && row && row.trigger !== 'manual' && funnelPage().items.some((f) => f.id !== id && f.trigger === row.trigger && f.isEnabled)) {
+      if (args.enabled === true && funnel.trigger !== 'manual' && [...funnelStore.values()].some((f) => f.id !== funnel.id && f.trigger === funnel.trigger && f.isEnabled)) {
         throw new Error('API Error (409): Já existe um funil ligado para este gatilho.');
       }
-      funnelEnabled.set(id, args.enabled === true);
-      return { success: true, ...waFunnelDetail(id, args.enabled === true) };
+      funnelStore.set(funnel.id, { ...funnel, isEnabled: args.enabled === true });
+      return { success: true, funnel: { ...funnelOf(funnel.id) } };
     }
-    case 'delete_whatsapp_funnel': funnelDeleted.add(String(args.funnelId)); return { success: true, message: `Funnel ${args.funnelId} deleted` };
+    case 'delete_whatsapp_funnel': funnelStore.delete(String(args.funnelId)); return { success: true, message: `Funnel ${args.funnelId} deleted` };
     case 'get_whatsapp_conversation_funnel': return inboxRun(String(args.contactKey));
     case 'mark_whatsapp_conversation_read': return { success: true };
     case 'send_whatsapp_reply': return { message: { messageId: 'w_new', deliveryId: 'a1b2c3d4-0000-4000-8000-000000000002', contactKey: args.contactKey, chipId: 'chip_vendas', text: args.text, at: new Date().toISOString(), chipSwitch: null, duplicate: false } };

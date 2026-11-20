@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { Host, HostSnapshot } from '../host';
+import { operationsNote } from './FunnelPanels';
 import { WhatsAppFunnelsView } from './WhatsAppFunnelsView';
 
 const host = (): Host => ({
@@ -17,23 +18,28 @@ const snapshot = (toolName: string, payload: unknown, canCallTools = true): Host
 
 // No DOM in the ui workspace: these pin the first render, before any read answers or any click.
 describe('WhatsAppFunnelsView', () => {
-  it('draws the funnel with its messages as text, and sends no write before a confirmation', () => {
+  it('opens the funnel in the editor: blocks, the first message in its panel as text, and no write before a confirmation', () => {
     const h = host();
     const html = renderToStaticMarkup(<WhatsAppFunnelsView host={h} state={snapshot('get_whatsapp_funnel', { funnel })} />);
     expect(html).toContain('Carrinho abandonado');
-    expect(html).toContain('Espera 30 min depois do carrinho abandonado');
-    expect(html).toContain('Envia das 8h às 21h (Brasília)');
-    expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
-    expect(html).toContain('Desligar');
+    expect(html).toContain('Esperar 30 min');
+    expect(html).toContain('Depois do carrinho abandonado');
+    expect(html).toContain('Mensagem 1');
+    expect(html).toContain('Inserir variável');
+    expect(html).toContain('Oi {{customer_name}} &lt;b&gt;x&lt;/b&gt;');
+    expect(html).toContain('Funil ligado');
+    expect(html).toContain('Salvar');
     expect(html).not.toContain('alertdialog');
-    expect(h.callTool).not.toHaveBeenCalledWith('toggle_whatsapp_funnel', expect.anything());
-    expect(h.callTool).not.toHaveBeenCalledWith('delete_whatsapp_funnel', expect.anything());
+    for (const tool of ['update_whatsapp_funnel', 'create_whatsapp_funnel', 'toggle_whatsapp_funnel', 'delete_whatsapp_funnel']) {
+      expect(h.callTool).not.toHaveBeenCalledWith(tool, expect.anything());
+    }
   });
 
   it('offers no write when the host cannot call tools', () => {
     const html = renderToStaticMarkup(<WhatsAppFunnelsView host={host()} state={snapshot('get_whatsapp_funnel', { funnel }, false)} />);
-    expect(html).not.toContain('Desligar');
+    expect(html).not.toContain('Salvar');
     expect(html).not.toContain('Excluir');
+    expect(html).not.toContain('Funil ligado');
   });
 
   it('lists the funnels with their trigger, messages and operation', () => {
@@ -43,10 +49,18 @@ describe('WhatsAppFunnelsView', () => {
     expect(html).toContain('2 mensagens');
     expect(html).toContain('Pela operação do produto');
     expect(html).toContain('Desligado');
+    expect(html).toContain('Novo funil');
+    expect(html).toContain('Atualizar');
   });
 
   it('says how to create the first funnel when there is none', () => {
     const html = renderToStaticMarkup(<WhatsAppFunnelsView host={host()} state={snapshot('list_whatsapp_funnels', { items: [], nextAfter: null })} />);
     expect(html).toContain('Nenhum funil criado');
+  });
+
+  it('tells reading, a failed read and no operation apart for a manual funnel', () => {
+    expect(operationsNote(undefined)).toBe('Lendo as suas operações…');
+    expect(operationsNote(null)).toMatch(/^Não foi possível ler/);
+    expect(operationsNote([])).toMatch(/^Você ainda não tem operação/);
   });
 });

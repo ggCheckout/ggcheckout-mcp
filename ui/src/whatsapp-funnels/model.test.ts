@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyStoreStyle, formatWait, messageParts, sendWindowLabel, summarizeFunnel, summarizeFunnels, toggleWords, triggerTakenBy, waitLabel, type FunnelRow,
+  applyStoreStyle, formatWait, summarizeFunnel, summarizeFunnels, toggleWords, triggerTakenBy, type FunnelRow,
 } from './model';
 
 const summary = { id: 'f1', name: 'Carrinho', trigger: 'abandoned_cart', isEnabled: true, sessionGroupId: null, stepCount: 2, createdAt: 'x', updatedAt: 'x' };
@@ -35,22 +35,14 @@ describe('words of the funnel screen', () => {
     expect([0, 15, 60, 90, 1440, 2880].map(formatWait)).toEqual(['na hora', '15 min', '1 h', '1 h 30 min', '1 dia', '2 dias']);
   });
 
-  it('counts the first wait from the event and the next ones from the previous message', () => {
-    expect(waitLabel({ waitMinutes: 30, text: '' }, 0, 'pix_unpaid')).toBe('Espera 30 min depois do PIX gerado');
-    expect(waitLabel({ waitMinutes: 1440, text: '' }, 1, 'pix_unpaid')).toBe('Espera 1 dia depois da mensagem anterior');
-    expect(waitLabel({ waitMinutes: 0, text: '' }, 0, 'manual')).toBe('Na hora, depois de iniciar pela caixa');
-  });
-
-  it('words the send window and the on/off of manual and automatic funnels', () => {
-    expect(sendWindowLabel({ start: 8, end: 21 })).toBe('Envia das 8h às 21h (Brasília)');
-    expect(sendWindowLabel(null)).toBe('Envia a qualquer hora');
+  it('words the on/off of manual and automatic funnels', () => {
     expect(toggleWords({ trigger: 'manual', isEnabled: true })).toEqual({ state: 'Ligado', action: 'Tirar da caixa' });
     expect(toggleWords({ trigger: 'manual', isEnabled: false })).toEqual({ state: 'Desligado', action: 'Disponível na caixa' });
     expect(toggleWords({ trigger: 'pix_unpaid', isEnabled: false })).toEqual({ state: 'Desligado', action: 'Ligar' });
   });
 });
 
-describe('applyStoreStyle / messageParts', () => {
+describe('applyStoreStyle', () => {
   const style = { signature: 'Equipe Aurora', coupon: 'VOLTA10', useEmoji: true };
 
   it('fills signature and coupon and keeps the event variables', () => {
@@ -62,11 +54,6 @@ describe('applyStoreStyle / messageParts', () => {
     expect(applyStoreStyle('Oi 👀 tudo bem? 🎉', { ...style, useEmoji: false })).toBe('Oi tudo bem?');
   });
 
-  it('marks the variables so they never render as markup', () => {
-    expect(messageParts('Oi {{customer_name}}!')).toEqual([
-      { text: 'Oi ', isVariable: false }, { text: '{{customer_name}}', isVariable: true }, { text: '!', isVariable: false },
-    ]);
-  });
 });
 
 describe('triggerTakenBy', () => {

@@ -58,13 +58,20 @@ error body) is read as "not released yet".
 - WhatsApp funnels in a view: `list_whatsapp_funnels` and `get_whatsapp_funnel` now carry the app
   `_meta` and draw the dashboard's "Funis". The list shows each funnel with when it starts, how many
   messages, its operation ("Pela operação do produto" for an automatic one) and its state ("Ligado" or
-  "Desligado"; on a manual one the action reads "Disponível na caixa" or "Tirar da caixa"), with "Carregar mais funis". The detail shows the
-  settings (send window, stop on reply, signature, coupon) and the messages in order, each after its
-  wait, as the customer reads them: signature and coupon filled in, emoji taken out when the store
-  does not use them, event variables marked, text rendered as text. On/off and delete ask first in the
-  card (`toggle_whatsapp_funnel`, `delete_whatsapp_funnel`); turning on an automatic funnel whose
-  trigger another enabled funnel holds is blocked with that funnel's name. Editing stays with the
-  model and the dashboard.
+  "Desligado"), with "Atualizar", "Carregar mais funis" and "+ Novo funil". A funnel opens in the
+  dashboard's editor: the flow of blocks (Começa, Espera, WhatsApp, Fim) with "+ Adicionar" and a "+"
+  between messages (Mensagem, Lembrete com o link, Última chamada com cupom, up to 5), and a panel per
+  block with Propriedades (name, trigger, operation of a manual funnel; the wait presets and "Outro";
+  the variable chips and the text; "Marcar como lida antes" and "Mostrar digitando"; stop on reply and
+  send window; the store's signature, coupon and emoji) and Prévia (the customer's chat with each wait,
+  sends pushed by the window and sample data). Edits are a draft until "Salvar", which asks first,
+  re-reads the funnel and refuses when it changed since it was shown (dashboard, chat, another card),
+  then saves the whole funnel with `update_whatsapp_funnel`. "Funil ligado" waits for the draft to be
+  saved and "Excluir" asks first. "+ Novo funil" offers the dashboard's models (abandoned cart, unpaid
+  PIX, refused card, inbox follow-up) or a blank draft; a model is created at once with
+  `create_whatsapp_funnel`, and the abandoned-cart one is turned on unless another funnel holds the
+  trigger. The board's free positions are kept as saved in the dashboard: the widget draws the blocks
+  in order and shifts their positions when a message comes in or goes out.
 
 ### Changed
 
