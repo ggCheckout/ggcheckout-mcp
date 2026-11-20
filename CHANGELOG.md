@@ -10,12 +10,12 @@ right now.
 ### Release order
 
 The WhatsApp funnel and inbox exist on the saas `developer` branch only, and the saas raises its
-minimum to 0.6.0 only after 0.6.0 is on npm (see Security). Publish 0.6.0 first; the core (inbox
-settings `apiAccessEnabled`, ggCheckout/ggcheckout-core#858) and the saas (ggCheckout/saas-checkout#2246:
-the 0.6.0 minimum, and API-key access to the funnel, the inbox and the funnel import behind the
-store's switch) follow. Until they are in production every funnel and inbox tool answers "ainda não
-disponível nesta conta" instead of failing: a saas route that does not exist (404 or 405 with no
-error body) is read as "not released yet".
+minimum to 0.6.0 only after 0.6.0 is on npm (see Security). Publish 0.6.0 first; then the saas
+(ggCheckout/saas-checkout#2246: the 0.6.0 minimum, and API-key access to the funnel, the inbox and
+the funnel import behind the store's switch), and right after it the core (inbox settings
+`apiAccessEnabled`, ggCheckout/ggcheckout-core#858). Until they are in production every funnel and
+inbox tool answers "ainda não disponível nesta conta" instead of failing: a saas route that does
+not exist (404 or 405 with no error body) is read as "not released yet".
 
 ### Breaking
 
