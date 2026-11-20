@@ -4,6 +4,7 @@
 // list_whatsapp_sessions is the list, get_whatsapp_session one operation, and the write tools answer
 // the operation as it is after the write. Pure.
 
+import type { Host } from '../host';
 import { type Payload, isPayload, text } from '../lib/payload';
 import type { Chip } from '../chips/model';
 
@@ -92,6 +93,25 @@ const sameList = (a: readonly string[], b: readonly string[]): boolean => a.leng
  */
 export function unchangedSince(seen: Operation, fresh: Operation): boolean {
   return sameList(seen.chipIds, fresh.chipIds) && sameList(seen.productIds, fresh.productIds);
+}
+
+/** The tools that change an operation from the card; each answers `{ session }` as it is after the write. */
+export type OperationWriteTool = 'update_whatsapp_session' | 'add_whatsapp_session_number' | 'remove_whatsapp_session_number' | 'set_whatsapp_session_products';
+
+export type WriteOutcome =
+  | { kind: 'drift'; fresh: Operation }
+  /** `operation` is null when the write went through but its answer could not be read. */
+  | { kind: 'done'; operation: Operation | null };
+
+/**
+ * A confirmed write of the card. The operation is read first: the writes replace the whole chip order
+ * or product list, so one built on an operation changed since the card showed `seen` is refused.
+ */
+export async function writeOperation(host: Host, seen: Operation, tool: OperationWriteTool, args: Record<string, unknown>): Promise<WriteOutcome> {
+  const fresh = summarizeOperation(await host.callTool('get_whatsapp_session', { sessionId: seen.id }));
+  if (!fresh) throw new Error('get_whatsapp_session answered no operation');
+  if (!unchangedSince(seen, fresh)) return { kind: 'drift', fresh };
+  return { kind: 'done', operation: summarizeOperation(await host.callTool(tool, { sessionId: seen.id, ...args })) };
 }
 
 /** The order as update_whatsapp_session wants it: both fields go together. */

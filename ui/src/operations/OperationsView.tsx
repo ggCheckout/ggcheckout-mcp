@@ -10,8 +10,8 @@ import { plural } from '../lib/format';
 import { Status } from '../chips/ChipsView';
 import { phoneLabel, summarizeChips, type Chip } from '../chips/model';
 import {
-  HEALTH_LABEL, HEALTH_TONE, MAX_CHIPS, chipOrder, moveChip, operationHealth, slotLabel, summarizeOperation, summarizeOperations, summarizeProducts, unchangedSince,
-  type Operation, type ProductOption,
+  HEALTH_LABEL, HEALTH_TONE, MAX_CHIPS, chipOrder, moveChip, operationHealth, slotLabel, summarizeOperation, summarizeOperations, summarizeProducts, writeOperation,
+  type Operation, type OperationWriteTool, type ProductOption,
 } from './model';
 
 type ChipsById = ReadonlyMap<string, Chip>;
@@ -33,7 +33,7 @@ interface Pending {
   confirmLabel: string;
   busyLabel: string;
   tone?: 'warning';
-  tool: 'update_whatsapp_session' | 'add_whatsapp_session_number' | 'remove_whatsapp_session_number' | 'set_whatsapp_session_products';
+  tool: OperationWriteTool;
   args: Record<string, unknown>;
   expected: Operation;
   /** What the model is told once it is done. */
@@ -321,15 +321,13 @@ function OperationDetail({ host, first, chips, chipsFailed, canCallTools, onBack
     setBusy(true);
     setError(null);
     try {
-      const fresh = summarizeOperation(await host.callTool('get_whatsapp_session', { sessionId: op.id }));
-      if (!fresh) throw new Error('no operation');
-      if (!unchangedSince(op, fresh)) {
-        setOp(fresh);
+      const outcome = await writeOperation(host, op, pending.tool, pending.args);
+      if (outcome.kind === 'drift') {
+        setOp(outcome.fresh);
         setError('Esta operação mudou desde que foi aberta (no painel ou pelo assistente). Ela foi recarregada: confira e repita a alteração.');
         return;
       }
-      const answer = await host.callTool(pending.tool, { sessionId: op.id, ...pending.args });
-      setOp(summarizeOperation(answer) ?? pending.expected);
+      setOp(outcome.operation ?? pending.expected);
       host.tellModel(pending.done);
     } catch {
       setError(`${pending.failed} Tente de novo em alguns segundos.`);

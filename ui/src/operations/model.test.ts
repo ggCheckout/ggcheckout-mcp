@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Chip } from '../chips/model';
+import type { Host } from '../host';
 import {
-  chipOrder, moveChip, operationHealth, slotLabel, summarizeOperation, summarizeOperations, summarizeProducts, unchangedSince, type Operation,
+  chipOrder, moveChip, operationHealth, slotLabel, summarizeOperation, summarizeOperations, summarizeProducts, unchangedSince, writeOperation, type Operation,
 } from './model';
 
 const raw = { uid: 'g1', name: 'Método Aurora', primaryNumberId: 'c1', fallbackNumberIds: ['c2', '', 'c3'], assignedProducts: ['p1', 7], isActive: true };
@@ -90,3 +91,36 @@ describe('unchangedSince', () => {
     expect(unchangedSince(seen, { ...seen, productIds: ['p1', 'p2'] })).toBe(false);
   });
 });
+
+describe('writeOperation (the re-read before a write that replaces a list)', () => {
+  const session = (primaryNumberId: string, fallbackNumberIds: string[], assignedProducts: string[] = []) => ({
+    session: { uid: 'g1', name: 'Op', primaryNumberId, fallbackNumberIds, assignedProducts, isActive: true },
+  });
+  const hostAnswering = (...answers: unknown[]) => {
+    const callTool = vi.fn();
+    for (const answer of answers) callTool.mockResolvedValueOnce(answer);
+    return { callTool } as unknown as Host & { callTool: ReturnType<typeof vi.fn> };
+  };
+
+  it('refuses, writing nothing, when the chips changed since the card showed them', async () => {
+    const host = hostAnswering(session('c2', ['c1']));
+    const outcome = await writeOperation(host, op(['c1', 'c2']), 'update_whatsapp_session', { primaryNumberId: 'c2', fallbackNumberIds: ['c1'] });
+    expect(outcome).toMatchObject({ kind: 'drift', fresh: { chipIds: ['c2', 'c1'] } });
+    expect(host.callTool).toHaveBeenCalledTimes(1);
+    expect(host.callTool).toHaveBeenCalledWith('get_whatsapp_session', { sessionId: 'g1' });
+  });
+
+  it('writes when the operation is as shown, and answers it as stored', async () => {
+    const host = hostAnswering(session('c1', ['c2']), session('c2', ['c1']));
+    const outcome = await writeOperation(host, op(['c1', 'c2']), 'update_whatsapp_session', { primaryNumberId: 'c2', fallbackNumberIds: ['c1'] });
+    expect(outcome).toMatchObject({ kind: 'done', operation: { chipIds: ['c2', 'c1'] } });
+    expect(host.callTool).toHaveBeenLastCalledWith('update_whatsapp_session', { sessionId: 'g1', primaryNumberId: 'c2', fallbackNumberIds: ['c1'] });
+  });
+
+  it('refuses a product list built on products changed elsewhere', async () => {
+    const host = hostAnswering(session('c1', [], ['p1', 'p9']));
+    const outcome = await writeOperation(host, op(['c1']), 'set_whatsapp_session_products', { productIds: ['p2'] });
+    expect(outcome.kind).toBe('drift');
+  });
+});
+
