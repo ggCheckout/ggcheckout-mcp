@@ -79,4 +79,12 @@
 .dashboard .ch-note { margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 12px; background: color-mix(in srgb, var(--d-muted-bg) 50%, transparent); }
 .dashboard .ch-alert { margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 12px; border: 1px solid rgb(220 38 38 / 0.3); background: rgb(220 38 38 / 0.08); }
 
+/* Narrow (a phone's chat): the side column drops under the name, so the name keeps the row's width. */
+@media (max-width: 480px) {
+  .dashboard .ch-row-btn { flex-wrap: wrap; row-gap: 8px; }
+  .dashboard .ch-chevron { order: 2; }
+  .dashboard .ch-row-side { order: 3; width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding-left: 44px; }
+  .dashboard .ch-session { max-width: none; }
+}
+
 @media (prefers-reduced-motion: reduce) { .dashboard .ch-dot[data-pulse] { animation: none; } }

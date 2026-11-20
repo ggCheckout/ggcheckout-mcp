@@ -192,10 +192,13 @@ body {
 }
 @keyframes cta-light { 0% { transform: translateX(-120%); } 30%, 100% { transform: translateX(120%); } }
 @media (hover: hover) and (pointer: fine) {
-  .cta:hover { background: #2f6bff; transform: translateY(-1px); }
-  .cta:hover::before { transform: skewX(-24deg) translateX(0); }
+  .cta:hover:not(:disabled) { background: #2f6bff; transform: translateY(-1px); }
+  .cta:hover:not(:disabled)::before { transform: skewX(-24deg) translateX(0); }
 }
-.cta:active { transform: scale(0.98); }
+.cta:active:not(:disabled) { transform: scale(0.98); }
+/* Busy or nothing to send: dimmed, no light pass, no wedge. */
+.cta:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.cta:disabled::after { animation: none; }
 
 .state { padding: 28px 8px; text-align: center; color: var(--muted); }
 .state[data-tone='error'] { color: var(--danger); }
