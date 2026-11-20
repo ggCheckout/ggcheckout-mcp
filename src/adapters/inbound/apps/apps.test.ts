@@ -11,6 +11,7 @@ import { registerFunnelTools } from '../tools/funnel.tools.js';
 import { registerPaymentTools } from '../tools/payment.tools.js';
 import { registerCustomDomainTools } from '../tools/custom-domain.tools.js';
 import { registerWhatsAppTools } from '../tools/whatsapp.tools.js';
+import { registerWhatsAppInboxTools } from '../tools/whatsapp-inbox.tools.js';
 import { registerGatewayTools } from '../tools/gateway.tools.js';
 import { registerRewardsTools } from '../tools/rewards.tools.js';
 import { registerProductTools } from '../tools/product.tools.js';
@@ -25,6 +26,7 @@ import type { FunnelService } from '../../../core/services/funnel.service.js';
 import type { PaymentService } from '../../../core/services/payment.service.js';
 import type { CustomDomainService } from '../../../core/services/custom-domain.service.js';
 import type { WhatsAppService } from '../../../core/services/whatsapp.service.js';
+import type { WhatsAppInboxService } from '../../../core/services/whatsapp-inbox.service.js';
 import type { GatewayService } from '../../../core/services/gateway.service.js';
 import type { RewardsService } from '../../../core/services/rewards.service.js';
 import type { ProductService } from '../../../core/services/product.service.js';
@@ -43,6 +45,7 @@ async function connect(drawsViews = false) {
   registerPaymentTools(server, {} as PaymentService);
   registerCustomDomainTools(server, {} as CustomDomainService);
   registerWhatsAppTools(server, {} as WhatsAppService);
+  registerWhatsAppInboxTools(server, {} as WhatsAppInboxService);
   registerGatewayTools(server, {} as GatewayService);
   registerRewardsTools(server, {} as RewardsService);
   registerProductTools(server, {} as ProductService);
@@ -72,7 +75,8 @@ describe('registerAppViews', () => {
   });
 
   it('points every tool with a view to the app', async () => {
-    const client = await connect();
+    // The inbox tools register only for a client that draws views, so this one does.
+    const client = await connect(true);
     const { tools } = await client.listTools();
     const uriOf = (name: string) => (tools.find((t) => t.name === name)?._meta as any)?.ui?.resourceUri;
 
@@ -88,6 +92,22 @@ describe('registerAppViews', () => {
     expect(uriOf('list_members_areas')).toBeUndefined();
     expect(uriOf('reorder_modules')).toBeUndefined();
     expect(uriOf('list_telegram_leads')).toBeUndefined();
+  });
+
+  it('keeps the inbox tools away from a client that does not draw views', async () => {
+    const client = await connect(false);
+    const { tools } = await client.listTools();
+    expect(tools.map((t) => t.name).filter((n) => /whatsapp_(inbox|conversation)|whatsapp_(messages|reply)/.test(n))).toEqual([]);
+  });
+
+  it('hides every inbox tool but the entry point from the model (visibility app)', async () => {
+    const client = await connect(true);
+    const { tools } = await client.listTools();
+    const visibility = (name: string) => (tools.find((t) => t.name === name)?._meta as any)?.ui?.visibility;
+    expect(visibility('open_whatsapp_inbox')).toBeUndefined();
+    for (const name of ['list_whatsapp_conversations', 'list_whatsapp_messages', 'send_whatsapp_reply', 'set_whatsapp_conversation_opt_out']) {
+      expect(visibility(name)).toEqual(['app']);
+    }
   });
 
   it('tells the model the card is on screen only to a client that draws it', async () => {

@@ -572,3 +572,64 @@ export const utmManual = {
     { key: 'sck', value: 'story1', source: 'manual' },
   ],
 };
+
+// The WhatsApp inbox: invented contacts and messages (the phones are made up, not anyone's). The
+// open answer carries only the four counts; the rest is what the app-only tools answer to the view.
+export const inboxOpen = { available: true, enabled: true, conversations: 4, unread: 3 };
+export const inboxOff = { available: true, enabled: false, conversations: 0, unread: 0 };
+export const inboxUnavailable = { available: false, enabled: false, conversations: 0, unread: 0 };
+
+const minutesAgo = (n: number) => new Date(Date.now() - n * 60_000).toISOString();
+
+export const inboxConversations = {
+  items: [
+    { contactKey: '553198765001', name: 'Marina Duarte', chipId: 'chip_vendas', openedByChipId: 'chip_vendas', lastText: 'Consegui pagar, o acesso chega por e-mail?', lastType: 'text', lastAt: minutesAgo(2), unread: 2, interacted: true },
+    { contactKey: '553198765002', name: null, chipId: 'chip_vendas', openedByChipId: 'chip_vendas', lastText: 'SAIR', lastType: 'text', lastAt: minutesAgo(95), unread: 1, interacted: true, exitRequestedAt: minutesAgo(95) },
+    { contactKey: '553198765003', name: 'Caio Ribeiro', chipId: 'chip_suporte', openedByChipId: 'chip_suporte', lastText: null, lastType: 'media', lastAt: minutesAgo(60 * 26), unread: 0, interacted: true },
+    { contactKey: 'lid:3f9a1c7e2b4d@lid', name: 'Helena Prado', chipId: 'chip_suporte', openedByChipId: 'chip_suporte', lastText: 'Obrigada pelo retorno!', lastType: 'text', lastAt: minutesAgo(60 * 24 * 5), unread: 0, interacted: true, optedOut: true },
+  ],
+  nextBefore: null,
+};
+
+const msgs = (items: Array<[string, 'in' | 'out', string | null, number, boolean?, string?]>) => ({
+  items: items.map(([id, dir, text, ago, auto, type]) => ({
+    id, messageId: `w_${id}`, dir, chipId: 'chip_vendas', type: type ?? 'text', text, at: minutesAgo(ago), auto: auto ?? false,
+  })).reverse(),
+  nextBefore: null,
+});
+
+export function inboxMessages(contactKey: string) {
+  switch (contactKey) {
+    case '553198765001': return msgs([
+      ['1763640000000-1', 'out', 'Olá, Marina! Vi que o seu PIX do Método Aurora ainda não caiu. Precisa de ajuda para finalizar?', 55, true],
+      ['1763640000000-2', 'in', 'Oi! Consegui agora.\nVoltei a tentar e foi.', 4],
+      ['1763640000000-3', 'in', 'Consegui pagar, o acesso chega por e-mail?', 2],
+    ]);
+    case '553198765002': return msgs([
+      ['1763640000001-1', 'out', 'Oi! Seu cupom VOLTA10 vale até amanhã.', 130, true],
+      ['1763640000001-2', 'in', 'SAIR', 95],
+    ]);
+    case '553198765003': return msgs([
+      ['1763640000002-1', 'in', 'Segue o comprovante', 60 * 26 + 2],
+      ['1763640000002-2', 'in', null, 60 * 26, false, 'media'],
+    ]);
+    default: return msgs([
+      ['1763640000003-1', 'in', 'Obrigada pelo retorno!', 60 * 24 * 5],
+    ]);
+  }
+}
+
+export const inboxFunnels = {
+  items: [
+    { id: '2f9d6c3e-4b1a-4c55-9a7e-0a1b2c3d4e5f', name: 'Boas-vindas ao Método Aurora', trigger: 'manual', isEnabled: true, sessionGroupId: 'g1', stepCount: 3, createdAt: '2026-11-10T12:00:00Z', updatedAt: '2026-11-10T12:00:00Z' },
+    { id: '8a1d2e3f-5b6c-4d7e-8f90-1a2b3c4d5e6f', name: 'Carrinho abandonado', trigger: 'abandoned_cart', isEnabled: true, sessionGroupId: null, stepCount: 2, createdAt: '2026-11-11T12:00:00Z', updatedAt: '2026-11-11T12:00:00Z' },
+    { id: '5c4b3a29-1807-4f6e-9d5c-4b3a29180716', name: 'Reativação (desligado)', trigger: 'manual', isEnabled: false, sessionGroupId: 'g1', stepCount: 2, createdAt: '2026-11-12T12:00:00Z', updatedAt: '2026-11-12T12:00:00Z' },
+  ],
+  nextAfter: null,
+};
+
+export const inboxRun = (contactKey: string) => ({
+  run: contactKey === '553198765001'
+    ? { id: 'a1b2c3d4-0000-4000-8000-000000000001', funnelId: inboxFunnels.items[0].id, funnelName: 'Boas-vindas ao Método Aurora', contactKey, status: 'running', stopReason: null, origin: 'manual', currentStep: 1, totalSteps: 3, nextAt: minutesAgo(-30), startedAt: minutesAgo(55), endedAt: null }
+    : null,
+});

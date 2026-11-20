@@ -1,0 +1,62 @@
+/* The WhatsApp inbox (saas inbox): the conversations as rows with an unread badge and the panel's labels,
+   and a thread with bubbles, a composer and the funnel actions. It rides the dashboard tokens. */
+.dashboard.inbox { display: flex; flex-direction: column; gap: 12px; }
+.dashboard .ix-card { border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.dashboard .ix-list-head { padding-bottom: 14px; border-bottom: 1px solid var(--d-line); }
+.dashboard .ix-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.dashboard .ix-rows { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.dashboard .ix-row { border-radius: 8px; border: 1px solid var(--d-row-border); background: var(--d-row); overflow: hidden; }
+.dashboard .ix-row-btn { display: flex; width: 100%; align-items: center; gap: 12px; padding: 12px 16px; border: 0; background: transparent; color: var(--d-fg); text-align: left; font: inherit; cursor: pointer; transition: background-color 150ms ease; }
+.dashboard .ix-row-btn:hover { background: color-mix(in srgb, var(--season-blue) 6%, transparent); }
+.dashboard .ix-row-btn:focus-visible { outline: 2px solid var(--season-blue); outline-offset: -2px; }
+.dashboard .ix-avatar { flex: 0 0 auto; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: var(--d-accent); background: color-mix(in srgb, var(--season-blue) 12%, transparent); }
+.dashboard .ix-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dashboard .ix-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.dashboard .ix-row-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard .ix-row-name[data-unread] { font-weight: 700; }
+.dashboard .ix-when { flex: 0 0 auto; font-size: 12px; color: var(--d-muted); }
+.dashboard .ix-preview { font-size: 13px; color: var(--d-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard .ix-unread { flex: 0 0 auto; min-width: 20px; padding: 1px 6px; border-radius: 999px; text-align: center; font-size: 11px; font-weight: 700; color: #fff; background: var(--season-blue); }
+.dashboard .ix-chevron { flex: 0 0 auto; color: var(--d-muted); }
+
+.dashboard .ix-tags { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0; }
+.dashboard .ix-tag { --tone: var(--d-muted); padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; color: var(--tone); border: 1px solid color-mix(in srgb, var(--tone) 35%, transparent); background: color-mix(in srgb, var(--tone) 8%, transparent); }
+.dashboard .ix-tag[data-tone='info'] { --tone: #05329d; }
+.dashboard .ix-tag[data-tone='warn'] { --tone: #92400e; }
+:root[data-theme='dark'] .dashboard .ix-tag[data-tone='info'] { --tone: #a8c4ff; }
+:root[data-theme='dark'] .dashboard .ix-tag[data-tone='warn'] { --tone: #fbbf24; }
+
+.dashboard .ix-thread-head { display: flex; align-items: center; gap: 12px; }
+.dashboard .ix-thread-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.dashboard .ix-name { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.dashboard .ix-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dashboard .ix-run { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dashboard .ix-select { height: 34px; max-width: 220px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); color: var(--d-fg); font: inherit; font-size: 13px; }
+.dashboard .ix-select:focus-visible { outline: 2px solid var(--season-blue); outline-offset: 1px; }
+.dashboard .ix-ghost { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); color: var(--d-fg); cursor: pointer; font: inherit; font-size: 13px; font-weight: 500; }
+.dashboard .ix-ghost:hover { border-color: var(--season-blue); }
+.dashboard .ix-ghost:disabled { opacity: 0.6; cursor: progress; }
+.dashboard .ix-more { align-self: center; }
+
+.dashboard .ix-messages { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 12px; list-style: none; max-height: 420px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--d-row-border); background: var(--d-row); }
+.dashboard .ix-msg { display: flex; flex-direction: column; gap: 2px; max-width: 82%; align-items: flex-start; }
+.dashboard .ix-msg[data-dir='out'] { align-self: flex-end; align-items: flex-end; }
+/* pre-wrap keeps the customer's line breaks; the text is a text node, so nothing in it is markup. */
+.dashboard .ix-bubble { margin: 0; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--d-muted-bg); color: var(--d-fg); }
+.dashboard .ix-msg[data-dir='out'] .ix-bubble { background: var(--season-blue); color: #fff; }
+.dashboard .ix-msg[data-auto] .ix-bubble { background: color-mix(in srgb, var(--season-blue) 14%, var(--d-bg)); color: var(--d-fg); }
+.dashboard .ix-meta { font-size: 11px; color: var(--d-muted); }
+
+.dashboard .ix-composer { display: flex; flex-direction: column; gap: 8px; }
+.dashboard .ix-input { width: 100%; box-sizing: border-box; min-height: 64px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); color: var(--d-fg); font: inherit; font-size: 14px; resize: vertical; }
+.dashboard .ix-input:focus-visible { outline: 2px solid var(--season-blue); outline-offset: 1px; }
+.dashboard .ix-composer-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dashboard .ix-composer-row .cta { display: inline-flex; align-items: center; gap: 6px; }
+.dashboard .ix-count { font-size: 12px; color: var(--d-muted); }
+.dashboard .ix-count[data-over] { color: #b91c1c; font-weight: 600; }
+:root[data-theme='dark'] .dashboard .ix-count[data-over] { color: #f87171; }
+
+.dashboard .ix-hint { margin: 0; font-size: 12px; color: var(--d-muted); }
+.dashboard .ix-note { margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; background: color-mix(in srgb, var(--d-muted-bg) 50%, transparent); }
+.dashboard .ix-alert { margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 12px; border: 1px solid rgb(220 38 38 / 0.3); background: rgb(220 38 38 / 0.08); }

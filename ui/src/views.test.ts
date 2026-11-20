@@ -70,4 +70,13 @@ describe('pickView', () => {
     expect(pickView(undefined, { object: 'payment_intent', id: 'pi_1', status: 'canceled' })).toBe('pix');
     expect(pickView(undefined, { sections: [] })).toBe('members');
   });
+
+  it('draws the inbox by tool name and by its four counts, without taking the payments API limits for it', () => {
+    expect(pickView('open_whatsapp_inbox', {})).toBe('inbox');
+    expect(pickView('list_whatsapp_conversations', {})).toBe('inbox');
+    expect(pickView(undefined, { available: true, enabled: true, conversations: 3, unread: 5 })).toBe('inbox');
+    expect(pickView(undefined, { available: false, enabled: false, conversations: 0, unread: 0 })).toBe('inbox');
+    expect(pickView(undefined, { object: 'limits_unavailable', available: false })).toBe('payapi');
+    expect(pickView(undefined, { available: true })).toBeNull();
+  });
 });

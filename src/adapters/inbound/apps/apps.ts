@@ -108,7 +108,7 @@ export function registerAppViews(server: McpServer) {
   };
   server.registerResource('ggcheckout_app', APP_URI, {
     mimeType: APP_MIME_TYPE,
-    description: 'GGCheckout views: sales panel, funnel leads, payments, billing wallet, invoices and credit statement, custom domains with their DNS, WhatsApp deliveries, gateways charge order and stability, rewards trail, post-purchase offers, members area tree, Telegram flow, WhatsApp chips, PIX charges with live status, payments API limits, wallets and charges, tracking guide and diagnosis, and UTM links',
+    description: 'GGCheckout views: sales panel, funnel leads, payments, billing wallet, invoices and credit statement, custom domains with their DNS, WhatsApp deliveries, gateways charge order and stability, rewards trail, post-purchase offers, members area tree, Telegram flow, WhatsApp chips, PIX charges with live status, payments API limits, wallets and charges, tracking guide and diagnosis, UTM links, and the WhatsApp inbox (conversations, replies and funnels per conversation)',
   }, async () => ({
     contents: [{
       uri: APP_URI,

@@ -1,6 +1,7 @@
 import {
   billingBalance, billingStatus, membersArea, chips, chipDetail, telegramFlows, telegramFlowVisual, telegramFlowBasic, memberCarousels, memberModules, memberLessons, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
   payApiLimits, payApiLimitsUnavailable, payApiWallets, payApiIntents, trackingGuide, trackingDiagnosis, utmMeta, utmManual,
+  inboxOpen, inboxOff, inboxUnavailable, inboxConversations, inboxMessages, inboxFunnels, inboxRun,
 } from './fixtures';
 
 export interface Scenario {
@@ -67,6 +68,9 @@ export const SCENARIOS: Scenario[] = [
   { id: 'tracking-diagnosis', question: 'Por que a venda do curso não aparece no TikTok?', tool: 'diagnose_tracking', args: { checkoutId: 'ck_preview', paymentId: 'pay_preview' }, result: trackingDiagnosis },
   { id: 'utm-meta', question: 'Gera o link do meu checkout pra anunciar no Meta', tool: 'build_tracking_link', args: { checkoutId: 'ck_aurora', platform: 'meta' }, result: utmMeta },
   { id: 'utm-manual', question: 'Faz um link do quiz pra colocar na bio do Instagram', tool: 'build_tracking_link', args: { funnelId: 'fn_aurora', platform: 'manual', utm_source: 'instagram', utm_medium: 'bio', utm_campaign: 'Lançamento Aurora', sck: 'story1' }, result: utmManual },
+  { id: 'inbox', question: 'Abre minha caixa de entrada do WhatsApp', tool: 'open_whatsapp_inbox', args: {}, result: inboxOpen },
+  { id: 'inbox-off', question: 'Abre minha caixa de entrada do WhatsApp', tool: 'open_whatsapp_inbox', args: {}, result: inboxOff },
+  { id: 'inbox-unavailable', question: 'Abre minha caixa de entrada do WhatsApp', tool: 'open_whatsapp_inbox', args: {}, result: inboxUnavailable },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
 ];
@@ -112,6 +116,15 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'restart_whatsapp_number': return { message: 'Chip reiniciado', numberId: args.numberId };
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
+    case 'list_whatsapp_conversations': return inboxConversations;
+    case 'list_whatsapp_messages': return inboxMessages(String(args.contactKey));
+    case 'list_whatsapp_funnels': return inboxFunnels;
+    case 'get_whatsapp_conversation_funnel': return inboxRun(String(args.contactKey));
+    case 'mark_whatsapp_conversation_read': return { success: true };
+    case 'send_whatsapp_reply': return { message: { messageId: 'w_new', deliveryId: 'a1b2c3d4-0000-4000-8000-000000000002', contactKey: args.contactKey, chipId: 'chip_vendas', text: args.text, at: new Date().toISOString(), chipSwitch: null, duplicate: false } };
+    case 'start_whatsapp_conversation_funnel': return { started: true, run: { ...inboxRun('553198765001').run, contactKey: args.contactKey, currentStep: 0 }, replacedRunId: null };
+    case 'stop_whatsapp_conversation_funnel': return { stoppedRunId: 'a1b2c3d4-0000-4000-8000-000000000001' };
+    case 'set_whatsapp_conversation_opt_out': return { optedOut: args.optedOut === true, stoppedRuns: args.optedOut === true ? 1 : 0 };
     default: throw new Error(`no fixture for ${name}`);
   }
 }
