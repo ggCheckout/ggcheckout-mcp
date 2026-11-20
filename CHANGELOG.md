@@ -62,6 +62,13 @@ error body) is read as "not released yet".
 - Rows of the chips and operations lists put their status column under the name on a narrow
   screen (a phone's chat), so the name no longer wraps letter by letter.
 - A disabled call-to-action button looks disabled (dimmed, no hover, no light pass) in every view.
+- The chips view follows the dashboard's Chips screen: the chip types read "WhatsApp GG" and "Meta
+  oficial" (each explained on hover), a chip marked for removal reads its countdown ("Será removido
+  em 23 horas", undone only in the dashboard; one marked for lack of a connection can still be
+  restarted and connected to keep it), every status is explained on hover, "N chips pedem ação" lists
+  on top the chips marked for removal (soonest first) and the active ones that do not send until the
+  seller acts, the list shows "N chips ativos / 20" and has "Atualizar". A chip marked for removal is
+  left out of the chips an operation can take. Phones stay masked: the model reads the same answer.
 
 ## 0.6.0
 
