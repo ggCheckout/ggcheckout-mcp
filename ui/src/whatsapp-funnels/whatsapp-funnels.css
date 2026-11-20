@@ -88,7 +88,8 @@
 .dashboard .fe-section-title { margin: 2px 0 2px; font-size: 14px; font-weight: 600; }
 .dashboard .fe-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .dashboard .fe-field .ch-label { margin: 0; }
-.dashboard .fe-field .ch-input { min-width: 0; width: 100%; box-sizing: border-box; }
+/* .ch-input grows along a row (flex: 1); in this column that would squash its height, so it keeps its own. */
+.dashboard .fe-field .ch-input { flex: none; min-width: 0; width: 100%; box-sizing: border-box; }
 .dashboard .fe-select { appearance: auto; }
 .dashboard .fe-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .dashboard .fe-step-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: -6px; }
