@@ -378,7 +378,7 @@ export function modelSchedule(model: FunnelModel): string {
   return `1ª ${formatWait(first.waitMinutes)} depois ${AFTER_EVENT[model.trigger]} · ${rest.length === 1 ? 'próxima' : 'próximas'} ${rest.map((s) => formatWait(s.waitMinutes)).join(', ')}`;
 }
 
-/** Decision 5: the cart funnel is born on, unless another funnel already holds the trigger. */
+/** The dashboard's decision: the cart funnel is born on, unless another funnel already holds the trigger. */
 export const bornEnabled = (trigger: FunnelTrigger, triggerTaken: boolean): boolean => trigger === 'abandoned_cart' && !triggerTaken;
 
 /* ── The customer's phone (funnelSimulation, still) ── */

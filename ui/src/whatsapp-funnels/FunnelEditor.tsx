@@ -1,5 +1,5 @@
 import { Palette, Trash2, Workflow } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Host } from '../host';
 import { BackButton } from '../lib/BackButton';
 import { ConfirmPanel } from '../lib/ConfirmPanel';
@@ -8,15 +8,19 @@ import { Pills } from '../lib/Pills';
 import { SwitchRow } from '../lib/SwitchRow';
 import {
   bornEnabled, buildBeats, cumulativeMinutes, draftFrom, funnelProblems, funnelVariables, insertStep, moveStep, sampleText, saveBlocked, shiftLayout,
-  snapshotOf, toInput, unchangedSince, type DraftStep, type FlowSelection, type FunnelDraft, type StepBuilder,
+  snapshotOf, toInput, type DraftStep, type FlowSelection, type FunnelDraft, type StepBuilder,
 } from './editor';
-import { ENABLE_FAILED, createFunnel } from './createFunnel';
+import { codePointLength } from '../lib/format';
+import { ENABLE_FAILED, createFunnel, saveStoredFunnel, toggledBase } from './funnelCalls';
 import { FunnelFlow } from './FunnelFlow';
 import { StartPanel, StepPanel, StopPanel, StylePanel } from './FunnelPanels';
 import { FunnelPhone } from './FunnelPhone';
 import { TRIGGER_LABEL, applyStoreStyle, summarizeFunnel, toggleWords, triggerTakenBy, type FunnelDetail, type FunnelRow } from './model';
 
 type Confirming = 'save' | 'toggle' | 'delete' | 'leave' | null;
+
+/** The write went through, but neither its answer nor a re-read of the funnel could be read. */
+const SAVED_UNREAD = 'O funil foi salvo, mas não foi possível ler a versão gravada. Abra o funil de novo para conferir.';
 
 /** What a draft not yet created looks like as a row, to ask whether its trigger is taken. */
 const rowOf = (draft: FunnelDraft, base: FunnelDetail | null): FunnelRow => ({
@@ -60,6 +64,14 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
   const [savedThisVisit, setSavedThisVisit] = useState(false);
   const [isDeleted, setDeleted] = useState(false);
   const [nextKey, setNextKey] = useState(draft.steps.length + 1);
+  /** The panel title takes the focus after a block is added or removed: the button pressed is gone or elsewhere. */
+  const panelTitle = useRef<HTMLHeadingElement>(null);
+  const focusPanel = useRef(false);
+  useEffect(() => {
+    if (!focusPanel.current) return;
+    focusPanel.current = false;
+    panelTitle.current?.focus();
+  }, [selection]);
 
   const isNew = base === null;
   const isEnabled = base?.isEnabled ?? false;
@@ -82,6 +94,7 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
       const index = d.steps.findIndex((s) => s.key === key);
       return index < 0 ? d : { ...d, steps: d.steps.filter((s) => s.key !== key), layout: shiftLayout(d.layout, index, -1) };
     });
+    focusPanel.current = true;
     setSelection({ kind: 'end' });
   };
 
@@ -92,6 +105,7 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
     const step = build(`step_new_${nextKey}`);
     setNextKey((n) => n + 1);
     setDraft((d) => ({ ...d, steps: insertStep(d.steps, index, step), layout: shiftLayout(d.layout, index, 1) }));
+    focusPanel.current = true;
     setSelection({ kind: 'step', key: step.key });
     setTab('props');
   };
@@ -110,31 +124,25 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
     onSaved?.(fresh);
   };
 
-  async function readFunnel(id: string): Promise<FunnelDetail> {
-    const fresh = summarizeFunnel(await host.callTool('get_whatsapp_funnel', { funnelId: id }));
-    if (!fresh) throw new Error('no funnel');
-    return fresh;
-  }
-
   async function save() {
     setBusy('save');
     setError(null);
     const input = toInput(draft);
     const sent = snapshotOf(draft);
-    let wrote = false;
     try {
       if (base) {
-        const fresh = await readFunnel(base.id);
-        if (!unchangedSince(base, fresh)) {
-          setDrift(fresh);
+        const outcome = await saveStoredFunnel(host, base, input);
+        if (outcome.kind === 'drift') {
+          setDrift(outcome.fresh);
           return;
         }
-        const answer = summarizeFunnel(await host.callTool('update_whatsapp_funnel', { funnelId: base.id, ...input }));
-        wrote = true;
-        const next = answer ?? await readFunnel(base.id);
-        setBase(next);
-        onSaved?.(next);
         host.tellModel(`Na tela do chat, o funil ${input.name} foi salvo com ${input.steps.length} mensagem(ns).`);
+        if (!outcome.funnel) {
+          setError(SAVED_UNREAD);
+          return;
+        }
+        setBase(outcome.funnel);
+        onSaved?.(outcome.funnel);
       } else {
         const { funnel: created, enableFailed } = await createFunnel(host, input, Boolean(taken));
         if (enableFailed) setError(ENABLE_FAILED);
@@ -146,8 +154,7 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
       setSavedThisVisit(true);
       setTried(false);
     } catch {
-      setError(wrote ? 'O funil foi salvo, mas não foi possível ler a versão gravada. Abra o funil de novo para conferir.'
-        : base ? 'Não foi possível salvar o funil. Tente de novo em alguns segundos.' : 'Não foi possível criar o funil. Tente de novo em alguns segundos.');
+      setError(base ? 'Não foi possível salvar o funil. Tente de novo em alguns segundos.' : 'Não foi possível criar o funil. Tente de novo em alguns segundos.');
     } finally {
       setBusy(null);
       setConfirming(null);
@@ -160,9 +167,9 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
     setBusy('toggle');
     setError(null);
     try {
-      const next = summarizeFunnel(await host.callTool('toggle_whatsapp_funnel', { funnelId: base.id, enabled })) ?? { ...base, isEnabled: enabled };
-      setBase(next);
-      onSaved?.(next);
+      const answer = summarizeFunnel(await host.callTool('toggle_whatsapp_funnel', { funnelId: base.id, enabled }));
+      setBase(toggledBase(base, answer?.isEnabled ?? enabled));
+      onSaved?.(answer ?? toggledBase(base, enabled));
       host.tellModel(`Na tela do chat, o funil ${base.name} foi ${enabled ? 'ligado' : 'desligado'}.`);
     } catch (e) {
       // ApiError says "API Error (409): …" when another funnel already holds the trigger.
@@ -229,7 +236,7 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
           title: `Mensagem ${index + 1}`,
           body: (
             <StepPanel step={step} index={index} count={draft.steps.length} trigger={draft.trigger} atMinutes={at[index]} variables={variables}
-              renderedLength={render(step.text).length} onChange={(next) => patchStep(step.key, next)} onRemove={() => removeStep(step.key)}
+              renderedLength={codePointLength(render(step.text))} onChange={(next) => patchStep(step.key, next)} onRemove={() => removeStep(step.key)}
               onMove={(delta) => move(step.key, delta)} />
           ),
         };
@@ -311,7 +318,7 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
           <section className="fe-panel" aria-label="Painel do fluxo">
             <Pills label="Painel do fluxo" options={[['props', 'Propriedades'], ['preview', 'Prévia']] as const} value={tab} onPick={setTab} />
             {tab === 'props'
-              ? <><h3 className="ch-panel-title">{inspector.title}</h3>{inspector.body}</>
+              ? <><h3 className="ch-panel-title" ref={panelTitle} tabIndex={-1}>{inspector.title}</h3>{inspector.body}</>
               : <FunnelPhone beats={beats} problems={problems} />}
           </section>
         </div>

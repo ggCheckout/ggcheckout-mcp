@@ -5,7 +5,7 @@ import '../chips/chips.css';
 import './whatsapp-funnels.css';
 import type { Host, HostSnapshot } from '../host';
 import { summarizeOperations, type Operation } from '../operations/model';
-import { ENABLE_FAILED, createFunnel } from './createFunnel';
+import { ENABLE_FAILED, createFunnel, listAllFunnels } from './funnelCalls';
 import { modelInput, newDraft, type FunnelModel } from './editor';
 import { FunnelEditor, type EditorStart } from './FunnelEditor';
 import { FunnelStarter, modelTaken } from './FunnelStarter';
@@ -46,7 +46,7 @@ function FunnelsList({ funnels, operations, canOpen, busyId, onOpen, hasMore, lo
         </div>
         {canOpen && (
           <div className="fe-actions">
-            <button type="button" className="ch-ghost" onClick={onRefresh} disabled={refreshing}>
+            <button type="button" className="ch-ghost" onClick={onRefresh} disabled={refreshing || loadingMore}>
               <RefreshCw size={14} aria-hidden className={refreshing ? 'fe-spin' : undefined} />{refreshing ? 'Atualizando…' : 'Atualizar'}
             </button>
             <button type="button" className="cta compact" onClick={onCreate}><Plus size={15} aria-hidden />Novo funil</button>
@@ -87,7 +87,7 @@ function FunnelsList({ funnels, operations, canOpen, busyId, onOpen, hasMore, lo
         </div>
       )}
       {hasMore && canOpen && (
-        <button type="button" className="ch-ghost wf-more" onClick={onMore} disabled={loadingMore}>{loadingMore ? 'Carregando…' : 'Carregar mais funis'}</button>
+        <button type="button" className="ch-ghost wf-more" onClick={onMore} disabled={loadingMore || refreshing}>{loadingMore ? 'Carregando…' : 'Carregar mais funis'}</button>
       )}
     </section>
   );
@@ -102,6 +102,11 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
   /** undefined while reading, null when the read failed. */
   const [operations, setOperations] = useState<Operation[] | null | undefined>(undefined);
   const [list, setList] = useState<FunnelRow[] | null>(null);
+  /**
+   * Every funnel (up to the saas page cap), to say which one holds a trigger: the list shows only the
+   * pages loaded so far, and the funnel holding a trigger can sit on a later one.
+   */
+  const [occupants, setOccupants] = useState<FunnelRow[] | null>(null);
   const [nextAfter, setNextAfter] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -117,15 +122,13 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
     setNextAfter(parts.page?.nextAfter ?? null);
   }, [parts.page]);
 
-  // The operations (names for the "Operação" column, choices of a manual funnel); a detail alone also
-  // reads the first page of funnels, so it can say which funnel already holds its trigger.
+  // The operations (names for the "Operação" column, choices of a manual funnel) and every funnel, so
+  // the editor and the models can say which funnel already holds a trigger.
   useEffect(() => {
     if (!state.canCallTools) return;
     host.callTool('list_whatsapp_sessions', {}).then((data) => setOperations(summarizeOperations(data))).catch(() => setOperations(null));
-    if (parts.funnel) {
-      host.callTool('list_whatsapp_funnels', {}).then((data) => setList(summarizeFunnels(data)?.funnels ?? null)).catch(() => setList(null));
-    }
-  }, [host, state.canCallTools, parts.funnel]);
+    listAllFunnels(host).then((all) => setOccupants(all?.funnels ?? null)).catch(() => setOccupants(null));
+  }, [host, state.canCallTools]);
 
   useEffect(() => {
     if (parts.funnel) host.tellModel(`Funil ${parts.funnel.name} aberto na tela do chat.`);
@@ -151,8 +154,10 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
     }
   }
 
+  // "Carregar mais" and "Atualizar" never run together: a late page would append to the list the other
+  // one replaced and leave a cursor that no longer follows it.
   async function loadMore() {
-    if (!nextAfter) return;
+    if (!nextAfter || loadingMore || refreshing) return;
     setLoadingMore(true);
     setLoadError(null);
     try {
@@ -168,6 +173,7 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
   }
 
   async function refresh() {
+    if (loadingMore || refreshing) return;
     setRefreshing(true);
     setLoadError(null);
     try {
@@ -186,7 +192,7 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
     setCreating(true);
     setStarterError(null);
     try {
-      const { funnel, enableFailed } = await createFunnel(host, modelInput(model, firstOperation), modelTaken(model, list));
+      const { funnel, enableFailed } = await createFunnel(host, modelInput(model, firstOperation), modelTaken(model, occupants ?? list));
       replace(funnel);
       setNotice(enableFailed ? ENABLE_FAILED : null);
       host.tellModel(`Na tela do chat, o funil ${funnel.name} foi criado do modelo${funnel.isEnabled ? ' e ligado' : ', desligado'}.`);
@@ -201,18 +207,24 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
   /** A funnel created or changed in the editor takes its row (a new one goes on top), so "Voltar" shows it as it is now. */
   const replace = useCallback((next: FunnelDetail) => {
     const row: FunnelRow = { id: next.id, name: next.name, trigger: next.trigger, isEnabled: next.isEnabled, stepCount: next.steps.length, sessionId: next.sessionId };
-    setList((cur) => (cur
+    const put = (cur: FunnelRow[] | null): FunnelRow[] | null => (cur
       ? (cur.some((f) => f.id === next.id) ? cur.map((f) => (f.id === next.id ? row : f)) : [row, ...cur])
-      : cur));
+      : cur);
+    setList(put);
+    setOccupants(put);
   }, []);
-  const drop = useCallback((id: string) => setList((cur) => cur && cur.filter((f) => f.id !== id)), []);
+  const drop = useCallback((id: string) => {
+    const without = (cur: FunnelRow[] | null): FunnelRow[] | null => cur && cur.filter((f) => f.id !== id);
+    setList(without);
+    setOccupants(without);
+  }, []);
   const toList = () => {
     setScreen({ kind: 'list' });
     setNotice(null);
   };
 
   if (!parts.funnel && !parts.page) return <p className="state" data-tone="error">A resposta não trouxe funis do WhatsApp.</p>;
-  const editorProps = { host, operations: choices, siblings: list, canCallTools: state.canCallTools, onSaved: replace, onDeleted: drop };
+  const editorProps = { host, operations: choices, siblings: occupants ?? list, canCallTools: state.canCallTools, onSaved: replace, onDeleted: drop };
   return (
     <div className="dashboard chips">
       {loadError && <p className="ch-alert" role="alert">{loadError}</p>}
@@ -221,7 +233,7 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
       {parts.page && (
         <>
           {screen.kind === 'starter' && (
-            <FunnelStarter siblings={list} operations={choices} busy={creating} error={starterError} onUseModel={createFromModel}
+            <FunnelStarter siblings={occupants ?? list} operations={choices} busy={creating} error={starterError} onUseModel={createFromModel}
               onBlank={() => setScreen({ kind: 'editor', start: { kind: 'new', draft: newDraft(firstOperation) } })} onCancel={toList} />
           )}
           {screen.kind === 'editor' && (

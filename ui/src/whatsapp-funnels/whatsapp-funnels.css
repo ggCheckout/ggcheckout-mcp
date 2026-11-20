@@ -4,7 +4,6 @@
 .dashboard .wf-more { align-self: center; }
 .dashboard .wf-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 12px; border-radius: 8px; border: 1px dashed var(--d-line); text-align: center; color: var(--d-accent); }
 .dashboard .wf-empty-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--d-fg); }
-.dashboard .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* The Seasons CTA in a toolbar (`seasonCta.compact`). */
 .dashboard .cta.compact { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 16px; font-size: 13px; }
@@ -76,7 +75,8 @@
 .dashboard .fe-palette { position: absolute; z-index: 5; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; width: min(280px, 90vw); padding: 6px; border-radius: 10px; border: 1px solid var(--d-line); background: var(--d-bg); box-shadow: 0 12px 30px -10px rgb(0 0 0 / 0.35); }
 .dashboard .fe-add .fe-palette { left: 0; transform: none; }
 .dashboard .fe-palette-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--d-fg); text-align: left; font: inherit; cursor: pointer; }
-.dashboard .fe-palette-item:hover, .dashboard .fe-palette-item:focus-visible { outline: none; background: color-mix(in srgb, var(--season-blue) 8%, transparent); }
+.dashboard .fe-palette-item:hover { background: color-mix(in srgb, var(--season-blue) 8%, transparent); }
+.dashboard .fe-palette-item:focus-visible { outline: 2px solid var(--season-blue); outline-offset: -2px; background: color-mix(in srgb, var(--season-blue) 8%, transparent); }
 .dashboard .fe-palette-label { font-size: 13px; font-weight: 600; }
 
 /* The panel: Propriedades / Prévia, the block's title and its sections. */

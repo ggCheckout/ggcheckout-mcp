@@ -1,5 +1,5 @@
 import { AlertTriangle, Clock, Flag, MessageCircle, Plus, Zap } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { FUNNEL_MAX_STEPS, PALETTE, canAddStep, excerpt, stopDetail, type DraftStep, type FlowSelection, type FunnelDraft, type StepBuilder } from './editor';
 import { AFTER_EVENT, TRIGGER_LABEL, formatWait } from './model';
 
@@ -24,7 +24,7 @@ function Block({ kind, title, detail, badges = [], warn = false, selected, onSel
           <span className="fe-block-kind">{label}</span>
           <span className="fe-block-title">{title}</span>
         </span>
-        {warn && <AlertTriangle size={15} className="fe-warn" aria-label="Falta preencher" />}
+        {warn && <AlertTriangle size={15} className="fe-warn" role="img" aria-label="Falta preencher" />}
       </span>
       <span className="fe-block-detail" data-warn={warn || undefined}>{detail}</span>
       {badges.length > 0 && <span className="fe-badges">{badges.map((b) => <span key={b} className="ch-tag">{b}</span>)}</span>}
@@ -32,12 +32,21 @@ function Block({ kind, title, detail, badges = [], warn = false, selected, onSel
   );
 }
 
-/** The palette of what goes into the funnel; `onPick` builds the step. */
-function Palette({ onPick, onClose }: { onPick: (build: StepBuilder) => void; onClose: () => void }) {
+/**
+ * The palette of what goes into the funnel; `onPick` builds the step. A group of plain buttons (the
+ * opener says `aria-expanded`): the focus moves to the first one, and Esc closes it back to the opener.
+ */
+function Palette({ onPick, onClose, opener }: { onPick: (build: StepBuilder) => void; onClose: () => void; opener: RefObject<HTMLButtonElement | null> }) {
+  const first = useRef<HTMLButtonElement>(null);
+  useEffect(() => first.current?.focus(), []);
   return (
-    <div className="fe-palette" role="menu" aria-label="Componentes do funil" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
-      {PALETTE.map((item) => (
-        <button key={item.id} type="button" role="menuitem" className="fe-palette-item" onClick={() => onPick(item.build)}>
+    <div className="fe-palette" role="group" aria-label="Componentes do funil" onKeyDown={(e) => {
+      if (e.key !== 'Escape') return;
+      onClose();
+      opener.current?.focus();
+    }}>
+      {PALETTE.map((item, i) => (
+        <button key={item.id} ref={i === 0 ? first : undefined} type="button" className="fe-palette-item" onClick={() => onPick(item.build)}>
           <span className="fe-palette-label">{item.label}</span>
           <span className="ch-hint">{item.hint}</span>
         </button>
@@ -50,14 +59,15 @@ function Palette({ onPick, onClose }: { onPick: (build: StepBuilder) => void; on
 function Edge({ insertAt, after, full, open, onToggle, onPick }: {
   insertAt?: number; after?: string; full: boolean; open: boolean; onToggle: () => void; onPick: (build: StepBuilder) => void;
 }) {
+  const opener = useRef<HTMLButtonElement>(null);
   if (insertAt === undefined) return <span className="fe-edge" aria-hidden />;
   return (
     <div className="fe-edge fe-edge-insert">
-      <button type="button" className="fe-plus" aria-expanded={open} disabled={full} onClick={onToggle}
+      <button type="button" ref={opener} className="fe-plus" aria-expanded={open} disabled={full} onClick={onToggle}
         aria-label={`Adicionar bloco depois de ${after}`} title={full ? `Até ${FUNNEL_MAX_STEPS} mensagens por funil` : 'Entra aqui, com a espera antes da mensagem'}>
         <Plus size={14} aria-hidden />
       </button>
-      {open && <Palette onPick={onPick} onClose={onToggle} />}
+      {open && <Palette onPick={onPick} onClose={onToggle} opener={opener} />}
     </div>
   );
 }
@@ -71,6 +81,7 @@ export function FunnelFlow({ draft, selection, onSelect, onAdd, toolbar }: {
   onAdd: (index: number, build: StepBuilder) => void; toolbar: ReactNode;
 }) {
   const [menuAt, setMenuAt] = useState<number | null>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
   const full = !canAddStep(draft.steps);
   const isStep = (step: DraftStep) => selection.kind === 'step' && selection.key === step.key;
   const add = (index: number) => (build: StepBuilder) => {
@@ -85,11 +96,11 @@ export function FunnelFlow({ draft, selection, onSelect, onAdd, toolbar }: {
     <section className="fe-flow" aria-label="Fluxo do funil">
       <div className="fe-toolbar">
         <div className="fe-add">
-          <button type="button" className="ch-ghost" aria-expanded={menuAt === -1} disabled={full} onClick={() => setMenuAt(menuAt === -1 ? null : -1)}
+          <button type="button" ref={addButton} className="ch-ghost" aria-expanded={menuAt === -1} disabled={full} onClick={() => setMenuAt(menuAt === -1 ? null : -1)}
             title={full ? `Limite de ${FUNNEL_MAX_STEPS} mensagens` : undefined}>
             <Plus size={14} aria-hidden />Adicionar
           </button>
-          {menuAt === -1 && <Palette onPick={add(draft.steps.length)} onClose={() => setMenuAt(null)} />}
+          {menuAt === -1 && <Palette onPick={add(draft.steps.length)} onClose={() => setMenuAt(null)} opener={addButton} />}
         </div>
         {toolbar}
       </div>

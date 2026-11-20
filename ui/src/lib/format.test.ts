@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDateTime, plural } from './format';
+import { codePointLength, cutText, formatDate, formatDateTime, plural } from './format';
 
 describe('formatDate / formatDateTime', () => {
   it('writes São Paulo time, whatever the viewer zone', () => {
@@ -20,5 +20,17 @@ describe('plural', () => {
   it('picks the form by count', () => {
     expect(plural(1, 'aula', 'aulas')).toBe('1 aula');
     expect(plural(0, 'aula', 'aulas')).toBe('0 aulas');
+  });
+});
+
+describe('codePointLength / cutText', () => {
+  it('counts an emoji as one character, as the saas does', () => {
+    expect(codePointLength('😀a')).toBe(2);
+    expect('😀a'.length).toBe(3);
+  });
+
+  it('cuts in code points, never splitting an emoji, and marks the cut', () => {
+    expect(cutText('😀😀😀', 2)).toBe('😀😀…');
+    expect(cutText('abc', 3)).toBe('abc');
   });
 });

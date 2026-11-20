@@ -57,6 +57,9 @@ export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
+/** Length in code points (an emoji is 1), as the saas and the core count text. */
+export const codePointLength = (value: string): number => Array.from(value).length;
+
 /** At most `max` characters, counted in code points so an emoji is never split, with "…" when cut. */
 export function cutText(value: string, max: number): string {
   const chars = Array.from(value);
