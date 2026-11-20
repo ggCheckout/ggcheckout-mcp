@@ -378,12 +378,15 @@ function ChipsList({ chips, sessions, now, canOpen, busyId, onOpen, checking, he
         </div>
         <p className="card-sub">Cada chip é uma conexão WhatsApp: WhatsApp GG, pelo QR Code, ou Meta oficial. Atribua a uma operação pra usar em envios.</p>
       </header>
-      {health && (
-        <div className="ch-health" data-tone={health.tone} role="status">
-          <p className="ch-health-title">{health.title}</p>
-          {health.detail && <p>{health.detail}</p>}
-        </div>
-      )}
+      {/* Mounted before the first "Verificar", so the result is announced when it arrives. */}
+      <div className="status-region" role="status">
+        {health && (
+          <div className="ch-health" data-tone={health.tone}>
+            <p className="ch-health-title">{health.title}</p>
+            {health.detail && <p>{health.detail}</p>}
+          </div>
+        )}
+      </div>
       <NeedingAction chips={chips} sessions={sessions} now={now} canOpen={canOpen} busyId={busyId} onOpen={onOpen} />
       {chips.length > 0 && (
         <p className="ch-hint num">{plural(activeChips(chips), 'chip ativo', 'chips ativos')} / {MAX_ACTIVE_CHIPS}</p>

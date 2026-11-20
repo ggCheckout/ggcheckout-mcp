@@ -114,7 +114,7 @@ function DomainDetail({ host, first, canCallTools, firstOutcome = null, onBack, 
           <p className="card-sub num">{`Criado em ${formatDateTime(domain.createdAt, { seconds: true })}`}</p>
         </header>
         {/* Mounted before the first "Verificar", so the result is announced when it arrives. */}
-        <div role="status">{outcome && <Outcome outcome={outcome} />}</div>
+        <div className="status-region" role="status">{outcome && <Outcome outcome={outcome} />}</div>
         {error && <p className="dom-alert" data-tone="danger" role="alert">{error}</p>}
         {/* The check's outcome already says what is missing. */}
         {!outcome && <StatusAlert status={domain.status} />}

@@ -100,9 +100,8 @@ function ChipPicker({ op, chips, chipsFailed, onPick, onCancel }: {
     <section className="ch-panel">
       <h3 className="ch-panel-title">Escolha um chip</h3>
       <p className="ch-hint">Ele entra como {slotLabel(op.chipIds.length)}.</p>
-      {free === null && (chipsFailed
-        ? <p className="ch-alert" role="alert">Não foi possível carregar os chips. Tente novamente.</p>
-        : <p className="ch-hint" role="status">Carregando os chips…</p>)}
+      {free === null && chipsFailed && <p className="ch-alert" role="alert">Não foi possível carregar os chips. Tente novamente.</p>}
+      <p className="ch-hint status-region" role="status">{free === null && !chipsFailed ? 'Carregando os chips…' : ''}</p>
       {free?.length === 0 && <p className="ch-note">Todos os seus chips já estão nesta operação.</p>}
       {free && free.length > 0 && (
         <ul className="ch-rows">
@@ -144,7 +143,7 @@ function ProductPicker({ products, assigned, onSave, onCancel }: {
   return (
     <section className="ch-panel">
       <h3 className="ch-panel-title">Adicionar produtos</h3>
-      {products === undefined && <p className="ch-hint" role="status">Carregando os produtos…</p>}
+      <p className="ch-hint status-region" role="status">{products === undefined ? 'Carregando os produtos…' : ''}</p>
       {products === null && <p className="ch-alert" role="alert">Não foi possível carregar os produtos.</p>}
       {products && (
           <>

@@ -178,7 +178,7 @@ export function DeliveriesView({ host, state }: { host: Host; state: HostSnapsho
       <div className="dashboard deliveries">
         {after
           ? <DeliveriesPanel key="after" host={host} data={{ ...after, paymentId: after.paymentId ?? paymentId }} canCallTools={state.canCallTools} notice={resent.message} />
-          : <section className="surface dlv-panel"><p className="dlv-message status-region" data-tone={resent.status === 'confirmed' ? 'ok' : 'error'}>{resent.message}</p></section>}
+          : <section className="surface dlv-panel"><p className="dlv-message" data-tone={resent.status === 'confirmed' ? 'ok' : 'error'}>{resent.message}</p></section>}
       </div>
     );
   }
