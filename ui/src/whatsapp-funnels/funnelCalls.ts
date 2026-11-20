@@ -10,24 +10,36 @@ const LIST_PAGE = 50;
  */
 export const FUNNEL_LIST_MAX_PAGES = 10;
 
-export interface AllFunnels {
-  funnels: FunnelRow[];
-  /** false when the read stopped at the page cap or at an unreadable page after the first. */
-  complete: boolean;
-}
-
-/** Every funnel, page after page up to the cap; null when the first page is unreadable. */
-export async function listAllFunnels(host: Host): Promise<AllFunnels | null> {
+/**
+ * Every funnel, page after page up to the cap (what is past it, or past an unreadable later page, is
+ * left out: the server still refuses a second funnel on a trigger); null when the first page is unreadable.
+ */
+export async function listAllFunnels(host: Host): Promise<FunnelRow[] | null> {
   const funnels: FunnelRow[] = [];
   let after: string | null = null;
   for (let page = 0; page < FUNNEL_LIST_MAX_PAGES; page++) {
     const read = summarizeFunnels(await host.callTool('list_whatsapp_funnels', { limit: LIST_PAGE, ...(after ? { after } : {}) }));
-    if (!read) return page === 0 ? null : { funnels, complete: false };
+    if (!read) return page === 0 ? null : funnels;
     funnels.push(...read.funnels);
     after = read.nextAfter;
-    if (!after) return { funnels, complete: true };
+    if (!after) return funnels;
   }
-  return { funnels, complete: false };
+  return funnels;
+}
+
+/** A funnel the view created, saved or turned on/off (its row), or deleted (null), by id. */
+export type RowEdits = ReadonlyMap<string, FunnelRow | null>;
+
+/**
+ * Rows read before an edit the view made, with the edit on top: a changed row takes its place, a new
+ * one goes first, a deleted one leaves. A read that was in flight while the seller created or saved a
+ * funnel must not bring back the row as it was.
+ */
+export function withEdits(rows: readonly FunnelRow[], edits: RowEdits): FunnelRow[] {
+  const kept = rows.filter((row) => !edits.has(row.id) || edits.get(row.id) !== null).map((row) => edits.get(row.id) ?? row);
+  const known = new Set(rows.map((row) => row.id));
+  const added = [...edits.values()].filter((row): row is FunnelRow => row !== null && !known.has(row.id));
+  return [...added, ...kept];
 }
 
 export async function readFunnel(host: Host, id: string): Promise<FunnelDetail> {
@@ -58,13 +70,22 @@ export async function saveStoredFunnel(host: Host, base: FunnelDetail, input: Fu
   }
 }
 
+export interface ToggleOutcome {
+  /** The base of the next Salvar's drift check: the funnel as shown, with only the flag changed. */
+  base: FunnelDetail;
+  /** The funnel as stored now, for the list row. */
+  row: FunnelDetail;
+}
+
 /**
- * The base after on/off: only the flag changes. The toggle answers the funnel as stored now, and taking
- * the rest of it as the base would hide an edit made elsewhere from the drift check of the next Salvar,
- * which would then write the draft over it.
+ * On/off of a stored funnel. The toggle answers the funnel as stored now; only its flag goes into the
+ * base. Taking the rest of the answer as the base would hide an edit made elsewhere from the drift check
+ * of the next Salvar, which would then write the draft over it.
  */
-export function toggledBase(base: FunnelDetail, enabled: boolean): FunnelDetail {
-  return { ...base, isEnabled: enabled };
+export async function toggleFunnel(host: Host, base: FunnelDetail, enabled: boolean): Promise<ToggleOutcome> {
+  const answer = summarizeFunnel(await host.callTool('toggle_whatsapp_funnel', { funnelId: base.id, enabled }));
+  const isEnabled = answer?.isEnabled ?? enabled;
+  return { base: { ...base, isEnabled }, row: answer ?? { ...base, isEnabled } };
 }
 
 /**

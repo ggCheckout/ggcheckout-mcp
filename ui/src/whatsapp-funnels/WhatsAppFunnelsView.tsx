@@ -1,11 +1,11 @@
 import { ChevronRight, MessageCircle, Plus, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../styles/dashboard.css';
 import '../chips/chips.css';
 import './whatsapp-funnels.css';
 import type { Host, HostSnapshot } from '../host';
 import { summarizeOperations, type Operation } from '../operations/model';
-import { ENABLE_FAILED, createFunnel, listAllFunnels, readFunnel } from './funnelCalls';
+import { ENABLE_FAILED, createFunnel, listAllFunnels, readFunnel, withEdits } from './funnelCalls';
 import { modelInput, newDraft, type FunnelModel } from './editor';
 import { FunnelEditor, type EditorStart } from './FunnelEditor';
 import { FunnelStarter, modelTaken } from './FunnelStarter';
@@ -107,6 +107,8 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
    * pages loaded so far, and the funnel holding a trigger can sit on a later one.
    */
   const [occupants, setOccupants] = useState<FunnelRow[] | null>(null);
+  /** What the view changed since the latest read of every funnel started: applied when that read lands. */
+  const occupantEdits = useRef(new Map<string, FunnelRow | null>());
   const [nextAfter, setNextAfter] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -122,13 +124,26 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
     setNextAfter(parts.page?.nextAfter ?? null);
   }, [parts.page]);
 
+  /**
+   * Reads every funnel again. An older read still in flight is dropped when it lands, and what the view
+   * created, saved or deleted meanwhile goes on top of the rows read.
+   */
+  const loadOccupants = useCallback((): void => {
+    const edits = new Map<string, FunnelRow | null>();
+    occupantEdits.current = edits;
+    const land = (rows: FunnelRow[] | null): void => {
+      if (occupantEdits.current === edits) setOccupants(rows && withEdits(rows, edits));
+    };
+    listAllFunnels(host).then(land).catch(() => land(null));
+  }, [host]);
+
   // The operations (names for the "Operação" column, choices of a manual funnel) and every funnel, so
   // the editor and the models can say which funnel already holds a trigger.
   useEffect(() => {
     if (!state.canCallTools) return;
     host.callTool('list_whatsapp_sessions', {}).then((data) => setOperations(summarizeOperations(data))).catch(() => setOperations(null));
-    listAllFunnels(host).then((all) => setOccupants(all?.funnels ?? null)).catch(() => setOccupants(null));
-  }, [host, state.canCallTools]);
+    loadOccupants();
+  }, [host, state.canCallTools, loadOccupants]);
 
   useEffect(() => {
     if (parts.funnel) host.tellModel(`Funil ${parts.funnel.name} aberto na tela do chat.`);
@@ -174,6 +189,8 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
     if (loadingMore || refreshing) return;
     setRefreshing(true);
     setLoadError(null);
+    // A funnel turned on elsewhere holds its trigger: "Atualizar" reads that too.
+    loadOccupants();
     try {
       const page = summarizeFunnels(await host.callTool('list_whatsapp_funnels', {}));
       if (!page) throw new Error('no page');
@@ -210,11 +227,13 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
       : cur);
     setList(put);
     setOccupants(put);
+    occupantEdits.current.set(row.id, row);
   }, []);
   const drop = useCallback((id: string) => {
     const without = (cur: FunnelRow[] | null): FunnelRow[] | null => cur && cur.filter((f) => f.id !== id);
     setList(without);
     setOccupants(without);
+    occupantEdits.current.set(id, null);
   }, []);
   const toList = () => {
     setScreen({ kind: 'list' });

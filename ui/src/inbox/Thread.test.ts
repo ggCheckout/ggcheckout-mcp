@@ -30,18 +30,14 @@ describe('loadManualFunnels', () => {
 });
 
 describe('listAllFunnels', () => {
-  it('stops at the saas page cap and says the read is incomplete', async () => {
+  it('stops at the saas page cap', async () => {
     const pages = Array.from({ length: FUNNEL_LIST_MAX_PAGES + 1 }, (_, i) => ({ items: [funnel(`f${i}`)], nextAfter: `c${i}` }));
     const host = hostWith(pages);
-    const all = await listAllFunnels(host);
-    expect(all?.funnels).toHaveLength(FUNNEL_LIST_MAX_PAGES);
-    expect(all?.complete).toBe(false);
+    expect(await listAllFunnels(host)).toHaveLength(FUNNEL_LIST_MAX_PAGES);
     expect(host.callTool).toHaveBeenCalledTimes(FUNNEL_LIST_MAX_PAGES);
   });
 
-  it('is complete when the last page has no cursor', async () => {
-    expect(await listAllFunnels(hostWith([{ items: [funnel('f1')], nextAfter: null }]))).toEqual({
-      funnels: [expect.objectContaining({ id: 'f1' })], complete: true,
-    });
+  it('ends at the page without a cursor', async () => {
+    expect(await listAllFunnels(hostWith([{ items: [funnel('f1')], nextAfter: null }]))).toEqual([expect.objectContaining({ id: 'f1' })]);
   });
 });

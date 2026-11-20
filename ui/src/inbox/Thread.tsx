@@ -18,7 +18,7 @@ type Confirming = 'start' | 'stop' | 'optout' | 'optin' | null;
 /** The enabled manual funnels, across the pages of list_whatsapp_funnels; null when unreadable. */
 export async function loadManualFunnels(host: Host): Promise<FunnelOption[] | null> {
   const all = await listAllFunnels(host);
-  return all && all.funnels.filter((f) => f.trigger === 'manual' && f.isEnabled).map((f) => ({ id: f.id, name: f.name }));
+  return all && all.filter((f) => f.trigger === 'manual' && f.isEnabled).map((f) => ({ id: f.id, name: f.name }));
 }
 
 /** One bubble. The text goes in as a text node: whatever a customer wrote stays literal, never markup. */
@@ -161,7 +161,7 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
       pending.current = null;
       setDraft('');
       stick.current = true;
-      // The seller is here: the reads start again (after a pause too), the first one now.
+      // The seller is here: one read now, and the beats start over with a fresh time cap (after a pause too).
       resume();
     } catch (err) {
       setSendError(errorText(err, 'Não foi possível enviar. Tente de novo: a mensagem não será repetida.'));

@@ -11,11 +11,11 @@ import {
   snapshotOf, toInput, type DraftStep, type FlowSelection, type FunnelDraft, type StepBuilder,
 } from './editor';
 import { codePointLength } from '../lib/format';
-import { ENABLE_FAILED, createFunnel, saveStoredFunnel, toggledBase } from './funnelCalls';
+import { ENABLE_FAILED, createFunnel, saveStoredFunnel, toggleFunnel } from './funnelCalls';
 import { FunnelFlow } from './FunnelFlow';
 import { StartPanel, StepPanel, StopPanel, StylePanel } from './FunnelPanels';
 import { FunnelPhone } from './FunnelPhone';
-import { TRIGGER_LABEL, applyStoreStyle, summarizeFunnel, toggleWords, triggerTakenBy, type FunnelDetail, type FunnelRow } from './model';
+import { TRIGGER_LABEL, applyStoreStyle, toggleWords, triggerTakenBy, type FunnelDetail, type FunnelRow } from './model';
 
 type Confirming = 'save' | 'toggle' | 'delete' | 'leave' | null;
 
@@ -167,9 +167,9 @@ export function FunnelEditor({ host, start, operations, siblings, canCallTools, 
     setBusy('toggle');
     setError(null);
     try {
-      const answer = summarizeFunnel(await host.callTool('toggle_whatsapp_funnel', { funnelId: base.id, enabled }));
-      setBase(toggledBase(base, answer?.isEnabled ?? enabled));
-      onSaved?.(answer ?? toggledBase(base, enabled));
+      const toggled = await toggleFunnel(host, base, enabled);
+      setBase(toggled.base);
+      onSaved?.(toggled.row);
       host.tellModel(`Na tela do chat, o funil ${base.name} foi ${enabled ? 'ligado' : 'desligado'}.`);
     } catch (e) {
       // ApiError says "API Error (409): …" when another funnel already holds the trigger.

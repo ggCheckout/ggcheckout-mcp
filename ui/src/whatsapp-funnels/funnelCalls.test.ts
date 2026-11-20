@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Host } from '../host';
 import { toInput, draftFrom } from './editor';
-import { ENABLE_FAILED, createFunnel, saveStoredFunnel, toggledBase } from './funnelCalls';
-import { summarizeFunnel, type FunnelDetail } from './model';
+import { ENABLE_FAILED, createFunnel, saveStoredFunnel, toggleFunnel, withEdits } from './funnelCalls';
+import { summarizeFunnel, type FunnelDetail, type FunnelRow } from './model';
 
 /** The funnel as get_whatsapp_funnel answers it. */
 const raw = (text: string, extra: Record<string, unknown> = {}) => ({
@@ -57,17 +57,25 @@ describe('saveStoredFunnel', () => {
   });
 });
 
-describe('toggledBase (on/off, then Salvar)', () => {
-  it('changes only the flag, so an edit made elsewhere still refuses the next save', async () => {
+describe('toggleFunnel (on/off, then Salvar)', () => {
+  it('keeps the funnel as shown in the base, so an edit made elsewhere still refuses the next save', async () => {
     const base = detail('Oi');
     // The toggle answers the funnel as stored now, with the dashboard's edit in it.
-    const afterToggle = toggledBase(base, true);
-    expect(afterToggle).toEqual({ ...base, isEnabled: true });
+    const host = hostAnswering(raw('Mudado no painel', { isEnabled: true }), raw('Mudado no painel', { isEnabled: true }));
+    const toggled = await toggleFunnel(host, base, true);
+    expect(toggled.base).toEqual({ ...base, isEnabled: true });
+    expect(toggled.row).toMatchObject({ isEnabled: true, steps: [{ text: 'Mudado no painel' }] });
+    expect(host.callTool).toHaveBeenCalledWith('toggle_whatsapp_funnel', { funnelId: 'f1', enabled: true });
 
-    const host = hostAnswering(raw('Mudado no painel', { isEnabled: true }));
-    const outcome = await saveStoredFunnel(host, afterToggle, toInput(draftFrom(base)));
+    const outcome = await saveStoredFunnel(host, toggled.base, toInput(draftFrom(base)));
     expect(outcome.kind).toBe('drift');
     expect(toolsCalled(host)).not.toContain('update_whatsapp_funnel');
+  });
+
+  it('takes the flag from the answer, and the asked one when the answer cannot be read', async () => {
+    const base = detail('Oi');
+    expect((await toggleFunnel(hostAnswering(raw('Oi', { isEnabled: false })), base, true)).base.isEnabled).toBe(false);
+    expect((await toggleFunnel(hostAnswering({ nope: true }), base, true))).toEqual({ base: { ...base, isEnabled: true }, row: { ...base, isEnabled: true } });
   });
 });
 
@@ -92,3 +100,19 @@ describe('createFunnel', () => {
     expect(toolsCalled(host)).toEqual(['create_whatsapp_funnel']);
   });
 });
+
+describe('withEdits (a read that landed after the view changed a funnel)', () => {
+  const row = (id: string, extra: Partial<FunnelRow> = {}): FunnelRow => ({ id, name: id, trigger: 'abandoned_cart', isEnabled: false, stepCount: 1, sessionId: null, ...extra });
+
+  it('keeps the saved row, puts the created one first and leaves the deleted one out', () => {
+    const read = [row('a'), row('b'), row('c')];
+    const edits = new Map<string, FunnelRow | null>([['b', row('b', { isEnabled: true })], ['c', null], ['n', row('n')]]);
+    expect(withEdits(read, edits)).toEqual([row('n'), row('a'), row('b', { isEnabled: true })]);
+  });
+
+  it('is the read as it is without edits', () => {
+    const read = [row('a')];
+    expect(withEdits(read, new Map())).toEqual(read);
+  });
+});
+
