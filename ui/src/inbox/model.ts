@@ -5,10 +5,25 @@
 // this view and never in the model's context. Pure.
 
 import { type Payload, count, isPayload, text } from '../lib/payload';
-import { parseDate } from '../lib/format';
+import { codePointLength, parseDate } from '../lib/format';
 
 /** How often the open list and thread are read, while the document is visible. */
 export const POLL_MS = 10_000;
+/**
+ * How long a list or a thread keeps reading by itself. The reads spend the account's API key budget
+ * (1000 per hour and 30 per minute in the saas, shared by every key of the seller): 15 minutes are
+ * 90 reads, and the seller resumes with one click.
+ */
+export const POLL_FOR_MS = 15 * 60_000;
+
+/** Why the automatic reads stopped: the time cap, or the API asked to wait. */
+export type PollPause = { kind: 'idle' } | { kind: 'rate'; seconds: number };
+
+export function pauseText(pause: PollPause): string {
+  return pause.kind === 'idle'
+    ? 'A atualização automática parou depois de 15 minutos.'
+    : `Muitas leituras pela sua chave de API agora. A atualização automática parou; tente de novo em ${pause.seconds} s.`;
+}
 /** The saas caps a reply in code points (an emoji is 1). */
 export const MAX_REPLY_CHARS = 4096;
 export const CONVERSATIONS_PAGE = 50;
@@ -200,15 +215,22 @@ export function bodyOf(m: Pick<ThreadMessage, 'text' | 'type'>): string {
   return m.text ?? typeLabel(m.type);
 }
 
-/** The newest message from the contact: when it changes while a thread is open, the thread is read again. */
-export function latestIncomingId(messages: ThreadMessage[]): string | null {
-  for (let i = messages.length - 1; i >= 0; i--) if (messages[i].dir === 'in') return messages[i].id;
+function latestWhere(messages: ThreadMessage[], test: (m: ThreadMessage) => boolean): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) if (test(messages[i])) return messages[i].id;
   return null;
 }
 
-// --- Composer ---
+/** The newest message from the contact: when it changes while a thread is open, the thread is read again. */
+export function latestIncomingId(messages: ThreadMessage[]): string | null {
+  return latestWhere(messages, (m) => m.dir === 'in');
+}
 
-export const codePointLength = (value: string): number => Array.from(value).length;
+/** The newest automatic message (a funnel step that went out): when it changes, the funnel run moved. */
+export function latestAutoId(messages: ThreadMessage[]): string | null {
+  return latestWhere(messages, (m) => m.dir === 'out' && m.auto);
+}
+
+// --- Composer ---
 
 /** Why the text cannot be sent, in words for the seller; null when it can. */
 export function replyProblem(value: string): string | null {
@@ -265,14 +287,6 @@ export function runLabel(run: Run | null): string | null {
 export interface FunnelOption {
   id: string;
   name: string;
-}
-
-/** list_whatsapp_funnels `{ items }` reduced to what a manual run can use: manual and enabled. */
-export function toFunnelOptions(data: unknown): FunnelOption[] | null {
-  if (!isPayload(data) || !Array.isArray(data.items)) return null;
-  return data.items.filter(isPayload)
-    .filter((f) => f.trigger === 'manual' && f.isEnabled === true && text(f.id))
-    .map((f) => ({ id: String(f.id), name: text(f.name) ?? 'Funil sem nome' }));
 }
 
 export type StartOutcome = { kind: 'started'; run: Run | null } | { kind: 'refused'; message: string };

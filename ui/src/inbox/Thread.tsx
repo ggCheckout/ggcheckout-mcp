@@ -3,32 +3,22 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Host } from '../host';
 import { BackButton } from '../lib/BackButton';
 import { ConfirmPanel } from '../lib/ConfirmPanel';
+import { codePointLength } from '../lib/format';
 import {
-  MAX_REPLY_CHARS, MESSAGES_PAGE, POLL_MS, bodyOf, clockLabel, codePointLength, contactLabel, conversationLabels, errorText,
-  latestIncomingId, mergeMessages, pendingFor, replyProblem, runLabel, startOutcome, toContactRun, toFunnelOptions, toMessages,
-  type Conversation, type FunnelOption, type PendingSend, type Run, type ThreadMessage,
+  MAX_REPLY_CHARS, MESSAGES_PAGE, POLL_FOR_MS, POLL_MS, bodyOf, clockLabel, contactLabel, conversationLabels, errorText,
+  latestAutoId, latestIncomingId, mergeMessages, pendingFor, replyProblem, runLabel, startOutcome, toContactRun, toMessages,
+  type Conversation, type FunnelOption, type PendingSend, type PollPause, type Run, type ThreadMessage,
 } from './model';
-import { nextFunnelsAfter } from '../whatsapp-funnels/model';
-import { startVisiblePolling } from './poll';
+import { PollNote } from './PollNote';
+import { listAllFunnels } from '../whatsapp-funnels/funnelCalls';
+import { retryAfterSeconds, startVisiblePolling, type TickResult } from './poll';
 
-type Confirming = 'start' | 'stop' | 'optout' | null;
+type Confirming = 'start' | 'stop' | 'optout' | 'optin' | null;
 
-/** Safety cap on the funnel pages read for the picker (50 each). */
-const FUNNEL_PAGES = 20;
-
-/** The enabled manual funnels, across every page of list_whatsapp_funnels; null when unreadable. */
+/** The enabled manual funnels, across the pages of list_whatsapp_funnels; null when unreadable. */
 export async function loadManualFunnels(host: Host): Promise<FunnelOption[] | null> {
-  const all: FunnelOption[] = [];
-  let after: string | null = null;
-  for (let page = 0; page < FUNNEL_PAGES; page++) {
-    const data = await host.callTool('list_whatsapp_funnels', { limit: 50, ...(after ? { after } : {}) });
-    const options = toFunnelOptions(data);
-    if (!options) return page === 0 ? null : all;
-    all.push(...options);
-    after = nextFunnelsAfter(data);
-    if (!after) break;
-  }
-  return all;
+  const all = await listAllFunnels(host);
+  return all && all.funnels.filter((f) => f.trigger === 'manual' && f.isEnabled).map((f) => ({ id: f.id, name: f.name }));
 }
 
 /** One bubble. The text goes in as a text node: whatever a customer wrote stays literal, never markup. */
@@ -42,9 +32,11 @@ export function Bubble({ message }: { message: ThreadMessage }) {
 }
 
 /**
- * A conversation: its messages (read again every 10 s while the tab is visible), the composer, and
- * the funnel actions. It marks the thread read when it opens and again when the contact writes
- * while it is open. Everything it reads or sends goes through the app-only tools of the server.
+ * A conversation: its messages (read again every 10 s while the tab is visible, for 15 minutes or
+ * until the API asks to wait), the composer, and the funnel actions. It marks the thread read when it
+ * opens and again when the contact writes while it is open. The funnel run is read when the thread
+ * opens, after an action, and when a new message shows it may have moved (the contact wrote, a funnel
+ * step went out), not on every beat. Everything goes through the app-only tools of the server.
  */
 export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
   host: Host;
@@ -73,6 +65,9 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
   const stick = useRef(true);
   const cursorSet = useRef(false);
   const lastIncoming = useRef<string | null | undefined>(undefined);
+  const lastAuto = useRef<string | null | undefined>(undefined);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [pause, setPause] = useState<PollPause | null>(null);
 
   const markRead = useCallback(() => {
     host.callTool('mark_whatsapp_conversation_read', { contactKey: key }).then(() => onRead(key)).catch(() => {});
@@ -107,17 +102,46 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
       .catch(() => setFunnels(null));
   }, [host, markRead, loadHead, loadRun]);
 
-  useEffect(() => startVisiblePolling(async () => {
-    await Promise.allSettled([loadHead(), loadRun()]);
-  }, POLL_MS), [loadHead, loadRun]);
+  // The thread opened from a row that is gone now: the focus starts on the contact's name.
+  useEffect(() => heading.current?.focus(), []);
 
-  // The contact wrote while the thread is open: it is read.
+  const poll = useCallback(async (): Promise<TickResult> => {
+    try {
+      await loadHead();
+      return 'continue';
+    } catch (e) {
+      const wait = retryAfterSeconds(e);
+      if (wait === null) return 'continue';
+      setPause({ kind: 'rate', seconds: wait });
+      return 'stop';
+    }
+  }, [loadHead]);
+
+  useEffect(() => {
+    if (pause) return undefined;
+    return startVisiblePolling(poll, POLL_MS, { stopAfterMs: POLL_FOR_MS, onStop: (why) => {
+      if (why === 'idle') setPause({ kind: 'idle' });
+    } });
+  }, [poll, pause]);
+
+  const resume = () => {
+    setPause(null);
+    void poll();
+  };
+
+  // The contact wrote while the thread is open: it is read, and the run may have stopped on the reply.
+  // A funnel step went out: the run moved a step.
   useEffect(() => {
     if (!messages) return;
-    const latest = latestIncomingId(messages);
-    if (lastIncoming.current !== undefined && latest !== lastIncoming.current) markRead();
-    lastIncoming.current = latest;
-  }, [messages, markRead]);
+    const incoming = latestIncomingId(messages);
+    const auto = latestAutoId(messages);
+    const incomingMoved = lastIncoming.current !== undefined && incoming !== lastIncoming.current;
+    const autoMoved = lastAuto.current !== undefined && auto !== lastAuto.current;
+    if (incomingMoved) markRead();
+    if (incomingMoved || autoMoved) loadRun().catch(() => {});
+    lastIncoming.current = incoming;
+    lastAuto.current = auto;
+  }, [messages, markRead, loadRun]);
 
   // Follow the newest message unless the seller scrolled up to read.
   useEffect(() => {
@@ -159,6 +183,7 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
       pending.current = null;
       setDraft('');
       stick.current = true;
+      setPause(null);
       await loadHead().catch(() => {});
     } catch (err) {
       setSendError(errorText(err, 'Não foi possível enviar. Tente de novo: a mensagem não será repetida.'));
@@ -219,7 +244,7 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
       <BackButton onBack={onBack} label="Voltar às conversas" />
       <header className="ix-thread-head">
         <div className="ix-thread-main">
-          <h2 className="ix-name">{label}</h2>
+          <h2 className="ix-name" ref={heading} tabIndex={-1}>{label}</h2>
           <p className="ix-tags">
             {running && <span className="ix-tag" data-tone="info">{running}</span>}
             {tags.map((t) => <span key={t} className="ix-tag" data-tone="warn">{t}</span>)}
@@ -234,7 +259,7 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
           </button>
         ) : funnels && funnels.length > 0 && !conversation.optedOut ? (
           <span className="ix-run">
-            <label className="ix-sr" htmlFor="ix-funnel">Funil manual</label>
+            <label className="sr-only" htmlFor="ix-funnel">Funil manual</label>
             <select id="ix-funnel" className="ix-select" value={funnelId} onChange={(e) => setFunnelId(e.target.value)} disabled={busy}>
               {funnels.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
@@ -244,7 +269,7 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
           </span>
         ) : null}
         {conversation.optedOut ? (
-          <button type="button" className="ix-ghost" onClick={() => void setOptOut(false)} disabled={busy}>
+          <button type="button" className="ix-ghost" onClick={() => setConfirming('optin')} disabled={busy}>
             <RotateCcw size={14} aria-hidden />Voltar a enviar
           </button>
         ) : (
@@ -289,13 +314,28 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
           onCancel={() => setConfirming(null)}
         />
       )}
+      {confirming === 'optin' && (
+        <ConfirmPanel
+          label="Voltar a enviar"
+          message={conversation.exitRequested
+            ? 'Este contato pediu para sair. Voltar a enviar libera os funis e os envios automáticos para ele de novo.'
+            : 'Os funis e os envios automáticos voltam a poder sair para este contato. Um funil que foi parado continua parado.'}
+          confirmLabel="Voltar a enviar"
+          busyLabel="Salvando…"
+          busy={busy}
+          onConfirm={() => void setOptOut(false)}
+          onCancel={() => setConfirming(null)}
+        />
+      )}
       {actionError && <p className="ix-alert" role="alert">{actionError}</p>}
-      {actionNote && <p className="ix-note" role="status">{actionNote}</p>}
+      {/* Always mounted, only its text changes, so the note is announced when it appears. */}
+      <p className="ix-note status-region" role="status">{actionNote}</p>
       {funnels && funnels.length === 0 && !running && (
         <p className="ix-hint">Nenhum funil manual ligado. Crie um funil manual e ligue-o para rodar aqui.</p>
       )}
 
       {loadError && <p className="ix-alert" role="alert">{loadError}</p>}
+      <PollNote pause={pause} onResume={resume} />
       {messages === null && !loadError && <div className="skeleton" style={{ height: 160 }} aria-busy="true" />}
       {messages !== null && (
         <>
@@ -324,7 +364,7 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
       )}
 
       <form className="ix-composer" onSubmit={send}>
-        <label className="ix-sr" htmlFor="ix-reply">Responder</label>
+        <label className="sr-only" htmlFor="ix-reply">Responder</label>
         <textarea
           id="ix-reply"
           className="ix-input"

@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Host } from '../host';
+import { FUNNEL_LIST_MAX_PAGES, listAllFunnels } from '../whatsapp-funnels/funnelCalls';
 import { loadManualFunnels } from './Thread';
 
-const funnel = (id: string, trigger = 'manual') => ({ id, name: id, trigger, isEnabled: true });
+const funnel = (id: string, trigger = 'manual', isEnabled = true) => ({ id, name: id, trigger, isEnabled, stepCount: 1 });
 
 function hostWith(pages: unknown[]): Host & { callTool: ReturnType<typeof vi.fn> } {
   const callTool = vi.fn();
@@ -11,9 +12,9 @@ function hostWith(pages: unknown[]): Host & { callTool: ReturnType<typeof vi.fn>
 }
 
 describe('loadManualFunnels', () => {
-  it('reads every page, passing nextAfter back as after', async () => {
+  it('reads every page, passing nextAfter back as after, and offers only enabled manual funnels', async () => {
     const host = hostWith([
-      { items: [funnel('f1'), funnel('f2', 'abandoned_cart')], nextAfter: 'c1' },
+      { items: [funnel('f1'), funnel('f2', 'abandoned_cart'), funnel('f4', 'manual', false)], nextAfter: 'c1' },
       { items: [funnel('f3')], nextAfter: null },
     ]);
     expect(await loadManualFunnels(host)).toEqual([{ id: 'f1', name: 'f1' }, { id: 'f3', name: 'f3' }]);
@@ -25,5 +26,22 @@ describe('loadManualFunnels', () => {
     expect(await loadManualFunnels(hostWith([{ nope: true }]))).toBeNull();
     expect(await loadManualFunnels(hostWith([{ items: [funnel('f1')], nextAfter: 'c1' }, { nope: true }])))
       .toEqual([{ id: 'f1', name: 'f1' }]);
+  });
+});
+
+describe('listAllFunnels', () => {
+  it('stops at the saas page cap and says the read is incomplete', async () => {
+    const pages = Array.from({ length: FUNNEL_LIST_MAX_PAGES + 1 }, (_, i) => ({ items: [funnel(`f${i}`)], nextAfter: `c${i}` }));
+    const host = hostWith(pages);
+    const all = await listAllFunnels(host);
+    expect(all?.funnels).toHaveLength(FUNNEL_LIST_MAX_PAGES);
+    expect(all?.complete).toBe(false);
+    expect(host.callTool).toHaveBeenCalledTimes(FUNNEL_LIST_MAX_PAGES);
+  });
+
+  it('is complete when the last page has no cursor', async () => {
+    expect(await listAllFunnels(hostWith([{ items: [funnel('f1')], nextAfter: null }]))).toEqual({
+      funnels: [expect.objectContaining({ id: 'f1' })], complete: true,
+    });
   });
 });

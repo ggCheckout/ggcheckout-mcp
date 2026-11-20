@@ -3,7 +3,6 @@
 .dashboard.inbox { display: flex; flex-direction: column; gap: 12px; }
 .dashboard .ix-card { border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .dashboard .ix-list-head { padding-bottom: 14px; border-bottom: 1px solid var(--d-line); }
-.dashboard .ix-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .dashboard .ix-rows { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .dashboard .ix-row { border-radius: 8px; border: 1px solid var(--d-row-border); background: var(--d-row); overflow: hidden; }
@@ -57,6 +56,7 @@
 .dashboard .ix-count[data-over] { color: #b91c1c; font-weight: 600; }
 :root[data-theme='dark'] .dashboard .ix-count[data-over] { color: #f87171; }
 
+.dashboard .ix-poll { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--d-muted); }
 .dashboard .ix-hint { margin: 0; font-size: 12px; color: var(--d-muted); }
 .dashboard .ix-note { margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; background: color-mix(in srgb, var(--d-muted-bg) 50%, transparent); }
 .dashboard .ix-alert { margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 12px; border: 1px solid rgb(220 38 38 / 0.3); background: rgb(220 38 38 / 0.08); }

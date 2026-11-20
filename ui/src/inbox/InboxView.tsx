@@ -1,14 +1,15 @@
 import { ChevronRight, MessageCircle } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../styles/dashboard.css';
 import './inbox.css';
 import type { Host, HostSnapshot } from '../host';
 import { plural } from '../lib/format';
 import {
-  CONVERSATIONS_PAGE, POLL_MS, activityLabel, appendConversations, contactLabel, conversationLabels, errorText, mergeConversations,
-  previewOf, summarizeInbox, toConversations, type Conversation,
+  CONVERSATIONS_PAGE, POLL_FOR_MS, POLL_MS, activityLabel, appendConversations, contactLabel, conversationLabels, errorText, mergeConversations,
+  previewOf, summarizeInbox, toConversations, type Conversation, type PollPause,
 } from './model';
-import { startVisiblePolling } from './poll';
+import { PollNote } from './PollNote';
+import { retryAfterSeconds, startVisiblePolling, type TickResult } from './poll';
 import { Thread } from './Thread';
 
 function Row({ conversation, onOpen }: { conversation: Conversation; onOpen: (c: Conversation) => void }) {
@@ -16,7 +17,7 @@ function Row({ conversation, onOpen }: { conversation: Conversation; onOpen: (c:
   const name = contactLabel(conversation);
   return (
     <li className="ix-row">
-      <button type="button" className="ix-row-btn" onClick={() => onOpen(conversation)}
+      <button type="button" className="ix-row-btn" data-contact={conversation.key} onClick={() => onOpen(conversation)}
         aria-label={`Abrir a conversa com ${name}${conversation.unread ? `, ${plural(conversation.unread, 'não lida', 'não lidas')}` : ''}`}>
         <span className="ix-avatar" aria-hidden><MessageCircle size={16} /></span>
         <span className="ix-row-main">
@@ -36,13 +37,20 @@ function Row({ conversation, onOpen }: { conversation: Conversation; onOpen: (c:
   );
 }
 
-/** The conversation list, read again every 10 s while the tab is visible, and the open thread. */
+/**
+ * The conversation list, read again every 10 s while the tab is visible and no thread is open (the
+ * thread reads itself), for 15 minutes or until the API asks to wait; and the open thread.
+ */
 function Inbox({ host }: { host: Host }) {
   const [items, setItems] = useState<Conversation[] | null>(null);
   const [older, setOlder] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selected, setSelected] = useState<Conversation | null>(null);
+  const [pause, setPause] = useState<PollPause | null>(null);
+  const rows = useRef<HTMLUListElement>(null);
+  /** The conversation the seller came back from: its row takes the focus again. */
+  const returnTo = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     const page = toConversations(await host.callTool('list_whatsapp_conversations', { limit: CONVERSATIONS_PAGE }));
@@ -53,17 +61,49 @@ function Inbox({ host }: { host: Host }) {
     setError(null);
   }, [host]);
 
-  useEffect(() => {
-    refresh().catch((e) => setError(errorText(e)));
-  }, [refresh]);
-
-  useEffect(() => startVisiblePolling(async () => {
+  /** One read of the list; a 429/503 pauses the automatic reads instead of repeating them every beat. */
+  const read = useCallback(async (): Promise<TickResult> => {
     try {
       await refresh();
+      return 'continue';
     } catch (e) {
+      const wait = retryAfterSeconds(e);
+      if (wait !== null) {
+        setPause({ kind: 'rate', seconds: wait });
+        return 'stop';
+      }
       setError(errorText(e));
+      return 'continue';
     }
-  }, POLL_MS), [refresh]);
+  }, [refresh]);
+
+  useEffect(() => {
+    void read();
+  }, [read]);
+
+  const threadOpen = selected !== null;
+  useEffect(() => {
+    if (threadOpen || pause) return undefined;
+    return startVisiblePolling(read, POLL_MS, { stopAfterMs: POLL_FOR_MS, onStop: (why) => {
+      if (why === 'idle') setPause({ kind: 'idle' });
+    } });
+  }, [read, threadOpen, pause]);
+
+  const resume = () => {
+    setPause(null);
+    void read();
+  };
+  const back = () => {
+    returnTo.current = selected?.key ?? null;
+    setSelected(null);
+    void read();
+  };
+
+  useEffect(() => {
+    if (threadOpen || !returnTo.current) return;
+    rows.current?.querySelector<HTMLButtonElement>(`[data-contact="${CSS.escape(returnTo.current)}"]`)?.focus();
+    returnTo.current = null;
+  }, [threadOpen]);
 
   async function loadMore() {
     if (!older) return;
@@ -91,7 +131,7 @@ function Inbox({ host }: { host: Host }) {
   const current = selected && (items?.find((c) => c.key === selected.key) ?? selected);
 
   if (current) {
-    return <Thread key={current.key} host={host} conversation={current} onBack={() => setSelected(null)} onRead={onRead} onOptOutChange={onOptOutChange} />;
+    return <Thread key={current.key} host={host} conversation={current} onBack={back} onRead={onRead} onOptOutChange={onOptOutChange} />;
   }
   return (
     <section className="surface ix-card">
@@ -100,10 +140,11 @@ function Inbox({ host }: { host: Host }) {
         <p className="card-sub">As conversas do WhatsApp da loja. Os textos aparecem só aqui, não para o assistente.</p>
       </header>
       {error && <p className="ix-alert" role="alert">{error}</p>}
+      <PollNote pause={pause} onResume={resume} />
       {items === null && !error && <div className="skeleton" style={{ height: 160 }} aria-busy="true" />}
       {items !== null && (items.length ? (
         <>
-          <ul className="ix-rows">{items.map((c) => <Row key={c.key} conversation={c} onOpen={setSelected} />)}</ul>
+          <ul className="ix-rows" ref={rows}>{items.map((c) => <Row key={c.key} conversation={c} onOpen={setSelected} />)}</ul>
           {older && (
             <button type="button" className="ix-ghost ix-more" onClick={() => void loadMore()} disabled={loadingMore}>
               {loadingMore ? 'Carregando…' : 'Carregar mais'}

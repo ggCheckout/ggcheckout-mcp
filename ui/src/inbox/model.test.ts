@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  activityLabel, appendConversations, bodyOf, clockLabel, codePointLength, contactLabel, conversationLabels, errorText, latestIncomingId, maskContact,
+  activityLabel, appendConversations, bodyOf, clockLabel, contactLabel, conversationLabels, errorText, latestAutoId, latestIncomingId, maskContact, pauseText,
   mergeConversations, mergeMessages, newClientMessageId, pendingFor, previewOf, replyProblem, runLabel, startOutcome, summarizeInbox,
-  toContactRun, toConversations, toFunnelOptions, toMessages, type Conversation, type ThreadMessage,
+  toContactRun, toConversations, toMessages, type Conversation, type ThreadMessage,
 } from './model';
 
 const raw = (key: string, extra: Record<string, unknown> = {}) => ({
@@ -128,6 +128,17 @@ describe('messages', () => {
     expect(latestIncomingId([msg('1', '2026-11-20T12:00:00Z', 'in'), msg('2', '2026-11-20T12:01:00Z', 'out')])).toBe('1');
     expect(latestIncomingId([msg('2', '2026-11-20T12:01:00Z', 'out')])).toBeNull();
   });
+
+  it('finds the newest funnel message that went out, not a reply typed by the seller', () => {
+    const auto = { ...msg('3', '2026-11-20T12:02:00Z', 'out'), auto: true };
+    expect(latestAutoId([msg('1', '2026-11-20T12:00:00Z', 'in'), auto, msg('4', '2026-11-20T12:03:00Z', 'out')])).toBe('3');
+    expect(latestAutoId([msg('1', '2026-11-20T12:00:00Z', 'in')])).toBeNull();
+  });
+
+  it('words why the automatic reads stopped', () => {
+    expect(pauseText({ kind: 'idle' })).toMatch(/15 minutos/);
+    expect(pauseText({ kind: 'rate', seconds: 42 })).toMatch(/42 s/);
+  });
 });
 
 describe('composer', () => {
@@ -136,7 +147,6 @@ describe('composer', () => {
     expect(replyProblem('Oi')).toBeNull();
     expect(replyProblem('😀'.repeat(4096))).toBeNull();
     expect(replyProblem('😀'.repeat(4097))).toMatch(/4096/);
-    expect(codePointLength('😀a')).toBe(2);
   });
 
   it('makes a client id the saas accepts', () => {
@@ -168,19 +178,6 @@ describe('funnel', () => {
   it('reads a contact with no run as null and another answer as unknown', () => {
     expect(toContactRun({ run: null })).toBeNull();
     expect(toContactRun({ nope: true })).toBeUndefined();
-  });
-
-  it('offers only enabled manual funnels', () => {
-    const options = toFunnelOptions({
-      items: [
-        { id: 'f1', name: 'Boas-vindas', trigger: 'manual', isEnabled: true },
-        { id: 'f2', name: 'Carrinho', trigger: 'abandoned_cart', isEnabled: true },
-        { id: 'f3', name: 'Desligado', trigger: 'manual', isEnabled: false },
-      ],
-      nextAfter: null,
-    });
-    expect(options).toEqual([{ id: 'f1', name: 'Boas-vindas' }]);
-    expect(toFunnelOptions({})).toBeNull();
   });
 
   it('tells a started run from a refused one', () => {
