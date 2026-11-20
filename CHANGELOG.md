@@ -182,8 +182,9 @@ not exist (404 or 405 with no error body) is read as "not released yet".
   `set_whatsapp_conversation_opt_out`. The view reads again every 10 seconds only while it is
   visible: the list while no conversation is open, the open conversation's messages (its funnel run
   only when a new message shows it moved). The reads spend the account's API key budget (1000 per
-  hour and 30 per minute in the saas, shared by every key), so they stop after 15 minutes or at a 429
-  and say so, with "Atualizar" to resume. A reply keeps its `clientMessageId` on a retry so it is
+  hour and 30 per minute in the saas, shared by every key), so they stop after 15 minutes of visible time or at a 429
+  or 503 with a `Retry-After`, and say so, with "Atualizar" to resume (sending a reply starts the 15
+  minutes over). A reply keeps its `clientMessageId` on a retry so it is
   never sent twice. The phone in an inbox route never reaches the MCP's own log line.
 - Inbox access by API key is a per-store switch, off by default: the seller turns on "Permitir acesso
   pelo MCP" in the dashboard's inbox settings (a key can never turn it on). While it is off the
