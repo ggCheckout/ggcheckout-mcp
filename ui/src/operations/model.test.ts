@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Chip } from '../chips/model';
 import {
-  chipOrder, moveChip, operationHealth, slotLabel, summarizeOperation, summarizeOperations, summarizeProducts, type Operation,
+  chipOrder, moveChip, operationHealth, slotLabel, summarizeOperation, summarizeOperations, summarizeProducts, unchangedSince, type Operation,
 } from './model';
 
 const raw = { uid: 'g1', name: 'Método Aurora', primaryNumberId: 'c1', fallbackNumberIds: ['c2', '', 'c3'], assignedProducts: ['p1', 7], isActive: true };
@@ -74,5 +74,19 @@ describe('summarizeProducts', () => {
       { id: 'p1', title: 'alfa' }, { id: 'p3', title: 'Produto sem nome' }, { id: 'p2', title: 'Zeta' },
     ]);
     expect(summarizeProducts({ product: {} })).toBeNull();
+  });
+});
+
+describe('unchangedSince', () => {
+  const seen: Operation = { id: 'g1', name: 'Op', chipIds: ['a', 'b'], productIds: ['p1'], isActive: true };
+
+  it('accepts the same chips and products, even if the name or pause changed', () => {
+    expect(unchangedSince(seen, { ...seen, name: 'Outro', isActive: false })).toBe(true);
+  });
+
+  it('refuses a reordered chip list or a changed product list', () => {
+    expect(unchangedSince(seen, { ...seen, chipIds: ['b', 'a'] })).toBe(false);
+    expect(unchangedSince(seen, { ...seen, chipIds: ['a'] })).toBe(false);
+    expect(unchangedSince(seen, { ...seen, productIds: ['p1', 'p2'] })).toBe(false);
   });
 });

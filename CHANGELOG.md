@@ -50,7 +50,9 @@ error body) is read as "not released yet".
   place of the dashboard's drag), adds or removes a chip and adds or removes products, each write
   behind a confirmation in the card, through the existing `update_whatsapp_session`,
   `add_whatsapp_session_number`, `remove_whatsapp_session_number` and
-  `set_whatsapp_session_products`. Tool names are unchanged.
+  `set_whatsapp_session_products`. Those writes replace the whole order or product list, so the view
+  reads the operation again first and refuses when it changed since the card showed it (in the
+  dashboard or by the model), reloading it instead. Tool names are unchanged.
 
 ### Changed
 

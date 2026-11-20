@@ -104,7 +104,7 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   server.registerTool('add_whatsapp_session_number', {
     description: 'Add a chip to a WhatsApp operation (session), as its last fallback (at most two fallbacks)',
     inputSchema: {
-      sessionId: z.string().describe('Session ID'),
+      sessionId: z.string().describe('Operation ID'),
       numberId: z.string().describe('Chip ID'),
     },
   }, createToolHandler('add_whatsapp_session_number', async ({ sessionId, numberId }) => ({
@@ -114,7 +114,7 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   server.registerTool('remove_whatsapp_session_number', {
     description: 'Remove a chip from a WhatsApp operation (session). Removing the primary promotes the first fallback; the last chip cannot be removed',
     inputSchema: {
-      sessionId: z.string().describe('Session ID'),
+      sessionId: z.string().describe('Operation ID'),
       numberId: z.string().describe('Chip ID'),
     },
   }, createToolHandler('remove_whatsapp_session_number', async ({ sessionId, numberId }) => ({
@@ -124,7 +124,7 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   server.registerTool('set_whatsapp_session_products', {
     description: 'Set the products a WhatsApp operation (session) sends for. Replaces the whole list: send every product to keep',
     inputSchema: {
-      sessionId: z.string().describe('Session ID'),
+      sessionId: z.string().describe('Operation ID'),
       productIds: z.array(z.string()).max(500).describe('Product IDs; an empty list leaves the operation without products'),
     },
   }, createToolHandler('set_whatsapp_session_products', async ({ sessionId, productIds }) => ({

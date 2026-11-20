@@ -10,7 +10,7 @@ import { plural } from '../lib/format';
 import { Status } from '../chips/ChipsView';
 import { phoneLabel, summarizeChips, type Chip } from '../chips/model';
 import {
-  HEALTH_LABEL, HEALTH_TONE, MAX_CHIPS, chipOrder, moveChip, operationHealth, slotLabel, summarizeOperation, summarizeOperations, summarizeProducts,
+  HEALTH_LABEL, HEALTH_TONE, MAX_CHIPS, chipOrder, moveChip, operationHealth, slotLabel, summarizeOperation, summarizeOperations, summarizeProducts, unchangedSince,
   type Operation, type ProductOption,
 } from './model';
 
@@ -91,15 +91,17 @@ function ChipSlots({ op, chips, canEdit, busy, onMove, onRemove, onAdd }: {
 }
 
 /** The chips that can join: every chip of the account not already in the operation. */
-function ChipPicker({ op, chips, onPick, onCancel }: {
-  op: Operation; chips: ChipsById | null; onPick: (chip: Chip) => void; onCancel: () => void;
+function ChipPicker({ op, chips, chipsFailed, onPick, onCancel }: {
+  op: Operation; chips: ChipsById | null; chipsFailed: boolean; onPick: (chip: Chip) => void; onCancel: () => void;
 }) {
   const free = chips ? [...chips.values()].filter((c) => !op.chipIds.includes(c.id)) : null;
   return (
     <section className="ch-panel">
       <h3 className="ch-panel-title">Escolha um chip</h3>
       <p className="ch-hint">Ele entra como {slotLabel(op.chipIds.length)}.</p>
-      {free === null && <p className="ch-alert" role="alert">Não foi possível carregar os chips. Tente novamente.</p>}
+      {free === null && (chipsFailed
+        ? <p className="ch-alert" role="alert">Não foi possível carregar os chips. Tente novamente.</p>
+        : <p className="ch-hint" role="status">Carregando os chips…</p>)}
       {free?.length === 0 && <p className="ch-note">Todos os seus chips já estão nesta operação.</p>}
       {free && free.length > 0 && (
         <ul className="ch-rows">
@@ -124,7 +126,8 @@ function ChipPicker({ op, chips, onPick, onCancel }: {
 
 /** ProductPickerDialog, in place: the products not in the operation yet, with a search. */
 function ProductPicker({ products, assigned, onSave, onCancel }: {
-  products: ProductOption[] | null; assigned: readonly string[]; onSave: (ids: string[]) => void; onCancel: () => void;
+  /** undefined while list_products is read, null when it failed. */
+  products: ProductOption[] | null | undefined; assigned: readonly string[]; onSave: (ids: string[]) => void; onCancel: () => void;
 }) {
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
@@ -140,9 +143,9 @@ function ProductPicker({ products, assigned, onSave, onCancel }: {
   return (
     <section className="ch-panel">
       <h3 className="ch-panel-title">Adicionar produtos</h3>
-      {products === null
-        ? <p className="ch-alert" role="alert">Não foi possível carregar os produtos.</p>
-        : (
+      {products === undefined && <p className="ch-hint" role="status">Carregando os produtos…</p>}
+      {products === null && <p className="ch-alert" role="alert">Não foi possível carregar os produtos.</p>}
+      {products && (
           <>
             <input className="ch-input" type="search" placeholder="Buscar produto…" aria-label="Buscar produto" value={query} onChange={(e) => setQuery(e.target.value)} />
             {free.length === 0
@@ -207,8 +210,8 @@ function Products({ op, titleOf, canEdit, busy, onRemove, onAdd }: {
 }
 
 /** SessionDetailPage: the chips in order and the products, every write behind a confirmation. */
-function OperationDetail({ host, first, chips, canCallTools, onBack, onChange }: {
-  host: Host; first: Operation; chips: ChipsById | null; canCallTools: boolean; onBack?: () => void; onChange?: (op: Operation) => void;
+function OperationDetail({ host, first, chips, chipsFailed, canCallTools, onBack, onChange }: {
+  host: Host; first: Operation; chips: ChipsById | null; chipsFailed: boolean; canCallTools: boolean; onBack?: () => void; onChange?: (op: Operation) => void;
 }) {
   const [op, setOpState] = useState(first);
   const setOp = useCallback((next: Operation) => {
@@ -307,12 +310,23 @@ function OperationDetail({ host, first, chips, canCallTools, onBack, onChange }:
     });
   }
 
-  /** Sends the confirmed write; the answer is the operation as it is now, else the expected one. */
+  /**
+   * Sends the confirmed write; the answer is the operation as it is now, else the expected one. The
+   * operation is read first: the write replaces the whole order or product list, so it is refused
+   * when the operation changed since this card showed it.
+   */
   async function confirm() {
     if (!pending) return;
     setBusy(true);
     setError(null);
     try {
+      const fresh = summarizeOperation(await host.callTool('get_whatsapp_session', { sessionId: op.id }));
+      if (!fresh) throw new Error('no operation');
+      if (!unchangedSince(op, fresh)) {
+        setOp(fresh);
+        setError('Esta operação mudou desde que foi aberta (no painel ou pelo assistente). Ela foi recarregada: confira e repita a alteração.');
+        return;
+      }
       const answer = await host.callTool(pending.tool, { sessionId: op.id, ...pending.args });
       setOp(summarizeOperation(answer) ?? pending.expected);
       host.tellModel(pending.done);
@@ -343,11 +357,11 @@ function OperationDetail({ host, first, chips, canCallTools, onBack, onChange }:
         )}
         {error && <p className="ch-alert" role="alert">{error}</p>}
         {picking === 'chip'
-          ? <ChipPicker op={op} chips={chips} onPick={askAdd} onCancel={() => setPicking(null)} />
+          ? <ChipPicker op={op} chips={chips} chipsFailed={chipsFailed} onPick={askAdd} onCancel={() => setPicking(null)} />
           : <ChipSlots op={op} chips={chips} canEdit={canEdit} busy={busy} onMove={askMove} onRemove={askRemove} onAdd={() => setPicking('chip')} />}
         {picking === 'products'
           ? (
-            <ProductPicker products={products ?? null} assigned={op.productIds}
+            <ProductPicker products={products} assigned={op.productIds}
               onSave={(ids) => askProducts([...op.productIds, ...ids], { added: ids.map(titleOf) })} onCancel={() => setPicking(null)} />
           )
           : (
@@ -446,10 +460,10 @@ export function OperationsView({ host, state }: { host: Host; state: HostSnapsho
   return (
     <div className="dashboard chips">
       {chipsFailed && <p className="ch-alert" role="alert">Não foi possível carregar os chips: os nomes e o estado das operações ficam de fora.</p>}
-      {parts.op && <OperationDetail host={host} first={parts.op} chips={chips} canCallTools={state.canCallTools} />}
+      {parts.op && <OperationDetail host={host} first={parts.op} chips={chips} chipsFailed={chipsFailed} canCallTools={state.canCallTools} />}
       {ops && (
         <>
-          {open && <OperationDetail key={open.id} host={host} first={open} chips={chips} canCallTools={state.canCallTools} onBack={() => setOpen(null)} onChange={replace} />}
+          {open && <OperationDetail key={open.id} host={host} first={open} chips={chips} chipsFailed={chipsFailed} canCallTools={state.canCallTools} onBack={() => setOpen(null)} onChange={replace} />}
           <div hidden={Boolean(open)}>
             <OperationsList ops={ops} chips={chips} canOpen={state.canCallTools} onOpen={setOpen} />
           </div>

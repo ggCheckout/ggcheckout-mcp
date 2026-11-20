@@ -83,6 +83,17 @@ export function operationHealth(op: Operation, chips: ReadonlyMap<string, Chip>)
   return primarySends ? 'reserveDown' : 'degraded';
 }
 
+const sameList = (a: readonly string[], b: readonly string[]): boolean => a.length === b.length && a.every((id, i) => id === b[i]);
+
+/**
+ * Whether `fresh` still has the chips and products `seen` showed. The writes replace the whole order
+ * or the whole product list, so a write built on an operation changed elsewhere (the dashboard, the
+ * model) would undo that change: the view refuses it instead.
+ */
+export function unchangedSince(seen: Operation, fresh: Operation): boolean {
+  return sameList(seen.chipIds, fresh.chipIds) && sameList(seen.productIds, fresh.productIds);
+}
+
 /** The order as update_whatsapp_session wants it: both fields go together. */
 export interface ChipOrder {
   primaryNumberId: string;
