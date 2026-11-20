@@ -84,3 +84,50 @@ export class EdgeBlockedError extends AppError {
     this.name = 'EdgeBlockedError';
   }
 }
+
+/**
+ * The route is not in this deployment (a 404 or 405 with no API error body): the feature was not
+ * released there yet. Not a refusal and not a crash: the caller says it is unavailable.
+ */
+export class FeatureUnavailableError extends AppError {
+  constructor(cause?: Error) {
+    super(
+      'Ainda não disponível nesta conta: o funil e a caixa de entrada do WhatsApp não existem neste ambiente.',
+      'FEATURE_UNAVAILABLE',
+      404,
+      cause,
+    );
+    this.name = 'FeatureUnavailableError';
+  }
+}
+
+/**
+ * 403 INBOX_API_ACCESS_DISABLED: the store did not turn on "Permitir acesso pelo MCP" in its inbox
+ * settings. Only a panel session can turn it on; a key never can.
+ */
+export class InboxAccessDisabledError extends AppError {
+  constructor(cause?: Error) {
+    super(
+      'O acesso do MCP à caixa de entrada está desligado. Peça ao lojista para ligar "Permitir acesso pelo MCP" '
+      + 'nas configurações da caixa de entrada, no painel.',
+      'INBOX_API_ACCESS_DISABLED',
+      403,
+      cause,
+    );
+    this.name = 'InboxAccessDisabledError';
+  }
+}
+
+/** 403 INBOX_TERMS_REQUIRED: the store has not accepted the inbox term. The MCP never accepts it. */
+export class InboxTermsRequiredError extends AppError {
+  constructor(cause?: Error) {
+    super(
+      'A caixa de entrada ainda não tem o termo aceito. O lojista precisa aceitar o termo no painel: '
+      + 'o MCP nunca aceita o termo pela loja.',
+      'INBOX_TERMS_REQUIRED',
+      403,
+      cause,
+    );
+    this.name = 'InboxTermsRequiredError';
+  }
+}

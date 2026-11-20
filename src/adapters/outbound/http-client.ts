@@ -15,13 +15,27 @@ import {
  * refusal: the API's own 404s say what is missing ("Upsell não encontrado", `not_found`). Without
  * this the two read the same, and a caller hunts for an offer that exists.
  */
-export function explainMissingRoute(error: unknown, requirement: string): unknown {
-  const routeMissing = error instanceof ApiError
+export function isMissingRoute(error: unknown): error is ApiError {
+  return error instanceof ApiError
     && (error.statusCode === 404 || error.statusCode === 405)
     && error.message.includes('Request failed with status');
-  return routeMissing
+}
+
+export function explainMissingRoute(error: unknown, requirement: string): unknown {
+  return isMissingRoute(error)
     ? new ApiError(error.statusCode ?? 404, `This GG Checkout API has no such route yet: ${requirement}`, error)
     : error;
+}
+
+/** The inbox conversation segment: its key is the contact's phone (digits) or WhatsApp `lid:` id. */
+const CONTACT_SEGMENT = /\/conversations\/[^/?#]+/g;
+
+/**
+ * The path as the log line shows it: a customer's phone or WhatsApp id in the path (the inbox routes
+ * key a conversation by it) becomes `:contact`. The MCP log goes to stderr, which hosts keep in files.
+ */
+export function loggedPath(url: string): string {
+  return url.replace(CONTACT_SEGMENT, '/conversations/:contact');
 }
 
 export class HttpClient {
@@ -138,31 +152,31 @@ export class HttpClient {
   }
 
   async get<T>(url: string, params?: Record<string, string>): Promise<T> {
-    logger.info('HTTP', `GET ${url}`);
+    logger.info('HTTP', `GET ${loggedPath(url)}`);
     const response = await this.client.get<T>(url, { params });
     return response.data;
   }
 
   async post<T>(url: string, data?: any): Promise<T> {
-    logger.info('HTTP', `POST ${url}`);
+    logger.info('HTTP', `POST ${loggedPath(url)}`);
     const response = await this.client.post<T>(url, data);
     return response.data;
   }
 
   async patch<T>(url: string, data?: any): Promise<T> {
-    logger.info('HTTP', `PATCH ${url}`);
+    logger.info('HTTP', `PATCH ${loggedPath(url)}`);
     const response = await this.client.patch<T>(url, data);
     return response.data;
   }
 
   async put<T>(url: string, data?: any): Promise<T> {
-    logger.info('HTTP', `PUT ${url}`);
+    logger.info('HTTP', `PUT ${loggedPath(url)}`);
     const response = await this.client.put<T>(url, data);
     return response.data;
   }
 
   async delete<T>(url: string, data?: any): Promise<T> {
-    logger.info('HTTP', `DELETE ${url}`);
+    logger.info('HTTP', `DELETE ${loggedPath(url)}`);
     const response = await this.client.delete<T>(url, { data });
     return response.data;
   }

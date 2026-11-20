@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Copy, Power, PowerOff, QrCode, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Copy, Power, PowerOff, QrCode, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import '../styles/dashboard.css';
 import './chips.css';
@@ -9,7 +9,8 @@ import { plural } from '../lib/format';
 import { messageOf } from '../lib/messageOf';
 import { COPY_FAILED_TEXT, useCopy } from '../lib/useCopy';
 import {
-  canPair, needsRestart, chipStatus, formatCode, pairingPhone, phoneLabel, sessionByChip, summarizeHealth, type HealthOutcome, summarizeChip, summarizeChips, summarizePairing, type Chip,
+  MAX_ACTIVE_CHIPS, PROVIDER, activeChips, canPair, chipsNeedingAction, needsRestart, chipStatus, formatCode, pairingPhone, phoneLabel, sessionByChip, summarizeHealth,
+  type HealthOutcome, summarizeChip, summarizeChips, summarizePairing, type Chip,
 } from './model';
 
 /** How often the chip is read while the seller types the code, and for how long. */
@@ -17,17 +18,34 @@ const POLL_MS = 4000;
 const POLL_FOR_MS = 3 * 60 * 1000;
 
 
-function Status({ chip }: { chip: Chip }) {
-  const { label, tone, pulse } = chipStatus(chip.status, chip.isActive);
-  return <span className="ch-status" data-tone={tone}><span className="ch-dot" data-pulse={pulse || undefined} aria-hidden />{label}</span>;
+/** How often the clock behind the removal countdowns ticks while a chip is marked for removal. */
+const CLOCK_MS = 60_000;
+
+/** The time the countdowns read: ticks every minute, only while some chip is marked for removal. */
+function useRemovalClock(chips: readonly Chip[] | null): number {
+  const [now, setNow] = useState(Date.now);
+  const counting = Boolean(chips?.some((c) => c.removalAt));
+  useEffect(() => {
+    if (!counting) return;
+    const timer = window.setInterval(() => setNow(Date.now()), CLOCK_MS);
+    return () => clearInterval(timer);
+  }, [counting]);
+  return now;
 }
 
-/** ChipProviderBadge: "Oficial" (Meta) or "QR Code" (WAHA). */
+/** WaStatus: the chip's state as a dot and a word, explained on hover (also drawn by the operations view). */
+export function Status({ chip, now = Date.now() }: { chip: Chip; now?: number }) {
+  const { label, tone, pulse, description } = chipStatus(chip, now);
+  return <span className="ch-status" data-tone={tone} title={description || undefined}><span className="ch-dot" data-pulse={pulse || undefined} aria-hidden />{label}</span>;
+}
+
+/** ChipProviderBadge: "Meta oficial" (API Oficial) or "WhatsApp GG" (WAHA, by QR Code), explained on hover. */
 function Provider({ provider }: { provider: Chip['provider'] }) {
+  const { label, description } = PROVIDER[provider];
   return (
-    <span className="ch-provider" data-meta={provider === 'meta' || undefined}>
+    <span className="ch-provider" data-meta={provider === 'meta' || undefined} title={description}>
       {provider === 'meta' ? <ShieldCheck size={12} aria-hidden /> : <QrCode size={12} aria-hidden />}
-      {provider === 'meta' ? 'Oficial' : 'QR Code'}
+      {label}
     </span>
   );
 }
@@ -113,7 +131,7 @@ function PairPanel({ host, chip, firstCode, onConnected }: {
             <span>{formatCode(code)}</span>
             {copied ? <Check size={16} className="ch-copied" aria-label="Copiado!" /> : <Copy size={16} aria-hidden />}
           </button>
-          {copyState === 'failed' && <p className="copy-failed" role="status">{COPY_FAILED_TEXT}</p>}
+          <p className="copy-failed status-region" role="status">{copyState === 'failed' ? COPY_FAILED_TEXT : ''}</p>
           <p className="ch-waiting" role="status"><span className="ch-dot" data-pulse aria-hidden />Aguardando a conexão no celular…</p>
         </>
       ) : (
@@ -138,24 +156,24 @@ function PairPanel({ host, chip, firstCode, onConnected }: {
   );
 }
 
-/** ChipConnectedCard: the sessions that use the chip and its role in each. */
+/** ChipConnectedCard: the operations that use the chip and its role in each. */
 function UsedBy({ uses }: { uses: NonNullable<Chip['usedBy']> }) {
   return (
     <section className="ch-panel">
-      <h3 className="ch-panel-title">Sessões que usam este chip</h3>
-      <p className="ch-hint">Cada sessão define em qual papel (principal ou reserva) o chip atua.</p>
+      <h3 className="ch-panel-title">Operações que usam este chip</h3>
+      <p className="ch-hint">Cada operação define em qual papel (principal ou reserva) o chip atua.</p>
       {uses.length ? (
         <ul className="ch-uses">
           {uses.map((u) => <li key={u.sessionId}><span>{u.name}</span><span className="ch-tag">{u.role === 'primary' ? 'Principal' : 'Reserva'}</span></li>)}
         </ul>
       ) : (
-        <p className="ch-note">Este chip ainda não está vinculado a nenhuma sessão. Vá em <strong>Sessões</strong> pra atribuir.</p>
+        <p className="ch-note">Este chip ainda não está em nenhuma operação. Vá em <strong>Operações</strong> pra atribuir.</p>
       )}
     </section>
   );
 }
 
-/** ChipDetailPage: the chip, connecting it with a code, its sessions, and "Reiniciar" behind a confirmation. */
+/** ChipDetailPage: the chip, connecting it with a code, its operations, and "Reiniciar" behind a confirmation. */
 function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onChange }: {
   host: Host; first: Chip; firstCode?: string | null; canCallTools: boolean; onBack?: () => void; onChange?: (chip: Chip) => void;
 }) {
@@ -211,6 +229,8 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
   }
 
   const connected = chip.status === 'authenticated';
+  // A chip marked by the seller stays out of the restart; one marked for lack of a connection is kept by connecting it.
+  const canRestart = chip.provider === 'waha' && (!chip.removalAt || chip.removalReason === 'disconnected');
   return (
     <div className="ch-detail">
       {onBack && <BackButton onBack={onBack} label="Voltar pros chips" />}
@@ -221,14 +241,17 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
             <h2 className="ch-name">{chip.name}</h2>
             <p className="ch-sub"><span className="num">{phoneLabel(chip.phone)}</span><Status chip={chip} /><Provider provider={chip.provider} /></p>
           </div>
-          {canCallTools && !confirming && (
+          {canCallTools && !confirming && (canRestart || !chip.removalAt) && (
             <div className="ch-actions">
-              {chip.provider === 'waha' && (
+              {canRestart && (
                 <button type="button" className="ch-ghost" onClick={() => setConfirming('restart')} disabled={busy}><RefreshCw size={14} aria-hidden />Reiniciar</button>
               )}
-              <button type="button" className="ch-ghost" onClick={() => setConfirming('toggle')} disabled={busy}>
-                {chip.isActive ? <><PowerOff size={14} aria-hidden />Desativar</> : <><Power size={14} aria-hidden />Reativar</>}
-              </button>
+              {/* A chip marked for removal does not send: the seller undoes the mark in the dashboard, not here. */}
+              {!chip.removalAt && (
+                <button type="button" className="ch-ghost" onClick={() => setConfirming('toggle')} disabled={busy}>
+                  {chip.isActive ? <><PowerOff size={14} aria-hidden />Desativar</> : <><Power size={14} aria-hidden />Reativar</>}
+                </button>
+              )}
             </div>
           )}
         </header>
@@ -248,7 +271,7 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
           <ConfirmPanel
             label={chip.isActive ? 'Desativar chip' : 'Reativar chip'}
             tone={chip.isActive ? 'warning' : undefined}
-            message={chip.isActive ? 'Desativar faz este chip parar de enviar mensagens até ser reativado.' : 'Reativar faz este chip voltar a enviar mensagens pelas sessões que o usam.'}
+            message={chip.isActive ? 'Desativar faz este chip parar de enviar mensagens até ser reativado.' : 'Reativar faz este chip voltar a enviar mensagens pelas operações que o usam.'}
             confirmLabel={chip.isActive ? 'Desativar' : 'Reativar'}
             busyLabel={chip.isActive ? 'Desativando…' : 'Reativando…'}
             busy={busy}
@@ -258,23 +281,97 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
         )}
         {error && <p className="ch-alert" role="alert">{error}</p>}
         {chip.errorMessage && ['error', 'banned', 'disconnected'].includes(chip.status) && <p className="ch-alert">{chip.errorMessage}</p>}
-        {!chip.isActive && <p className="ch-note">Este chip está desativado e não envia por nenhuma sessão.</p>}
+        {chip.removalAt
+          ? <p className="ch-note" data-tone="warning">{chipStatus(chip, Date.now()).description}</p>
+          : !chip.isActive && <p className="ch-note">Este chip está desativado e não envia por nenhuma operação.</p>}
         {canCallTools && canPair(chip) && (
           <PairPanel key={round} host={host} chip={chip} firstCode={round === 0 ? firstCode : null} onConnected={setChip} />
         )}
         {canCallTools && needsRestart(chip) && (
           <p className="ch-note">Este chip desconectou. Clique em <strong>Reiniciar</strong> para conectar de novo.</p>
         )}
-        {chip.usedBy && connected && <UsedBy uses={chip.usedBy} />}
+        {chip.usedBy && connected && !chip.removalAt && <UsedBy uses={chip.usedBy} />}
       </section>
     </div>
   );
 }
 
-/** ChipsGrid, as rows: name, number, provider, status and how many sessions use the chip. */
-function ChipsList({ chips, sessions, canOpen, busyId, onOpen, checking, health, onCheck }: {
-  chips: Chip[]; sessions: Record<string, string> | null; canOpen: boolean; busyId: string | null; onOpen: (chip: Chip) => void;
-  checking: boolean; health: HealthOutcome | null; onCheck: () => void;
+/** One chip as a row (the list and the "pedem ação" row): name, number, type, status, operation and count. */
+function ChipRow({ chip, sessions, now, canOpen, busy, onOpen, unlinkedLabel = 'Não vinculado' }: {
+  chip: Chip; sessions: Record<string, string> | null; now: number; canOpen: boolean; busy: boolean; onOpen: (chip: Chip) => void;
+  /** The list says "Não vinculado"; the "pedem ação" row, "Sem operação" (as the dashboard words each). */
+  unlinkedLabel?: string;
+}) {
+  const body = (
+    <>
+      <span className="ch-icon" aria-hidden><Smartphone size={16} /></span>
+      <span className="ch-row-main">
+        <span className="ch-row-name">{chip.name}</span>
+        <span className="ch-sub"><span className="num">{phoneLabel(chip.phone)}</span><Provider provider={chip.provider} /></span>
+      </span>
+      <span className="ch-row-side">
+        <Status chip={chip} now={now} />
+        {sessions && <span className="ch-session" data-none={!sessions[chip.id] || undefined}>{sessions[chip.id] ?? unlinkedLabel}</span>}
+        <span className="ch-count num">{plural(chip.sessionsCount, 'operação', 'operações')}</span>
+      </span>
+      {canOpen && <ChevronRight size={16} className="ch-chevron" aria-hidden />}
+    </>
+  );
+  return (
+    <li className="ch-row" aria-busy={busy || undefined}>
+      {canOpen
+        ? <button type="button" className="ch-row-btn" onClick={() => onOpen(chip)} aria-label={`Abrir o chip ${chip.name}`}>{body}</button>
+        : <div className="ch-row-btn">{body}</div>}
+    </li>
+  );
+}
+
+/**
+ * ChipsNeedingAction: the chips that will be removed or that do not send until the seller acts, at the
+ * top of the list and minimizable; each opens its detail, where it is fixed. Nothing pending, no row.
+ */
+function NeedingAction({ chips, sessions, now, canOpen, busyId, onOpen }: {
+  chips: Chip[]; sessions: Record<string, string> | null; now: number; canOpen: boolean; busyId: string | null; onOpen: (chip: Chip) => void;
+}) {
+  const [isOpen, setOpen] = useState(true);
+  const pending = chipsNeedingAction(chips);
+  if (!pending.length) return null;
+  return (
+    <section className="ch-pending">
+      <button type="button" className="ch-pending-head" onClick={() => setOpen((v) => !v)} aria-expanded={isOpen}>
+        <AlertTriangle size={16} className="ch-pending-icon" aria-hidden />
+        <span className="ch-pending-text">
+          <span className="ch-pending-title">{pending.length === 1 ? '1 chip pede ação' : `${pending.length} chips pedem ação`}</span>
+          <span className="ch-hint">Os que vão ser removidos e os que só voltam a enviar com você. Abra cada um para resolver.</span>
+        </span>
+        <span className="ch-pending-toggle" aria-hidden><span className="ch-pending-word">{isOpen ? 'Minimizar' : 'Mostrar'}</span><ChevronDown size={14} data-open={isOpen || undefined} aria-hidden /></span>
+      </button>
+      {isOpen && (
+        <ul className="ch-rows">
+          {pending.map((c) => <ChipRow key={c.id} chip={c} sessions={sessions} now={now} canOpen={canOpen} busy={busyId === c.id} onOpen={onOpen} unlinkedLabel="Sem operação" />)}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** ChipsSection, as rows: the chips that need the seller first, then every chip, with the active count. */
+/**
+ * Reads which operation uses each chip and hands it to `keep` only when it could be read: a failed
+ * reread ("Atualizar" meeting a 5xx or a 429) keeps the "Operação" column the list already shows.
+ */
+export async function readChipSessions(host: Host, keep: (sessions: Record<string, string>) => void): Promise<void> {
+  try {
+    const sessions = sessionByChip(await host.callTool('list_whatsapp_sessions', {}));
+    if (sessions) keep(sessions);
+  } catch {
+    // The list goes on with the column it had, or without it before the first good read.
+  }
+}
+
+function ChipsList({ chips, sessions, now, canOpen, busyId, onOpen, checking, health, onCheck, refreshing, onRefresh }: {
+  chips: Chip[]; sessions: Record<string, string> | null; now: number; canOpen: boolean; busyId: string | null; onOpen: (chip: Chip) => void;
+  checking: boolean; health: HealthOutcome | null; onCheck: () => void; refreshing: boolean; onRefresh: () => void;
 }) {
   return (
     <section className="surface ch-card">
@@ -282,45 +379,34 @@ function ChipsList({ chips, sessions, canOpen, busyId, onOpen, checking, health,
         <div className="ch-list-title">
           <h2 className="card-title">Chips</h2>
           {canOpen && (
-            <button type="button" className="ch-ghost" onClick={onCheck} disabled={checking} title="Confirma direto na conexão se o status mostrado é real">
-              <ShieldCheck size={14} aria-hidden />{checking ? 'Verificando…' : 'Verificar status'}
-            </button>
+            <div className="ch-actions">
+              <button type="button" className="ch-ghost" onClick={onCheck} disabled={checking} title="Confirma direto na conexão se o status mostrado é real">
+                <ShieldCheck size={14} aria-hidden />{checking ? 'Verificando…' : 'Verificar status'}
+              </button>
+              <button type="button" className="ch-ghost" onClick={onRefresh} disabled={refreshing}>
+                <RefreshCw size={14} aria-hidden />{refreshing ? 'Atualizando…' : 'Atualizar'}
+              </button>
+            </div>
           )}
         </div>
-        <p className="card-sub">Cada chip é uma conexão WhatsApp: API Oficial (Meta) ou QR Code. Atribua a uma sessão pra usar em envios.</p>
+        <p className="card-sub">Cada chip é uma conexão WhatsApp: WhatsApp GG, pelo QR Code, ou Meta oficial. Atribua a uma operação pra usar em envios.</p>
       </header>
-      {health && (
-        <div className="ch-health" data-tone={health.tone} role="status">
-          <p className="ch-health-title">{health.title}</p>
-          {health.detail && <p>{health.detail}</p>}
-        </div>
+      {/* Mounted before the first "Verificar", so the result is announced when it arrives. */}
+      <div className="status-region" role="status">
+        {health && (
+          <div className="ch-health" data-tone={health.tone}>
+            <p className="ch-health-title">{health.title}</p>
+            {health.detail && <p>{health.detail}</p>}
+          </div>
+        )}
+      </div>
+      <NeedingAction chips={chips} sessions={sessions} now={now} canOpen={canOpen} busyId={busyId} onOpen={onOpen} />
+      {chips.length > 0 && (
+        <p className="ch-hint num">{plural(activeChips(chips), 'chip ativo', 'chips ativos')} / {MAX_ACTIVE_CHIPS}</p>
       )}
       {chips.length ? (
         <ul className="ch-rows">
-          {chips.map((c) => {
-            const body = (
-              <>
-                <span className="ch-icon" aria-hidden><Smartphone size={16} /></span>
-                <span className="ch-row-main">
-                  <span className="ch-row-name">{c.name}</span>
-                  <span className="ch-sub"><span className="num">{phoneLabel(c.phone)}</span><Provider provider={c.provider} /></span>
-                </span>
-                <span className="ch-row-side">
-                  <Status chip={c} />
-                  {sessions && <span className="ch-session" data-none={!sessions[c.id] || undefined}>{sessions[c.id] ?? 'Não vinculado'}</span>}
-                  <span className="ch-count num">{plural(c.sessionsCount, 'sessão', 'sessões')}</span>
-                </span>
-                {canOpen && <ChevronRight size={16} className="ch-chevron" aria-hidden />}
-              </>
-            );
-            return (
-              <li key={c.id} className="ch-row" aria-busy={busyId === c.id || undefined}>
-                {canOpen
-                  ? <button type="button" className="ch-row-btn" onClick={() => onOpen(c)} aria-label={`Abrir o chip ${c.name}`}>{body}</button>
-                  : <div className="ch-row-btn">{body}</div>}
-              </li>
-            );
-          })}
+          {chips.map((c) => <ChipRow key={c.id} chip={c} sessions={sessions} now={now} canOpen={canOpen} busy={busyId === c.id} onOpen={onOpen} />)}
         </ul>
       ) : (
         <p className="empty">Nenhum chip cadastrado ainda.</p>
@@ -339,11 +425,12 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
   }, [state.payload]);
   const [open, setOpen] = useState<Chip | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Record<string, string> | null>(null);
   const [list, setList] = useState<Chip[] | null>(null);
   const [checking, setChecking] = useState(false);
   const [health, setHealth] = useState<HealthOutcome | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const numberId = typeof state.args.numberId === 'string' ? state.args.numberId : null;
 
   // get_pairing_code answers the code alone: the chip is read to draw it around the code.
@@ -351,14 +438,14 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
     if (!parts.code || !numberId || !state.canCallTools) return;
     host.callTool('get_whatsapp_number', { numberId })
       .then((data) => setOpen(summarizeChip(data)))
-      .catch(() => setFailed(true));
+      .catch(() => setLoadError('Não foi possível carregar o chip. Tente novamente.'));
   }, [host, parts.code, numberId, state.canCallTools]);
 
-  // The list's "Sessão": the first session that uses each chip, read once.
+  /** The list's "Operação": the first operation that uses each chip. */
+  const readSessions = useCallback(() => readChipSessions(host, setSessions), [host]);
   useEffect(() => {
-    if (!parts.chips || !state.canCallTools) return;
-    host.callTool('list_whatsapp_sessions', {}).then((data) => setSessions(sessionByChip(data))).catch(() => setSessions(null));
-  }, [host, parts.chips, state.canCallTools]);
+    if (parts.chips && state.canCallTools) void readSessions();
+  }, [parts.chips, state.canCallTools, readSessions]);
 
   useEffect(() => {
     if (parts.chip) host.tellModel(`Chip ${parts.chip.name} aberto na tela do chat.`);
@@ -368,13 +455,13 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
 
   async function openChip(c: Chip) {
     setBusyId(c.id);
-    setFailed(false);
+    setLoadError(null);
     try {
       const full = summarizeChip(await host.callTool('get_whatsapp_number', { numberId: c.id }));
       if (!full) throw new Error('no chip');
       setOpen(full);
     } catch {
-      setFailed(true);
+      setLoadError('Não foi possível carregar o chip. Tente novamente.');
     } finally {
       setBusyId(null);
     }
@@ -396,8 +483,25 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
     }
   }
 
+  /** "Atualizar": the chips and their operations read again, as the dashboard's refresh. */
+  async function refresh() {
+    setRefreshing(true);
+    setLoadError(null);
+    try {
+      const [fresh] = await Promise.all([host.callTool('list_whatsapp_numbers', {}), readSessions()]);
+      const next = summarizeChips(fresh);
+      if (!next) throw new Error('no chips');
+      setList(next);
+    } catch {
+      setLoadError('Não foi possível atualizar os chips. Tente novamente.');
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   const { chip, code } = parts;
   const chips = parts.chips && (list ?? parts.chips);
+  const now = useRemovalClock(chips);
   /** A chip changed in the detail replaces its row, so "Voltar" does not show the old status. */
   const replaceChip = useCallback((next: Chip) => {
     setList((cur) => (cur ?? parts.chips ?? []).map((c) => (c.id === next.id ? next : c)));
@@ -405,14 +509,14 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
   if (!chip && !chips && !code) return <p className="state" data-tone="error">A resposta não trouxe chips do WhatsApp.</p>;
   return (
     <div className="dashboard chips">
-      {failed && <p className="ch-alert" role="alert">Não foi possível carregar o chip. Tente novamente.</p>}
+      {loadError && <p className="ch-alert" role="alert">{loadError}</p>}
       {chip && <ChipDetail host={host} first={chip} canCallTools={state.canCallTools} />}
       {chips && (
         <>
           {open && <ChipDetail key={open.id} host={host} first={open} canCallTools={state.canCallTools} onBack={() => setOpen(null)} onChange={replaceChip} />}
           <div hidden={Boolean(open)}>
-            <ChipsList chips={chips} sessions={sessions} canOpen={state.canCallTools} busyId={busyId} onOpen={openChip}
-              checking={checking} health={health} onCheck={checkStatus} />
+            <ChipsList chips={chips} sessions={sessions} now={now} canOpen={state.canCallTools} busyId={busyId} onOpen={openChip}
+              checking={checking} health={health} onCheck={checkStatus} refreshing={refreshing} onRefresh={refresh} />
           </div>
         </>
       )}

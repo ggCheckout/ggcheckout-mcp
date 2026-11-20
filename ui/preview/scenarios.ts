@@ -1,6 +1,8 @@
 import {
   billingBalance, billingStatus, membersArea, chips, chipDetail, telegramFlows, telegramFlowVisual, telegramFlowBasic, memberCarousels, memberModules, memberLessons, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
   payApiLimits, payApiLimitsUnavailable, payApiWallets, payApiIntents, trackingGuide, trackingDiagnosis, utmMeta, utmManual,
+  inboxOpen, inboxOff, inboxUnavailable, inboxConversations, inboxMessages, inboxFunnels, inboxRun,
+  operations, products, waFunnelDetail,
 } from './fixtures';
 
 export interface Scenario {
@@ -56,6 +58,10 @@ export const SCENARIOS: Scenario[] = [
   { id: 'chips', question: 'Quais chips do WhatsApp estão conectados?', tool: 'list_whatsapp_numbers', args: {}, result: chips },
   { id: 'chip-connect', question: 'Conecta meu chip Vendas 2', tool: 'get_whatsapp_number', args: { numberId: 'chip_vendas' }, result: chipDetail('chip_vendas') },
   { id: 'chip-dropped', question: 'Por que o chip Reserva não envia?', tool: 'get_whatsapp_number', args: { numberId: 'chip_reserva' }, result: chipDetail('chip_reserva') },
+  { id: 'operations', question: 'Como estão minhas operações do WhatsApp?', tool: 'list_whatsapp_sessions', args: {}, result: operations },
+  { id: 'operation', question: 'Abre a operação Método Aurora', tool: 'get_whatsapp_session', args: { sessionId: 'g1' }, result: { session: operations.sessions[0] } },
+  { id: 'wa-funnels', question: 'Quais funis de WhatsApp eu tenho?', tool: 'list_whatsapp_funnels', args: {}, result: inboxFunnels },
+  { id: 'wa-funnel', question: 'Me mostra o funil de carrinho abandonado', tool: 'get_whatsapp_funnel', args: { funnelId: inboxFunnels.items[1].id }, result: waFunnelDetail(inboxFunnels.items[1].id) },
   { id: 'chip-code', question: 'Gera o código pra conectar o chip Vendas 2', tool: 'get_pairing_code', args: { numberId: 'chip_vendas', phoneNumber: '5531998778877' }, result: { success: true, code: 'K7QW2MZP' } },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'pix-canceled', question: 'Cancela a cobrança pi_preview…', tool: 'cancel_payment_intent', args: { id: 'pi_preview0000000000000001' }, result: { ...paymentIntent('requires_action'), status: 'canceled' } },
@@ -67,9 +73,48 @@ export const SCENARIOS: Scenario[] = [
   { id: 'tracking-diagnosis', question: 'Por que a venda do curso não aparece no TikTok?', tool: 'diagnose_tracking', args: { checkoutId: 'ck_preview', paymentId: 'pay_preview' }, result: trackingDiagnosis },
   { id: 'utm-meta', question: 'Gera o link do meu checkout pra anunciar no Meta', tool: 'build_tracking_link', args: { checkoutId: 'ck_aurora', platform: 'meta' }, result: utmMeta },
   { id: 'utm-manual', question: 'Faz um link do quiz pra colocar na bio do Instagram', tool: 'build_tracking_link', args: { funnelId: 'fn_aurora', platform: 'manual', utm_source: 'instagram', utm_medium: 'bio', utm_campaign: 'Lançamento Aurora', sck: 'story1' }, result: utmManual },
+  { id: 'inbox', question: 'Abre minha caixa de entrada do WhatsApp', tool: 'open_whatsapp_inbox', args: {}, result: inboxOpen },
+  { id: 'inbox-off', question: 'Abre minha caixa de entrada do WhatsApp', tool: 'open_whatsapp_inbox', args: {}, result: inboxOff },
+  { id: 'inbox-unavailable', question: 'Abre minha caixa de entrada do WhatsApp', tool: 'open_whatsapp_inbox', args: {}, result: inboxUnavailable },
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
 ];
+
+type PreviewOperation = (typeof operations.sessions)[number];
+/** The operations as the preview's writes leave them, so a second write builds on the first. */
+const operationStore = new Map<string, PreviewOperation>(
+  operations.sessions.map((s) => [s.uid, { ...s, fallbackNumberIds: [...s.fallbackNumberIds], assignedProducts: [...s.assignedProducts] }]),
+);
+const operationOf = (id: unknown): PreviewOperation => operationStore.get(String(id)) ?? operationStore.get('g1')!;
+
+/** The funnels as the preview stores them, so the list and the editor show its writes (newest first). */
+type PreviewFunnel = Record<string, unknown> & { id: string; trigger: string; isEnabled: boolean; steps: unknown[] };
+const funnelStore = new Map<string, PreviewFunnel>(inboxFunnels.items.map((f) => [f.id, waFunnelDetail(f.id).funnel]));
+let funnelOrder = inboxFunnels.items.map((f) => f.id);
+// An edit "made elsewhere" for the drift check: previewFunnelStore.get(id).name = 'Outro' in the console.
+Object.assign(globalThis, { previewFunnelStore: funnelStore });
+const funnelOf = (id: unknown): PreviewFunnel => {
+  const funnel = funnelStore.get(String(id));
+  if (!funnel) throw new Error('API Error (404): Funil não encontrado.');
+  return funnel;
+};
+const funnelPage = () => ({
+  items: funnelOrder.filter((id) => funnelStore.has(id)).map((id) => {
+    const { steps, stopOnReply: _s, sendWindow: _w, signature: _g, coupon: _c, useEmoji: _e, layout: _l, ...row } = funnelOf(id);
+    return { ...row, stepCount: steps.length };
+  }),
+  nextAfter: null,
+});
+
+/** remove_whatsapp_session_number: the primary's removal promotes the first fallback. */
+function removeChip(op: PreviewOperation, numberId: string): PreviewOperation {
+  if (op.primaryNumberId === numberId) {
+    const [next, ...rest] = op.fallbackNumberIds;
+    if (!next) throw new Error('A operação precisa de pelo menos o chip principal');
+    return Object.assign(op, { primaryNumberId: next, fallbackNumberIds: rest });
+  }
+  return Object.assign(op, { fallbackNumberIds: op.fallbackNumberIds.filter((id) => id !== numberId) });
+}
 
 /** Answers the app's tools/call like the server would, from the same fixtures. */
 export function answerTool(name: string, args: Record<string, unknown>, polls: { count: number }): unknown {
@@ -106,12 +151,64 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'get_billing_status': return billingStatus;
     case 'check_whatsapp_numbers': return { summary: { total: 5, connected: 2, disconnected: 1, divergent: 1, synced: 1 }, numbers: [{ numberId: 'chip_reserva', displayName: 'Reserva', firebaseStatus: 'authenticated', firebaseIsActive: true, realStatus: 'disconnected', diverged: true }] };
     case 'list_whatsapp_numbers': return chips;
-    case 'list_whatsapp_sessions': return { sessions: [{ uid: 'g1', name: 'Método Aurora', primaryNumberId: 'chip_suporte', fallbackNumberIds: ['chip_vendas'] }, { uid: 'g2', name: 'Mentoria', primaryNumberId: 'chip_vendas', fallbackNumberIds: ['chip_suporte'] }] };
+    case 'list_whatsapp_sessions': return { sessions: [...operationStore.values()] };
+    case 'get_whatsapp_session': return { session: operationOf(args.sessionId) };
+    case 'update_whatsapp_session': {
+      const op = operationOf(args.sessionId);
+      if (typeof args.primaryNumberId === 'string') Object.assign(op, { primaryNumberId: args.primaryNumberId, fallbackNumberIds: args.fallbackNumberIds as string[] });
+      return { success: true, session: op };
+    }
+    case 'add_whatsapp_session_number': {
+      const op = operationOf(args.sessionId);
+      op.fallbackNumberIds = [...op.fallbackNumberIds, String(args.numberId)];
+      return { success: true, session: op };
+    }
+    case 'remove_whatsapp_session_number': return { success: true, session: removeChip(operationOf(args.sessionId), String(args.numberId)) };
+    case 'set_whatsapp_session_products': {
+      const op = operationOf(args.sessionId);
+      op.assignedProducts = [...(args.productIds as string[])];
+      return { success: true, session: op };
+    }
+    case 'list_products': return products;
     case 'get_pairing_code': return { success: true, code: 'K7QW2MZP' };
     case 'update_whatsapp_number': return { success: true, ...chipDetail(String(args.numberId)), number: { ...chipDetail(String(args.numberId)).number, isActive: args.isActive } };
     case 'restart_whatsapp_number': return { message: 'Chip reiniciado', numberId: args.numberId };
     case 'list_credits': return args.before ? ledgerPages[1] : ledgerPages[0];
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
+    case 'list_whatsapp_conversations': return inboxConversations;
+    case 'list_whatsapp_messages': return inboxMessages(String(args.contactKey));
+    case 'list_whatsapp_funnels': return funnelPage();
+    case 'get_whatsapp_funnel': return { funnel: { ...funnelOf(args.funnelId) } };
+    case 'update_whatsapp_funnel': {
+      const { funnelId, ...patch } = args;
+      const next = { ...funnelOf(funnelId), ...patch, updatedAt: new Date().toISOString() } as PreviewFunnel;
+      funnelStore.set(String(funnelId), next);
+      return { success: true, funnel: { ...next } };
+    }
+    case 'create_whatsapp_funnel': {
+      const id = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const created = { sessionGroupId: null, layout: null, trigger: 'manual', steps: [], ...args, id, isEnabled: false, createdAt: now, updatedAt: now } as PreviewFunnel;
+      funnelStore.set(id, created);
+      funnelOrder = [id, ...funnelOrder];
+      return { success: true, funnel: { ...created } };
+    }
+    case 'toggle_whatsapp_funnel': {
+      const funnel = funnelOf(args.funnelId);
+      // The API refuses a second funnel on for the same automatic trigger.
+      if (args.enabled === true && funnel.trigger !== 'manual' && [...funnelStore.values()].some((f) => f.id !== funnel.id && f.trigger === funnel.trigger && f.isEnabled)) {
+        throw new Error('API Error (409): Já existe um funil ligado para este gatilho.');
+      }
+      funnelStore.set(funnel.id, { ...funnel, isEnabled: args.enabled === true });
+      return { success: true, funnel: { ...funnelOf(funnel.id) } };
+    }
+    case 'delete_whatsapp_funnel': funnelStore.delete(String(args.funnelId)); return { success: true, message: `Funnel ${args.funnelId} deleted` };
+    case 'get_whatsapp_conversation_funnel': return inboxRun(String(args.contactKey));
+    case 'mark_whatsapp_conversation_read': return { success: true };
+    case 'send_whatsapp_reply': return { message: { messageId: 'w_new', deliveryId: 'a1b2c3d4-0000-4000-8000-000000000002', contactKey: args.contactKey, chipId: 'chip_vendas', text: args.text, at: new Date().toISOString(), chipSwitch: null, duplicate: false } };
+    case 'start_whatsapp_conversation_funnel': return { started: true, run: { ...inboxRun('553198765001').run, contactKey: args.contactKey, currentStep: 0 }, replacedRunId: null };
+    case 'stop_whatsapp_conversation_funnel': return { stoppedRunId: 'a1b2c3d4-0000-4000-8000-000000000001' };
+    case 'set_whatsapp_conversation_opt_out': return { optedOut: args.optedOut === true, stoppedRuns: args.optedOut === true ? 1 : 0 };
     default: throw new Error(`no fixture for ${name}`);
   }
 }

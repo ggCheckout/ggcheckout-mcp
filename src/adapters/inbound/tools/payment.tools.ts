@@ -89,7 +89,9 @@ export function registerPaymentTools(server: McpServer, service: PaymentService)
         + 'paidCount and paidGrossCents (paid sales) and refundedCount and refundedCents, plus `totals`. Aggregated only, '
         + 'no buyer data. A `null` key value is the sales that came without that parameter. `utm_content` usually carries the '
         + 'ad id. Period default: last 7 days, at most 90 days. `truncated: true` means the rows were cut: narrow the period or '
-        + 'group by fewer keys. Cents, as everywhere.',
+        + 'group by fewer keys. Money is in BRL cents (a sale in another currency enters as its BRL value). Paid and '
+        + 'refunded sales are both dated by when the SALE was made, so a refund counts in the period of its sale, not '
+        + 'in the period it was refunded.',
       inputSchema: {
         businessId: z.string().describe('Business ID (get_my_business_id)'),
         from: z.string().optional().describe('Start of the period: ISO 8601, or a plain date YYYY-MM-DD meaning that day in Sao Paulo, from 00:00 (default: 7 days before `to`)'),

@@ -17,6 +17,9 @@ import { PixView } from './pix/PixView';
 import { PayApiView } from './payapi/PayApiView';
 import { TrackingView } from './tracking/TrackingView';
 import { UtmView } from './utm/UtmView';
+import { InboxView } from './inbox/InboxView';
+import { OperationsView } from './operations/OperationsView';
+import { WhatsAppFunnelsView } from './whatsapp-funnels/WhatsAppFunnelsView';
 
 export function GgApp({ host }: { host: Host }) {
   const state = useSyncExternalStore(host.subscribe, host.getSnapshot, host.getSnapshot);
@@ -57,6 +60,12 @@ export function GgApp({ host }: { host: Host }) {
       return <TrackingView key={state.generation} host={host} state={state} />;
     case 'utm':
       return <UtmView key={state.generation} host={host} state={state} />;
+    case 'inbox':
+      return <InboxView key={state.generation} host={host} state={state} />;
+    case 'operations':
+      return <OperationsView key={state.generation} host={host} state={state} />;
+    case 'whatsappFunnels':
+      return <WhatsAppFunnelsView key={state.generation} host={host} state={state} />;
     default:
       return <p className="state" data-tone="error">A resposta não trouxe nada que esta tela desenhe.</p>;
   }

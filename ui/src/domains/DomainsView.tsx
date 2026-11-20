@@ -37,7 +37,7 @@ function CopyValue({ value }: { value: string }) {
     <button type="button" className="dom-copy mono" title="Clique para copiar" onClick={() => void copy(value)}>
       <span>{value}</span>
       {copied ? <Check size={14} className="dom-copied" aria-label="Copiado!" /> : <Copy size={14} aria-hidden />}
-      {state === 'failed' && <span className="copy-failed" role="status">{COPY_FAILED_TEXT}</span>}
+      <span className="copy-failed status-region" role="status">{state === 'failed' ? COPY_FAILED_TEXT : ''}</span>
     </button>
   );
 }
@@ -58,7 +58,7 @@ function RecordCard({ record, n }: { record: DnsRecord; n: number }) {
 
 function Outcome({ outcome }: { outcome: VerifyOutcome }) {
   return (
-    <div className="dom-outcome" data-tone={outcome.status} role="status">
+    <div className="dom-outcome" data-tone={outcome.status}>
       <p className="dom-outcome-title">{outcome.title}</p>
       <p>{outcome.detail}</p>
     </div>
@@ -113,7 +113,8 @@ function DomainDetail({ host, first, canCallTools, firstOutcome = null, onBack, 
           </div>
           <p className="card-sub num">{`Criado em ${formatDateTime(domain.createdAt, { seconds: true })}`}</p>
         </header>
-        {outcome && <Outcome outcome={outcome} />}
+        {/* Mounted before the first "Verificar", so the result is announced when it arrives. */}
+        <div className="status-region" role="status">{outcome && <Outcome outcome={outcome} />}</div>
         {error && <p className="dom-alert" data-tone="danger" role="alert">{error}</p>}
         {/* The check's outcome already says what is missing. */}
         {!outcome && <StatusAlert status={domain.status} />}

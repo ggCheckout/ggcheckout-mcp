@@ -107,7 +107,7 @@ function Tokens({ tokens }: { tokens: TokenModel[] }) {
     <Section title="Tokens de rastreio">
       <div className="trk-table-wrap">
         <table className="trk-table">
-          <caption className="trk-sr">Tokens de rastreio, com modo e saúde</caption>
+          <caption className="sr-only">Tokens de rastreio, com modo e saúde</caption>
           <thead>
             <tr><th scope="col">Token</th><th scope="col">Canal</th><th scope="col">Modo</th><th scope="col">Pixel</th><th scope="col">Saúde</th></tr>
           </thead>
@@ -146,7 +146,7 @@ function Payment({ payment }: { payment: PaymentModel }) {
       {payment.utms.length ? (
         <div className="trk-table-wrap">
           <table className="trk-table">
-            <caption className="trk-sr">UTMs guardadas na venda</caption>
+            <caption className="sr-only">UTMs guardadas na venda</caption>
             <thead><tr><th scope="col">Parâmetro</th><th scope="col">Valor</th></tr></thead>
             <tbody>
               {payment.utms.map(([key, value]) => <tr key={key}><th scope="row" className="mono">{key}</th><td>{value}</td></tr>)}
