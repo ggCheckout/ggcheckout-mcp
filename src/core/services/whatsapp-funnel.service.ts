@@ -1,6 +1,6 @@
 import type { WhatsAppFunnelPort } from '../ports/whatsapp-funnel.port.js';
 import type {
-  FunnelImportContact, FunnelInput, FunnelListQuery, WhatsAppFunnel,
+  FunnelImportContact, FunnelInput, FunnelLayout, FunnelListQuery, WhatsAppFunnel,
 } from '../types/whatsapp-funnel.js';
 import { mergeDeep } from '../../shared/merge.js';
 
@@ -20,6 +20,21 @@ function toInput(funnel: WhatsAppFunnel): FunnelInput {
   };
 }
 
+const LAYOUT_STEP_KEY = /^(?:wait|message)-(\d+)$/;
+
+/**
+ * The positions a funnel of `steps` messages can still use: `wait-N`/`message-N` past the last
+ * step belong to a message that is gone, and would be drawn back if the funnel grew again.
+ */
+function layoutForSteps(layout: FunnelLayout | null | undefined, steps: number): FunnelLayout | null | undefined {
+  if (!layout) return layout;
+  const kept = Object.entries(layout).filter(([key]) => {
+    const match = LAYOUT_STEP_KEY.exec(key);
+    return !match || Number(match[1]) <= steps;
+  });
+  return kept.length ? Object.fromEntries(kept) : null;
+}
+
 export class WhatsAppFunnelService {
   constructor(private readonly port: WhatsAppFunnelPort) {}
 
@@ -28,12 +43,17 @@ export class WhatsAppFunnelService {
   async create(input: FunnelInput) { return this.port.create(input); }
 
   /**
-   * The route replaces the whole funnel, so the stored one is read and the edit merged into it;
-   * `steps` replaces as a list, the other fields change one by one.
+   * The route replaces the whole funnel, so the stored one is read and the edit merged into it.
+   * `steps` replaces as a list and `layout` as a whole drawing (its keys are positions in the
+   * sequence, so merging two drawings would mix them); the other fields change one by one. Steps
+   * sent without a layout keep the stored drawing, minus the positions of the messages that left.
    */
   async update(funnelId: string, patch: Partial<FunnelInput>) {
     const current = await this.port.get(funnelId);
-    return this.port.replace(funnelId, mergeDeep(toInput(current), patch));
+    const { layout, ...fields } = patch;
+    const merged = mergeDeep(toInput(current), fields);
+    const drawing = layout !== undefined ? layout : layoutForSteps(merged.layout, merged.steps.length);
+    return this.port.replace(funnelId, { ...merged, ...(drawing !== undefined ? { layout: drawing } : {}) });
   }
 
   async delete(funnelId: string) { return this.port.delete(funnelId); }

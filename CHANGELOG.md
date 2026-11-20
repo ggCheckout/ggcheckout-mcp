@@ -24,7 +24,8 @@ error body) is read as "not released yet".
   PIX, refused or cancelled card) or by hand. Inputs carry the same caps as the dashboard (text in
   code points: 4096 per step, 80 for the name, 60 for the signature, 30 for the coupon).
   `update_whatsapp_funnel` takes only the fields to change and saves the whole funnel, as the route
-  replaces it. The contact import takes batches of up to 500 and needs the store's "Permitir acesso
+  replaces it; `steps` and `layout` replace as a whole (steps sent without a layout drop the positions
+  of the messages that left). The contact import takes batches of up to 500 and needs the store's "Permitir acesso
   pelo MCP" switch (see below).
 - WhatsApp inbox in a view, only for clients that draw MCP Apps: `open_whatsapp_inbox` opens the
   seller's conversations (list, thread, reply, mark read, run or stop a funnel, "Parar funil e não

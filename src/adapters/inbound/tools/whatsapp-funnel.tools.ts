@@ -82,7 +82,8 @@ export function registerWhatsAppFunnelTools(server: McpServer, service: WhatsApp
   server.registerTool('update_whatsapp_funnel', {
     description:
       'Update a WhatsApp funnel. Only send the fields to change; the rest stays as it is. "steps" replaces the whole list '
-      + 'of messages, so send every step to keep',
+      + 'of messages, so send every step to keep; "layout" replaces the whole drawing (steps sent without it keep the '
+      + 'stored positions, minus those of removed messages)',
     inputSchema: {
       funnelId,
       name: funnelFields.name.optional(),

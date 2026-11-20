@@ -60,6 +60,24 @@ describe('WhatsAppFunnelService.update', () => {
     expect(port.replace.mock.calls[0][1]).toMatchObject({ sendWindow: null, sessionGroupId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' });
   });
 
+  it('replaces the layout as a whole drawing instead of merging it', async () => {
+    const { port, service } = setup();
+    port.get.mockResolvedValue({ ...stored, layout: { start: { x: 0, y: 0 }, 'message-2': { x: 9, y: 9 } } });
+    await service.update(stored.id, { layout: { end: { x: 1, y: 2 } } });
+    expect((port.replace.mock.calls[0][1] as any).layout).toEqual({ end: { x: 1, y: 2 } });
+  });
+
+  it('drops the positions of the messages that left when steps shrink without a layout', async () => {
+    const { port, service } = setup();
+    port.get.mockResolvedValue({ ...stored, layout: { start: { x: 0, y: 0 }, 'wait-2': { x: 5, y: 5 }, 'message-2': { x: 9, y: 9 } } });
+    await service.update(stored.id, { steps: [stored.steps[0]] });
+    expect((port.replace.mock.calls[0][1] as any).layout).toEqual({ start: { x: 0, y: 0 } });
+
+    port.get.mockResolvedValue({ ...stored, layout: { 'message-2': { x: 9, y: 9 } } });
+    await service.update(stored.id, { steps: [stored.steps[0]] });
+    expect((port.replace.mock.calls[1][1] as any).layout).toBeNull();
+  });
+
   it('does not write when the funnel cannot be read', async () => {
     const { port, service } = setup();
     port.get.mockRejectedValue(new Error('not found'));
