@@ -15,12 +15,12 @@ const CONTACT_KEY = /^(?:[1-9][0-9]{7,14}|lid:[A-Za-z0-9_@.-]{1,128})$/;
 
 /**
  * The conversation key of the inbox: the contact's phone (digits with country code, no `+`) or a
- * `lid:` WhatsApp id. A Brazilian mobile written without the ninth digit is not canonical and is
- * refused, as the route does.
+ * `lid:` WhatsApp id. The canonical Brazilian mobile has no ninth digit (55 + area code + 8 digits),
+ * as WhatsApp keys it; the 13-digit form is refused, as the route does.
  */
 export const contactKey = z.string().regex(CONTACT_KEY)
   .refine((key) => !/^55[0-9]{2}9[6-9][0-9]{7}$/.test(key), 'Phone must be in canonical form')
-  .describe('Conversation key: the contact phone in digits with country code ("5531999998888") or a "lid:" WhatsApp id');
+  .describe('Conversation key as the inbox lists it: the contact phone in digits with country code ("553199998888", a Brazilian mobile without the ninth digit) or a "lid:" WhatsApp id');
 
 /** Start values of a manual run (`{{customer_name}}`, ...): key `[a-z0-9_]{1,40}`, up to 32 of them. */
 export const funnelVariables = z.record(z.string().regex(/^[a-z0-9_]{1,40}$/), cappedText(FUNNEL_LIMITS.maxVariableValue))

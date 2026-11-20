@@ -19,6 +19,15 @@ export function appMeta() {
 }
 
 /**
+ * The `_meta` of a tool only the app may call (SEP-1865 `visibility: ["app"]`): the host keeps it
+ * out of the model's tool list and lets the view call it through `callServerTool`. The tools that
+ * carry customer names, phones or message text are like this, so the model never reads them.
+ */
+export function appOnlyMeta() {
+  return { ui: { resourceUri: APP_URI, visibility: ['app'] } };
+}
+
+/**
  * The built app, read once. The same relative path resolves from src/ (tsx) and from dist/ (the
  * published package), because both sit four levels under the package root.
  */
@@ -40,6 +49,33 @@ const UI_EXTENSION = 'io.modelcontextprotocol/ui';
 export function clientDrawsViews(server: McpServer): boolean {
   const extensions = (server.server.getClientCapabilities() as { extensions?: Record<string, { mimeTypes?: string[] }> } | undefined)?.extensions;
   return Boolean(extensions?.[UI_EXTENSION]?.mimeTypes?.includes(APP_MIME_TYPE));
+}
+
+const initializedHooks = new WeakMap<McpServer, Array<() => void>>();
+
+/**
+ * Registers tools only for a client that draws MCP Apps views. What a client supports is known only
+ * once it has sent `initialize`, after the tools are registered at startup, so `register` runs when
+ * the handshake completes, and only if the client announced the extension. The SDK tells the client
+ * the tool list changed. A client that never announces it never sees these tools.
+ */
+export function whenAppsSupported(server: McpServer, register: () => void): void {
+  if (server.server.getClientVersion()) {
+    if (clientDrawsViews(server)) register();
+    return;
+  }
+  let hooks = initializedHooks.get(server);
+  if (!hooks) {
+    const pending: Array<() => void> = [];
+    hooks = pending;
+    initializedHooks.set(server, pending);
+    const previous = server.server.oninitialized;
+    server.server.oninitialized = () => {
+      previous?.();
+      if (clientDrawsViews(server)) for (const run of pending.splice(0)) run();
+    };
+  }
+  hooks.push(register);
 }
 
 const DRAWN_NOTE =
@@ -65,7 +101,9 @@ export function withDrawnNote<TArgs>(server: McpServer, handler: (args: TArgs) =
 }
 
 export function registerAppViews(server: McpServer) {
+  const previous = server.server.oninitialized;
   server.server.oninitialized = () => {
+    previous?.();
     logger.info('STARTUP', `Client ${clientDrawsViews(server) ? 'draws' : 'does not draw'} MCP Apps views`);
   };
   server.registerResource('ggcheckout_app', APP_URI, {
