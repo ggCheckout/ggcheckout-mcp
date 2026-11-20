@@ -5,12 +5,30 @@ import { BackButton } from '../lib/BackButton';
 import { ConfirmPanel } from '../lib/ConfirmPanel';
 import {
   MAX_REPLY_CHARS, MESSAGES_PAGE, POLL_MS, bodyOf, clockLabel, codePointLength, contactLabel, conversationLabels, errorText,
-  latestIncomingId, mergeMessages, pendingFor, replyProblem, runLabel, startOutcome, toContactRun, toFunnelOptions, toMessages,
+  latestIncomingId, mergeMessages, nextFunnelsAfter, pendingFor, replyProblem, runLabel, startOutcome, toContactRun, toFunnelOptions, toMessages,
   type Conversation, type FunnelOption, type PendingSend, type Run, type ThreadMessage,
 } from './model';
 import { startVisiblePolling } from './poll';
 
 type Confirming = 'start' | 'stop' | 'optout' | null;
+
+/** Safety cap on the funnel pages read for the picker (50 each). */
+const FUNNEL_PAGES = 20;
+
+/** The enabled manual funnels, across every page of list_whatsapp_funnels; null when unreadable. */
+export async function loadManualFunnels(host: Host): Promise<FunnelOption[] | null> {
+  const all: FunnelOption[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < FUNNEL_PAGES; page++) {
+    const data = await host.callTool('list_whatsapp_funnels', { limit: 50, ...(after ? { after } : {}) });
+    const options = toFunnelOptions(data);
+    if (!options) return page === 0 ? null : all;
+    all.push(...options);
+    after = nextFunnelsAfter(data);
+    if (!after) break;
+  }
+  return all;
+}
 
 /** One bubble. The text goes in as a text node: whatever a customer wrote stays literal, never markup. */
 export function Bubble({ message }: { message: ThreadMessage }) {
@@ -80,9 +98,8 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
     markRead();
     loadHead().catch((e) => setLoadError(errorText(e)));
     loadRun().catch(() => setRun(null));
-    host.callTool('list_whatsapp_funnels', { limit: 50 })
-      .then((data) => {
-        const options = toFunnelOptions(data);
+    loadManualFunnels(host)
+      .then((options) => {
         setFunnels(options);
         if (options?.length) setFunnelId((cur) => cur || options[0].id);
       })

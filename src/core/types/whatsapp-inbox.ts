@@ -124,6 +124,8 @@ export interface InboxSummary {
   conversations: number;
   /** Unread messages across those conversations. */
   unread: number;
+  /** The counts stopped at the newest 200 conversations: there are more. */
+  truncated: boolean;
 }
 
 /** Why the summary reads as it does: how the tool words it, never part of what the model gets as data. */

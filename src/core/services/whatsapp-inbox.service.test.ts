@@ -22,7 +22,7 @@ describe('WhatsAppInboxService.summarize', () => {
   it('counts conversations and unread messages, and hands back nothing else', async () => {
     const { service } = setup();
     const { summary, state } = await service.summarize();
-    expect(summary).toEqual({ available: true, enabled: true, conversations: 3, unread: 5 });
+    expect(summary).toEqual({ available: true, enabled: true, conversations: 3, unread: 5, truncated: false });
     expect(state).toBe('ready');
   });
 
@@ -32,7 +32,15 @@ describe('WhatsAppInboxService.summarize', () => {
     const { summary } = await service.summarize();
     expect(port.listConversations).toHaveBeenCalledTimes(4);
     expect(port.listConversations).toHaveBeenLastCalledWith({ limit: 50, before: '9:5531999998888' });
-    expect(summary).toMatchObject({ conversations: 4, unread: 4 });
+    expect(summary).toMatchObject({ conversations: 4, unread: 4, truncated: true });
+  });
+
+  it('is not truncated when the last page it reads is the last one', async () => {
+    const { port, service } = setup();
+    port.listConversations
+      .mockResolvedValueOnce({ items: [conversation(1)], nextBefore: '9:5531999998888' })
+      .mockResolvedValueOnce({ items: [conversation(1)], nextBefore: null });
+    expect((await service.summarize()).summary).toMatchObject({ conversations: 2, truncated: false });
   });
 
   it('is off, without reading a single conversation, while the switch is off or missing', async () => {
@@ -40,7 +48,7 @@ describe('WhatsAppInboxService.summarize', () => {
     for (const settings of [{ autoSwitchChip: true, apiAccessEnabled: false, updatedAt: null }, { autoSwitchChip: true, updatedAt: null }]) {
       port.getSettings.mockResolvedValue(settings);
       const { summary, state } = await service.summarize();
-      expect(summary).toEqual({ available: true, enabled: false, conversations: 0, unread: 0 });
+      expect(summary).toEqual({ available: true, enabled: false, conversations: 0, unread: 0, truncated: false });
       expect(state).toBe('off');
     }
     expect(port.listConversations).not.toHaveBeenCalled();
@@ -49,7 +57,7 @@ describe('WhatsAppInboxService.summarize', () => {
   it('is unavailable when the saas has no inbox routes', async () => {
     const { port, service } = setup();
     port.getSettings.mockRejectedValue(new FeatureUnavailableError());
-    expect(await service.summarize()).toEqual({ summary: { available: false, enabled: false, conversations: 0, unread: 0 }, state: 'unavailable' });
+    expect(await service.summarize()).toEqual({ summary: { available: false, enabled: false, conversations: 0, unread: 0, truncated: false }, state: 'unavailable' });
   });
 
   it('is off when the switch is turned off between the two reads', async () => {
@@ -61,7 +69,7 @@ describe('WhatsAppInboxService.summarize', () => {
   it('asks for the term when the core wants it', async () => {
     const { port, service } = setup();
     port.listConversations.mockRejectedValue(new InboxTermsRequiredError());
-    expect(await service.summarize()).toEqual({ summary: { available: true, enabled: true, conversations: 0, unread: 0 }, state: 'terms_required' });
+    expect(await service.summarize()).toEqual({ summary: { available: true, enabled: true, conversations: 0, unread: 0, truncated: false }, state: 'terms_required' });
   });
 
   it('lets any other failure through', async () => {

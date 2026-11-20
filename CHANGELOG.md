@@ -28,7 +28,7 @@ error body) is read as "not released yet".
   pelo MCP" switch (see below).
 - WhatsApp inbox in a view, only for clients that draw MCP Apps: `open_whatsapp_inbox` opens the
   seller's conversations (list, thread, reply, mark read, run or stop a funnel, "Parar funil e não
-  enviar mais") and gives the model only `{ available, enabled, conversations, unread }`: no names,
+  enviar mais") and gives the model only `{ available, enabled, conversations, unread, truncated }` (`truncated`: the counts stopped at the newest 200 conversations): no names,
   phones or message text, so a customer message cannot reach the model or act as a prompt injection,
   and the model cannot reply by itself. What the view calls are app-only tools
   (`_meta.ui.visibility: ["app"]`), registered after the client announces MCP Apps support:

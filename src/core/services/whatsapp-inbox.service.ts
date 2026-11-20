@@ -7,7 +7,7 @@ import { FeatureUnavailableError, InboxAccessDisabledError, InboxTermsRequiredEr
 /** The counts read at most this many pages of conversations (200): a summary, not an export. */
 const SUMMARY_PAGES = 4;
 
-const EMPTY: Omit<InboxSummary, 'available' | 'enabled'> = { conversations: 0, unread: 0 };
+const EMPTY: Omit<InboxSummary, 'available' | 'enabled'> = { conversations: 0, unread: 0, truncated: false };
 
 export class WhatsAppInboxService {
   constructor(private readonly port: WhatsAppInboxPort) {}
@@ -26,14 +26,16 @@ export class WhatsAppInboxService {
       let conversations = 0;
       let unread = 0;
       let before: string | undefined;
+      let truncated = false;
       for (let page = 0; page < SUMMARY_PAGES; page++) {
         const res = await this.port.listConversations({ limit: INBOX_LIMITS.conversationsPage, ...(before ? { before } : {}) });
         conversations += res.items.length;
         unread += res.items.reduce((sum, c) => sum + (Number.isFinite(c.unread) ? c.unread : 0), 0);
         if (!res.nextBefore) break;
         before = res.nextBefore;
+        truncated = page === SUMMARY_PAGES - 1;
       }
-      return { summary: { available: true, enabled: true, conversations, unread }, state: 'ready' };
+      return { summary: { available: true, enabled: true, conversations, unread, truncated }, state: 'ready' };
     } catch (error) {
       if (error instanceof FeatureUnavailableError) {
         return { summary: { available: false, enabled: false, ...EMPTY }, state: 'unavailable' };

@@ -678,7 +678,7 @@ Importing contacts messages people who never wrote in, so it needs the inbox swi
 #### WhatsApp inbox
 
 Only in clients that draw MCP Apps. `open_whatsapp_inbox` opens the inbox in a view, and the model
-receives `{ available, enabled, conversations, unread }` and nothing else: names, phones and message
+receives `{ available, enabled, conversations, unread, truncated }` (`truncated`: the counts stopped at the newest 200 conversations) and nothing else: names, phones and message
 text only ever reach the view, through app-only tools (`list_whatsapp_conversations`,
 `list_whatsapp_messages`, `send_whatsapp_reply`, `mark_whatsapp_conversation_read`,
 `get_whatsapp_conversation_funnel`, `start_whatsapp_conversation_funnel`,

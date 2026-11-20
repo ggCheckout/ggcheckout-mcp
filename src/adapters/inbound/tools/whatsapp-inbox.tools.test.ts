@@ -87,21 +87,21 @@ describe('open_whatsapp_inbox', () => {
   };
   const allText = (result: any) => JSON.stringify([result.content, result.structuredContent]);
 
-  it('gives the model four fields, in text and in structured content, and nothing else', async () => {
-    const result = await open({ available: true, enabled: true, conversations: 3, unread: 5 }, 'ready');
-    expect(result.structuredContent).toEqual({ available: true, enabled: true, conversations: 3, unread: 5 });
-    expect(JSON.parse((result.content as any)[0].text)).toEqual({ available: true, enabled: true, conversations: 3, unread: 5 });
+  it('gives the model five fields, in text and in structured content, and nothing else', async () => {
+    const result = await open({ available: true, enabled: true, conversations: 3, unread: 5, truncated: false }, 'ready');
+    expect(result.structuredContent).toEqual({ available: true, enabled: true, conversations: 3, unread: 5, truncated: false });
+    expect(JSON.parse((result.content as any)[0].text)).toEqual({ available: true, enabled: true, conversations: 3, unread: 5, truncated: false });
   });
 
   it('carries no name, phone or message text even if the service returned them', async () => {
     const result = await open({
-      available: true, enabled: true, conversations: 1, unread: 1,
+      available: true, enabled: true, conversations: 1, unread: 1, truncated: false,
       items: [{ contactKey: KEY, name: 'Ana Souza', lastText: 'meu pedido atrasou' }],
       name: 'Ana Souza', phone: KEY, text: 'meu pedido atrasou',
     }, 'ready');
     const text = allText(result);
     for (const leaked of ['Ana', KEY, 'atrasou', 'items', 'contactKey']) expect(text).not.toContain(leaked);
-    expect(Object.keys(result.structuredContent as object).sort()).toEqual(['available', 'conversations', 'enabled', 'unread']);
+    expect(Object.keys(result.structuredContent as object).sort()).toEqual(['available', 'conversations', 'enabled', 'truncated', 'unread']);
   });
 
   it('does not call the conversation tools: counts come from the service summary alone', async () => {

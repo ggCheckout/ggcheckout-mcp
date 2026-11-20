@@ -11,7 +11,7 @@ const APP_ONLY = 'App only: the WhatsApp inbox view calls it, the model does not
 /** What the model is told after `open_whatsapp_inbox`: the seller's next step, never a conversation. */
 const NOTES: Record<InboxState, string> = {
   ready: 'A caixa de entrada do WhatsApp está aberta na tela do chat, onde o lojista lê e responde. Você só tem as contagens acima: '
-    + 'não há nomes, telefones nem textos de conversa no seu contexto. Responda em uma frase com as contagens.',
+    + 'não há nomes, telefones nem textos de conversa no seu contexto. Responda em uma frase com as contagens; com truncated true, elas são das 200 conversas mais recentes e há mais.',
   off: 'O acesso do MCP à caixa está desligado. Diga ao lojista para ligar "Permitir acesso pelo MCP" nas configurações da '
     + 'caixa de entrada, no painel (só ele pode ligar), e pedir de novo.',
   unavailable: 'A caixa de entrada do WhatsApp ainda não está disponível nesta conta. Diga isso ao lojista.',
@@ -40,9 +40,9 @@ export function registerWhatsAppInboxTools(server: McpServer, service: WhatsAppI
       const handled = await createToolHandler('open_whatsapp_inbox', async () => {
         const answer = await service.summarize();
         state = answer.state;
-        const { available, enabled, conversations, unread }: InboxSummary = answer.summary;
-        // Four fields by name: nothing else the service returns can reach the model.
-        return { available, enabled, conversations, unread };
+        const { available, enabled, conversations, unread, truncated }: InboxSummary = answer.summary;
+        // Five fields by name: nothing else the service returns can reach the model.
+        return { available, enabled, conversations, unread, truncated };
       })({});
       if (handled.isError) return handled;
       return { ...handled, content: [handled.content[0], { type: 'text', text: NOTES[state] }, ...handled.content.slice(1)] };
