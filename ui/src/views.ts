@@ -8,6 +8,7 @@ import { summarizeDownsells, summarizeUpsells } from './offers/model';
 import { summarizeFlow, summarizeFlowList } from './telegram/model';
 import { summarizeChip, summarizeChips, summarizePairing } from './chips/model';
 import { summarizeInbox } from './inbox/model';
+import { summarizeOperation, summarizeOperations } from './operations/model';
 import { summarizeArea, summarizeCarousels, summarizeLessons, summarizeModules } from './members/model';
 import { summarizeFunnelConversion, summarizeFunnelStats } from './funnel/model';
 import { summarizePayment, summarizePaymentsPage } from './payments/model';
@@ -16,7 +17,7 @@ import { summarizePayApi } from './payapi/model';
 import { summarizeDiagnosis, summarizeGuide } from './tracking/model';
 import { summarizeLink } from './utm/model';
 
-export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'members' | 'telegram' | 'chips' | 'pix' | 'payapi' | 'tracking' | 'utm' | 'inbox';
+export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'members' | 'telegram' | 'chips' | 'pix' | 'payapi' | 'tracking' | 'utm' | 'inbox' | 'operations';
 
 /** Tools with a view (their `_meta.ui.resourceUri` is ui://ggcheckout/app.html) and the view each draws. */
 export const TOOL_VIEWS: Record<string, ViewName> = {
@@ -53,6 +54,8 @@ export const TOOL_VIEWS: Record<string, ViewName> = {
   list_whatsapp_numbers: 'chips',
   get_whatsapp_number: 'chips',
   get_pairing_code: 'chips',
+  list_whatsapp_sessions: 'operations',
+  get_whatsapp_session: 'operations',
   create_pix_charge: 'pix',
   get_payment_intent: 'pix',
   add_credit: 'pix',
@@ -97,6 +100,7 @@ export function pickView(toolName: string | undefined, payload: unknown): ViewNa
   if (summarizeArea(payload) || summarizeCarousels(payload) || summarizeModules(payload) || summarizeLessons(payload)) return 'members';
   if (summarizeFlow(payload) || summarizeFlowList(payload)) return 'telegram';
   if (summarizeChip(payload) || summarizeChips(payload) || summarizePairing(payload)) return 'chips';
+  if (summarizeOperation(payload) || summarizeOperations(payload)) return 'operations';
   // Before payapi: its limits reading takes any `available: false` for itself, and the inbox answers one when the account lacks it.
   if (summarizeInbox(payload)) return 'inbox';
   if (summarizePayApi(payload)) return 'payapi';

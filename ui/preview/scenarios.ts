@@ -2,6 +2,7 @@ import {
   billingBalance, billingStatus, membersArea, chips, chipDetail, telegramFlows, telegramFlowVisual, telegramFlowBasic, memberCarousels, memberModules, memberLessons, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
   payApiLimits, payApiLimitsUnavailable, payApiWallets, payApiIntents, trackingGuide, trackingDiagnosis, utmMeta, utmManual,
   inboxOpen, inboxOff, inboxUnavailable, inboxConversations, inboxMessages, inboxFunnels, inboxRun,
+  operations, products,
 } from './fixtures';
 
 export interface Scenario {
@@ -57,6 +58,8 @@ export const SCENARIOS: Scenario[] = [
   { id: 'chips', question: 'Quais chips do WhatsApp estão conectados?', tool: 'list_whatsapp_numbers', args: {}, result: chips },
   { id: 'chip-connect', question: 'Conecta meu chip Vendas 2', tool: 'get_whatsapp_number', args: { numberId: 'chip_vendas' }, result: chipDetail('chip_vendas') },
   { id: 'chip-dropped', question: 'Por que o chip Reserva não envia?', tool: 'get_whatsapp_number', args: { numberId: 'chip_reserva' }, result: chipDetail('chip_reserva') },
+  { id: 'operations', question: 'Como estão minhas operações do WhatsApp?', tool: 'list_whatsapp_sessions', args: {}, result: operations },
+  { id: 'operation', question: 'Abre a operação Método Aurora', tool: 'get_whatsapp_session', args: { sessionId: 'g1' }, result: { session: operations.sessions[0] } },
   { id: 'chip-code', question: 'Gera o código pra conectar o chip Vendas 2', tool: 'get_pairing_code', args: { numberId: 'chip_vendas', phoneNumber: '5531998778877' }, result: { success: true, code: 'K7QW2MZP' } },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'pix-canceled', question: 'Cancela a cobrança pi_preview…', tool: 'cancel_payment_intent', args: { id: 'pi_preview0000000000000001' }, result: { ...paymentIntent('requires_action'), status: 'canceled' } },
@@ -74,6 +77,23 @@ export const SCENARIOS: Scenario[] = [
   { id: 'topup', question: 'Coloca R$ 100 de crédito', tool: 'add_credit', args: { amountCents: 10000 }, result: creditTopup },
   { id: 'invoice-pix', question: 'Gera o PIX da fatura em aberto', tool: 'pay_invoice', args: { invoiceId: invoices[0].id }, result: invoicePix },
 ];
+
+type PreviewOperation = (typeof operations.sessions)[number];
+/** The operations as the preview's writes leave them, so a second write builds on the first. */
+const operationStore = new Map<string, PreviewOperation>(
+  operations.sessions.map((s) => [s.uid, { ...s, fallbackNumberIds: [...s.fallbackNumberIds], assignedProducts: [...s.assignedProducts] }]),
+);
+const operationOf = (id: unknown): PreviewOperation => operationStore.get(String(id)) ?? operationStore.get('g1')!;
+
+/** remove_whatsapp_session_number: the primary's removal promotes the first fallback. */
+function removeChip(op: PreviewOperation, numberId: string): PreviewOperation {
+  if (op.primaryNumberId === numberId) {
+    const [next, ...rest] = op.fallbackNumberIds;
+    if (!next) throw new Error('A operação precisa de pelo menos o chip principal');
+    return Object.assign(op, { primaryNumberId: next, fallbackNumberIds: rest });
+  }
+  return Object.assign(op, { fallbackNumberIds: op.fallbackNumberIds.filter((id) => id !== numberId) });
+}
 
 /** Answers the app's tools/call like the server would, from the same fixtures. */
 export function answerTool(name: string, args: Record<string, unknown>, polls: { count: number }): unknown {
@@ -110,7 +130,25 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'get_billing_status': return billingStatus;
     case 'check_whatsapp_numbers': return { summary: { total: 5, connected: 2, disconnected: 1, divergent: 1, synced: 1 }, numbers: [{ numberId: 'chip_reserva', displayName: 'Reserva', firebaseStatus: 'authenticated', firebaseIsActive: true, realStatus: 'disconnected', diverged: true }] };
     case 'list_whatsapp_numbers': return chips;
-    case 'list_whatsapp_sessions': return { sessions: [{ uid: 'g1', name: 'Método Aurora', primaryNumberId: 'chip_suporte', fallbackNumberIds: ['chip_vendas'] }, { uid: 'g2', name: 'Mentoria', primaryNumberId: 'chip_vendas', fallbackNumberIds: ['chip_suporte'] }] };
+    case 'list_whatsapp_sessions': return { sessions: [...operationStore.values()] };
+    case 'get_whatsapp_session': return { session: operationOf(args.sessionId) };
+    case 'update_whatsapp_session': {
+      const op = operationOf(args.sessionId);
+      if (typeof args.primaryNumberId === 'string') Object.assign(op, { primaryNumberId: args.primaryNumberId, fallbackNumberIds: args.fallbackNumberIds as string[] });
+      return { success: true, session: op };
+    }
+    case 'add_whatsapp_session_number': {
+      const op = operationOf(args.sessionId);
+      op.fallbackNumberIds = [...op.fallbackNumberIds, String(args.numberId)];
+      return { success: true, session: op };
+    }
+    case 'remove_whatsapp_session_number': return { success: true, session: removeChip(operationOf(args.sessionId), String(args.numberId)) };
+    case 'set_whatsapp_session_products': {
+      const op = operationOf(args.sessionId);
+      op.assignedProducts = [...(args.productIds as string[])];
+      return { success: true, session: op };
+    }
+    case 'list_products': return products;
     case 'get_pairing_code': return { success: true, code: 'K7QW2MZP' };
     case 'update_whatsapp_number': return { success: true, ...chipDetail(String(args.numberId)), number: { ...chipDetail(String(args.numberId)).number, isActive: args.isActive } };
     case 'restart_whatsapp_number': return { message: 'Chip reiniciado', numberId: args.numberId };

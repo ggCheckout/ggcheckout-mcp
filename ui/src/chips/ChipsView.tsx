@@ -17,7 +17,8 @@ const POLL_MS = 4000;
 const POLL_FOR_MS = 3 * 60 * 1000;
 
 
-function Status({ chip }: { chip: Chip }) {
+/** WaStatus: the chip's state as a dot and a word (also drawn by the operations view). */
+export function Status({ chip }: { chip: Chip }) {
   const { label, tone, pulse } = chipStatus(chip.status, chip.isActive);
   return <span className="ch-status" data-tone={tone}><span className="ch-dot" data-pulse={pulse || undefined} aria-hidden />{label}</span>;
 }
@@ -138,24 +139,24 @@ function PairPanel({ host, chip, firstCode, onConnected }: {
   );
 }
 
-/** ChipConnectedCard: the sessions that use the chip and its role in each. */
+/** ChipConnectedCard: the operations that use the chip and its role in each. */
 function UsedBy({ uses }: { uses: NonNullable<Chip['usedBy']> }) {
   return (
     <section className="ch-panel">
-      <h3 className="ch-panel-title">Sessões que usam este chip</h3>
-      <p className="ch-hint">Cada sessão define em qual papel (principal ou reserva) o chip atua.</p>
+      <h3 className="ch-panel-title">Operações que usam este chip</h3>
+      <p className="ch-hint">Cada operação define em qual papel (principal ou reserva) o chip atua.</p>
       {uses.length ? (
         <ul className="ch-uses">
           {uses.map((u) => <li key={u.sessionId}><span>{u.name}</span><span className="ch-tag">{u.role === 'primary' ? 'Principal' : 'Reserva'}</span></li>)}
         </ul>
       ) : (
-        <p className="ch-note">Este chip ainda não está vinculado a nenhuma sessão. Vá em <strong>Sessões</strong> pra atribuir.</p>
+        <p className="ch-note">Este chip ainda não está em nenhuma operação. Vá em <strong>Operações</strong> pra atribuir.</p>
       )}
     </section>
   );
 }
 
-/** ChipDetailPage: the chip, connecting it with a code, its sessions, and "Reiniciar" behind a confirmation. */
+/** ChipDetailPage: the chip, connecting it with a code, its operations, and "Reiniciar" behind a confirmation. */
 function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onChange }: {
   host: Host; first: Chip; firstCode?: string | null; canCallTools: boolean; onBack?: () => void; onChange?: (chip: Chip) => void;
 }) {
@@ -248,7 +249,7 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
           <ConfirmPanel
             label={chip.isActive ? 'Desativar chip' : 'Reativar chip'}
             tone={chip.isActive ? 'warning' : undefined}
-            message={chip.isActive ? 'Desativar faz este chip parar de enviar mensagens até ser reativado.' : 'Reativar faz este chip voltar a enviar mensagens pelas sessões que o usam.'}
+            message={chip.isActive ? 'Desativar faz este chip parar de enviar mensagens até ser reativado.' : 'Reativar faz este chip voltar a enviar mensagens pelas operações que o usam.'}
             confirmLabel={chip.isActive ? 'Desativar' : 'Reativar'}
             busyLabel={chip.isActive ? 'Desativando…' : 'Reativando…'}
             busy={busy}
@@ -258,7 +259,7 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
         )}
         {error && <p className="ch-alert" role="alert">{error}</p>}
         {chip.errorMessage && ['error', 'banned', 'disconnected'].includes(chip.status) && <p className="ch-alert">{chip.errorMessage}</p>}
-        {!chip.isActive && <p className="ch-note">Este chip está desativado e não envia por nenhuma sessão.</p>}
+        {!chip.isActive && <p className="ch-note">Este chip está desativado e não envia por nenhuma operação.</p>}
         {canCallTools && canPair(chip) && (
           <PairPanel key={round} host={host} chip={chip} firstCode={round === 0 ? firstCode : null} onConnected={setChip} />
         )}
@@ -271,7 +272,7 @@ function ChipDetail({ host, first, firstCode = null, canCallTools, onBack, onCha
   );
 }
 
-/** ChipsGrid, as rows: name, number, provider, status and how many sessions use the chip. */
+/** ChipsGrid, as rows: name, number, provider, status and how many operations use the chip. */
 function ChipsList({ chips, sessions, canOpen, busyId, onOpen, checking, health, onCheck }: {
   chips: Chip[]; sessions: Record<string, string> | null; canOpen: boolean; busyId: string | null; onOpen: (chip: Chip) => void;
   checking: boolean; health: HealthOutcome | null; onCheck: () => void;
@@ -287,7 +288,7 @@ function ChipsList({ chips, sessions, canOpen, busyId, onOpen, checking, health,
             </button>
           )}
         </div>
-        <p className="card-sub">Cada chip é uma conexão WhatsApp: API Oficial (Meta) ou QR Code. Atribua a uma sessão pra usar em envios.</p>
+        <p className="card-sub">Cada chip é uma conexão WhatsApp: API Oficial (Meta) ou QR Code. Atribua a uma operação pra usar em envios.</p>
       </header>
       {health && (
         <div className="ch-health" data-tone={health.tone} role="status">
@@ -308,7 +309,7 @@ function ChipsList({ chips, sessions, canOpen, busyId, onOpen, checking, health,
                 <span className="ch-row-side">
                   <Status chip={c} />
                   {sessions && <span className="ch-session" data-none={!sessions[c.id] || undefined}>{sessions[c.id] ?? 'Não vinculado'}</span>}
-                  <span className="ch-count num">{plural(c.sessionsCount, 'sessão', 'sessões')}</span>
+                  <span className="ch-count num">{plural(c.sessionsCount, 'operação', 'operações')}</span>
                 </span>
                 {canOpen && <ChevronRight size={16} className="ch-chevron" aria-hidden />}
               </>
@@ -354,7 +355,7 @@ export function ChipsView({ host, state }: { host: Host; state: HostSnapshot }) 
       .catch(() => setFailed(true));
   }, [host, parts.code, numberId, state.canCallTools]);
 
-  // The list's "Sessão": the first session that uses each chip, read once.
+  // The list's "Operação": the first operation that uses each chip, read once.
   useEffect(() => {
     if (!parts.chips || !state.canCallTools) return;
     host.callTool('list_whatsapp_sessions', {}).then((data) => setSessions(sessionByChip(data))).catch(() => setSessions(null));

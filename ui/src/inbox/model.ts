@@ -284,7 +284,7 @@ export type StartOutcome = { kind: 'started'; run: Run | null } | { kind: 'refus
 
 const START_REFUSALS: Record<string, string> = {
   opted_out: 'Este contato não recebe mais envios. Volte a enviar antes de rodar um funil.',
-  product_without_session: 'O produto deste contato não tem uma sessão que o atenda.',
+  product_without_session: 'O produto deste contato não está em nenhuma operação.',
 };
 
 /** start_whatsapp_conversation_funnel's answer: the run, or why the contact was not enrolled. */

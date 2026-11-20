@@ -8,9 +8,9 @@ import { appMeta, withDrawnNote } from '../apps/apps.js';
 const IN_DASHBOARD = 'Creating or deleting it is refused to API keys by design (403): that happens in the dashboard.';
 
 const sessionIds = z.array(z.string()).max(50)
-  .describe('Sessions (ids from list_whatsapp_sessions) the template sends for. Empty leaves it unlinked: it never fires');
+  .describe('Operations (session ids from list_whatsapp_sessions) the template sends for. Empty leaves it unlinked: it never fires');
 const templateFields = {
-  attachedProducts: z.array(z.string()).max(100).optional().describe('Only for these product IDs; absent means every product of the sessions'),
+  attachedProducts: z.array(z.string()).max(100).optional().describe('Only for these product IDs; absent means every product of the operations'),
   customFileUrl: z.string().url().optional().describe('Custom file URL (for text_with_file)'),
   customImageUrl: z.string().url().optional().describe('Custom image URL (for text_with_image)'),
   delayMinutes: z.number().min(0).max(525600).optional().describe('Delay in minutes before sending'),
@@ -23,24 +23,25 @@ const templateFields = {
 };
 
 /**
- * WhatsApp as the dashboard models it: chips are the connected numbers, and a session is a primary
- * chip with up to two fallbacks that sends for a set of products. Templates belong to sessions.
+ * WhatsApp as the dashboard models it: chips are the connected numbers, and an operation (a session in
+ * the API) is a primary chip with up to two fallbacks that sends for a set of products. Templates belong
+ * to operations.
  */
 export function registerWhatsAppTools(server: McpServer, service: WhatsAppService) {
   // --- Chips ---
   server.registerTool('list_whatsapp_numbers', {
-    description: `List the WhatsApp chips (connected numbers): status (pending, qr_code, authenticated, disconnected, banned, error), provider (waha = QR code, meta = official API), isActive and how many sessions use each. ${IN_DASHBOARD}`,
+    description: `List the WhatsApp chips (connected numbers): status (pending, qr_code, authenticated, disconnected, banned, error), provider (waha = QR code, meta = official API), isActive and how many operations (sessions) use each. ${IN_DASHBOARD}`,
     _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('list_whatsapp_numbers', async () => ({ numbers: await service.listNumbers() }))));
 
   server.registerTool('get_whatsapp_number', {
-    description: 'Get a WhatsApp chip with its live status and the sessions that use it (usedBy, with its role: primary or fallback)',
+    description: 'Get a WhatsApp chip with its live status and the operations (sessions) that use it (usedBy, with its role: primary or fallback)',
     inputSchema: { numberId: z.string().describe('Chip ID (from list_whatsapp_numbers)') },
     _meta: appMeta(),
   }, withDrawnNote(server, createToolHandler('get_whatsapp_number', async ({ numberId }) => ({ number: await service.getNumber(numberId) }))));
 
   server.registerTool('update_whatsapp_number', {
-    description: 'Turn a WhatsApp chip on or off. An inactive chip does not send for any session',
+    description: 'Turn a WhatsApp chip on or off. An inactive chip does not send for any operation',
     inputSchema: {
       numberId: z.string().describe('Chip ID'),
       isActive: z.boolean().describe('true to send with it, false to pause it'),
@@ -73,25 +74,26 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
       + 'Answers a summary (total, connected, disconnected, divergent) and each chip\'s stored and real status',
   }, createToolHandler('check_whatsapp_numbers', async () => service.checkNumbersHealth()));
 
-  // --- Sessions ---
-  server.tool('list_whatsapp_sessions',
-    `List the WhatsApp sessions: each sends for its assignedProducts with its primary chip (primaryNumberId) and up to two fallbacks in order (fallbackNumberIds). ${IN_DASHBOARD}`,
-    createToolHandler('list_whatsapp_sessions', async () => ({ sessions: await service.listSessions() })),
-  );
+  // --- Operations (the API calls them sessions) ---
+  server.registerTool('list_whatsapp_sessions', {
+    description: `List the WhatsApp operations (the dashboard's "Operações"; sessions in the API): each sends for its assignedProducts with its primary chip (primaryNumberId) and up to two fallbacks in order (fallbackNumberIds). ${IN_DASHBOARD}`,
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_whatsapp_sessions', async () => ({ sessions: await service.listSessions() }))));
 
   server.registerTool('get_whatsapp_session', {
-    description: 'Get a WhatsApp session: its chips (primary and fallbacks), products and whether it is active',
-    inputSchema: { sessionId: z.string().describe('Session ID (from list_whatsapp_sessions)') },
-  }, createToolHandler('get_whatsapp_session', async ({ sessionId }) => ({ session: await service.getSession(sessionId) })));
+    description: 'Get a WhatsApp operation (session): its chips (primary and fallbacks), products and whether it is active',
+    inputSchema: { sessionId: z.string().describe('Operation ID (from list_whatsapp_sessions)') },
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_whatsapp_session', async ({ sessionId }) => ({ session: await service.getSession(sessionId) }))));
 
   server.registerTool('update_whatsapp_session', {
     description:
-      'Rename, pause or resume a WhatsApp session, or set its chips. primaryNumberId and fallbackNumberIds go together: '
-      + 'send both to reorder or swap roles. A paused session sends with none of its chips',
+      'Rename, pause or resume a WhatsApp operation (session), or set its chips. primaryNumberId and fallbackNumberIds go together: '
+      + 'send both to reorder or swap roles. A paused operation sends with none of its chips',
     inputSchema: {
-      sessionId: z.string().describe('Session ID'),
-      name: z.string().min(1).max(60).optional().describe('Session name'),
-      isActive: z.boolean().optional().describe('false pauses the session'),
+      sessionId: z.string().describe('Operation ID'),
+      name: z.string().min(1).max(60).optional().describe('Operation name'),
+      isActive: z.boolean().optional().describe('false pauses the operation'),
       primaryNumberId: z.string().optional().describe('Chip that sends first'),
       fallbackNumberIds: z.array(z.string()).max(2).optional().describe('Up to two chips that take over, in order'),
     },
@@ -100,7 +102,7 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   })));
 
   server.registerTool('add_whatsapp_session_number', {
-    description: 'Add a chip to a WhatsApp session, as its last fallback (at most two fallbacks)',
+    description: 'Add a chip to a WhatsApp operation (session), as its last fallback (at most two fallbacks)',
     inputSchema: {
       sessionId: z.string().describe('Session ID'),
       numberId: z.string().describe('Chip ID'),
@@ -110,7 +112,7 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   })));
 
   server.registerTool('remove_whatsapp_session_number', {
-    description: 'Remove a chip from a WhatsApp session. Removing the primary promotes the first fallback; the last chip cannot be removed',
+    description: 'Remove a chip from a WhatsApp operation (session). Removing the primary promotes the first fallback; the last chip cannot be removed',
     inputSchema: {
       sessionId: z.string().describe('Session ID'),
       numberId: z.string().describe('Chip ID'),
@@ -120,10 +122,10 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   })));
 
   server.registerTool('set_whatsapp_session_products', {
-    description: 'Set the products a WhatsApp session sends for. Replaces the whole list: send every product to keep',
+    description: 'Set the products a WhatsApp operation (session) sends for. Replaces the whole list: send every product to keep',
     inputSchema: {
       sessionId: z.string().describe('Session ID'),
-      productIds: z.array(z.string()).max(500).describe('Product IDs; an empty list leaves the session without products'),
+      productIds: z.array(z.string()).max(500).describe('Product IDs; an empty list leaves the operation without products'),
     },
   }, createToolHandler('set_whatsapp_session_products', async ({ sessionId, productIds }) => ({
     success: true, session: await service.setSessionProducts(sessionId, productIds),
@@ -131,9 +133,9 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
 
   // --- Templates ---
   server.registerTool('list_whatsapp_templates', {
-    description: 'List WhatsApp message templates, optionally only those of one session',
+    description: 'List WhatsApp message templates, optionally only those of one operation (session)',
     inputSchema: {
-      sessionId: z.string().optional().describe('Session ID (from list_whatsapp_sessions)'),
+      sessionId: z.string().optional().describe('Operation ID (from list_whatsapp_sessions)'),
     },
   }, createToolHandler('list_whatsapp_templates', async ({ sessionId }) => {
     const templates = await service.listTemplates(sessionId);
@@ -141,7 +143,7 @@ export function registerWhatsAppTools(server: McpServer, service: WhatsAppServic
   }));
 
   server.registerTool('create_whatsapp_template', {
-    description: 'Create a WhatsApp message template for a payment event, sent by the sessions it is linked to',
+    description: 'Create a WhatsApp message template for a payment event, sent by the operations (sessions) it is linked to',
     inputSchema: {
       sessionIds,
       eventType: z.enum(PAYMENT_EVENT_TYPES).describe('Payment event that triggers this template'),

@@ -37,7 +37,7 @@ export interface Chip {
   provider: 'waha' | 'meta';
   status: string;
   isActive: boolean;
-  /** How many sessions use it (list) or, on one chip, the sessions themselves. */
+  /** How many operations (sessions in the API) use it (list) or, on one chip, the operations themselves. */
   sessionsCount: number;
   usedBy: ChipUse[] | null;
   errorMessage: string | null;
@@ -47,7 +47,7 @@ function toChip(n: Payload): Chip {
   const usedBy = Array.isArray(n.usedBy)
     ? n.usedBy.filter(isPayload).map((u) => ({
       sessionId: String(u.groupId ?? ''),
-      name: text(u.name) ?? 'Sessão',
+      name: text(u.name) ?? 'Operação',
       role: u.role === 'fallback' ? 'fallback' as const : 'primary' as const,
     }))
     : null;
@@ -122,7 +122,7 @@ export function phoneLabel(masked: string | null): string {
 }
 
 /**
- * ChipsSection groupLookupByChipId: each chip's first session, primary or fallback, from
+ * ChipsSection groupLookupByChipId: each chip's first operation, primary or fallback, from
  * list_whatsapp_sessions `{ sessions }`; null for anything else.
  */
 export function sessionByChip(data: unknown): Record<string, string> | null {
@@ -131,7 +131,7 @@ export function sessionByChip(data: unknown): Record<string, string> | null {
   for (const s of data.sessions.filter(isPayload)) {
     const ids = [s.primaryNumberId, ...(Array.isArray(s.fallbackNumberIds) ? s.fallbackNumberIds : [])];
     for (const id of ids) {
-      if (typeof id === 'string' && id && !(id in map)) map[id] = text(s.name) ?? 'Sessão';
+      if (typeof id === 'string' && id && !(id in map)) map[id] = text(s.name) ?? 'Operação';
     }
   }
   return map;

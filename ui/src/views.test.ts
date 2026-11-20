@@ -44,6 +44,9 @@ describe('pickView', () => {
     expect(pickView(undefined, { numbers: [] })).toBe('chips');
     expect(pickView(undefined, { number: { uid: 'c1', provider: 'waha', status: 'pending' } })).toBe('chips');
     expect(pickView(undefined, { success: true, code: 'ABCD1234' })).toBe('chips');
+    expect(pickView(undefined, { sessions: [{ uid: 'g1', primaryNumberId: 'c1' }] })).toBe('operations');
+    expect(pickView(undefined, { success: true, session: { uid: 'g1', primaryNumberId: 'c1' } })).toBe('operations');
+    expect(pickView('list_whatsapp_sessions', {})).toBe('operations');
     expect(pickView(undefined, { anything: true })).toBeNull();
   });
 

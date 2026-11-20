@@ -422,18 +422,41 @@ export const chips = {
   numbers: [
     { uid: 'chip_suporte', provider: 'waha', displayName: 'Suporte', status: 'authenticated', phoneNumber: '*********4321', isActive: true, groupsCount: 2 },
     { uid: 'chip_vendas', provider: 'waha', displayName: 'Vendas 2', status: 'pending', phoneNumber: '*********8877', isActive: true, groupsCount: 1 },
-    { uid: 'chip_oficial', provider: 'meta', displayName: 'Oficial GG', status: 'authenticated', phoneNumber: '*******0000', isActive: true, groupsCount: 0 },
-    { uid: 'chip_reserva', provider: 'waha', displayName: 'Reserva', status: 'disconnected', phoneNumber: '*********2222', isActive: true, groupsCount: 0 },
-    { uid: 'chip_antigo', provider: 'waha', displayName: '', status: 'banned', phoneNumber: '*********1111', isActive: false, groupsCount: 0 },
+    { uid: 'chip_oficial', provider: 'meta', displayName: 'Oficial GG', status: 'authenticated', phoneNumber: '*******0000', isActive: true, groupsCount: 2 },
+    { uid: 'chip_reserva', provider: 'waha', displayName: 'Reserva', status: 'disconnected', phoneNumber: '*********2222', isActive: true, groupsCount: 1 },
+    { uid: 'chip_antigo', provider: 'waha', displayName: '', status: 'banned', phoneNumber: '*********1111', isActive: false, groupsCount: 1 },
   ],
 };
 export const chipDetail = (id: string, status?: string) => {
   const base = chips.numbers.find((c) => c.uid === id) ?? chips.numbers[1];
-  const usedBy = base.uid === 'chip_suporte'
-    ? [{ groupId: 'g1', name: 'Método Aurora', role: 'primary' }, { groupId: 'g2', name: 'Mentoria', role: 'fallback' }]
-    : base.uid === 'chip_vendas' ? [{ groupId: 'g1', name: 'Método Aurora', role: 'fallback' }] : [];
+  // Who uses each chip, as `operations` below has them.
+  const usedBy = operations.sessions.flatMap((s) => {
+    if (s.primaryNumberId === base.uid) return [{ groupId: s.uid, name: s.name, role: 'primary' }];
+    return s.fallbackNumberIds.includes(base.uid) ? [{ groupId: s.uid, name: s.name, role: 'fallback' }] : [];
+  });
   const { groupsCount: _count, ...rest } = base;
   return { number: { ...rest, status: status ?? base.status, usedBy } };
+};
+
+// WhatsApp operations (list_whatsapp_sessions; the API calls them sessions), over the chips above:
+// Método Aurora sends on its primary, Mentoria fell back to a reserve, Suporte lost its reserve and
+// Teste waha has no chip that sends.
+export const operations = {
+  sessions: [
+    { uid: 'g1', name: 'Método Aurora', primaryNumberId: 'chip_suporte', fallbackNumberIds: ['chip_oficial'], assignedProducts: ['prod_aurora', 'prod_aurora_vip'], isActive: true },
+    { uid: 'g2', name: 'Mentoria', primaryNumberId: 'chip_vendas', fallbackNumberIds: ['chip_suporte'], assignedProducts: ['prod_mentoria'], isActive: true },
+    { uid: 'g3', name: 'Suporte', primaryNumberId: 'chip_oficial', fallbackNumberIds: ['chip_reserva'], assignedProducts: ['prod_ebook'], isActive: true },
+    { uid: 'g4', name: 'Teste waha', primaryNumberId: 'chip_antigo', fallbackNumberIds: [], assignedProducts: [], isActive: false },
+  ],
+};
+export const products = {
+  products: [
+    { uid: 'prod_aurora', title: 'Método Aurora', price: 497 },
+    { uid: 'prod_aurora_vip', title: 'Método Aurora VIP', price: 997 },
+    { uid: 'prod_mentoria', title: 'Mentoria em grupo', price: 1497 },
+    { uid: 'prod_ebook', title: 'E-book Primeiros Passos', price: 27 },
+    { uid: 'prod_planilha', title: 'Planilha de metas', price: 19.9 },
+  ],
 };
 
 // ---- Payments API cards (invented) ----

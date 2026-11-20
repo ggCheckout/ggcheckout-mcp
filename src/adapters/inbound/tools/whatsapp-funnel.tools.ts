@@ -27,7 +27,7 @@ const funnelFields = {
     .describe(`Funnel name, up to ${L.maxName} characters`),
   trigger: z.enum(FUNNEL_TRIGGERS)
     .describe('What starts it: abandoned_cart, pix_unpaid, pix_expired, card_refused, card_cancelled, or manual (only runs when the seller starts it in an inbox conversation). One enabled funnel per automatic trigger'),
-  sessionGroupId: guid().describe('WhatsApp session (id from list_whatsapp_sessions) that sends. Required for a manual funnel; an automatic funnel sends by the session of each product and ignores it'),
+  sessionGroupId: guid().describe('WhatsApp operation (session id from list_whatsapp_sessions) that sends. Required for a manual funnel; an automatic funnel sends by the operation of each product and ignores it'),
   stopOnReply: z.boolean().describe('Stop when the contact replies (a purchase always stops it)'),
   sendWindow: z.object({
     start: z.number().int().min(0).max(23),
@@ -72,7 +72,7 @@ export function registerWhatsAppFunnelTools(server: McpServer, service: WhatsApp
       'Create a WhatsApp funnel: up to 5 messages with a wait between them, sent to one contact by a trigger '
       + '(abandoned cart, unpaid or expired PIX, refused or cancelled card) or by hand (manual). A new funnel may be '
       + 'created already enabled (the answer says isEnabled), and an enabled automatic funnel sends on its own, so confirm '
-      + 'the messages with the seller first. A manual funnel needs a session',
+      + 'the messages with the seller first. A manual funnel needs an operation',
     inputSchema: { ...funnelFields, layout: funnelFields.layout.optional(), sessionGroupId: funnelFields.sessionGroupId.optional() },
   }, createToolHandler('create_whatsapp_funnel', async (input) => ({ success: true, funnel: await service.create(input) })));
 
