@@ -56,3 +56,9 @@ export function formatDateTime(iso: string | null, { separator = ' ', seconds = 
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
+
+/** At most `max` characters, counted in code points so an emoji is never split, with "…" when cut. */
+export function cutText(value: string, max: number): string {
+  const chars = Array.from(value);
+  return chars.length > max ? `${chars.slice(0, max).join('').trimEnd()}…` : value;
+}

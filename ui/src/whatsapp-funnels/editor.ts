@@ -3,6 +3,7 @@
 // sends the whole funnel (update_whatsapp_funnel / create_whatsapp_funnel), so the draft carries every
 // field the route replaces. Pure.
 
+import { cutText } from '../lib/format';
 import {
   AFTER_EVENT, TRIGGER_LABEL, formatWait,
   type FunnelDetail, type FunnelLayout, type FunnelStep, type FunnelTrigger, type StoreStyle,
@@ -269,11 +270,9 @@ export const stopDetail = (stopOnReply: boolean): string => (stopOnReply
   ? 'Para quando o cliente comprou ou respondeu, ou quando você para os funis dele na caixa.'
   : 'Para quando o cliente comprou, ou quando você para os funis dele na caixa.');
 
-/** The first line of a message for its block, cut at `max` code points. */
+/** The message on one line for its block, at most `max` code points before the "…". */
 export function excerpt(text: string, max = 70): string {
-  const line = text.replace(/\s+/g, ' ').trim();
-  const points = Array.from(line);
-  return points.length > max ? `${points.slice(0, max - 1).join('').trimEnd()}…` : line;
+  return cutText(text.replace(/\s+/g, ' ').trim(), max);
 }
 
 /** Builds the step a palette item puts in, under the given local key. */

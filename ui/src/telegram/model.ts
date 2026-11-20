@@ -3,6 +3,7 @@
 // get_telegram_flow is one flow's graph, laid out where the editor keeps each node, and
 // list_telegram_flows the bot's flows. Pure.
 
+import { cutText } from '../lib/format';
 import { type Payload, count, isPayload, text } from '../lib/payload';
 
 export type Category = 'triggers' | 'messages' | 'inputs' | 'logic' | 'commerce' | 'delivery' | 'actions';
@@ -110,10 +111,6 @@ export function describeConnections(flow: Flow): string[] {
 }
 
 const stripHtml = (s: string) => s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-const cut = (s: string, n: number) => {
-  const chars = Array.from(s);
-  return chars.length > n ? `${chars.slice(0, n).join('').trimEnd()}…` : s;
-};
 
 /** A delay in the way people say it: "45s", "15 min", "1 h". */
 export function formatSeconds(seconds: number): string {
@@ -128,21 +125,21 @@ export function nodePreview(type: string, d: Payload): string {
     case 'trigger_start': return text(d.command) ?? '/start';
     case 'trigger_message': return d.matchType === 'any' || !text(d.pattern) ? 'Qualquer mensagem' : String(d.pattern);
     case 'trigger_callback': return text(d.callbackData) ?? '';
-    case 'send_text': return text(d.text) ? cut(stripHtml(d.text), 60) : 'Texto vazio';
+    case 'send_text': return text(d.text) ? cutText(stripHtml(d.text), 60) : 'Texto vazio';
     case 'send_image': return text(d.caption) ?? 'Imagem';
     case 'send_video': return text(d.caption) ?? 'Vídeo';
     case 'send_document': return text(d.caption) ?? 'Documento';
     case 'send_audio': return text(d.caption) ?? 'Áudio';
     case 'send_location': return 'Localização no mapa';
     case 'send_typing': return formatSeconds(count(d.duration) || 2);
-    case 'ask_text': return text(d.prompt) ? cut(d.prompt, 60) : text(d.variableName) ?? '';
-    case 'ask_buttons': return text(d.prompt) ? cut(d.prompt, 60) : '';
+    case 'ask_text': return text(d.prompt) ? cutText(d.prompt, 60) : text(d.variableName) ?? '';
+    case 'ask_buttons': return text(d.prompt) ? cutText(d.prompt, 60) : '';
     case 'ask_form': return Array.isArray(d.fields) ? d.fields.map((f: Payload) => f?.label).filter(Boolean).join(', ') : '';
     case 'condition': return text(d.variable) ? `${d.variable} ${d.operator ?? ''} ${d.value ?? ''}`.trim() : 'Configurar condição';
     case 'delay': return formatSeconds(count(d.seconds));
     case 'set_variable': return text(d.variableName) ? `${d.variableName} = ${d.value ?? ''}` : '';
     case 'wait_timeout': return `Timeout: ${count(d.timeoutMinutes) || 5} min`;
-    case 'smart_delay': return text(d.message) ? cut(d.message, 40) : `${count(d.intervalMinutes) || 60}min × ${count(d.maxRetries) || 3} tentativas`;
+    case 'smart_delay': return text(d.message) ? cutText(d.message, 40) : `${count(d.intervalMinutes) || 60}min × ${count(d.maxRetries) || 3} tentativas`;
     case 'switch': return text(d.variable) ? `${d.variable} (${Array.isArray(d.cases) ? d.cases.length : 0} cases)` : 'Configurar switch';
     case 'goto': return text(d.targetNodeId) ? 'Redirecionamento configurado' : 'Selecionar bloco';
     case 'randomizer': return Array.isArray(d.paths) ? d.paths.map((p: Payload) => `${p?.label || '?'}: ${p?.weight}%`).join(', ') : '';
@@ -153,10 +150,10 @@ export function nodePreview(type: string, d: Payload): string {
       return id.includes('{{') ? 'Checkout dinâmico' : `Checkout ${id.slice(0, 8)}`;
     }
     case 'show_product': return text(d.productId) ?? 'Selecionar produto';
-    case 'deliver_group': return text(d.message) ? cut(d.message, 60) : 'Convite para o grupo';
-    case 'deliver_product': return text(d.message) ? cut(d.message, 60) : '';
+    case 'deliver_group': return text(d.message) ? cutText(d.message, 60) : 'Convite para o grupo';
+    case 'deliver_product': return text(d.message) ? cutText(d.message, 60) : '';
     case 'create_lead': return `Status: ${text(d.status) ?? 'lead'}`;
-    case 'send_webhook': return text(d.url) ? cut(d.url, 40) : 'Configurar URL';
+    case 'send_webhook': return text(d.url) ? cutText(d.url, 40) : 'Configurar URL';
     case 'tag_user': return Array.isArray(d.tags) && d.tags.length ? d.tags.join(', ') : 'Configurar tags';
     default: return '';
   }

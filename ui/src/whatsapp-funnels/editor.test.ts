@@ -106,7 +106,8 @@ describe('variables and the preview', () => {
 
   it('cuts by code points, so an emoji is never split', () => {
     expect(clipCodePoints('ab👋c', 3)).toBe('ab👋');
-    expect(excerpt('linha um\nlinha dois', 10)).toBe('linha um…');
+    expect(excerpt('linha um\nlinha dois', 10)).toBe('linha um l…');
+    expect(excerpt('dez letras', 10)).toBe('dez letras');
   });
 });
 
