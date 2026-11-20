@@ -22,3 +22,14 @@ describe('ChipsView detail actions', () => {
     expect(h.callTool).not.toHaveBeenCalled();
   });
 });
+
+describe('ChipsView list', () => {
+  it('mounts the status region of "Verificar status" empty, before any check, so the result is announced', () => {
+    const state: HostSnapshot = {
+      toolName: 'list_whatsapp_numbers', args: {}, colorMode: 'light', canCallTools: true, generation: 1,
+      payload: { numbers: [{ uid: 'c1', provider: 'waha', displayName: 'Suporte', status: 'authenticated', phoneNumber: '*********4321', isActive: true, groupsCount: 0 }] },
+    };
+    expect(renderToStaticMarkup(<ChipsView host={host()} state={state} />)).toContain('<div class="status-region" role="status"></div>');
+  });
+});
+

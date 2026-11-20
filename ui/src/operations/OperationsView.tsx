@@ -91,7 +91,7 @@ function ChipSlots({ op, chips, canEdit, busy, onMove, onRemove, onAdd }: {
 }
 
 /** The chips that can join: every chip of the account not already in the operation. */
-function ChipPicker({ op, chips, chipsFailed, onPick, onCancel }: {
+export function ChipPicker({ op, chips, chipsFailed, onPick, onCancel }: {
   op: Operation; chips: ChipsById | null; chipsFailed: boolean; onPick: (chip: Chip) => void; onCancel: () => void;
 }) {
   // A chip marked for removal is out of every choice, as in the dashboard.
@@ -125,7 +125,7 @@ function ChipPicker({ op, chips, chipsFailed, onPick, onCancel }: {
 }
 
 /** ProductPickerDialog, in place: the products not in the operation yet, with a search. */
-function ProductPicker({ products, assigned, onSave, onCancel }: {
+export function ProductPicker({ products, assigned, onSave, onCancel }: {
   /** undefined while list_products is read, null when it failed. */
   products: ProductOption[] | null | undefined; assigned: readonly string[]; onSave: (ids: string[]) => void; onCancel: () => void;
 }) {

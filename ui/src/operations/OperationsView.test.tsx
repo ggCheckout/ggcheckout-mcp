@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { Host, HostSnapshot } from '../host';
-import { OperationsView } from './OperationsView';
+import { ChipPicker, OperationsView, ProductPicker } from './OperationsView';
 
 const host = (): Host => ({
   getSnapshot: vi.fn(), subscribe: vi.fn(), callTool: vi.fn(() => new Promise(() => {})), tellModel: vi.fn(), openLink: vi.fn(),
@@ -40,3 +40,25 @@ describe('OperationsView', () => {
     expect(html).toContain('Pausada');
   });
 });
+
+// The loading line of each picker sits in a status region that stays mounted, so its text is announced
+// when it changes; an empty region is visually hidden by `.status-region:empty`.
+describe('picker status regions', () => {
+  const op = { id: 'g1', name: 'Op', chipIds: ['c1'], productIds: [], isActive: true };
+  const noop = vi.fn();
+
+  it('ChipPicker keeps its status region mounted, with the loading text only while the chips load', () => {
+    expect(renderToStaticMarkup(<ChipPicker op={op} chips={null} chipsFailed={false} onPick={noop} onCancel={noop} />))
+      .toContain('<p class="ch-hint status-region" role="status">Carregando os chips…</p>');
+    expect(renderToStaticMarkup(<ChipPicker op={op} chips={new Map()} chipsFailed={false} onPick={noop} onCancel={noop} />))
+      .toContain('<p class="ch-hint status-region" role="status"></p>');
+  });
+
+  it('ProductPicker keeps its status region mounted, with the loading text only while the products load', () => {
+    expect(renderToStaticMarkup(<ProductPicker products={undefined} assigned={[]} onSave={noop} onCancel={noop} />))
+      .toContain('<p class="ch-hint status-region" role="status">Carregando os produtos…</p>');
+    expect(renderToStaticMarkup(<ProductPicker products={[]} assigned={[]} onSave={noop} onCancel={noop} />))
+      .toContain('<p class="ch-hint status-region" role="status"></p>');
+  });
+});
+
