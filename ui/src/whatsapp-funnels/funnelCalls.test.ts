@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Host } from '../host';
 import { toInput, draftFrom } from './editor';
-import { ENABLE_FAILED, createFunnel, saveStoredFunnel, toggleFunnel, withEdits } from './funnelCalls';
+import { ENABLE_FAILED, createFunnel, landedOccupants, saveStoredFunnel, toggleFunnel, withEdits } from './funnelCalls';
 import { summarizeFunnel, type FunnelDetail, type FunnelRow } from './model';
 
 /** The funnel as get_whatsapp_funnel answers it. */
@@ -113,6 +113,23 @@ describe('withEdits (a read that landed after the view changed a funnel)', () =>
   it('is the read as it is without edits', () => {
     const read = [row('a')];
     expect(withEdits(read, new Map())).toEqual(read);
+  });
+});
+
+describe('landedOccupants (a read of every funnel that lands)', () => {
+  const row = (id: string, extra: Partial<FunnelRow> = {}): FunnelRow => ({ id, name: id, trigger: 'abandoned_cart', isEnabled: false, stepCount: 1, sessionId: null, ...extra });
+
+  it('keeps the list it had when the read failed, so the funnel holding a trigger stays known', () => {
+    const current = [row('a'), row('p2', { isEnabled: true })];
+    expect(landedOccupants(current, null, new Map())).toBe(current);
+  });
+
+  it('stays unknown when the first read fails', () => {
+    expect(landedOccupants(null, null, new Map())).toBeNull();
+  });
+
+  it('takes the rows read, with the view edits on top', () => {
+    expect(landedOccupants([row('a')], [row('b')], new Map([['n', row('n')]]))).toEqual([row('n'), row('b')]);
   });
 });
 

@@ -5,7 +5,7 @@ import '../chips/chips.css';
 import './whatsapp-funnels.css';
 import type { Host, HostSnapshot } from '../host';
 import { summarizeOperations, type Operation } from '../operations/model';
-import { ENABLE_FAILED, createFunnel, listAllFunnels, readFunnel, withEdits } from './funnelCalls';
+import { ENABLE_FAILED, createFunnel, landedOccupants, listAllFunnels, readFunnel } from './funnelCalls';
 import { modelInput, newDraft, type FunnelModel } from './editor';
 import { FunnelEditor, type EditorStart } from './FunnelEditor';
 import { FunnelStarter, modelTaken } from './FunnelStarter';
@@ -125,14 +125,14 @@ export function WhatsAppFunnelsView({ host, state }: { host: Host; state: HostSn
   }, [parts.page]);
 
   /**
-   * Reads every funnel again. An older read still in flight is dropped when it lands, and what the view
-   * created, saved or deleted meanwhile goes on top of the rows read.
+   * Reads every funnel again. An older read still in flight is dropped when it lands, what the view
+   * created, saved or deleted meanwhile goes on top of the rows read, and a failed read keeps the list.
    */
   const loadOccupants = useCallback((): void => {
     const edits = new Map<string, FunnelRow | null>();
     occupantEdits.current = edits;
     const land = (rows: FunnelRow[] | null): void => {
-      if (occupantEdits.current === edits) setOccupants(rows && withEdits(rows, edits));
+      if (occupantEdits.current === edits) setOccupants((current) => landedOccupants(current, rows, edits));
     };
     listAllFunnels(host).then(land).catch(() => land(null));
   }, [host]);

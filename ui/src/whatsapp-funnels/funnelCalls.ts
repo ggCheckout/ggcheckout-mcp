@@ -31,6 +31,15 @@ export async function listAllFunnels(host: Host): Promise<FunnelRow[] | null> {
 export type RowEdits = ReadonlyMap<string, FunnelRow | null>;
 
 /**
+ * The list of every funnel once a read lands: the rows with the view's edits on top, or the list as it
+ * was when the read failed. A passing failure (a 5xx, a 429 on "Atualizar") must not throw away the
+ * good list and hide which funnel holds a trigger.
+ */
+export function landedOccupants(current: FunnelRow[] | null, rows: FunnelRow[] | null, edits: RowEdits): FunnelRow[] | null {
+  return rows ? withEdits(rows, edits) : current;
+}
+
+/**
  * Rows read before an edit the view made, with the edit on top: a changed row takes its place, a new
  * one goes first, a deleted one leaves. A read that was in flight while the seller created or saved a
  * funnel must not bring back the row as it was.
