@@ -104,21 +104,24 @@ function Charge({ host, charge, canCallTools }: { host: Host; charge: PixCharge;
   const field = useRef<HTMLInputElement>(null);
 
   if (status === 'none') return <p className="state">Nenhuma recarga em aberto.</p>;
+  // The pending card and the paid one are different trees: this region stays mounted across the switch,
+  // so the confirmation is announced (the paid card mounting with its text would not be).
+  const announcement = <p className="sr-only" role="status">{status === 'paid' ? 'Pagamento confirmado.' : ''}</p>;
   if (status === 'paid') {
     return (
-      <div className="done" role="status">
+      <>{announcement}<div className="done">
         <CheckIcon />
         <div>
           <h2 className="display">Pagamento confirmado</h2>
           <p className="note muted num">{[charge.amountCents != null ? formatCents(charge.amountCents) : null, charge.title].filter(Boolean).join(' · ')}</p>
         </div>
-      </div>
+      </div></>
     );
   }
 
   const remaining = charge.expiresAt ? formatRemaining(charge.expiresAt, now) : null;
   return (
-    <div className="pix">
+    <>{announcement}<div className="pix">
       <div className="qr" data-dim={open ? undefined : ''}>
         {charge.qrSrc ? <img src={charge.qrSrc} alt="QR code do PIX" /> : <span className="faint note">QR indisponível</span>}
       </div>
@@ -138,7 +141,7 @@ function Charge({ host, charge, canCallTools }: { host: Host; charge: PixCharge;
         {open && gaveUp && <p className="note faint">Paramos de conferir. Peça para verificar o pagamento de novo.</p>}
         {open && !canCallTools && <p className="note faint">Peça no chat para conferir se o PIX foi pago.</p>}
       </div>
-    </div>
+    </div></>
   );
 }
 

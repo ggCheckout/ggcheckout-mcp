@@ -131,7 +131,7 @@ function PairPanel({ host, chip, firstCode, onConnected }: {
             <span>{formatCode(code)}</span>
             {copied ? <Check size={16} className="ch-copied" aria-label="Copiado!" /> : <Copy size={16} aria-hidden />}
           </button>
-          {copyState === 'failed' && <p className="copy-failed" role="status">{COPY_FAILED_TEXT}</p>}
+          <p className="copy-failed status-region" role="status">{copyState === 'failed' ? COPY_FAILED_TEXT : ''}</p>
           <p className="ch-waiting" role="status"><span className="ch-dot" data-pulse aria-hidden />Aguardando a conexão no celular…</p>
         </>
       ) : (
