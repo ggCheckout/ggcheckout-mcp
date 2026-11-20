@@ -123,7 +123,8 @@ answer as before.
 | Offers | `list_upsells`, `list_downsells` | The product's post-purchase funnel in order: checkout, each upsell (price with the original struck, timer, number of products, active), what declining it does, the downsells a declined "stop" upsell opens, and success. Either tool reads the other list of the same product to complete the map. |
 | Members area | `get_members_area`, `list_modules`, `list_sections`, `list_lessons` | The course tree with the seller's names: an API module is a "carrossel" and a section a "módulo". The area's students, active students and average completion, then carousels, modules and lessons (type, duration, release or lock). Opening a carousel or a module reads the level below. |
 | Telegram flow | `get_telegram_flow`, `list_telegram_flows` | A flow drawn read-only where the bot's flow editor keeps each node: the editor's node cards (category color, icon, preview line, labeled outputs such as Aprovado / Expirou or each button) and the edges colored by the output they leave from; an edge that loops back up or would cross a node runs down its own lane on the right. The list opens any flow in place. |
-| WhatsApp chips | `list_whatsapp_numbers`, `get_whatsapp_number`, `get_pairing_code` | The chips as the dashboard's chip screens: name, masked number, provider (QR Code or Oficial), status, the first session that uses it (read through `list_whatsapp_sessions`, or "Não vinculado") and how many. An active QR code chip in the handshake (where the dashboard shows its QR) is connected in place with a pairing code, since the server never passes the QR on: the seller types the chip's number, types the code on the phone, and the chip is read until it connects. A dropped chip is restarted first ("Reiniciar", which asks first); "Desativar" / "Reativar" go through `update_whatsapp_number`, and the list's "Verificar status" through `check_whatsapp_numbers`. A connected chip lists the sessions that use it. |
+| WhatsApp chips | `list_whatsapp_numbers`, `get_whatsapp_number`, `get_pairing_code` | The chips as the dashboard's chip screens: name, masked number, provider (QR Code or Oficial), status, the first operation that uses it (read through `list_whatsapp_sessions`, or "Não vinculado") and how many. An active QR code chip in the handshake (where the dashboard shows its QR) is connected in place with a pairing code, since the server never passes the QR on: the seller types the chip's number, types the code on the phone, and the chip is read until it connects. A dropped chip is restarted first ("Reiniciar", which asks first); "Desativar" / "Reativar" go through `update_whatsapp_number`, and the list's "Verificar status" through `check_whatsapp_numbers`. A connected chip lists the operations that use it. |
+| WhatsApp operations | `list_whatsapp_sessions`, `get_whatsapp_session` | The dashboard's "Operações" (sessions in the API): each operation with its state as the dashboard words it (Enviando, Reserva fora, Em reserva, Sem cobertura; read from its chips through `list_whatsapp_numbers`), its primary chip, fallbacks and products. The detail shows "Chips da operação" in the order they send, moved with arrows, plus "Adicionar chip" and remove, and "Produtos atendidos" (titles read through `list_products`) with add and remove. Every write asks first in the card and goes through `update_whatsapp_session`, `add_whatsapp_session_number`, `remove_whatsapp_session_number` or `set_whatsapp_session_products`. |
 | PIX | `create_pix_charge`, `get_payment_intent`, `cancel_payment_intent`, `add_credit`, `get_credit_topup`, `pay_invoice` | QR code, copy-and-paste button, time left, and the status, polled every 5 s (10 s for test-mode charges, which have a smaller read limit) through `get_payment_intent`, `get_credit_topup`, `list_credits` or `get_invoice` until it is paid or expires. `cancel_payment_intent` draws the canceled charge. |
 | Payments API | `get_payments_api_limits`, `list_wallets`, `list_payment_intents` | Requests per minute per bucket (used / limit, when a full bucket frees its next request, LIVE/TESTE, max per charge), wallets with their active PIX count, and charges with status; each list starts with the requests-per-minute strip; "Mais" pages, a row opens the charge's PIX view. |
 | Tracking | `explain_tracking`, `diagnose_tracking` | How a sale's metrics travel to Meta, TikTok, Google Ads and UTMify, as sections with expandable items and the common problems; or the diagnosis of an account, checkout, funnel or payment: findings sorted critical, warning, info, ok (icon and text), the tracking tokens with mode and health, the sale's UTMs and click ids, and the last 24 hours of errors. |
@@ -646,25 +647,26 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 
 ### WhatsApp (26 tools)
 
-Follows the dashboard: **chips** are the connected numbers, and a **session** is a primary chip
-with up to two fallbacks that sends for a set of products. Templates belong to sessions. Creating
-or deleting a chip or a session, and connecting an official (Meta) number, are refused to API keys
-on purpose: do those in the dashboard.
+Follows the dashboard: **chips** are the connected numbers, and an **operation** ("Operações" in the
+dashboard, a session in the API and in the tool names) is a primary chip with up to two fallbacks
+that sends for a set of products. Templates belong to operations. Creating or deleting a chip or an
+operation, and connecting an official (Meta) number, are refused to API keys on purpose: do those in
+the dashboard.
 
 **Example prompts:**
 - "Which WhatsApp chips are connected?"
 - "Connect chip abc123 to 5511999999999 with a pairing code"
 - "Restart chip abc123"
 - "Check whether my WhatsApp chips are really connected"
-- "List my WhatsApp sessions"
-- "Make chip def456 the primary of session 'Sales' and abc123 its fallback"
-- "Send session 'Sales' for products p1 and p2"
-- "Create a template for the 'upsell_paid' event in session 'Sales': 'Hi {{nome}}, thanks for purchasing {{produto}}!'"
+- "How are my WhatsApp operations?"
+- "Make chip def456 the primary of operation 'Sales' and abc123 its fallback"
+- "Send operation 'Sales' for products p1 and p2"
+- "Create a template for the 'upsell_paid' event in operation 'Sales': 'Hi {{nome}}, thanks for purchasing {{produto}}!'"
 - "Disable template abc123"
 - "Check the WhatsApp delivery status for payment xyz789"
 - "Resend the WhatsApp delivery for payment xyz789"
 - "List my WhatsApp funnels"
-- "Create a manual WhatsApp funnel 'Welcome' with 2 messages, 1 hour apart, on session abc123"
+- "Create a manual WhatsApp funnel 'Welcome' with 2 messages, 1 hour apart, on operation abc123"
 - "Turn on the abandoned-cart funnel"
 
 #### WhatsApp funnels

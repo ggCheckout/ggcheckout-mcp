@@ -42,6 +42,24 @@ error body) is read as "not released yet".
   saas answers 403 `INBOX_API_ACCESS_DISABLED`, and the tools and the view say what to turn on. The
   inbox term is never accepted by the MCP: 403 `INBOX_TERMS_REQUIRED` says to accept it in the
   dashboard.
+- WhatsApp operations in a view: `list_whatsapp_sessions` and `get_whatsapp_session` (the API still
+  calls an operation a session) now carry the app `_meta` and draw the dashboard's "Operações": each
+  operation with its state in the dashboard's words (Enviando, Reserva fora, Em reserva, Sem
+  cobertura), its primary chip, fallbacks and products; the detail shows "Chips da operação" in the
+  order they send and "Produtos atendidos". From the view the seller reorders the chips (arrows in
+  place of the dashboard's drag), adds or removes a chip and adds or removes products, each write
+  behind a confirmation in the card, through the existing `update_whatsapp_session`,
+  `add_whatsapp_session_number`, `remove_whatsapp_session_number` and
+  `set_whatsapp_session_products`. Tool names are unchanged.
+
+### Changed
+
+- "Sessão" became "operação" wherever the seller reads it, as the dashboard renamed it: the chips
+  view ("Operações que usam este chip", "Vá em Operações"), the inbox note for a product without
+  one, and the tool descriptions (which keep "session" in parentheses, the API's name).
+- Rows of the chips and operations lists put their status column under the name on a narrow
+  screen (a phone's chat), so the name no longer wraps letter by letter.
+- A disabled call-to-action button looks disabled (dimmed, no hover, no light pass) in every view.
 
 ## 0.6.0
 
