@@ -46,7 +46,9 @@ export class WhatsAppFunnelService {
    * The route replaces the whole funnel, so the stored one is read and the edit merged into it.
    * `steps` replaces as a list and `layout` as a whole drawing (its keys are positions in the
    * sequence, so merging two drawings would mix them); the other fields change one by one. Steps
-   * sent without a layout keep the stored drawing, minus the positions of the messages that left.
+   * sent without a layout keep the stored drawing, minus the positions past the new last step. The
+   * keys are places in the sequence, not messages: when a message leaves from the middle, the one
+   * that moves into its place takes its position.
    */
   async update(funnelId: string, patch: Partial<FunnelInput>) {
     const current = await this.port.get(funnelId);

@@ -119,7 +119,8 @@ not exist (404 or 405 with no error body) is read as "not released yet".
   WhatsApp data: the summary, a card per message with its status, and a confirmed resend.
 - Every write from a view card asks for a confirmation inside the card first: resend a WhatsApp
   message, restart, deactivate or reactivate a chip, and redeem the WhatsApp group reward. They share
-  one `ConfirmPanel` that says what the action does; nothing is sent until it is confirmed.
+  one `ConfirmPanel` that says what the action does; nothing is sent until it is confirmed. Esc
+  cancels it, and when it closes the focus goes back to the button that opened it.
 - Gateways view on `list_checkout_wallets` and `get_gateway_fallback_stats`, as the charge order
   (each wallet's PIX and card gateways in order, with their last-day rate) and the stability
   ranking. `get_gateway_fallback_stats` describes its units and its `ranking`.
@@ -167,11 +168,11 @@ not exist (404 or 405 with no error body) is read as "not released yet".
   code points: 4096 per step, 80 for the name, 60 for the signature, 30 for the coupon).
   `update_whatsapp_funnel` takes only the fields to change and saves the whole funnel, as the route
   replaces it; `steps` and `layout` replace as a whole (steps sent without a layout drop the positions
-  of the messages that left). The contact import takes batches of up to 500 and needs the store's "Permitir acesso
+  past the new last step). The contact import takes batches of up to 500 and needs the store's "Permitir acesso
   pelo MCP" switch (see below).
 - WhatsApp inbox in a view, only for clients that draw MCP Apps: `open_whatsapp_inbox` opens the
-  seller's conversations (list, thread, reply, mark read, run or stop a funnel, "Parar funil e não
-  enviar mais") and gives the model only `{ available, enabled, conversations, unread, truncated }` (`truncated`: the counts stopped at the newest 200 conversations): no names,
+  seller's conversations (list, thread marked read when opened, reply, run or stop a funnel, "Parar
+  funil e não enviar mais" and "Voltar a enviar", each funnel action behind a confirmation) and gives the model only `{ available, enabled, conversations, unread, truncated }` (`truncated`: the counts stopped at the newest 200 conversations): no names,
   phones or message text, so a customer message cannot reach the model or act as a prompt injection,
   and the model cannot reply by itself. What the view calls are app-only tools
   (`_meta.ui.visibility: ["app"]`), registered after the client announces MCP Apps support:
@@ -179,7 +180,11 @@ not exist (404 or 405 with no error body) is read as "not released yet".
   `mark_whatsapp_conversation_read`, `get_whatsapp_conversation_funnel`,
   `start_whatsapp_conversation_funnel`, `stop_whatsapp_conversation_funnel` and
   `set_whatsapp_conversation_opt_out`. The view reads again every 10 seconds only while it is
-  visible, and a reply keeps its `clientMessageId` on a retry so it is never sent twice.
+  visible: the list while no conversation is open, the open conversation's messages (its funnel run
+  only when a new message shows it moved). The reads spend the account's API key budget (1000 per
+  hour and 30 per minute in the saas, shared by every key), so they stop after 15 minutes or at a 429
+  and say so, with "Atualizar" to resume. A reply keeps its `clientMessageId` on a retry so it is
+  never sent twice. The phone in an inbox route never reaches the MCP's own log line.
 - Inbox access by API key is a per-store switch, off by default: the seller turns on "Permitir acesso
   pelo MCP" in the dashboard's inbox settings (a key can never turn it on). While it is off the
   saas answers 403 `INBOX_API_ACCESS_DISABLED`, and the tools and the view say what to turn on. The

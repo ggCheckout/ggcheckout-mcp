@@ -67,7 +67,7 @@ describe('WhatsAppFunnelService.update', () => {
     expect((port.replace.mock.calls[0][1] as any).layout).toEqual({ end: { x: 1, y: 2 } });
   });
 
-  it('drops the positions of the messages that left when steps shrink without a layout', async () => {
+  it('drops the positions past the new last step when steps shrink without a layout', async () => {
     const { port, service } = setup();
     port.get.mockResolvedValue({ ...stored, layout: { start: { x: 0, y: 0 }, 'wait-2': { x: 5, y: 5 }, 'message-2': { x: 9, y: 9 } } });
     await service.update(stored.id, { steps: [stored.steps[0]] });
