@@ -5,9 +5,10 @@ import { BackButton } from '../lib/BackButton';
 import { ConfirmPanel } from '../lib/ConfirmPanel';
 import {
   MAX_REPLY_CHARS, MESSAGES_PAGE, POLL_MS, bodyOf, clockLabel, codePointLength, contactLabel, conversationLabels, errorText,
-  latestIncomingId, mergeMessages, nextFunnelsAfter, pendingFor, replyProblem, runLabel, startOutcome, toContactRun, toFunnelOptions, toMessages,
+  latestIncomingId, mergeMessages, pendingFor, replyProblem, runLabel, startOutcome, toContactRun, toFunnelOptions, toMessages,
   type Conversation, type FunnelOption, type PendingSend, type Run, type ThreadMessage,
 } from './model';
+import { nextFunnelsAfter } from '../whatsapp-funnels/model';
 import { startVisiblePolling } from './poll';
 
 type Confirming = 'start' | 'stop' | 'optout' | null;

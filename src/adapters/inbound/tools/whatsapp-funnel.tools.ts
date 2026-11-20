@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { WhatsAppFunnelService } from '../../../core/services/whatsapp-funnel.service.js';
 import { FUNNEL_LIMITS, FUNNEL_TRIGGERS } from '../../../core/types/whatsapp-funnel.js';
 import { createToolHandler } from '../tool-handler.js';
+import { appMeta, withDrawnNote } from '../apps/apps.js';
 import { cappedText, guid } from './whatsapp-schemas.js';
 
 const L = FUNNEL_LIMITS;
@@ -60,12 +61,14 @@ export function registerWhatsAppFunnelTools(server: McpServer, service: WhatsApp
       limit: z.number().int().min(1).max(L.listMax).optional().describe(`Page size (default ${L.listMax})`),
       after: z.string().max(80).regex(/^[0-9]{1,20}_[0-9a-fA-F-]{36}$/).optional().describe('Cursor: the nextAfter of the previous page'),
     },
-  }, createToolHandler('list_whatsapp_funnels', async (args) => service.list(args)));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('list_whatsapp_funnels', async (args) => service.list(args))));
 
   server.registerTool('get_whatsapp_funnel', {
     description: 'Get a WhatsApp funnel with every step, its send window, signature and coupon',
     inputSchema: { funnelId },
-  }, createToolHandler('get_whatsapp_funnel', async ({ funnelId }) => ({ funnel: await service.get(funnelId) })));
+    _meta: appMeta(),
+  }, withDrawnNote(server, createToolHandler('get_whatsapp_funnel', async ({ funnelId }) => ({ funnel: await service.get(funnelId) }))));
 
   server.registerTool('create_whatsapp_funnel', {
     description:

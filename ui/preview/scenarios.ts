@@ -2,7 +2,7 @@ import {
   billingBalance, billingStatus, membersArea, chips, chipDetail, telegramFlows, telegramFlowVisual, telegramFlowBasic, memberCarousels, memberModules, memberLessons, downsells, upsells, gatewayStats, wallets, deliveries, domainList, domains, verifyPending, billingStatusOverdue, invoicePix, charts, chartsFor, creditTopup, invoices, ledgerPages, funnelAnalytics, funnelStats, paymentIntent, payments, paymentsPage, statsFor,
   payApiLimits, payApiLimitsUnavailable, payApiWallets, payApiIntents, trackingGuide, trackingDiagnosis, utmMeta, utmManual,
   inboxOpen, inboxOff, inboxUnavailable, inboxConversations, inboxMessages, inboxFunnels, inboxRun,
-  operations, products,
+  operations, products, waFunnelDetail,
 } from './fixtures';
 
 export interface Scenario {
@@ -60,6 +60,8 @@ export const SCENARIOS: Scenario[] = [
   { id: 'chip-dropped', question: 'Por que o chip Reserva não envia?', tool: 'get_whatsapp_number', args: { numberId: 'chip_reserva' }, result: chipDetail('chip_reserva') },
   { id: 'operations', question: 'Como estão minhas operações do WhatsApp?', tool: 'list_whatsapp_sessions', args: {}, result: operations },
   { id: 'operation', question: 'Abre a operação Método Aurora', tool: 'get_whatsapp_session', args: { sessionId: 'g1' }, result: { session: operations.sessions[0] } },
+  { id: 'wa-funnels', question: 'Quais funis de WhatsApp eu tenho?', tool: 'list_whatsapp_funnels', args: {}, result: inboxFunnels },
+  { id: 'wa-funnel', question: 'Me mostra o funil de carrinho abandonado', tool: 'get_whatsapp_funnel', args: { funnelId: inboxFunnels.items[1].id }, result: waFunnelDetail(inboxFunnels.items[1].id) },
   { id: 'chip-code', question: 'Gera o código pra conectar o chip Vendas 2', tool: 'get_pairing_code', args: { numberId: 'chip_vendas', phoneNumber: '5531998778877' }, result: { success: true, code: 'K7QW2MZP' } },
   { id: 'pix', question: 'Gera um PIX de R$ 49,90 (teste)', tool: 'create_pix_charge', args: { amount: 4990 }, result: paymentIntent('requires_action') },
   { id: 'pix-canceled', question: 'Cancela a cobrança pi_preview…', tool: 'cancel_payment_intent', args: { id: 'pi_preview0000000000000001' }, result: { ...paymentIntent('requires_action'), status: 'canceled' } },
@@ -84,6 +86,14 @@ const operationStore = new Map<string, PreviewOperation>(
   operations.sessions.map((s) => [s.uid, { ...s, fallbackNumberIds: [...s.fallbackNumberIds], assignedProducts: [...s.assignedProducts] }]),
 );
 const operationOf = (id: unknown): PreviewOperation => operationStore.get(String(id)) ?? operationStore.get('g1')!;
+
+/** Funnels the preview turned on or off, and the ones it deleted, so the list shows the writes. */
+const funnelEnabled = new Map<string, boolean>();
+const funnelDeleted = new Set<string>();
+const funnelPage = () => ({
+  ...inboxFunnels,
+  items: inboxFunnels.items.filter((f) => !funnelDeleted.has(f.id)).map((f) => ({ ...f, isEnabled: funnelEnabled.get(f.id) ?? f.isEnabled })),
+});
 
 /** remove_whatsapp_session_number: the primary's removal promotes the first fallback. */
 function removeChip(op: PreviewOperation, numberId: string): PreviewOperation {
@@ -156,7 +166,19 @@ export function answerTool(name: string, args: Record<string, unknown>, polls: {
     case 'get_credit_topup': return { topup: { ...creditTopup, status: 'pending' } };
     case 'list_whatsapp_conversations': return inboxConversations;
     case 'list_whatsapp_messages': return inboxMessages(String(args.contactKey));
-    case 'list_whatsapp_funnels': return inboxFunnels;
+    case 'list_whatsapp_funnels': return funnelPage();
+    case 'get_whatsapp_funnel': return waFunnelDetail(String(args.funnelId), funnelEnabled.get(String(args.funnelId)));
+    case 'toggle_whatsapp_funnel': {
+      const id = String(args.funnelId);
+      const row = funnelPage().items.find((f) => f.id === id);
+      // The API refuses a second funnel on for the same automatic trigger.
+      if (args.enabled === true && row && row.trigger !== 'manual' && funnelPage().items.some((f) => f.id !== id && f.trigger === row.trigger && f.isEnabled)) {
+        throw new Error('API Error (409): Já existe um funil ligado para este gatilho.');
+      }
+      funnelEnabled.set(id, args.enabled === true);
+      return { success: true, ...waFunnelDetail(id, args.enabled === true) };
+    }
+    case 'delete_whatsapp_funnel': funnelDeleted.add(String(args.funnelId)); return { success: true, message: `Funnel ${args.funnelId} deleted` };
     case 'get_whatsapp_conversation_funnel': return inboxRun(String(args.contactKey));
     case 'mark_whatsapp_conversation_read': return { success: true };
     case 'send_whatsapp_reply': return { message: { messageId: 'w_new', deliveryId: 'a1b2c3d4-0000-4000-8000-000000000002', contactKey: args.contactKey, chipId: 'chip_vendas', text: args.text, at: new Date().toISOString(), chipSwitch: null, duplicate: false } };

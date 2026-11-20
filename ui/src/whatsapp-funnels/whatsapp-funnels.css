@@ -1,0 +1,20 @@
+/* The WhatsApp funnels (saas settings/whatsapp/sections/funnels): rows and panels come from chips.css;
+   here the messages in order, each after its wait, as the customer reads them. */
+.dashboard .wf-steps { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.dashboard .wf-step { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.dashboard .wf-wait { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 12px; color: var(--d-muted); background: var(--d-muted-bg); }
+/* The outgoing WhatsApp bubble, in the Seasons blue tint; text as text, line breaks kept. */
+.dashboard .wf-bubble { max-width: min(100%, 460px); margin: 0; padding: 10px 14px; border-radius: 14px 14px 4px 14px; align-self: flex-end; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--d-fg); background: color-mix(in srgb, var(--season-blue) 14%, var(--d-bg)); border: 1px solid color-mix(in srgb, var(--season-blue) 22%, transparent); }
+.dashboard .wf-var { padding: 0 4px; border-radius: 4px; font-weight: 600; color: #05329d; background: color-mix(in srgb, var(--season-blue) 16%, transparent); }
+:root[data-theme='dark'] .dashboard .wf-var { color: #a8c4ff; }
+.dashboard .wf-danger:hover:not(:disabled) { border-color: #dc2626; color: #dc2626; }
+.dashboard .wf-more { align-self: center; }
+.dashboard .wf-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 12px; border-radius: 8px; border: 1px dashed var(--d-line); text-align: center; color: var(--d-accent); }
+.dashboard .wf-empty-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--d-fg); }
+/* The funnel's settings: the name muted on the left, the value on the right; stacked on a phone. */
+.dashboard .wf-facts li > span:first-child { color: var(--d-muted); }
+.dashboard .wf-facts li > span:last-child { text-align: right; overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+  .dashboard .wf-facts li { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .dashboard .wf-facts li > span:last-child { text-align: left; }
+}

@@ -47,6 +47,9 @@ describe('pickView', () => {
     expect(pickView(undefined, { sessions: [{ uid: 'g1', primaryNumberId: 'c1' }] })).toBe('operations');
     expect(pickView(undefined, { success: true, session: { uid: 'g1', primaryNumberId: 'c1' } })).toBe('operations');
     expect(pickView('list_whatsapp_sessions', {})).toBe('operations');
+    expect(pickView(undefined, { items: [{ id: 'f1', trigger: 'manual', stepCount: 1 }], nextAfter: null })).toBe('whatsappFunnels');
+    expect(pickView(undefined, { funnel: { id: 'f1', trigger: 'manual', steps: [] } })).toBe('whatsappFunnels');
+    expect(pickView('get_whatsapp_funnel', {})).toBe('whatsappFunnels');
     expect(pickView(undefined, { anything: true })).toBeNull();
   });
 

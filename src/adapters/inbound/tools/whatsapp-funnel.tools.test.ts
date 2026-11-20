@@ -33,13 +33,15 @@ describe('WhatsApp funnel tools', () => {
 
   const call = (name: string, args: Record<string, unknown>) => client.callTool({ name, arguments: args });
 
-  it('registers the seven funnel tools, none of them app-only', async () => {
+  it('registers the seven funnel tools: the two reads draw the funnels view, none is app-only', async () => {
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
       'create_whatsapp_funnel', 'delete_whatsapp_funnel', 'get_whatsapp_funnel', 'import_whatsapp_funnel_contacts',
       'list_whatsapp_funnels', 'toggle_whatsapp_funnel', 'update_whatsapp_funnel',
     ]);
-    for (const tool of tools) expect((tool._meta as any)?.ui).toBeUndefined();
+    const ui = (name: string) => (tools.find((t) => t.name === name)?._meta as any)?.ui;
+    for (const name of ['list_whatsapp_funnels', 'get_whatsapp_funnel']) expect(ui(name)).toEqual({ resourceUri: 'ui://ggcheckout/app.html' });
+    for (const tool of tools.filter((t) => !['list_whatsapp_funnels', 'get_whatsapp_funnel'].includes(t.name))) expect(ui(tool.name)).toBeUndefined();
   });
 
   it('creates a funnel from the whole body', async () => {

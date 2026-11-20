@@ -649,8 +649,41 @@ export const inboxFunnels = {
     { id: '2f9d6c3e-4b1a-4c55-9a7e-0a1b2c3d4e5f', name: 'Boas-vindas ao Método Aurora', trigger: 'manual', isEnabled: true, sessionGroupId: 'g1', stepCount: 3, createdAt: '2026-11-10T12:00:00Z', updatedAt: '2026-11-10T12:00:00Z' },
     { id: '8a1d2e3f-5b6c-4d7e-8f90-1a2b3c4d5e6f', name: 'Carrinho abandonado', trigger: 'abandoned_cart', isEnabled: true, sessionGroupId: null, stepCount: 2, createdAt: '2026-11-11T12:00:00Z', updatedAt: '2026-11-11T12:00:00Z' },
     { id: '5c4b3a29-1807-4f6e-9d5c-4b3a29180716', name: 'Reativação (desligado)', trigger: 'manual', isEnabled: false, sessionGroupId: 'g1', stepCount: 2, createdAt: '2026-11-12T12:00:00Z', updatedAt: '2026-11-12T12:00:00Z' },
+    { id: '7e6d5c4b-3a29-4180-8716-5f4e3d2c1b0a', name: 'PIX esquecido', trigger: 'pix_unpaid', isEnabled: true, sessionGroupId: null, stepCount: 3, createdAt: '2026-11-13T12:00:00Z', updatedAt: '2026-11-13T12:00:00Z' },
+    // Same trigger as the enabled "Carrinho abandonado": the view says which one holds it.
+    { id: '9f8e7d6c-5b4a-4392-8170-6f5e4d3c2b1a', name: 'Carrinho abandonado (com cupom)', trigger: 'abandoned_cart', isEnabled: false, sessionGroupId: null, stepCount: 2, createdAt: '2026-11-14T12:00:00Z', updatedAt: '2026-11-14T12:00:00Z' },
   ],
   nextAfter: null,
+};
+
+/** get_whatsapp_funnel: each listed funnel with its messages, signature and coupon (invented). */
+const FUNNEL_STEPS: Record<string, Array<{ waitMinutes: number; text: string }>> = {
+  abandoned_cart: [
+    { waitMinutes: 30, text: 'Oi {{customer_name}}! Vi que você parou no {{product_name}} 👀 Ficou alguma dúvida?' },
+    { waitMinutes: 1440, text: 'Separei um cupom pra você terminar a compra: {{cupom}}. Vale até amanhã.\n\n{{assinatura}}' },
+  ],
+  pix_unpaid: [
+    { waitMinutes: 15, text: 'Oi {{customer_name}}, seu PIX do {{product_name}} ainda está aberto. O código expira em breve.' },
+    { waitMinutes: 120, text: 'Precisa de ajuda para pagar? É só responder aqui.' },
+    { waitMinutes: 1440, text: 'Último lembrete: o acesso sai assim que o PIX cair. {{assinatura}}' },
+  ],
+  manual: [
+    { waitMinutes: 0, text: 'Oi {{customer_name}}! Seja bem-vinda ao Método Aurora 🎉' },
+    { waitMinutes: 60, text: 'Já conseguiu acessar a primeira aula? Qualquer coisa, me chama.' },
+    { waitMinutes: 2880, text: 'Passando pra saber como estão os estudos. {{assinatura}}' },
+  ],
+};
+export const waFunnelDetail = (id: string, isEnabled?: boolean) => {
+  const row = inboxFunnels.items.find((f) => f.id === id) ?? inboxFunnels.items[0];
+  const steps = (FUNNEL_STEPS[row.trigger] ?? FUNNEL_STEPS.manual).slice(0, row.stepCount);
+  const { stepCount: _count, ...rest } = row;
+  return {
+    funnel: {
+      ...rest, isEnabled: isEnabled ?? row.isEnabled, steps: steps.map((st) => ({ ...st, markSeen: true, showTyping: true })),
+      stopOnReply: true, sendWindow: row.trigger === 'manual' ? null : { start: 8, end: 21 },
+      signature: 'Equipe Aurora', coupon: row.trigger === 'abandoned_cart' ? 'VOLTA10' : '', useEmoji: true, layout: null,
+    },
+  };
 };
 
 export const inboxRun = (contactKey: string) => ({

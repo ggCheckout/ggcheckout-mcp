@@ -267,11 +267,6 @@ export interface FunnelOption {
   name: string;
 }
 
-/** The cursor of the next list_whatsapp_funnels page, or null on the last one. */
-export function nextFunnelsAfter(data: unknown): string | null {
-  return isPayload(data) ? text(data.nextAfter) ?? null : null;
-}
-
 /** list_whatsapp_funnels `{ items }` reduced to what a manual run can use: manual and enabled. */
 export function toFunnelOptions(data: unknown): FunnelOption[] | null {
   if (!isPayload(data) || !Array.isArray(data.items)) return null;
