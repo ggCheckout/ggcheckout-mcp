@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 210 tools across 23 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 217 tools across 23 domains.
 
 ## Overview
 
@@ -128,6 +128,7 @@ answer as before.
 | Payments API | `get_payments_api_limits`, `list_wallets`, `list_payment_intents` | Requests per minute per bucket (used / limit, when a full bucket frees its next request, LIVE/TESTE, max per charge), wallets with their active PIX count, and charges with status; each list starts with the requests-per-minute strip; "Mais" pages, a row opens the charge's PIX view. |
 | Tracking | `explain_tracking`, `diagnose_tracking` | How a sale's metrics travel to Meta, TikTok, Google Ads and UTMify, as sections with expandable items and the common problems; or the diagnosis of an account, checkout, funnel or payment: findings sorted critical, warning, info, ok (icon and text), the tracking tokens with mode and health, the sale's UTMs and click ids, and the last 24 hours of errors. |
 | UTM links | `build_tracking_link` | The link to sell from with UTMs: the text to copy (the ad's "Parâmetros de URL", the Google tracking template, or the whole link for a manual one), the clean destination, "Onde colar" steps, the parameters table with where each came from, and the notes. |
+| WhatsApp inbox | `open_whatsapp_inbox` (and the app-only `list_whatsapp_conversations`, `list_whatsapp_messages`, `send_whatsapp_reply`, `mark_whatsapp_conversation_read`, `get_whatsapp_conversation_funnel`, `start_whatsapp_conversation_funnel`, `stop_whatsapp_conversation_funnel`, `set_whatsapp_conversation_opt_out`) | The seller's conversations: the list (name or masked phone, last text, unread, "Pediu para sair"), a thread with its composer, and the funnel actions (run a manual funnel, stop it, "Parar funil e não enviar mais"). Read again every 10 s while visible; message text is shown as text only. The model gets only the counts. See "WhatsApp inbox" below. |
 
 The views run in the client's sandbox with no network access: their data only arrives through
 the client, from the tool result or from the tool calls listed above. All of them are one React
@@ -643,7 +644,7 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 
 ---
 
-### WhatsApp (19 tools)
+### WhatsApp (26 tools)
 
 Follows the dashboard: **chips** are the connected numbers, and a **session** is a primary chip
 with up to two fallbacks that sends for a set of products. Templates belong to sessions. Creating
@@ -662,6 +663,34 @@ on purpose: do those in the dashboard.
 - "Disable template abc123"
 - "Check the WhatsApp delivery status for payment xyz789"
 - "Resend the WhatsApp delivery for payment xyz789"
+- "List my WhatsApp funnels"
+- "Create a manual WhatsApp funnel 'Welcome' with 2 messages, 1 hour apart, on session abc123"
+- "Turn on the abandoned-cart funnel"
+
+#### WhatsApp funnels
+
+`list_whatsapp_funnels`, `get_whatsapp_funnel`, `create_whatsapp_funnel`, `update_whatsapp_funnel`,
+`delete_whatsapp_funnel`, `toggle_whatsapp_funnel` and `import_whatsapp_funnel_contacts` (up to 500
+contacts per call). A funnel is up to 5 messages with a wait between them, started by a trigger or by
+hand from the inbox. The caps match the dashboard's. Only one funnel per automatic trigger can be on.
+Importing contacts messages people who never wrote in, so it needs the inbox switch below.
+
+#### WhatsApp inbox
+
+Only in clients that draw MCP Apps. `open_whatsapp_inbox` opens the inbox in a view, and the model
+receives `{ available, enabled, conversations, unread }` and nothing else: names, phones and message
+text only ever reach the view, through app-only tools (`list_whatsapp_conversations`,
+`list_whatsapp_messages`, `send_whatsapp_reply`, `mark_whatsapp_conversation_read`,
+`get_whatsapp_conversation_funnel`, `start_whatsapp_conversation_funnel`,
+`stop_whatsapp_conversation_funnel`, `set_whatsapp_conversation_opt_out`) that the model does not
+list and that exist only for a client with MCP Apps support. A customer message therefore never enters
+the model's context, and the model cannot answer one.
+
+Access by API key is off by default, per store: turn on **Permitir acesso pelo MCP** in the dashboard's
+inbox settings (a key can never turn it on, and turning it off cuts access on the next request). While
+it is off the API answers 403 `INBOX_API_ACCESS_DISABLED`; if the store has not accepted the inbox term,
+403 `INBOX_TERMS_REQUIRED` (accept it in the dashboard: the MCP never does). On an account where the
+funnel and inbox are not released yet, the tools answer "ainda não disponível nesta conta".
 
 ---
 

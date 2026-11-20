@@ -5,6 +5,44 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## 0.7.0 (unreleased)
+
+### Release requirement: do not publish before the API has these changes
+
+The WhatsApp funnel and inbox exist on the saas `developer` branch only. Publish after the core
+(inbox settings `apiAccessEnabled`) and the saas (API-key access to the inbox and the funnel import,
+behind the store's switch) are in production. Until then every tool below answers "ainda não
+disponível nesta conta" instead of failing: a saas route that does not exist (404 or 405 with no
+error body) is read as "not released yet".
+
+### Added
+
+- WhatsApp funnels, always registered: `list_whatsapp_funnels`, `get_whatsapp_funnel`,
+  `create_whatsapp_funnel`, `update_whatsapp_funnel`, `delete_whatsapp_funnel`,
+  `toggle_whatsapp_funnel` and `import_whatsapp_funnel_contacts`. A funnel is up to 5 messages with a
+  wait of 15 minutes to 2 days between them, started by a trigger (abandoned cart, unpaid or expired
+  PIX, refused or cancelled card) or by hand. Inputs carry the same caps as the dashboard (text in
+  code points: 4096 per step, 80 for the name, 60 for the signature, 30 for the coupon).
+  `update_whatsapp_funnel` takes only the fields to change and saves the whole funnel, as the route
+  replaces it. The contact import takes batches of up to 500 and needs the store's "Permitir acesso
+  pelo MCP" switch (see below).
+- WhatsApp inbox in a view, only for clients that draw MCP Apps: `open_whatsapp_inbox` opens the
+  seller's conversations (list, thread, reply, mark read, run or stop a funnel, "Parar funil e não
+  enviar mais") and gives the model only `{ available, enabled, conversations, unread }`: no names,
+  phones or message text, so a customer message cannot reach the model or act as a prompt injection,
+  and the model cannot reply by itself. What the view calls are app-only tools
+  (`_meta.ui.visibility: ["app"]`), registered after the client announces MCP Apps support:
+  `list_whatsapp_conversations`, `list_whatsapp_messages`, `send_whatsapp_reply`,
+  `mark_whatsapp_conversation_read`, `get_whatsapp_conversation_funnel`,
+  `start_whatsapp_conversation_funnel`, `stop_whatsapp_conversation_funnel` and
+  `set_whatsapp_conversation_opt_out`. The view reads again every 10 seconds only while it is
+  visible, and a reply keeps its `clientMessageId` on a retry so it is never sent twice.
+- Inbox access by API key is a per-store switch, off by default: the seller turns on "Permitir acesso
+  pelo MCP" in the dashboard's inbox settings (a key can never turn it on). While it is off the
+  saas answers 403 `INBOX_API_ACCESS_DISABLED`, and the tools and the view say what to turn on. The
+  inbox term is never accepted by the MCP: 403 `INBOX_TERMS_REQUIRED` says to accept it in the
+  dashboard.
+
 ## 0.6.0
 
 ### Breaking
