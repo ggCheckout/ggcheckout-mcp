@@ -44,7 +44,8 @@ describe('words of the funnel screen', () => {
   it('words the send window and the on/off of manual and automatic funnels', () => {
     expect(sendWindowLabel({ start: 8, end: 21 })).toBe('Envia das 8h às 21h (Brasília)');
     expect(sendWindowLabel(null)).toBe('Envia a qualquer hora');
-    expect(toggleWords({ trigger: 'manual', isEnabled: true })).toEqual({ state: 'Disponível na caixa', action: 'Tirar da caixa' });
+    expect(toggleWords({ trigger: 'manual', isEnabled: true })).toEqual({ state: 'Ligado', action: 'Tirar da caixa' });
+    expect(toggleWords({ trigger: 'manual', isEnabled: false })).toEqual({ state: 'Desligado', action: 'Disponível na caixa' });
     expect(toggleWords({ trigger: 'pix_unpaid', isEnabled: false })).toEqual({ state: 'Desligado', action: 'Ligar' });
   });
 });

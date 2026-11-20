@@ -148,12 +148,15 @@ export function messageParts(message: string): Array<{ text: string; isVariable:
   return message.split(/(\{\{\s*[\w.]+\s*\}\})/g).filter(Boolean).map((part) => ({ text: part, isVariable: /^\{\{/.test(part) }));
 }
 
-/** The words of the on/off for a funnel: a manual one is offered in the inbox or not. */
+/**
+ * FunnelsSection: the state is always "Ligado"/"Desligado"; the action of a manual funnel says what
+ * it does to the inbox's list ("Disponível na caixa" / "Tirar da caixa").
+ */
 export function toggleWords(funnel: Pick<FunnelRow, 'trigger' | 'isEnabled'>): { state: string; action: string } {
-  if (funnel.trigger === 'manual') return funnel.isEnabled
-    ? { state: 'Disponível na caixa', action: 'Tirar da caixa' }
-    : { state: 'Fora da caixa', action: 'Disponível na caixa' };
-  return funnel.isEnabled ? { state: 'Ligado', action: 'Desligar' } : { state: 'Desligado', action: 'Ligar' };
+  const isManual = funnel.trigger === 'manual';
+  return funnel.isEnabled
+    ? { state: 'Ligado', action: isManual ? 'Tirar da caixa' : 'Desligar' }
+    : { state: 'Desligado', action: isManual ? 'Disponível na caixa' : 'Ligar' };
 }
 
 /**

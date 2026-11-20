@@ -56,8 +56,8 @@ error body) is read as "not released yet".
 
 - WhatsApp funnels in a view: `list_whatsapp_funnels` and `get_whatsapp_funnel` now carry the app
   `_meta` and draw the dashboard's "Funis". The list shows each funnel with when it starts, how many
-  messages, its operation ("Pela operação do produto" for an automatic one) and its state ("Ligado",
-  or "Disponível na caixa" for a manual one), with "Carregar mais funis". The detail shows the
+  messages, its operation ("Pela operação do produto" for an automatic one) and its state ("Ligado" or
+  "Desligado"; on a manual one the action reads "Disponível na caixa" or "Tirar da caixa"), with "Carregar mais funis". The detail shows the
   settings (send window, stop on reply, signature, coupon) and the messages in order, each after its
   wait, as the customer reads them: signature and coupon filled in, emoji taken out when the store
   does not use them, event variables marked, text rendered as text. On/off and delete ask first in the

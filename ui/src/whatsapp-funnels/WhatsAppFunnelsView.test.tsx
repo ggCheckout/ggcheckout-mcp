@@ -42,7 +42,7 @@ describe('WhatsAppFunnelsView', () => {
     expect(html).toContain('Seus funis');
     expect(html).toContain('2 mensagens');
     expect(html).toContain('Pela operação do produto');
-    expect(html).toContain('Fora da caixa');
+    expect(html).toContain('Desligado');
   });
 
   it('says how to create the first funnel when there is none', () => {
