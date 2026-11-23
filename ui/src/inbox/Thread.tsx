@@ -164,7 +164,10 @@ export function Thread({ host, conversation, onBack, onRead, onOptOutChange }: {
       // The seller is here: one read now, and the beats start over with a fresh time cap (after a pause too).
       resume();
     } catch (err) {
-      setSendError(errorText(err, 'Não foi possível enviar. Tente de novo: a mensagem não será repetida.'));
+      setSendError(errorText(err, {
+        fallback: 'Não foi possível enviar. Tente de novo: a mensagem não será repetida.',
+        uncertain: 'O envio demorou para confirmar, e a mensagem pode ter saído. Tente de novo: ela não será repetida.',
+      }));
     } finally {
       setSending(false);
     }

@@ -188,19 +188,46 @@ describe('funnel', () => {
 });
 
 describe('errorText', () => {
-  it('keeps the message the saas wrote for the seller', () => {
+  it('keeps the message the saas wrote for the seller, without its code', () => {
     expect(errorText(new Error('Error: API Error (422): O chip desta conversa caiu: escolha outro chip. (INBOX_REPLY_REFUSED)')))
       .toBe('O chip desta conversa caiu: escolha outro chip.');
     expect(errorText(new Error('Error: API Error (404): Funil não encontrado.'))).toBe('Funil não encontrado.');
   });
 
-  it('names the switch and the term in the panel words', () => {
-    expect(errorText(new Error('Error: O acesso ... (INBOX_API_ACCESS_DISABLED)'))).toContain('Permitir acesso pelo MCP');
-    expect(errorText(new Error('Error: Aceite o termo (INBOX_TERMS_REQUIRED)'))).toContain('termo');
+  it('names the switch, the term and an account without the feature in the panel words', () => {
+    // As the tool hands them over: "Error: " and the server's typed error, which ends with its code.
+    expect(errorText(new Error('Error: O acesso do MCP à caixa de entrada está desligado. Peça ao lojista... (INBOX_API_ACCESS_DISABLED)'))).toContain('Permitir acesso pelo MCP');
+    expect(errorText(new Error('Error: A caixa de entrada ainda não tem o termo aceito... (INBOX_TERMS_REQUIRED)'))).toContain('Aceite o termo no painel');
+    expect(errorText(new Error('Error: Ainda não disponível nesta conta: ... (FEATURE_UNAVAILABLE)'))).toMatch(/ainda não estão disponíveis/);
   });
 
-  it('falls back when there is no message', () => {
-    expect(errorText('boom')).toMatch(/Tente de novo/);
-    expect(errorText(new Error(''), 'Falhou')).toBe('Falhou');
+  it('says a timed out or 502/504 call may have happened, in the words the caller gives', () => {
+    const timeout = new Error('Error: Cannot connect to GG Checkout API at https://api.example: request timed out, and a write may still have been applied, so check before repeating it. Check your network and the GGCHECKOUT_API_URL setting.');
+    expect(errorText(timeout)).toBe('O GG Checkout demorou para responder, e a ação pode ter sido feita. Atualize antes de repetir.');
+    expect(errorText(timeout, { uncertain: 'Pode ter saído.' })).toBe('Pode ter saído.');
+    const gateway = new Error('Error: Request failed with status 504 The API could not get an answer from the service behind it; a write may or may not have been applied, so check its result before repeating it.');
+    expect(errorText(gateway, { uncertain: 'Pode ter saído.' })).toBe('Pode ter saído.');
+  });
+
+  it('turns a wait the API asked for into pt-BR with the seconds', () => {
+    expect(errorText(new Error('Error: API key rate limit exceeded. Retry after 42 seconds.')))
+      .toBe('Muitas chamadas pela sua chave de API agora. Tente de novo em 42 s.');
+    expect(errorText(new Error('Error: Serviço indisponível. The API is refusing requests while its rate-limit backend is degraded; nothing was changed. Retry after 5 seconds.')))
+      .toBe('O GG Checkout está recusando chamadas por instantes, e nada foi alterado. Tente de novo em 5 s.');
+  });
+
+  it('never shows the server English, a URL or an internal marker: those take the fallback', () => {
+    const fallback = 'Não foi possível concluir. Tente de novo.';
+    for (const raw of [
+      'shape',
+      'tool failed',
+      'Error: Cannot connect to GG Checkout API at https://api.example: could not reach the API (ENOTFOUND). Check your network.',
+      'Error: API Error (500): Request failed with status 500',
+      'Error: Authentication failed',
+      'Error: Funnel abc not found',
+      'Error: API Error (422): ',
+    ]) expect(errorText(new Error(raw)), raw).toBe(fallback);
+    expect(errorText('boom')).toBe(fallback);
+    expect(errorText(new Error('shape'), { fallback: 'Falhou' })).toBe('Falhou');
   });
 });

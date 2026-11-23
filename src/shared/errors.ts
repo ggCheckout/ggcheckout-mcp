@@ -86,13 +86,18 @@ export class EdgeBlockedError extends AppError {
 }
 
 /**
+ * The three errors below end with their code in parentheses, like the API's own refusals: the inbox
+ * view tells them apart by it (it only sees the tool's text) and shows its own words for each.
+ */
+
+/**
  * The route is not in this deployment (a 404 or 405 with no API error body): the feature was not
  * released there yet. Not a refusal and not a crash: the caller says it is unavailable.
  */
 export class FeatureUnavailableError extends AppError {
   constructor(cause?: Error) {
     super(
-      'Ainda não disponível nesta conta: o funil e a caixa de entrada do WhatsApp não existem neste ambiente.',
+      'Ainda não disponível nesta conta: o funil e a caixa de entrada do WhatsApp não existem neste ambiente. (FEATURE_UNAVAILABLE)',
       'FEATURE_UNAVAILABLE',
       404,
       cause,
@@ -109,7 +114,7 @@ export class InboxAccessDisabledError extends AppError {
   constructor(cause?: Error) {
     super(
       'O acesso do MCP à caixa de entrada está desligado. Peça ao lojista para ligar "Permitir acesso pelo MCP" '
-      + 'nas configurações da caixa de entrada, no painel.',
+      + 'nas configurações da caixa de entrada, no painel. (INBOX_API_ACCESS_DISABLED)',
       'INBOX_API_ACCESS_DISABLED',
       403,
       cause,
@@ -123,7 +128,7 @@ export class InboxTermsRequiredError extends AppError {
   constructor(cause?: Error) {
     super(
       'A caixa de entrada ainda não tem o termo aceito. O lojista precisa aceitar o termo no painel: '
-      + 'o MCP nunca aceita o termo pela loja.',
+      + 'o MCP nunca aceita o termo pela loja. (INBOX_TERMS_REQUIRED)',
       'INBOX_TERMS_REQUIRED',
       403,
       cause,

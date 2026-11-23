@@ -6,6 +6,7 @@
 
 import { type Payload, count, isPayload, text } from '../lib/payload';
 import { codePointLength, parseDate } from '../lib/format';
+import { retryAfterSeconds } from './poll';
 
 /** How often the open list and thread are read, while the document is visible. */
 export const POLL_MS = 10_000;
@@ -309,19 +310,42 @@ export function startOutcome(data: unknown): StartOutcome | null {
 const KNOWN_ERRORS: Record<string, string> = {
   INBOX_API_ACCESS_DISABLED: 'O acesso do MCP à caixa está desligado. Ligue "Permitir acesso pelo MCP" nas configurações da caixa de entrada, no painel.',
   INBOX_TERMS_REQUIRED: 'A caixa de entrada ainda não tem o termo aceito. Aceite o termo no painel para usar a caixa.',
+  FEATURE_UNAVAILABLE: 'A caixa de entrada e os funis do WhatsApp ainda não estão disponíveis nesta conta.',
 };
 
+/** A timeout or a 502/504: the API may have finished the write, so the screen says it may have happened. */
+const UNCERTAIN = /request timed out|may or may not have been applied/;
+/** The 503 of the API's rate limiter failing closed: nothing was changed. */
+const LIMITER_DOWN = /rate-limit backend is degraded/;
+/** The saas's own refusal, as the MCP server wraps it (`ApiError`): the message after it is the seller's. */
+const API_MESSAGE = /^(?:Error:\s*)?API Error \(\d{3}\):\s*(.*)$/s;
+/** The server's fallback when the saas answered without a message: English, not for the seller. */
+const NO_API_MESSAGE = /^Request failed with status/;
+const CODE_SUFFIX = /\s*\([A-Z][A-Z_]+(?:;[^)]*)?\)\s*$/;
+
+export interface ErrorTexts {
+  /** When nothing better is known. */
+  fallback?: string;
+  /** When the call timed out and its write may have landed. */
+  uncertain?: string;
+}
+
 /**
- * A tool error as the seller reads it: the host hands over "Error: API Error (422): <message>
- * (<CODE>)", and the message the saas wrote for the seller is what stays.
+ * A tool error as the seller reads it. Only the saas's own message is kept: the host hands it over as
+ * "Error: API Error (422): <message> (<CODE>)". A wait the API asked for (429, 503) and a call that
+ * timed out get their own pt-BR text; anything else (the server's English, a URL, an internal marker
+ * like a reply in an unexpected shape) becomes the fallback.
  */
-export function errorText(error: unknown, fallback = 'Não foi possível concluir. Tente de novo.'): string {
+export function errorText(error: unknown, texts: ErrorTexts = {}): string {
+  const fallback = texts.fallback ?? 'Não foi possível concluir. Tente de novo.';
   const raw = error instanceof Error ? error.message : '';
   for (const [code, message] of Object.entries(KNOWN_ERRORS)) if (raw.includes(code)) return message;
-  const cleaned = raw
-    .replace(/^Error:\s*/, '')
-    .replace(/^API Error \(\d+\):\s*/, '')
-    .replace(/\s*\([A-Z][A-Z_]+(?:;[^)]*)?\)\s*$/, '')
-    .trim();
-  return cleaned || fallback;
+  const wait = retryAfterSeconds(error);
+  const later = wait !== null ? ` Tente de novo em ${wait} s.` : ' Tente de novo em alguns segundos.';
+  if (LIMITER_DOWN.test(raw)) return `O GG Checkout está recusando chamadas por instantes, e nada foi alterado.${later}`;
+  if (wait !== null) return `Muitas chamadas pela sua chave de API agora.${later}`;
+  if (UNCERTAIN.test(raw)) return texts.uncertain ?? 'O GG Checkout demorou para responder, e a ação pode ter sido feita. Atualize antes de repetir.';
+  const api = API_MESSAGE.exec(raw.trim());
+  if (!api || NO_API_MESSAGE.test(api[1])) return fallback;
+  return api[1].replace(CODE_SUFFIX, '').trim() || fallback;
 }

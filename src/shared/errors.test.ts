@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { AppError, NotFoundError, ValidationError, AuthenticationError, RateLimitError, ApiError } from './errors.js';
+import {
+  AppError, NotFoundError, ValidationError, AuthenticationError, RateLimitError, ApiError,
+  FeatureUnavailableError, InboxAccessDisabledError, InboxTermsRequiredError,
+} from './errors.js';
 
 describe('Error classes', () => {
   it('AppError has code and statusCode', () => {
@@ -39,5 +42,14 @@ describe('Error classes', () => {
     const err = new ApiError(503, 'Service Unavailable');
     expect(err.message).toBe('API Error (503): Service Unavailable');
     expect(err.statusCode).toBe(503);
+  });
+
+  // The inbox view only sees the tool's text, and tells these apart by the code at its end.
+  it.each([
+    ['FeatureUnavailableError', new FeatureUnavailableError()],
+    ['InboxAccessDisabledError', new InboxAccessDisabledError()],
+    ['InboxTermsRequiredError', new InboxTermsRequiredError()],
+  ])('%s ends its message with its code', (_name, err) => {
+    expect(err.message.endsWith(` (${err.code})`)).toBe(true);
   });
 });
