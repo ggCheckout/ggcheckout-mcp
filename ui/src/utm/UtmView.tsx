@@ -18,7 +18,7 @@ function CopyButton({ value, label, primary = false }: { value: string; label: s
         <Icon size={16} aria-hidden />
         {state === 'copied' ? 'Copiado' : label}
       </button>
-      <span className="copy-failed" role="status">{state === 'failed' ? COPY_FAILED_TEXT : ''}</span>
+      <span className="copy-failed status-region" role="status">{state === 'failed' ? COPY_FAILED_TEXT : ''}</span>
     </span>
   );
 }

@@ -7,6 +7,9 @@ import { summarizeRedeem, summarizeRewards } from './rewards/model';
 import { summarizeDownsells, summarizeUpsells } from './offers/model';
 import { summarizeFlow, summarizeFlowList } from './telegram/model';
 import { summarizeChip, summarizeChips, summarizePairing } from './chips/model';
+import { summarizeInbox } from './inbox/model';
+import { summarizeOperation, summarizeOperations } from './operations/model';
+import { summarizeFunnel as summarizeWhatsAppFunnel, summarizeFunnels as summarizeWhatsAppFunnels } from './whatsapp-funnels/model';
 import { summarizeArea, summarizeCarousels, summarizeLessons, summarizeModules } from './members/model';
 import { summarizeFunnelConversion, summarizeFunnelStats } from './funnel/model';
 import { summarizePayment, summarizePaymentsPage } from './payments/model';
@@ -15,7 +18,7 @@ import { summarizePayApi } from './payapi/model';
 import { summarizeDiagnosis, summarizeGuide } from './tracking/model';
 import { summarizeLink } from './utm/model';
 
-export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'members' | 'telegram' | 'chips' | 'pix' | 'payapi' | 'tracking' | 'utm';
+export type ViewName = 'sales' | 'funnel' | 'payments' | 'billing' | 'domains' | 'deliveries' | 'gateways' | 'rewards' | 'offers' | 'members' | 'telegram' | 'chips' | 'pix' | 'payapi' | 'tracking' | 'utm' | 'inbox' | 'operations' | 'whatsappFunnels';
 
 /** Tools with a view (their `_meta.ui.resourceUri` is ui://ggcheckout/app.html) and the view each draws. */
 export const TOOL_VIEWS: Record<string, ViewName> = {
@@ -52,6 +55,10 @@ export const TOOL_VIEWS: Record<string, ViewName> = {
   list_whatsapp_numbers: 'chips',
   get_whatsapp_number: 'chips',
   get_pairing_code: 'chips',
+  list_whatsapp_sessions: 'operations',
+  get_whatsapp_session: 'operations',
+  list_whatsapp_funnels: 'whatsappFunnels',
+  get_whatsapp_funnel: 'whatsappFunnels',
   create_pix_charge: 'pix',
   get_payment_intent: 'pix',
   add_credit: 'pix',
@@ -64,6 +71,16 @@ export const TOOL_VIEWS: Record<string, ViewName> = {
   explain_tracking: 'tracking',
   diagnose_tracking: 'tracking',
   build_tracking_link: 'utm',
+  // The inbox: the model opens it, and the app-only tools below are what the view calls (never drawn as results).
+  open_whatsapp_inbox: 'inbox',
+  list_whatsapp_conversations: 'inbox',
+  list_whatsapp_messages: 'inbox',
+  send_whatsapp_reply: 'inbox',
+  mark_whatsapp_conversation_read: 'inbox',
+  get_whatsapp_conversation_funnel: 'inbox',
+  start_whatsapp_conversation_funnel: 'inbox',
+  stop_whatsapp_conversation_funnel: 'inbox',
+  set_whatsapp_conversation_opt_out: 'inbox',
 };
 
 /**
@@ -86,6 +103,10 @@ export function pickView(toolName: string | undefined, payload: unknown): ViewNa
   if (summarizeArea(payload) || summarizeCarousels(payload) || summarizeModules(payload) || summarizeLessons(payload)) return 'members';
   if (summarizeFlow(payload) || summarizeFlowList(payload)) return 'telegram';
   if (summarizeChip(payload) || summarizeChips(payload) || summarizePairing(payload)) return 'chips';
+  if (summarizeOperation(payload) || summarizeOperations(payload)) return 'operations';
+  if (summarizeWhatsAppFunnel(payload) || summarizeWhatsAppFunnels(payload)) return 'whatsappFunnels';
+  // Before payapi: its limits reading takes any `available: false` for itself, and the inbox answers one when the account lacks it.
+  if (summarizeInbox(payload)) return 'inbox';
   if (summarizePayApi(payload)) return 'payapi';
   if (normalizePix(payload)) return 'pix';
   if (summarizeLink(payload)) return 'utm';

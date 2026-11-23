@@ -7,6 +7,16 @@ right now.
 
 ## 0.6.0
 
+### Release order
+
+The WhatsApp funnel and inbox exist on the saas `developer` branch only, and the saas raises its
+minimum to 0.6.0 only after 0.6.0 is on npm (see Security). Publish 0.6.0 first; then the saas
+(ggCheckout/saas-checkout#2246: the 0.6.0 minimum, and API-key access to the funnel, the inbox and
+the funnel import behind the store's switch), and right after it the core (inbox settings
+`apiAccessEnabled`, ggCheckout/ggcheckout-core#858). Until they are in production every funnel and
+inbox tool answers "ainda não disponível nesta conta" instead of failing: a saas route that does
+not exist (404 or 405 with no error body) is read as "not released yet".
+
 ### Breaking
 
 - The WhatsApp tools follow the dashboard's model: chips (the connected numbers) and sessions
@@ -109,7 +119,8 @@ right now.
   WhatsApp data: the summary, a card per message with its status, and a confirmed resend.
 - Every write from a view card asks for a confirmation inside the card first: resend a WhatsApp
   message, restart, deactivate or reactivate a chip, and redeem the WhatsApp group reward. They share
-  one `ConfirmPanel` that says what the action does; nothing is sent until it is confirmed.
+  one `ConfirmPanel` that says what the action does; nothing is sent until it is confirmed. Esc
+  cancels it, and when it closes the focus goes back to the button that opened it.
 - Gateways view on `list_checkout_wallets` and `get_gateway_fallback_stats`, as the charge order
   (each wallet's PIX and card gateways in order, with their last-day rate) and the stability
   ranking. `get_gateway_fallback_stats` describes its units and its `ranking`.
@@ -149,6 +160,67 @@ right now.
   UTM links view for it.
 - Types: `Checkout.metricToken` is `string | string[] | null`; `Checkout` gained `publicId`,
   `checkoutModel`, `customDomain` and `publicUrl`; `FunnelSettings` gained `utmify`.
+- WhatsApp funnels, always registered: `list_whatsapp_funnels`, `get_whatsapp_funnel`,
+  `create_whatsapp_funnel`, `update_whatsapp_funnel`, `delete_whatsapp_funnel`,
+  `toggle_whatsapp_funnel` and `import_whatsapp_funnel_contacts`. A funnel is up to 5 messages with a
+  wait of 15 minutes to 2 days between them, started by a trigger (abandoned cart, unpaid or expired
+  PIX, refused or cancelled card) or by hand. Inputs carry the same caps as the dashboard (text in
+  code points: 4096 per step, 80 for the name, 60 for the signature, 30 for the coupon).
+  `update_whatsapp_funnel` takes only the fields to change and saves the whole funnel, as the route
+  replaces it; `steps` and `layout` replace as a whole (steps sent without a layout drop the positions
+  past the new last step). The contact import takes batches of up to 500 and needs the store's "Permitir acesso
+  pelo MCP" switch (see below).
+- WhatsApp inbox in a view, only for clients that draw MCP Apps: `open_whatsapp_inbox` opens the
+  seller's conversations (list, thread marked read when opened, reply, run or stop a funnel, "Parar
+  funil e não enviar mais" and "Voltar a enviar", each funnel action behind a confirmation) and gives the model only `{ available, enabled, conversations, unread, truncated }` (`truncated`: the counts stopped at the newest 200 conversations): no names,
+  phones or message text, so a customer message cannot reach the model or act as a prompt injection,
+  and the model cannot reply by itself. What the view calls are app-only tools
+  (`_meta.ui.visibility: ["app"]`), registered after the client announces MCP Apps support:
+  `list_whatsapp_conversations`, `list_whatsapp_messages`, `send_whatsapp_reply`,
+  `mark_whatsapp_conversation_read`, `get_whatsapp_conversation_funnel`,
+  `start_whatsapp_conversation_funnel`, `stop_whatsapp_conversation_funnel` and
+  `set_whatsapp_conversation_opt_out`. The view reads again every 10 seconds only while it is
+  visible: the list while no conversation is open, the open conversation's messages (its funnel run
+  only when a new message shows it moved). The reads spend the account's API key budget (1000 per
+  hour and 30 per minute in the saas, shared by every key), so they stop after 15 minutes of visible time or at a 429
+  or 503 with a `Retry-After`, and say so, with "Atualizar" to resume (sending a reply starts the 15
+  minutes over). A reply keeps its `clientMessageId` on a retry so it is
+  never sent twice. The phone in an inbox route never reaches the MCP's own log line.
+- Inbox access by API key is a per-store switch, off by default: the seller turns on "Permitir acesso
+  pelo MCP" in the dashboard's inbox settings (a key can never turn it on). While it is off the
+  saas answers 403 `INBOX_API_ACCESS_DISABLED`, and the tools and the view say what to turn on. The
+  inbox term is never accepted by the MCP: 403 `INBOX_TERMS_REQUIRED` says to accept it in the
+  dashboard.
+- WhatsApp operations in a view: `list_whatsapp_sessions` and `get_whatsapp_session` (the API still
+  calls an operation a session) now carry the app `_meta` and draw the dashboard's "Operações": each
+  operation with its state in the dashboard's words (Enviando, Reserva fora, Em reserva, Sem
+  cobertura), its primary chip, fallbacks and products; the detail shows "Chips da operação" in the
+  order they send and "Produtos atendidos". From the view the seller reorders the chips (arrows in
+  place of the dashboard's drag), adds or removes a chip and adds or removes products, each write
+  behind a confirmation in the card, through the existing `update_whatsapp_session`,
+  `add_whatsapp_session_number`, `remove_whatsapp_session_number` and
+  `set_whatsapp_session_products`. Those writes replace the whole order or product list, so the view
+  reads the operation again first and refuses when it changed since the card showed it (in the
+  dashboard or by the model), reloading it instead. Tool names are unchanged.
+
+- WhatsApp funnels in a view: `list_whatsapp_funnels` and `get_whatsapp_funnel` now carry the app
+  `_meta` and draw the dashboard's "Funis". The list shows each funnel with when it starts, how many
+  messages, its operation ("Pela operação do produto" for an automatic one) and its state ("Ligado" or
+  "Desligado"), with "Atualizar", "Carregar mais funis" and "+ Novo funil". A funnel opens in the
+  dashboard's editor: the flow of blocks (Começa, Espera, WhatsApp, Fim) with "+ Adicionar" and a "+"
+  between messages (Mensagem, Lembrete com o link, Última chamada com cupom, up to 5), arrows that move
+  a message up or down with its wait, and a panel per
+  block with Propriedades (name, trigger, operation of a manual funnel; the wait presets and "Outro";
+  the variable chips and the text; "Marcar como lida antes" and "Mostrar digitando"; stop on reply and
+  send window; the store's signature, coupon and emoji) and Prévia (the customer's chat with each wait,
+  sends pushed by the window and sample data). Edits are a draft until "Salvar", which asks first,
+  re-reads the funnel and refuses when it changed since it was shown (dashboard, chat, another card),
+  then saves the whole funnel with `update_whatsapp_funnel`. "Funil ligado" waits for the draft to be
+  saved and "Excluir" asks first. "+ Novo funil" offers the dashboard's models (abandoned cart, unpaid
+  PIX, refused card, inbox follow-up) or a blank draft; a model is created at once with
+  `create_whatsapp_funnel`, and the abandoned-cart one is turned on unless another funnel holds the
+  trigger. The board's free positions are kept as saved in the dashboard: the widget draws the blocks
+  in order and shifts their positions when a message comes in or goes out.
 
 ### Changed
 
@@ -162,6 +234,22 @@ right now.
   through `/api/billing/pix`, as the dashboard's "Pagar Fatura" does. PIX is the only way left to
   pay an invoice: card charges are retired and credit is applied on its own (`add_credit` tops it
   up). Only the open invoice of its track can be paid, and the error names it otherwise.
+- "Sessão" became "operação" wherever the seller reads it, as the dashboard renamed it: the chips
+  view ("Operações que usam este chip", "Vá em Operações"), the inbox note for a product without
+  one, and the tool descriptions (which keep "session" in parentheses, the API's name).
+- Rows of the chips and operations lists put their status column under the name on a narrow
+  screen (a phone's chat), so the name no longer wraps letter by letter.
+- A disabled call-to-action button looks disabled (dimmed, no hover, no light pass) in every view.
+- The chips view follows the dashboard's Chips screen: the chip types read "WhatsApp GG" and "Meta
+  oficial" (each explained on hover), a chip marked for removal reads its countdown ("Será removido
+  em 23 horas", undone only in the dashboard; one marked for lack of a connection can still be
+  restarted and connected to keep it), every status is explained on hover, "N chips pedem ação" lists
+  on top the chips marked for removal (soonest first) and the active ones that do not send until the
+  seller acts, the list shows "N chips ativos / 20" and has "Atualizar". A chip marked for removal is
+  left out of the chips an operation can take. Phones stay masked: the model reads the same answer.
+- `get_sales_attribution` says what the amounts and the period mean: BRL cents (a sale in another
+  currency enters as its BRL value), and paid and refunded sales both dated by when the sale was
+  made, so a refund counts in its sale's period and not in the one it was refunded.
 
 ### Fixed
 

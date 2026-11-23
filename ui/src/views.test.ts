@@ -44,6 +44,12 @@ describe('pickView', () => {
     expect(pickView(undefined, { numbers: [] })).toBe('chips');
     expect(pickView(undefined, { number: { uid: 'c1', provider: 'waha', status: 'pending' } })).toBe('chips');
     expect(pickView(undefined, { success: true, code: 'ABCD1234' })).toBe('chips');
+    expect(pickView(undefined, { sessions: [{ uid: 'g1', primaryNumberId: 'c1' }] })).toBe('operations');
+    expect(pickView(undefined, { success: true, session: { uid: 'g1', primaryNumberId: 'c1' } })).toBe('operations');
+    expect(pickView('list_whatsapp_sessions', {})).toBe('operations');
+    expect(pickView(undefined, { items: [{ id: 'f1', trigger: 'manual', stepCount: 1 }], nextAfter: null })).toBe('whatsappFunnels');
+    expect(pickView(undefined, { funnel: { id: 'f1', trigger: 'manual', steps: [] } })).toBe('whatsappFunnels');
+    expect(pickView('get_whatsapp_funnel', {})).toBe('whatsappFunnels');
     expect(pickView(undefined, { anything: true })).toBeNull();
   });
 
@@ -69,5 +75,14 @@ describe('pickView', () => {
     // A single charge stays with the PIX view, and a members area tree is not a tracking guide.
     expect(pickView(undefined, { object: 'payment_intent', id: 'pi_1', status: 'canceled' })).toBe('pix');
     expect(pickView(undefined, { sections: [] })).toBe('members');
+  });
+
+  it('draws the inbox by tool name and by its four counts, without taking the payments API limits for it', () => {
+    expect(pickView('open_whatsapp_inbox', {})).toBe('inbox');
+    expect(pickView('list_whatsapp_conversations', {})).toBe('inbox');
+    expect(pickView(undefined, { available: true, enabled: true, conversations: 3, unread: 5 })).toBe('inbox');
+    expect(pickView(undefined, { available: false, enabled: false, conversations: 0, unread: 0 })).toBe('inbox');
+    expect(pickView(undefined, { object: 'limits_unavailable', available: false })).toBe('payapi');
+    expect(pickView(undefined, { available: true })).toBeNull();
   });
 });

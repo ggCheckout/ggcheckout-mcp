@@ -1,6 +1,6 @@
 # GG Checkout MCP Server
 
-> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 210 tools across 23 domains.
+> Complete Model Context Protocol server for managing the GG Checkout platform via AI agents — 217 tools across 23 domains.
 
 ## Overview
 
@@ -123,11 +123,14 @@ answer as before.
 | Offers | `list_upsells`, `list_downsells` | The product's post-purchase funnel in order: checkout, each upsell (price with the original struck, timer, number of products, active), what declining it does, the downsells a declined "stop" upsell opens, and success. Either tool reads the other list of the same product to complete the map. |
 | Members area | `get_members_area`, `list_modules`, `list_sections`, `list_lessons` | The course tree with the seller's names: an API module is a "carrossel" and a section a "módulo". The area's students, active students and average completion, then carousels, modules and lessons (type, duration, release or lock). Opening a carousel or a module reads the level below. |
 | Telegram flow | `get_telegram_flow`, `list_telegram_flows` | A flow drawn read-only where the bot's flow editor keeps each node: the editor's node cards (category color, icon, preview line, labeled outputs such as Aprovado / Expirou or each button) and the edges colored by the output they leave from; an edge that loops back up or would cross a node runs down its own lane on the right. The list opens any flow in place. |
-| WhatsApp chips | `list_whatsapp_numbers`, `get_whatsapp_number`, `get_pairing_code` | The chips as the dashboard's chip screens: name, masked number, provider (QR Code or Oficial), status, the first session that uses it (read through `list_whatsapp_sessions`, or "Não vinculado") and how many. An active QR code chip in the handshake (where the dashboard shows its QR) is connected in place with a pairing code, since the server never passes the QR on: the seller types the chip's number, types the code on the phone, and the chip is read until it connects. A dropped chip is restarted first ("Reiniciar", which asks first); "Desativar" / "Reativar" go through `update_whatsapp_number`, and the list's "Verificar status" through `check_whatsapp_numbers`. A connected chip lists the sessions that use it. |
+| WhatsApp chips | `list_whatsapp_numbers`, `get_whatsapp_number`, `get_pairing_code` | The chips as the dashboard's Chips screen: "N chips pedem ação" on top (marked for removal, soonest first, then active chips that do not send), "N chips ativos / 20", and each chip with its name, masked number, type (WhatsApp GG or Meta oficial), status explained on hover (a chip marked for removal reads its countdown), the first operation that uses it (read through `list_whatsapp_sessions`, or "Não vinculado") and how many. An active QR code chip in the handshake (where the dashboard shows its QR) is connected in place with a pairing code, since the server never passes the QR on: the seller types the chip's number, types the code on the phone, and the chip is read until it connects. A dropped chip is restarted first ("Reiniciar", which asks first); "Desativar" / "Reativar" go through `update_whatsapp_number`, the list's "Verificar status" through `check_whatsapp_numbers` and "Atualizar" reads the list again. A connected chip lists the operations that use it. |
+| WhatsApp funnels | `list_whatsapp_funnels`, `get_whatsapp_funnel` | The dashboard's "Funis": each funnel with when it starts, its messages count, operation and state, paged, with "Atualizar" and "+ Novo funil" (the dashboard's models, created with `create_whatsapp_funnel`, or a blank draft). A funnel opens in the dashboard's editor: blocks Começa, Espera, WhatsApp and Fim with "+ Adicionar", a "+" between messages and arrows that move a message with its wait, a Propriedades panel per block (trigger and operation, wait presets, variable chips and text, the sending pace, stop on reply and send window, the store's signature, coupon and emoji) and a Prévia of the customer's chat. "Salvar" asks first, re-reads the funnel and refuses when it changed elsewhere since it was shown, then saves it whole with `update_whatsapp_funnel`; "Funil ligado" (after saving) and "Excluir" ask first and go through `toggle_whatsapp_funnel` and `delete_whatsapp_funnel`. |
+| WhatsApp operations | `list_whatsapp_sessions`, `get_whatsapp_session` | The dashboard's "Operações" (sessions in the API): each operation with its state as the dashboard words it (Enviando, Reserva fora, Em reserva, Sem cobertura; read from its chips through `list_whatsapp_numbers`), its primary chip, fallbacks and products. The detail shows "Chips da operação" in the order they send, moved with arrows, plus "Adicionar chip" and remove, and "Produtos atendidos" (titles read through `list_products`) with add and remove. Every write asks first in the card, is refused (and the operation reloaded) when the operation changed since the card showed it, and goes through `update_whatsapp_session`, `add_whatsapp_session_number`, `remove_whatsapp_session_number` or `set_whatsapp_session_products`. |
 | PIX | `create_pix_charge`, `get_payment_intent`, `cancel_payment_intent`, `add_credit`, `get_credit_topup`, `pay_invoice` | QR code, copy-and-paste button, time left, and the status, polled every 5 s (10 s for test-mode charges, which have a smaller read limit) through `get_payment_intent`, `get_credit_topup`, `list_credits` or `get_invoice` until it is paid or expires. `cancel_payment_intent` draws the canceled charge. |
 | Payments API | `get_payments_api_limits`, `list_wallets`, `list_payment_intents` | Requests per minute per bucket (used / limit, when a full bucket frees its next request, LIVE/TESTE, max per charge), wallets with their active PIX count, and charges with status; each list starts with the requests-per-minute strip; "Mais" pages, a row opens the charge's PIX view. |
 | Tracking | `explain_tracking`, `diagnose_tracking` | How a sale's metrics travel to Meta, TikTok, Google Ads and UTMify, as sections with expandable items and the common problems; or the diagnosis of an account, checkout, funnel or payment: findings sorted critical, warning, info, ok (icon and text), the tracking tokens with mode and health, the sale's UTMs and click ids, and the last 24 hours of errors. |
 | UTM links | `build_tracking_link` | The link to sell from with UTMs: the text to copy (the ad's "Parâmetros de URL", the Google tracking template, or the whole link for a manual one), the clean destination, "Onde colar" steps, the parameters table with where each came from, and the notes. |
+| WhatsApp inbox | `open_whatsapp_inbox` (and the app-only `list_whatsapp_conversations`, `list_whatsapp_messages`, `send_whatsapp_reply`, `mark_whatsapp_conversation_read`, `get_whatsapp_conversation_funnel`, `start_whatsapp_conversation_funnel`, `stop_whatsapp_conversation_funnel`, `set_whatsapp_conversation_opt_out`) | The seller's conversations: the list (name or masked phone, last text, unread, "Pediu para sair"), a thread with its composer, and the funnel actions (run a manual funnel, stop it, "Parar funil e não enviar mais", "Voltar a enviar"). Read again every 10 s while visible (the list while no conversation is open, then the open conversation), for up to 15 minutes of visible time or until the API answers 429 or 503 with a `Retry-After`, with "Atualizar" to resume: the reads spend the account's API key budget. Message text is shown as text only. The model gets only the counts. See "WhatsApp inbox" below. |
 
 The views run in the client's sandbox with no network access: their data only arrives through
 the client, from the tool result or from the tool calls listed above. All of them are one React
@@ -433,7 +436,9 @@ false while more remain, and `lastCreatedAt` = `nextCursor` resumes the walk.
 Which campaign or ad sells: sales aggregated by 1 to 3 distinct keys among `utm_source`, `utm_medium`,
 `utm_campaign`, `utm_content`, `utm_term`, `src` and `sck` (default `utm_source`, `utm_campaign`,
 `utm_content`). Each row has the key values plus `paidCount`, `paidGrossCents`, `refundedCount` and
-`refundedCents` (cents), and `totals` sums them. Aggregated only: no buyer data and no per-payment UTMs.
+`refundedCents` (BRL cents: a sale in another currency enters as its BRL value), and `totals` sums
+them. Paid and refunded sales are both dated by when the sale was made: a refund counts in the period
+of its sale, not in the one it was refunded. Aggregated only: no buyer data and no per-payment UTMs.
 A `null` key value is the sales that came without that parameter; `utm_content` usually carries the ad id.
 `from` and `to` are ISO dates (default: the last 7 days; at most 90 days, checked before the call).
 `truncated: true` means the rows were cut: narrow the period or group by fewer keys.
@@ -643,25 +648,59 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 
 ---
 
-### WhatsApp (19 tools)
+### WhatsApp (26 tools)
 
-Follows the dashboard: **chips** are the connected numbers, and a **session** is a primary chip
-with up to two fallbacks that sends for a set of products. Templates belong to sessions. Creating
-or deleting a chip or a session, and connecting an official (Meta) number, are refused to API keys
-on purpose: do those in the dashboard.
+Follows the dashboard: **chips** are the connected numbers, and an **operation** ("Operações" in the
+dashboard, a session in the API and in the tool names) is a primary chip with up to two fallbacks
+that sends for a set of products. Templates belong to operations. Creating or deleting a chip or an
+operation, and connecting an official (Meta) number, are refused to API keys on purpose: do those in
+the dashboard.
 
 **Example prompts:**
 - "Which WhatsApp chips are connected?"
 - "Connect chip abc123 to 5511999999999 with a pairing code"
 - "Restart chip abc123"
 - "Check whether my WhatsApp chips are really connected"
-- "List my WhatsApp sessions"
-- "Make chip def456 the primary of session 'Sales' and abc123 its fallback"
-- "Send session 'Sales' for products p1 and p2"
-- "Create a template for the 'upsell_paid' event in session 'Sales': 'Hi {{nome}}, thanks for purchasing {{produto}}!'"
+- "How are my WhatsApp operations?"
+- "Make chip def456 the primary of operation 'Sales' and abc123 its fallback"
+- "Send operation 'Sales' for products p1 and p2"
+- "Create a template for the 'upsell_paid' event in operation 'Sales': 'Hi {{nome}}, thanks for purchasing {{produto}}!'"
 - "Disable template abc123"
 - "Check the WhatsApp delivery status for payment xyz789"
 - "Resend the WhatsApp delivery for payment xyz789"
+- "List my WhatsApp funnels"
+- "Create a manual WhatsApp funnel 'Welcome' with 2 messages, 1 hour apart, on operation abc123"
+- "Turn on the abandoned-cart funnel"
+
+#### WhatsApp funnels
+
+`list_whatsapp_funnels`, `get_whatsapp_funnel`, `create_whatsapp_funnel`, `update_whatsapp_funnel`,
+`delete_whatsapp_funnel`, `toggle_whatsapp_funnel` and `import_whatsapp_funnel_contacts` (up to 500
+contacts per call). A funnel is up to 5 messages with a wait between them, started by a trigger or by
+hand from the inbox. The caps match the dashboard's. Only one funnel per automatic trigger can be on.
+A funnel is always created off. Turning one on starts messaging real customers, so it waits for the
+seller's yes: the model is told to confirm before `toggle_whatsapp_funnel`, and in the view every path
+that creates or turns on a funnel ("Usar modelo" included) goes through a confirmation. The message
+variables are the dashboard's: `{{customer_name}}`, `{{assinatura}}` and `{{cupom}}` on every trigger,
+plus the checkout ones on the automatic triggers and `{{pix_copia_cola}}` on the PIX ones.
+Importing contacts messages people who never wrote in, so it needs the inbox switch below.
+
+#### WhatsApp inbox
+
+Only in clients that draw MCP Apps. `open_whatsapp_inbox` opens the inbox in a view, and the model
+receives `{ available, enabled, conversations, unread, truncated }` (`truncated`: the counts stopped at the newest 200 conversations) and nothing else: names, phones and message
+text only ever reach the view, through app-only tools (`list_whatsapp_conversations`,
+`list_whatsapp_messages`, `send_whatsapp_reply`, `mark_whatsapp_conversation_read`,
+`get_whatsapp_conversation_funnel`, `start_whatsapp_conversation_funnel`,
+`stop_whatsapp_conversation_funnel`, `set_whatsapp_conversation_opt_out`) that the model does not
+list and that exist only for a client with MCP Apps support. A customer message therefore never enters
+the model's context, and the model cannot answer one.
+
+Access by API key is off by default, per store: turn on **Permitir acesso pelo MCP** in the dashboard's
+inbox settings (a key can never turn it on, and turning it off cuts access on the next request). While
+it is off the API answers 403 `INBOX_API_ACCESS_DISABLED`; if the store has not accepted the inbox term,
+403 `INBOX_TERMS_REQUIRED` (accept it in the dashboard: the MCP never does). On an account where the
+funnel and inbox are not released yet, the tools answer "ainda não disponível nesta conta".
 
 ---
 

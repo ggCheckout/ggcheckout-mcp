@@ -422,18 +422,43 @@ export const chips = {
   numbers: [
     { uid: 'chip_suporte', provider: 'waha', displayName: 'Suporte', status: 'authenticated', phoneNumber: '*********4321', isActive: true, groupsCount: 2 },
     { uid: 'chip_vendas', provider: 'waha', displayName: 'Vendas 2', status: 'pending', phoneNumber: '*********8877', isActive: true, groupsCount: 1 },
-    { uid: 'chip_oficial', provider: 'meta', displayName: 'Oficial GG', status: 'authenticated', phoneNumber: '*******0000', isActive: true, groupsCount: 0 },
-    { uid: 'chip_reserva', provider: 'waha', displayName: 'Reserva', status: 'disconnected', phoneNumber: '*********2222', isActive: true, groupsCount: 0 },
-    { uid: 'chip_antigo', provider: 'waha', displayName: '', status: 'banned', phoneNumber: '*********1111', isActive: false, groupsCount: 0 },
+    { uid: 'chip_oficial', provider: 'meta', displayName: 'Oficial GG', status: 'authenticated', phoneNumber: '*******0000', isActive: true, groupsCount: 2 },
+    { uid: 'chip_reserva', provider: 'waha', displayName: 'Reserva', status: 'disconnected', phoneNumber: '*********2222', isActive: true, groupsCount: 1 },
+    { uid: 'chip_antigo', provider: 'waha', displayName: '', status: 'banned', phoneNumber: '*********1111', isActive: false, groupsCount: 1 },
+    // Marked for removal by the seller: deleted in about 23 hours unless undone in the dashboard.
+    { uid: 'chip_fabio', provider: 'waha', displayName: 'Fabio', status: 'authenticated', phoneNumber: '*********1671', isActive: false, groupsCount: 0, removalScheduledAt: new Date(Date.now() + 22.5 * 3_600_000).toISOString(), removalReason: 'seller' },
   ],
 };
 export const chipDetail = (id: string, status?: string) => {
   const base = chips.numbers.find((c) => c.uid === id) ?? chips.numbers[1];
-  const usedBy = base.uid === 'chip_suporte'
-    ? [{ groupId: 'g1', name: 'Método Aurora', role: 'primary' }, { groupId: 'g2', name: 'Mentoria', role: 'fallback' }]
-    : base.uid === 'chip_vendas' ? [{ groupId: 'g1', name: 'Método Aurora', role: 'fallback' }] : [];
+  // Who uses each chip, as `operations` below has them.
+  const usedBy = operations.sessions.flatMap((s) => {
+    if (s.primaryNumberId === base.uid) return [{ groupId: s.uid, name: s.name, role: 'primary' }];
+    return s.fallbackNumberIds.includes(base.uid) ? [{ groupId: s.uid, name: s.name, role: 'fallback' }] : [];
+  });
   const { groupsCount: _count, ...rest } = base;
   return { number: { ...rest, status: status ?? base.status, usedBy } };
+};
+
+// WhatsApp operations (list_whatsapp_sessions; the API calls them sessions), over the chips above:
+// Método Aurora sends on its primary, Mentoria fell back to a reserve, Suporte lost its reserve and
+// Teste waha has no chip that sends.
+export const operations = {
+  sessions: [
+    { uid: 'g1', name: 'Método Aurora', primaryNumberId: 'chip_suporte', fallbackNumberIds: ['chip_oficial'], assignedProducts: ['prod_aurora', 'prod_aurora_vip'], isActive: true },
+    { uid: 'g2', name: 'Mentoria', primaryNumberId: 'chip_vendas', fallbackNumberIds: ['chip_suporte'], assignedProducts: ['prod_mentoria'], isActive: true },
+    { uid: 'g3', name: 'Suporte', primaryNumberId: 'chip_oficial', fallbackNumberIds: ['chip_reserva'], assignedProducts: ['prod_ebook'], isActive: true },
+    { uid: 'g4', name: 'Teste waha', primaryNumberId: 'chip_antigo', fallbackNumberIds: [], assignedProducts: [], isActive: false },
+  ],
+};
+export const products = {
+  products: [
+    { uid: 'prod_aurora', title: 'Método Aurora', price: 497 },
+    { uid: 'prod_aurora_vip', title: 'Método Aurora VIP', price: 997 },
+    { uid: 'prod_mentoria', title: 'Mentoria em grupo', price: 1497 },
+    { uid: 'prod_ebook', title: 'E-book Primeiros Passos', price: 27 },
+    { uid: 'prod_planilha', title: 'Planilha de metas', price: 19.9 },
+  ],
 };
 
 // ---- Payments API cards (invented) ----
@@ -572,3 +597,97 @@ export const utmManual = {
     { key: 'sck', value: 'story1', source: 'manual' },
   ],
 };
+
+// The WhatsApp inbox: invented contacts and messages (the phones are made up, not anyone's). The
+// open answer carries only the four counts; the rest is what the app-only tools answer to the view.
+export const inboxOpen = { available: true, enabled: true, conversations: 4, unread: 3 };
+export const inboxOff = { available: true, enabled: false, conversations: 0, unread: 0 };
+export const inboxUnavailable = { available: false, enabled: false, conversations: 0, unread: 0 };
+
+const minutesAgo = (n: number) => new Date(Date.now() - n * 60_000).toISOString();
+
+export const inboxConversations = {
+  items: [
+    { contactKey: '553198765001', name: 'Marina Duarte', chipId: 'chip_vendas', openedByChipId: 'chip_vendas', lastText: 'Consegui pagar, o acesso chega por e-mail?', lastType: 'text', lastAt: minutesAgo(2), unread: 2, interacted: true },
+    { contactKey: '553198765002', name: null, chipId: 'chip_vendas', openedByChipId: 'chip_vendas', lastText: 'SAIR', lastType: 'text', lastAt: minutesAgo(95), unread: 1, interacted: true, exitRequestedAt: minutesAgo(95) },
+    { contactKey: '553198765003', name: 'Caio Ribeiro', chipId: 'chip_suporte', openedByChipId: 'chip_suporte', lastText: null, lastType: 'media', lastAt: minutesAgo(60 * 26), unread: 0, interacted: true },
+    { contactKey: 'lid:3f9a1c7e2b4d@lid', name: 'Helena Prado', chipId: 'chip_suporte', openedByChipId: 'chip_suporte', lastText: 'Obrigada pelo retorno!', lastType: 'text', lastAt: minutesAgo(60 * 24 * 5), unread: 0, interacted: true, optedOut: true },
+  ],
+  nextBefore: null,
+};
+
+const msgs = (items: Array<[string, 'in' | 'out', string | null, number, boolean?, string?]>) => ({
+  items: items.map(([id, dir, text, ago, auto, type]) => ({
+    id, messageId: `w_${id}`, dir, chipId: 'chip_vendas', type: type ?? 'text', text, at: minutesAgo(ago), auto: auto ?? false,
+  })).reverse(),
+  nextBefore: null,
+});
+
+export function inboxMessages(contactKey: string) {
+  switch (contactKey) {
+    case '553198765001': return msgs([
+      ['1763640000000-1', 'out', 'Olá, Marina! Vi que o seu PIX do Método Aurora ainda não caiu. Precisa de ajuda para finalizar?', 55, true],
+      ['1763640000000-2', 'in', 'Oi! Consegui agora.\nVoltei a tentar e foi.', 4],
+      ['1763640000000-3', 'in', 'Consegui pagar, o acesso chega por e-mail?', 2],
+    ]);
+    case '553198765002': return msgs([
+      ['1763640000001-1', 'out', 'Oi! Seu cupom VOLTA10 vale até amanhã.', 130, true],
+      ['1763640000001-2', 'in', 'SAIR', 95],
+    ]);
+    case '553198765003': return msgs([
+      ['1763640000002-1', 'in', 'Segue o comprovante', 60 * 26 + 2],
+      ['1763640000002-2', 'in', null, 60 * 26, false, 'media'],
+    ]);
+    default: return msgs([
+      ['1763640000003-1', 'in', 'Obrigada pelo retorno!', 60 * 24 * 5],
+    ]);
+  }
+}
+
+export const inboxFunnels = {
+  items: [
+    { id: '2f9d6c3e-4b1a-4c55-9a7e-0a1b2c3d4e5f', name: 'Boas-vindas ao Método Aurora', trigger: 'manual', isEnabled: true, sessionGroupId: 'g1', stepCount: 3, createdAt: '2026-11-10T12:00:00Z', updatedAt: '2026-11-10T12:00:00Z' },
+    { id: '8a1d2e3f-5b6c-4d7e-8f90-1a2b3c4d5e6f', name: 'Carrinho abandonado', trigger: 'abandoned_cart', isEnabled: true, sessionGroupId: null, stepCount: 2, createdAt: '2026-11-11T12:00:00Z', updatedAt: '2026-11-11T12:00:00Z' },
+    { id: '5c4b3a29-1807-4f6e-9d5c-4b3a29180716', name: 'Reativação (desligado)', trigger: 'manual', isEnabled: false, sessionGroupId: 'g1', stepCount: 2, createdAt: '2026-11-12T12:00:00Z', updatedAt: '2026-11-12T12:00:00Z' },
+    { id: '7e6d5c4b-3a29-4180-8716-5f4e3d2c1b0a', name: 'PIX esquecido', trigger: 'pix_unpaid', isEnabled: true, sessionGroupId: null, stepCount: 3, createdAt: '2026-11-13T12:00:00Z', updatedAt: '2026-11-13T12:00:00Z' },
+    // Same trigger as the enabled "Carrinho abandonado": the view says which one holds it.
+    { id: '9f8e7d6c-5b4a-4392-8170-6f5e4d3c2b1a', name: 'Carrinho abandonado (com cupom)', trigger: 'abandoned_cart', isEnabled: false, sessionGroupId: null, stepCount: 2, createdAt: '2026-11-14T12:00:00Z', updatedAt: '2026-11-14T12:00:00Z' },
+  ],
+  nextAfter: null,
+};
+
+/** get_whatsapp_funnel: each listed funnel with its messages, signature and coupon (invented). */
+const FUNNEL_STEPS: Record<string, Array<{ waitMinutes: number; text: string }>> = {
+  abandoned_cart: [
+    { waitMinutes: 30, text: 'Oi {{customer_name}}! Vi que você parou no {{product_title}} 👀 Ficou alguma dúvida?' },
+    { waitMinutes: 1440, text: 'Separei um cupom pra você terminar a compra: {{cupom}}. Vale até amanhã.\n\n{{assinatura}}' },
+  ],
+  pix_unpaid: [
+    { waitMinutes: 15, text: 'Oi {{customer_name}}, seu PIX do {{product_title}} ainda está aberto. O código expira em breve.' },
+    { waitMinutes: 120, text: 'Precisa de ajuda para pagar? É só responder aqui.' },
+    { waitMinutes: 1440, text: 'Último lembrete: o acesso sai assim que o PIX cair. {{assinatura}}' },
+  ],
+  manual: [
+    { waitMinutes: 0, text: 'Oi {{customer_name}}! Seja bem-vinda ao Método Aurora 🎉' },
+    { waitMinutes: 60, text: 'Já conseguiu acessar a primeira aula? Qualquer coisa, me chama.' },
+    { waitMinutes: 2880, text: 'Passando pra saber como estão os estudos. {{assinatura}}' },
+  ],
+};
+export const waFunnelDetail = (id: string, isEnabled?: boolean) => {
+  const row = inboxFunnels.items.find((f) => f.id === id) ?? inboxFunnels.items[0];
+  const steps = (FUNNEL_STEPS[row.trigger] ?? FUNNEL_STEPS.manual).slice(0, row.stepCount);
+  const { stepCount: _count, ...rest } = row;
+  return {
+    funnel: {
+      ...rest, isEnabled: isEnabled ?? row.isEnabled, steps: steps.map((st) => ({ ...st, markSeen: true, showTyping: true })),
+      stopOnReply: true, sendWindow: row.trigger === 'manual' ? null : { start: 8, end: 21 },
+      signature: 'Equipe Aurora', coupon: row.trigger === 'abandoned_cart' ? 'VOLTA10' : '', useEmoji: true, layout: null,
+    },
+  };
+};
+
+export const inboxRun = (contactKey: string) => ({
+  run: contactKey === '553198765001'
+    ? { id: 'a1b2c3d4-0000-4000-8000-000000000001', funnelId: inboxFunnels.items[0].id, funnelName: 'Boas-vindas ao Método Aurora', contactKey, status: 'running', stopReason: null, origin: 'manual', currentStep: 1, totalSteps: 3, nextAt: minutesAgo(-30), startedAt: minutesAgo(55), endedAt: null }
+    : null,
+});

@@ -1,0 +1,40 @@
+/* The WhatsApp operations (saas settings/whatsapp/sections/sessions): ChipSlots as ordered rows with
+   the slot badge, and "Produtos atendidos". Rows, panels and statuses come from chips.css. */
+.dashboard .op-slots { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.dashboard .op-slot { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); }
+.dashboard .op-slot-tag { flex: 0 0 auto; min-width: 76px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; color: var(--d-muted); background: var(--d-muted-bg); }
+.dashboard .op-slot-tag[data-primary] { color: #fff; background: var(--season-blue); }
+.dashboard .op-slot-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dashboard .op-slot-name { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.dashboard .op-slot-actions { flex: 0 0 auto; display: flex; gap: 4px; }
+
+.dashboard .op-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); color: var(--d-fg); cursor: pointer; transition: border-color 150ms ease, color 150ms ease; }
+.dashboard .op-icon:hover:not(:disabled) { border-color: var(--season-blue); }
+.dashboard .op-icon[data-danger]:hover:not(:disabled) { border-color: #dc2626; color: #dc2626; }
+.dashboard .op-icon:disabled { opacity: 0.4; cursor: not-allowed; }
+.dashboard .op-icon:focus-visible { outline: 2px solid var(--season-blue); outline-offset: 1px; }
+
+.dashboard .op-add { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
+.dashboard .op-add-sm { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; font-size: 13px; }
+.dashboard .op-cancel { align-self: flex-start; }
+.dashboard .op-panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+
+.dashboard .op-products { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.dashboard .op-products li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-bg); }
+.dashboard .op-product-name { flex: 1; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+
+/* PanelEmptyState: icon, title and the hint, centered. */
+.dashboard .op-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 12px; border-radius: 8px; border: 1px dashed var(--d-line); text-align: center; color: var(--d-accent); }
+.dashboard .op-empty-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--d-fg); }
+
+.dashboard .op-picks { display: flex; flex-direction: column; max-height: 260px; overflow-y: auto; margin: 0; padding: 0; list-style: none; border: 1px solid var(--d-line); border-radius: 8px; }
+.dashboard .op-picks li + li { border-top: 1px solid var(--d-line); }
+.dashboard .op-pick { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-size: 14px; cursor: pointer; }
+.dashboard .op-pick input { width: 16px; height: 16px; accent-color: var(--season-blue); }
+.dashboard .op-pick:hover { background: color-mix(in srgb, var(--season-blue) 6%, transparent); }
+.dashboard .op-picker-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 420px) {
+  .dashboard .op-slot { flex-wrap: wrap; }
+  .dashboard .op-slot-actions { width: 100%; justify-content: flex-end; }
+}

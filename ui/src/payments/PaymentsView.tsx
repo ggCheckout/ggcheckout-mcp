@@ -36,7 +36,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       <button type="button" className="pay-copy" aria-label={copied ? 'Copiado' : label} title={label} onClick={(e) => { e.stopPropagation(); void copy(value); }}>
         {copied ? <Check size={14} className="pay-copied" aria-hidden /> : <Copy size={14} aria-hidden />}
       </button>
-      {state === 'failed' && <span className="copy-failed" role="status">{COPY_FAILED_TEXT}</span>}
+      <span className="copy-failed status-region" role="status">{state === 'failed' ? COPY_FAILED_TEXT : ''}</span>
     </>
   );
 }
@@ -384,7 +384,7 @@ function PaymentDetail({ row, onBack }: { row: PaymentRow; onBack?: () => void }
             {`#${row.id.slice(0, 8)}`}
             {copied ? <Check size={14} className="pay-copied" aria-hidden /> : <Copy size={14} aria-hidden />}
           </button>
-          {copyState === 'failed' && <span className="copy-failed" role="status">{COPY_FAILED_TEXT}</span>}
+          <span className="copy-failed status-region" role="status">{copyState === 'failed' ? COPY_FAILED_TEXT : ''}</span>
           <span>{`Criado em: ${detailDate(row.createdAt)}`}</span>
         </div>
       </header>

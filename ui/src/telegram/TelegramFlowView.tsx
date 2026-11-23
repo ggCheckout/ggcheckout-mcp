@@ -73,7 +73,7 @@ function FlowCanvas({ flow }: { flow: Flow }) {
   return (
     <div className="tg-canvas" ref={box} tabIndex={0} role="region" aria-label="Diagrama do flow">
       {connections.length > 0 && (
-        <ul className="tg-sr-only">
+        <ul className="sr-only">
           {connections.map((c, i) => <li key={i}>{c}</li>)}
         </ul>
       )}

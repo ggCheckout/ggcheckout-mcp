@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
-import { HttpClient } from './http-client.js';
+import { HttpClient, loggedPath } from './http-client.js';
+import * as logger from '../../shared/logger.js';
 import { getUpdateNotice, resetUpdateNotice } from '../../shared/update-notice.js';
 import {
   AuthenticationError,
@@ -8,6 +9,7 @@ import {
   ApiError,
   EdgeBlockedError,
   TemporarilyUnavailableError,
+  NetworkError,
 } from '../../shared/errors.js';
 
 vi.mock('axios');
@@ -215,6 +217,21 @@ describe('HttpClient', () => {
     }
   });
 
+  // The inbox view reads "request timed out" to say a reply may have gone out (ui/src/inbox/model.ts).
+  it('says a timed out call may still have applied its write', () => {
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+
+    try {
+      errorHandler({ code: 'ECONNABORTED', message: 'timeout of 15000ms exceeded' });
+      expect.unreachable('should have thrown');
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(NetworkError);
+      expect(e.message).toContain('request timed out');
+      expect(e.message).toContain('a write may still have been applied');
+    }
+  });
+
   // A 502 on a write is ambiguous: the service behind the API may have applied it before the
   // answer was lost, so a blind retry can repeat it (a second PIX charge, for one).
   it('turns 502 into an error that says to check a write before repeating it', () => {
@@ -363,3 +380,27 @@ describe('HttpClient', () => {
     });
   });
 });
+
+describe('loggedPath', () => {
+  it('hides the phone or WhatsApp id of a conversation, wherever it sits in the path', () => {
+    expect(loggedPath('/api/whatsapp/inbox/conversations/553199998888/messages')).toBe('/api/whatsapp/inbox/conversations/:contact/messages');
+    expect(loggedPath('/api/whatsapp/inbox/conversations/553199998888')).toBe('/api/whatsapp/inbox/conversations/:contact');
+    expect(loggedPath('/api/whatsapp/inbox/conversations/lid%3Aabc123/read')).toBe('/api/whatsapp/inbox/conversations/:contact/read');
+    expect(loggedPath('/api/whatsapp/inbox/conversations/lid:abc123/funnel')).toBe('/api/whatsapp/inbox/conversations/:contact/funnel');
+  });
+
+  it('keeps the other paths as they are', () => {
+    expect(loggedPath('/api/whatsapp/funnels/0b8a8f4e-1c2d-4e5f-8a9b-0c1d2e3f4a5b/toggle')).toBe('/api/whatsapp/funnels/0b8a8f4e-1c2d-4e5f-8a9b-0c1d2e3f4a5b/toggle');
+    expect(loggedPath('/api/products')).toBe('/api/products');
+  });
+});
+
+describe('HttpClient log line', () => {
+  it('never writes the contact of an inbox call to the log', async () => {
+    const instance = { get: vi.fn().mockResolvedValue({ data: {} }), interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } } };
+    vi.mocked(axios.create).mockReturnValue(instance as any);
+    await new HttpClient('https://api.test.com', 'k', '1.0.0').get('/api/whatsapp/inbox/conversations/553199998888/messages');
+    expect(vi.mocked(logger.info)).toHaveBeenLastCalledWith('HTTP', 'GET /api/whatsapp/inbox/conversations/:contact/messages');
+  });
+});
+
