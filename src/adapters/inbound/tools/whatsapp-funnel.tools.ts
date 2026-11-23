@@ -12,7 +12,10 @@ const stepSchema = z.object({
   waitMinutes: z.number().int().min(L.minWaitMinutes).max(L.maxWaitMinutes)
     .describe(`Minutes to wait before this message, counted from the previous one (${L.minWaitMinutes} to ${L.maxWaitMinutes}, i.e. up to 2 days)`),
   text: cappedText(L.maxText).refine((text) => text.trim().length > 0, { message: 'Text must not be empty' })
-    .describe(`Message text, up to ${L.maxText} characters. Supports variables like {{nome}}`),
+    .describe(`Message text, up to ${L.maxText} characters. Variables, by trigger: every trigger has {{customer_name}}, `
+      + '{{assinatura}} (the signature) and {{cupom}} (the coupon); the automatic ones also {{product_title}}, {{amount}}, '
+      + '{{checkout_url}} and {{checkout_url_with_coupon}}; pix_unpaid and pix_expired also {{pix_copia_cola}}. Any other '
+      + 'name goes out empty'),
   markSeen: z.boolean().describe('Mark the contact\'s chat as seen before sending'),
   showTyping: z.boolean().describe('Show "typing..." before sending'),
 }).strict();
