@@ -74,7 +74,8 @@ export class HttpClient {
         // connection refused, wrong base URL, or timeout). Surface a clear,
         // actionable message instead of failing silently / opaquely.
         if (!error.response) {
-          // A timeout is not a refusal: the API may still finish a write it already received.
+          // A timeout is not a refusal: the API may still finish a write it already received. The inbox
+          // view reads "request timed out" (and the 502/504 and 503 wording below) to pick its own text.
           const reason = error.code === 'ECONNABORTED'
             ? 'request timed out, and a write may still have been applied, so check before repeating it'
             : `could not reach the API (${error.code || error.message})`;

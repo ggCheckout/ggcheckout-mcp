@@ -9,6 +9,7 @@ import {
   ApiError,
   EdgeBlockedError,
   TemporarilyUnavailableError,
+  NetworkError,
 } from '../../shared/errors.js';
 
 vi.mock('axios');
@@ -213,6 +214,21 @@ describe('HttpClient', () => {
         'service_unavailable. The API is refusing requests while its rate-limit backend is degraded; '
         + 'nothing was changed. Retry after 5 seconds.',
       );
+    }
+  });
+
+  // The inbox view reads "request timed out" to say a reply may have gone out (ui/src/inbox/model.ts).
+  it('says a timed out call may still have applied its write', () => {
+    new HttpClient('https://api.test.com', 'key', '1.0.0');
+    const errorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
+
+    try {
+      errorHandler({ code: 'ECONNABORTED', message: 'timeout of 15000ms exceeded' });
+      expect.unreachable('should have thrown');
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(NetworkError);
+      expect(e.message).toContain('request timed out');
+      expect(e.message).toContain('a write may still have been applied');
     }
   });
 
