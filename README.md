@@ -678,6 +678,11 @@ the dashboard.
 `delete_whatsapp_funnel`, `toggle_whatsapp_funnel` and `import_whatsapp_funnel_contacts` (up to 500
 contacts per call). A funnel is up to 5 messages with a wait between them, started by a trigger or by
 hand from the inbox. The caps match the dashboard's. Only one funnel per automatic trigger can be on.
+A funnel is always created off. Turning one on starts messaging real customers, so it waits for the
+seller's yes: the model is told to confirm before `toggle_whatsapp_funnel`, and in the view every path
+that creates or turns on a funnel ("Usar modelo" included) goes through a confirmation. The message
+variables are the dashboard's: `{{customer_name}}`, `{{assinatura}}` and `{{cupom}}` on every trigger,
+plus the checkout ones on the automatic triggers and `{{pix_copia_cola}}` on the PIX ones.
 Importing contacts messages people who never wrote in, so it needs the inbox switch below.
 
 #### WhatsApp inbox

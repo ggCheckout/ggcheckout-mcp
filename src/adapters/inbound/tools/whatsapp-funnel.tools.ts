@@ -76,9 +76,8 @@ export function registerWhatsAppFunnelTools(server: McpServer, service: WhatsApp
   server.registerTool('create_whatsapp_funnel', {
     description:
       'Create a WhatsApp funnel: up to 5 messages with a wait between them, sent to one contact by a trigger '
-      + '(abandoned cart, unpaid or expired PIX, refused or cancelled card) or by hand (manual). A new funnel may be '
-      + 'created already enabled (the answer says isEnabled), and an enabled automatic funnel sends on its own, so confirm '
-      + 'the messages with the seller first. A manual funnel needs an operation',
+      + '(abandoned cart, unpaid or expired PIX, refused or cancelled card) or by hand (manual). It is always created '
+      + 'off: turning it on is toggle_whatsapp_funnel, after the seller confirms. A manual funnel needs an operation',
     inputSchema: { ...funnelFields, layout: funnelFields.layout.optional(), sessionGroupId: funnelFields.sessionGroupId.optional() },
   }, createToolHandler('create_whatsapp_funnel', async (input) => ({ success: true, funnel: await service.create(input) })));
 
@@ -113,7 +112,10 @@ export function registerWhatsAppFunnelTools(server: McpServer, service: WhatsApp
   }));
 
   server.registerTool('toggle_whatsapp_funnel', {
-    description: 'Turn a WhatsApp funnel on or off. Only one funnel per automatic trigger can be on (409 otherwise): turn the other off first',
+    description:
+      'Turn a WhatsApp funnel on or off. An automatic funnel that is on messages real customers on its own at the next '
+      + 'event, so show the seller its messages and get a clear yes before turning it on. Only one funnel per automatic '
+      + 'trigger can be on (409 otherwise): turn the other off first',
     inputSchema: { funnelId, enabled: z.boolean().describe('true to turn it on, false to turn it off') },
   }, createToolHandler('toggle_whatsapp_funnel', async ({ funnelId, enabled }) => ({
     success: true, funnel: await service.toggle(funnelId, enabled),
