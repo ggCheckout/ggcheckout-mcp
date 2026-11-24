@@ -24,13 +24,8 @@ if (!API_KEY) {
   console.error('[MCP] Please set GGCHECKOUT_API_KEY');
   console.error('[MCP] Example:');
   console.error('[MCP]   GGCHECKOUT_API_KEY=ggck_live_your_key_here');
+  console.error('[MCP]   (or a ggck_agent_ key for the WhatsApp assistant)');
   console.error('[MCP] Get your API key at: https://www.ggcheckout.com/');
-  process.exit(1);
-}
-
-if (!API_KEY.startsWith('ggck_live_')) {
-  console.error('[MCP] Error: Invalid API key format');
-  console.error('[MCP] API key must start with "ggck_live_"');
   process.exit(1);
 }
 
@@ -44,7 +39,11 @@ try {
   console.error(`[MCP] Error: ${err.message}`);
   process.exit(1);
 }
-const { server, paymentsUrl } = created;
+const { server, keyKind, paymentsUrl } = created;
+if (keyKind === 'agent') {
+  logger.info('STARTUP', 'WhatsApp assistant key: only the agent tools are registered');
+  if (process.env.GG_PAYMENTS_API_KEY) logger.warn('STARTUP', 'GG_PAYMENTS_API_KEY is ignored with a ggck_agent_ key');
+}
 if (paymentsUrl) logger.info('STARTUP', `Payments API tools enabled (${paymentsUrl})`);
 
 logger.info('STARTUP', 'All tools registered');

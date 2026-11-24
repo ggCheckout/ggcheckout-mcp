@@ -136,3 +136,24 @@ export class InboxTermsRequiredError extends AppError {
     this.name = 'InboxTermsRequiredError';
   }
 }
+
+/**
+ * What the agent routes refuse on purpose, read by the model that runs the agent. Each message says
+ * what to do next, so a refusal stops the agent instead of making it retry.
+ */
+export const AGENT_REFUSALS = {
+  AGENT_HELD: 'The seller took over this conversation: do not write to this contact again and do not call any other tool for it. Move on to the next conversation.',
+  AGENT_CONTACT_EXITED: 'The contact asked to stop receiving messages (SAIR): do not reply and do not call any other tool for this conversation.',
+  AGENT_REPLY_CAP: 'This conversation reached 10 agent replies in 24 hours and was handed to the seller: do not reply again.',
+  AGENT_ALREADY_OFFERED: 'An offer was already made in this conversation: never offer again here, keep to support.',
+  AGENT_KEY_REFUSED: 'The agent key was refused: the seller turned the assistant off or revoked the key. Stop now and call no other tool.',
+} as const;
+
+export type AgentRefusalCode = keyof typeof AGENT_REFUSALS;
+
+export class WhatsAppAgentRefusalError extends AppError {
+  constructor(code: AgentRefusalCode, statusCode: number | undefined, cause?: Error) {
+    super(`${AGENT_REFUSALS[code]} (${code})`, code, statusCode, cause);
+    this.name = 'WhatsAppAgentRefusalError';
+  }
+}

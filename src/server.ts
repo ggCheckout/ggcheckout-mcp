@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { apiKeyKind, type ApiKeyKind } from './shared/api-key.js';
 
 // Outbound adapters
 import { HttpClient } from './adapters/outbound/http-client.js';
@@ -79,6 +80,9 @@ import { registerPushTools } from './adapters/inbound/tools/push.tools.js';
 import { registerTelegramTools } from './adapters/inbound/tools/telegram.tools.js';
 import { registerTrackingTools } from './adapters/inbound/tools/tracking.tools.js';
 import { registerTrackingLinkTools } from './adapters/inbound/tools/tracking-link.tools.js';
+import { WhatsAppAgentApiAdapter } from './adapters/outbound/whatsapp-agent.api.js';
+import { WhatsAppAgentService } from './core/services/whatsapp-agent.service.js';
+import { registerWhatsAppAgentTools } from './adapters/inbound/tools/whatsapp-agent.tools.js';
 import { registerAppViews } from './adapters/inbound/apps/apps.js';
 
 
@@ -91,18 +95,30 @@ export interface ServerOptions {
 
 export interface CreatedServer {
   server: McpServer;
+  keyKind: ApiKeyKind;
   /** The payments API base URL when its tools are on (seller key with GG_PAYMENTS_API_KEY). */
   paymentsUrl?: string;
 }
 
-/** The composition root: every tool group and the views. Throws on a malformed payments key. */
+/**
+ * The composition root. The key decides the tool set: a seller key (`ggck_live_`) gets every group
+ * and the views; the WhatsApp assistant key (`ggck_agent_`) gets the agent tools and nothing else,
+ * not even the payments API tools, so a model that reads customer messages has no other lever.
+ * Throws on a malformed key.
+ */
 export function createServer({ apiKey, apiUrl, version, env }: ServerOptions): CreatedServer {
+  const keyKind = apiKeyKind(apiKey);
   const httpClient = new HttpClient(apiUrl, apiKey, version);
   const server = new McpServer({ name: 'ggcheckout-mcp', version });
 
+  if (keyKind === 'agent') {
+    registerWhatsAppAgentTools(server, new WhatsAppAgentService(new WhatsAppAgentApiAdapter(httpClient)));
+    return { server, keyKind };
+  }
+
   registerSellerTools(server, httpClient, apiUrl, env);
   const paymentsUrl = registerPaymentsApiToolsFromEnv(server, env, version);
-  return { server, paymentsUrl };
+  return { server, keyKind, paymentsUrl };
 }
 
 function registerSellerTools(server: McpServer, httpClient: HttpClient, apiUrl: string, env: NodeJS.ProcessEnv): void {
