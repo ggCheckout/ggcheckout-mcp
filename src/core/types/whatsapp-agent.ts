@@ -8,24 +8,8 @@ import type { InboxMessage, InboxPage } from './whatsapp-inbox.js';
 
 /** The thread and the reply use the inbox limits (`INBOX_LIMITS`): same core route behind them. */
 export const AGENT_LIMITS = {
-  /** The core caps the pending page at 20. */
-  pendingPage: 20,
   holdReasonMaxChars: 500,
 } as const;
-
-/** A conversation waiting for an answer: not held by the seller, no SAIR, no opt-out. */
-export interface AgentPendingConversation {
-  contactKey: string;
-  name: string | null;
-  pendingSince: string;
-  lastText: string | null;
-  /** Agent replies in this conversation in the last 24 h (the cap is 10). */
-  agentRepliesToday: number;
-}
-
-export interface AgentPendingPage {
-  items: AgentPendingConversation[];
-}
 
 /** Who wrote an outgoing message; null on incoming ones and on messages older than the agent. */
 export type AgentMessageAuthor = 'agent' | 'seller' | 'auto' | null;
@@ -35,10 +19,6 @@ export interface AgentMessage extends InboxMessage {
 }
 
 export type AgentMessagesPage = InboxPage<AgentMessage>;
-
-export interface AgentPendingQuery {
-  limit?: number;
-}
 
 export interface AgentMessagesQuery {
   limit?: number;

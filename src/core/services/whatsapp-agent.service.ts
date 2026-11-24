@@ -1,5 +1,5 @@
 import type { WhatsAppAgentPort } from '../ports/whatsapp-agent.port.js';
-import type { AgentMessagesQuery, AgentPendingQuery, AgentReplyInput } from '../types/whatsapp-agent.js';
+import type { AgentMessagesQuery, AgentReplyInput } from '../types/whatsapp-agent.js';
 
 /**
  * What the agent may do in the seller's inbox. The rules (cap, hold, one offer, contact scope) are
@@ -8,7 +8,6 @@ import type { AgentMessagesQuery, AgentPendingQuery, AgentReplyInput } from '../
 export class WhatsAppAgentService {
   constructor(private readonly port: WhatsAppAgentPort) {}
 
-  async listPending(query: AgentPendingQuery) { return this.port.listPending(query); }
   async readConversation(contactKey: string, query: AgentMessagesQuery) { return this.port.listMessages(contactKey, query); }
   async sendReply(contactKey: string, input: AgentReplyInput) { return this.port.sendReply(contactKey, input); }
   async hold(contactKey: string, reason: string) { return this.port.hold(contactKey, reason); }

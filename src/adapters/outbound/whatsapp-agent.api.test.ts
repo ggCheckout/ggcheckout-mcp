@@ -23,9 +23,7 @@ describe('WhatsAppAgentApiAdapter', () => {
     vi.mocked(http.post).mockResolvedValue({ ok: true });
   });
 
-  it('lists pending conversations and reads a thread with the query as strings', async () => {
-    await adapter.listPending({ limit: 20 });
-    expect(http.get).toHaveBeenCalledWith(BASE, { limit: '20' });
+  it('reads a thread with the query as strings', async () => {
     await adapter.listMessages('lid:abc@lid', { limit: 30, before: '12-3' });
     expect(http.get).toHaveBeenLastCalledWith(`${BASE}/lid%3Aabc%40lid/messages`, { limit: '30', before: '12-3' });
   });
@@ -91,7 +89,7 @@ describe('WhatsAppAgentApiAdapter', () => {
   it('keeps an ordinary rate limit and other API errors as they are', async () => {
     const limited = new RateLimitError('Muitas requisições. Retry after 30 seconds.');
     vi.mocked(http.get).mockRejectedValue(limited);
-    await expect(adapter.listPending({})).rejects.toBe(limited);
+    await expect(adapter.listMessages(KEY, {})).rejects.toBe(limited);
     const notYours = new ApiError(404, 'Compra não encontrada');
     vi.mocked(http.post).mockRejectedValue(notYours);
     await expect(adapter.resendDelivery(KEY, 'p1')).rejects.toBe(notYours);
@@ -99,7 +97,7 @@ describe('WhatsAppAgentApiAdapter', () => {
 
   it('reads a route this deployment does not have as not available yet', async () => {
     vi.mocked(http.get).mockRejectedValue(new ApiError(404, 'Request failed with status 404'));
-    const failure = await adapter.listPending({}).catch((e) => e);
+    const failure = await adapter.listMessages(KEY, {}).catch((e) => e);
     expect(failure).toBeInstanceOf(FeatureUnavailableError);
     expect(failure.message).toMatch(/assistente de WhatsApp/);
     expect(failure.message).not.toMatch(/funil|caixa de entrada/);

@@ -1,10 +1,9 @@
 import type {
-  AgentMessagesPage, AgentMessagesQuery, AgentPendingPage, AgentPendingQuery, AgentReplyInput, AgentResponse,
+  AgentMessagesPage, AgentMessagesQuery, AgentReplyInput, AgentResponse,
 } from '../types/whatsapp-agent.js';
 
 /** The saas routes the `ggck_agent_` key may call. Every purchase route is scoped to the conversation's contact. */
 export interface WhatsAppAgentPort {
-  listPending(query: AgentPendingQuery): Promise<AgentPendingPage>;
   listMessages(contactKey: string, query: AgentMessagesQuery): Promise<AgentMessagesPage>;
   sendReply(contactKey: string, input: AgentReplyInput): Promise<AgentResponse>;
   hold(contactKey: string, reason: string): Promise<AgentResponse>;

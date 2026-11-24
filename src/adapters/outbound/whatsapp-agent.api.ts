@@ -1,6 +1,6 @@
 import type { WhatsAppAgentPort } from '../../core/ports/whatsapp-agent.port.js';
 import type {
-  AgentMessagesPage, AgentMessagesQuery, AgentPendingPage, AgentPendingQuery, AgentReplyInput, AgentResponse,
+  AgentMessagesPage, AgentMessagesQuery, AgentReplyInput, AgentResponse,
 } from '../../core/types/whatsapp-agent.js';
 import { AGENT_REFUSALS, AppError, AuthenticationError, WhatsAppAgentRefusalError, type AgentRefusalCode } from '../../shared/errors.js';
 import type { HttpClient } from './http-client.js';
@@ -43,12 +43,6 @@ async function agentCall<T>(call: () => Promise<T>): Promise<T> {
  */
 export class WhatsAppAgentApiAdapter implements WhatsAppAgentPort {
   constructor(private readonly http: HttpClient) {}
-
-  listPending({ limit }: AgentPendingQuery): Promise<AgentPendingPage> {
-    const params: Record<string, string> = {};
-    if (limit !== undefined) params.limit = String(limit);
-    return agentCall(() => this.http.get<AgentPendingPage>(`${BASE}/conversations`, params));
-  }
 
   listMessages(contactKey: string, { limit, before }: AgentMessagesQuery): Promise<AgentMessagesPage> {
     const params: Record<string, string> = {};
