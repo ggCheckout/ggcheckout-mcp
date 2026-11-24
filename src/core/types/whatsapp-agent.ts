@@ -6,10 +6,9 @@ import type { InboxMessage, InboxPage } from './whatsapp-inbox.js';
  * saas sends them, so only the fields the tools describe are named here.
  */
 
+/** The thread and the reply use the inbox limits (`INBOX_LIMITS`): same core route behind them. */
 export const AGENT_LIMITS = {
   pendingPage: 50,
-  messagesPage: 100,
-  replyMaxChars: 4096,
   holdReasonMaxChars: 500,
 } as const;
 
