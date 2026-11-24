@@ -22,6 +22,8 @@ function definedOnly(doc: Doc): Doc {
  *   (cents, above zero), else the offered product's own price. The top-level `price` is only a
  *   display snapshot, so the price fields write the override and keep the snapshot in step, as the
  *   dashboard editor does.
+ * - **Downsell routing.** The linked upsell product and what follows the downsell live in the
+ *   offered product's override. Explicit null/end remove the stored keys; omitted keys survive.
  * - **Image.** The page reads `customImage`, never a top-level `imageUrl`: `imageUrl` becomes
  *   `customImage { enabled: true, url }`.
  * - **Videos.** `videosSection` merges into the stored one (the video list replaces), every video
@@ -29,7 +31,7 @@ function definedOnly(doc: Doc): Doc {
  *   enabled with videos switches the offer to video unless the caller names a media type.
  */
 export function composeOffer(kind: OfferKind, offeredProductId: string, base: Doc, input: Doc): Doc {
-  const { price, originalPrice, discount, imageUrl, customImage, videosSection, ...rest } = input;
+  const { price, originalPrice, discount, imageUrl, customImage, videosSection, triggerUpsellProductId, afterDownsell, ...rest } = input;
   const doc: Doc = { ...base, ...definedOnly(rest) };
 
   if (price !== undefined && !(Number.isInteger(price) && (price as number) > 0)) {
@@ -39,9 +41,17 @@ export function composeOffer(kind: OfferKind, offeredProductId: string, base: Do
     );
   }
   const shown = definedOnly({ price, originalPrice, discount });
-  if (Object.keys(shown).length > 0) {
+  const routingChanged = kind === 'downsell' && (triggerUpsellProductId !== undefined || afterDownsell !== undefined);
+  if (Object.keys(shown).length > 0 || routingChanged) {
     const overrides: Doc = isDoc(base.productOverrides) ? { ...base.productOverrides } : {};
-    overrides[offeredProductId] = { ...(isDoc(overrides[offeredProductId]) ? overrides[offeredProductId] : {}), ...shown };
+    const override: Doc = { ...(isDoc(overrides[offeredProductId]) ? overrides[offeredProductId] : {}), ...shown };
+    if (routingChanged) {
+      if (triggerUpsellProductId === null) delete override.triggerUpsellProductId;
+      else if (triggerUpsellProductId !== undefined) override.triggerUpsellProductId = triggerUpsellProductId;
+      if (afterDownsell === 'end') delete override.afterDownsell;
+      else if (afterDownsell !== undefined) override.afterDownsell = afterDownsell;
+    }
+    overrides[offeredProductId] = override;
     doc.productOverrides = overrides;
     Object.assign(doc, shown);
   }

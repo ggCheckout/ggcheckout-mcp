@@ -5,6 +5,16 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## Unreleased
+
+### Added
+
+- Downsells can link to a product offered by an active upsell with `triggerUpsellProductId`
+  (`null` removes the link), and return to unseen upsells with `afterDownsell: 'continue_upsells'`
+  (`'end'` removes that setting). Updates preserve omitted settings and other product overrides;
+  `list_downsells` exposes both settings. Writes warn when the linked upsell continues on decline.
+  Routing only takes effect once the saas containing saas-checkout#2563 is in production.
+
 ## 0.6.0
 
 ### Release order

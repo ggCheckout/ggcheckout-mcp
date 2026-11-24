@@ -281,7 +281,8 @@ export function registerProductTools(server: McpServer, service: ProductService)
     {
       description: 'List all downsells for a product, in funnel order (`order`); prices in cents (`effectivePriceCents` is what is charged; top-level `price` is a snapshot). Each has `uid` and `id`; '
         + 'the other downsell tools take either. They show when the '
-        + 'buyer declines an upsell of the product whose chainBehavior is stop_on_decline',
+        + 'buyer declines an upsell of the product whose chainBehavior is stop_on_decline. '
+        + 'Includes triggerUpsellProductId (linked upsell product) and afterDownsell (end or return to unseen upsells); routing takes effect once the saas with saas-checkout#2563 is in production.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid)'),
       },
@@ -297,7 +298,7 @@ export function registerProductTools(server: McpServer, service: ProductService)
     'create_downsell',
     {
       description: 'Create a downsell for a product. Requires downsellProductId, a unique downsellId and `price`, the CHARGED '
-        + 'price of the offered product in cents.',
+        + 'price of the offered product in cents. Link to an active upsell product with triggerUpsellProductId and return to unseen upsells with afterDownsell: continue_upsells; routing takes effect once the saas with saas-checkout#2563 is in production.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid) the downsell belongs to'),
         downsellId: z.string().describe('Unique ID for this downsell'),
@@ -309,8 +310,8 @@ export function registerProductTools(server: McpServer, service: ProductService)
     },
     createToolHandler('create_downsell', async (args) => {
       const { productId, downsellId, ...input } = args;
-      const downsell = await service.createDownsell(productId, downsellId, input);
-      return { success: true, downsell };
+      const { warning, ...downsell } = await service.createDownsell(productId, downsellId, input);
+      return { success: true, downsell, ...(warning ? { warning } : {}) };
     }),
   );
 
@@ -319,7 +320,7 @@ export function registerProductTools(server: McpServer, service: ProductService)
     {
       description: 'Edit a downsell: send only the fields to change, the rest is kept (media sections merge). `downsellId` is '
         + 'its `uid` or `id` from list_downsells. `price` (cents) is the charged price of the offered product; the offered '
-        + 'product itself cannot change (delete and recreate).',
+        + 'product itself cannot change (delete and recreate). Link to an active upsell product with triggerUpsellProductId (null clears it) and return to unseen upsells with afterDownsell: continue_upsells (end clears it); routing takes effect once the saas with saas-checkout#2563 is in production.',
       inputSchema: {
         productId: z.string().describe('Product ID (uid) the downsell belongs to'),
         downsellId: z.string().describe('The downsell `uid` or `id`, from list_downsells'),
@@ -329,8 +330,8 @@ export function registerProductTools(server: McpServer, service: ProductService)
       },
     },
     createToolHandler('update_downsell', async ({ productId, downsellId, ...input }) => {
-      const downsell = await service.updateDownsell(productId, downsellId, input);
-      return { success: true, downsell };
+      const { warning, ...downsell } = await service.updateDownsell(productId, downsellId, input);
+      return { success: true, downsell, ...(warning ? { warning } : {}) };
     }),
   );
 
