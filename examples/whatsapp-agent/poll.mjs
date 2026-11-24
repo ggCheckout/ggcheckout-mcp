@@ -122,6 +122,8 @@ const endsThePass = (error) => error instanceof HttpError && [401, 429, 503].inc
 async function pass() {
   const { items = [] } = await api(`/conversations?limit=${PENDING_LIMIT}`);
   for (const item of items) {
+    // A pass of many runs can cross the end of the window: check it again before each one.
+    if (!insideWindow({ tz: TZ, hours, days })) return;
     const fingerprint = fingerprintOf(item);
     if (!tracker.shouldRun(fingerprint)) continue;
     const id = logId(fingerprint);
