@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "ggcheckout": {
+      "command": "npx",
+      "args": ["-y", "ggcheckout-mcp@latest"],
+      "env": {
+        "GGCHECKOUT_API_KEY": "${GGCHECKOUT_AGENT_KEY}",
+        "GGCHECKOUT_API_URL": "${GGCHECKOUT_API_URL:-https://ggcheckout.app}"
+      }
+    }
+  }
+}

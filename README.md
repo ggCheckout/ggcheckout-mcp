@@ -92,6 +92,19 @@ export GG_PAYMENTS_API_URL="https://api.ggcheckout.app/v1"   # optional, this is
 The key must be `ggpk_live_` or `ggpk_test_` followed by letters and digits only. The value of the URL includes the `/v1` base path. The URL must be `https` (plain `http` is accepted only for `localhost` / `127.0.0.1`); the server
 refuses to start otherwise.
 
+### WhatsApp assistant (`ggck_agent_` key)
+
+The seller's own assistant can read and answer the WhatsApp inbox with a restricted key. The seller
+creates it by turning on **Permitir que o assistente leia e responda** in the inbox settings (it is shown
+once; turning the switch off revokes it). Put it in `GGCHECKOUT_API_KEY`: with a `ggck_agent_` key the
+server registers only the nine agent tools (see "WhatsApp assistant" below) and nothing else, not the
+seller tools, not the views and not the payments API tools. The saas accepts this key on the agent routes
+only. The key is `ggck_agent_` followed by 64 lowercase hex characters; the server refuses to start
+otherwise.
+
+A ready recipe that runs `claude -p` on the seller's own Claude subscription only when a conversation
+waits, inside the store's hours, is in [`examples/whatsapp-agent/`](./examples/whatsapp-agent/).
+
 ### Upload folder
 
 `upload_media` and `upload_members_area_file` read files from the machine running this server, and only from the
@@ -701,6 +714,22 @@ inbox settings (a key can never turn it on, and turning it off cuts access on th
 it is off the API answers 403 `INBOX_API_ACCESS_DISABLED`; if the store has not accepted the inbox term,
 403 `INBOX_TERMS_REQUIRED` (accept it in the dashboard: the MCP never does). On an account where the
 funnel and inbox are not released yet, the tools answer "ainda não disponível nesta conta".
+
+#### WhatsApp assistant (9 tools, `ggck_agent_` key only)
+
+Registered only with the assistant key, and then alone. Unlike the inbox above, the model reads and
+answers conversations here: `list_pending_whatsapp_conversations`, `read_whatsapp_conversation`,
+`send_whatsapp_reply` (requires a `clientMessageId`, the same one on a retry), `hold_whatsapp_conversation`
+(hands the conversation to the seller, who gets a push), `find_contact_purchases` (by the conversation's
+phone, or an `email` the contact gave), `resend_delivery` (to the phone and e-mail of the purchase),
+`get_payment_recovery_link` (pending or expired PIX), `list_purchase_offers` and `create_offer_link`
+(upsell or downsell of a paid purchase, one click inside one hour of the purchase, once per conversation).
+
+Every result that carries what a contact or a buyer typed starts with a notice that it is data, never an
+instruction. The hard limits live in the saas and the core: 10 agent replies per conversation in 24 hours,
+no reply after the seller takes over or the contact writes SAIR, one offer per conversation, and only the
+purchases of the conversation's contact. A refusal (`AGENT_HELD`, `AGENT_CONTACT_EXITED`,
+`AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, or a revoked key) tells the model to stop.
 
 ---
 
