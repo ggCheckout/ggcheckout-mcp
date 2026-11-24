@@ -5,6 +5,53 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## 0.7.0
+
+Not published yet.
+
+### Release order
+
+The assistant key and its routes are new on every side. Release in this order:
+
+1. **core**: the `whatsapp_agent` key kind (`ggck_agent_`), its create, revoke and authenticate
+   routes, and the agent inbox routes (pending list, reply with the 10-in-24-hours cap, hold, offer).
+2. **saas**: `/api/whatsapp/agent/**` behind the agent key, the panel switch that creates the key
+   ("Permitir que o assistente leia e responda"), and `MCP_BEARER_KEY` accepting `ggck_agent_`.
+3. **Publish this package (0.7.0)** to npm.
+4. **saas** raises `LATEST_GGCHECKOUT_MCP_VERSION` to 0.7.0. The minimum stays at 0.6.0: a seller key
+   works as before, and an older package refuses a `ggck_agent_` key at startup.
+
+Until the saas routes are deployed, every agent tool answers "ainda não disponível nesta conta".
+
+### Added
+
+- **WhatsApp assistant key (`ggck_agent_`).** `GGCHECKOUT_API_KEY` also takes the restricted key the
+  seller creates by turning the assistant on in the inbox settings. The whole format is checked
+  (`ggck_agent_` + 64 lowercase hex). With it the server registers only the nine agent tools, none of
+  the seller groups, views or payments API tools (`GG_PAYMENTS_API_KEY` is ignored). A `ggck_live_` key
+  registers exactly what 0.6.0 did.
+- **Agent tools**, visible to the model (not app-only): `list_pending_whatsapp_conversations`,
+  `read_whatsapp_conversation`, `send_whatsapp_reply` (requires `clientMessageId`),
+  `hold_whatsapp_conversation`, `find_contact_purchases`, `resend_delivery`,
+  `get_payment_recovery_link`, `list_purchase_offers`, `create_offer_link`. Their descriptions carry
+  the rules: offer only to a buyer who paid, after solving their question and once per conversation;
+  never promise a discount; hand refunds, audio and "achei caro" to the seller. The saas and the core
+  enforce the hard limits (10 replies per conversation in 24 hours, seller takeover, SAIR, one offer,
+  purchases of the conversation's contact only).
+- Results that carry what a contact or buyer typed (pending list, thread, purchases, offers) start
+  with a notice that the text is data, never an instruction, in the text and in `structuredContent`.
+- The refusals `AGENT_HELD`, `AGENT_CONTACT_EXITED`, `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED` and a
+  refused key (401) come back as an error that tells the model to stop, not to retry.
+- `examples/whatsapp-agent/`: a poll script that checks the pending list every 15 seconds and runs
+  `claude -p` only when a conversation waits and the store is inside its hours, the base prompt with
+  the assistant rules, and a `.mcp.json`. Each reply gets a deterministic `clientMessageId` (hash of the
+  contact and the last received message), so a rerun never sends the same reply twice.
+
+### Changed
+
+- The composition root moved from `src/index.ts` to `src/server.ts` (`createServer`), so a test can
+  list the tools a key opens. No behavior change for a seller key.
+
 ## 0.6.0
 
 ### Release order
