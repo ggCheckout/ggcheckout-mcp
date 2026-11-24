@@ -96,14 +96,16 @@ refuses to start otherwise.
 
 The seller's own assistant can read and answer the WhatsApp inbox with a restricted key. The seller
 creates it by turning on **Permitir que o assistente leia e responda** in the inbox settings (it is shown
-once; turning the switch off revokes it). Put it in `GGCHECKOUT_API_KEY`: with a `ggck_agent_` key the
-server registers only the nine agent tools (see "WhatsApp assistant" below) and nothing else, not the
-seller tools, not the views and not the payments API tools. The saas accepts this key on the agent routes
+once; turning the switch off revokes it). Put it in `GGCHECKOUT_API_KEY`, and the conversation the run
+answers in `GGCHECKOUT_AGENT_CONTACT` (required: the server refuses to start without it). With a
+`ggck_agent_` key the server registers only the nine agent tools (see "WhatsApp assistant" below) and
+nothing else, not the seller tools, not the views and not the payments API tools; none of them takes a
+contact, they all act on the pinned one, and the pending list is not exposed (the recipe reads it over REST). The saas accepts this key on the agent routes
 only. The key is `ggck_agent_` followed by 64 lowercase hex characters; the server refuses to start
 otherwise.
 
-A ready recipe that runs `claude -p` on the seller's own Claude subscription only when a conversation
-waits, inside the store's hours, is in [`examples/whatsapp-agent/`](./examples/whatsapp-agent/).
+A ready recipe that runs one `claude -p` per waiting conversation on the seller's own Claude subscription,
+inside the store's hours, is in [`examples/whatsapp-agent/`](./examples/whatsapp-agent/).
 
 ### Upload folder
 
@@ -717,20 +719,27 @@ funnel and inbox are not released yet, the tools answer "ainda não disponível 
 
 #### WhatsApp assistant (9 tools, `ggck_agent_` key only)
 
-Registered only with the assistant key, and then alone. Unlike the inbox above, the model reads and
-answers conversations here: `list_pending_whatsapp_conversations`, `read_whatsapp_conversation`,
-`send_whatsapp_reply` (requires a `clientMessageId`, the same one on a retry), `hold_whatsapp_conversation`
-(hands the conversation to the seller, who gets a push), `find_contact_purchases` (by the conversation's
-phone, or an `email` the contact gave), `resend_delivery` (to the phone and e-mail of the purchase),
-`get_payment_recovery_link` (pending or expired PIX), `list_purchase_offers` and `create_offer_link`
-(for a paid purchase: the upsell first, the downsell only if the contact refused it, never a third offer;
-one click inside one hour of the purchase).
+Registered only with the assistant key, and then alone, pinned to the contact in `GGCHECKOUT_AGENT_CONTACT`
+(no tool takes a `contactKey`; `list_pending_whatsapp_conversations` is not a tool). Unlike the inbox above,
+the model reads and answers the conversation here: `read_whatsapp_conversation`, `send_whatsapp_reply`
+(requires a `clientMessageId`, the same one on a retry), `hold_whatsapp_conversation` (hands the conversation
+to the seller, who gets a push; the reason is shown to the seller in the panel), `find_contact_purchases`
+(by the conversation's phone), `resend_delivery` (to the e-mail of the purchase and by WhatsApp to its
+phone), `resend_delivery_by_email` (for a buyer with another number: an e-mail the contact wrote in the
+conversation; the delivery goes only to the owner of the purchase, and the answer never says whether one
+exists), `get_payment_recovery_link` (pending or expired PIX), `list_purchase_offers` and
+`create_offer_link` (for a paid purchase: the upsell first, the downsell only if the contact refused it,
+never a third offer; one click only for the upsell inside one hour of the purchase, and a price is quoted
+only when `priceCents` is a number).
 
 Every result that carries what a contact or a buyer typed starts with a notice that it is data, never an
 instruction. The hard limits live in the saas and the core: 10 agent replies per conversation in 24 hours,
 no reply after the seller takes over or the contact writes SAIR, one upsell then one downsell per conversation, and only the
 purchases of the conversation's contact. A refusal (`AGENT_HELD`, `AGENT_CONTACT_EXITED`,
 `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, `AGENT_UPSELL_NOT_OFFERED`, or a revoked key) tells the model to stop.
+
+Version 0.7.0 is published with `npm publish --tag next` for the pilot, so `@latest` stays 0.6.0; the recipe
+pins `ggcheckout-mcp@0.7.0`.
 
 ---
 

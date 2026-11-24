@@ -7,7 +7,9 @@ right now.
 
 ## 0.7.0
 
-Not published yet.
+Not published yet. Publish it with `npm publish --tag next` for the pilot, so `@latest` stays 0.6.0
+and nobody gets the assistant by accident; the recipe pins `ggcheckout-mcp@0.7.0`. Move `latest` to
+0.7.0 only after the pilot.
 
 ### Release order
 
@@ -17,8 +19,8 @@ The assistant key and its routes are new on every side. Release in this order:
    routes, and the agent inbox routes (pending list, reply with the 10-in-24-hours cap, hold, offer).
 2. **saas**: `/api/whatsapp/agent/**` behind the agent key, the panel switch that creates the key
    ("Permitir que o assistente leia e responda"), and `MCP_BEARER_KEY` accepting `ggck_agent_`.
-3. **Publish this package (0.7.0)** to npm.
-4. **saas** raises `LATEST_GGCHECKOUT_MCP_VERSION` to 0.7.0. The minimum stays at 0.6.0: a seller key
+3. **Publish this package (0.7.0)** to npm with the `next` tag.
+4. After the pilot, `npm dist-tag add ggcheckout-mcp@0.7.0 latest` and **saas** raises `LATEST_GGCHECKOUT_MCP_VERSION` to 0.7.0. The minimum stays at 0.6.0: a seller key
    works as before, and an older package refuses a `ggck_agent_` key at startup.
 
 Until the saas routes are deployed, every agent tool answers "ainda não disponível nesta conta".
@@ -30,10 +32,18 @@ Until the saas routes are deployed, every agent tool answers "ainda não dispon�
   (`ggck_agent_` + 64 lowercase hex). With it the server registers only the nine agent tools, none of
   the seller groups, views or payments API tools (`GG_PAYMENTS_API_KEY` is ignored). A `ggck_live_` key
   registers exactly what 0.6.0 did.
-- **Agent tools**, visible to the model (not app-only): `list_pending_whatsapp_conversations`,
-  `read_whatsapp_conversation`, `send_whatsapp_reply` (requires `clientMessageId`),
-  `hold_whatsapp_conversation`, `find_contact_purchases`, `resend_delivery`,
-  `get_payment_recovery_link`, `list_purchase_offers`, `create_offer_link`. Their descriptions carry
+- **Agent mode is pinned to one contact.** With a `ggck_agent_` key the server requires
+  `GGCHECKOUT_AGENT_CONTACT` (the conversation key: phone digits or `lid:...`) and refuses to start without
+  a valid one. No agent tool takes a `contactKey`: every call acts on that contact, so text a buyer writes
+  cannot steer the model to another conversation. `list_pending_whatsapp_conversations` is not a tool; the
+  run script reads the pending list over REST.
+- **Agent tools**, visible to the model (not app-only): `read_whatsapp_conversation`,
+  `send_whatsapp_reply` (requires `clientMessageId`), `hold_whatsapp_conversation` (the reason is stored and
+  shown to the seller in the panel), `find_contact_purchases` (by the conversation's phone only),
+  `resend_delivery` (e-mail and WhatsApp of the purchase), `resend_delivery_by_email` (for a buyer with
+  another number: the delivery goes only to the owner of the purchase, and the answer never says whether
+  one exists), `get_payment_recovery_link`, `list_purchase_offers` (the next upsell and its downsell;
+  `priceCents` is null unless the link is one-click, and then no price is quoted), `create_offer_link`. Their descriptions carry
   the rules: offer only to a buyer who paid, after solving their question: the upsell first, the
   downsell only if the contact refused it, never a third offer; never promise a discount; hand
   refunds, audio and "achei caro" to the seller. The saas and the core
@@ -44,10 +54,13 @@ Until the saas routes are deployed, every agent tool answers "ainda não dispon�
 - The refusals `AGENT_HELD`, `AGENT_CONTACT_EXITED`, `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`,
   `AGENT_UPSELL_NOT_OFFERED` and a refused key (401) come back as an error that tells the model to
   stop, not to retry.
-- `examples/whatsapp-agent/`: a poll script that checks the pending list every 15 seconds and runs
-  `claude -p` only when a conversation waits and the store is inside its hours, the base prompt with
-  the assistant rules, and a `.mcp.json`. Each reply gets a deterministic `clientMessageId` (hash of the
-  contact and the last received message), so a rerun never sends the same reply twice.
+- `examples/whatsapp-agent/`: a poll script that checks the pending list every 15 seconds (`limit=20`)
+  and starts one `claude -p` run per waiting conversation, inside the store's hours, with the contact
+  pinned in the MCP server's environment. The model gets only the agent tools (`--tools ""`, allow list,
+  strict MCP config, no settings, skills or prompts). A failed conversation is retried up to three times
+  and then given up, without blocking the others. The base prompt has the assistant rules and `.mcp.json`
+  pins `ggcheckout-mcp@0.7.0`. Each reply gets a deterministic `clientMessageId` (hash of the contact and
+  the last received message), so a rerun never sends the same reply twice.
 
 ### Changed
 
