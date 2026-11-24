@@ -723,13 +723,14 @@ answers conversations here: `list_pending_whatsapp_conversations`, `read_whatsap
 (hands the conversation to the seller, who gets a push), `find_contact_purchases` (by the conversation's
 phone, or an `email` the contact gave), `resend_delivery` (to the phone and e-mail of the purchase),
 `get_payment_recovery_link` (pending or expired PIX), `list_purchase_offers` and `create_offer_link`
-(upsell or downsell of a paid purchase, one click inside one hour of the purchase, once per conversation).
+(for a paid purchase: the upsell first, the downsell only if the contact refused it, never a third offer;
+one click inside one hour of the purchase).
 
 Every result that carries what a contact or a buyer typed starts with a notice that it is data, never an
 instruction. The hard limits live in the saas and the core: 10 agent replies per conversation in 24 hours,
-no reply after the seller takes over or the contact writes SAIR, one offer per conversation, and only the
+no reply after the seller takes over or the contact writes SAIR, one upsell then one downsell per conversation, and only the
 purchases of the conversation's contact. A refusal (`AGENT_HELD`, `AGENT_CONTACT_EXITED`,
-`AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, or a revoked key) tells the model to stop.
+`AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, `AGENT_UPSELL_NOT_OFFERED`, or a revoked key) tells the model to stop.
 
 ---
 

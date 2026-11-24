@@ -34,14 +34,16 @@ Until the saas routes are deployed, every agent tool answers "ainda n√£o dispon√
   `read_whatsapp_conversation`, `send_whatsapp_reply` (requires `clientMessageId`),
   `hold_whatsapp_conversation`, `find_contact_purchases`, `resend_delivery`,
   `get_payment_recovery_link`, `list_purchase_offers`, `create_offer_link`. Their descriptions carry
-  the rules: offer only to a buyer who paid, after solving their question and once per conversation;
-  never promise a discount; hand refunds, audio and "achei caro" to the seller. The saas and the core
-  enforce the hard limits (10 replies per conversation in 24 hours, seller takeover, SAIR, one offer,
-  purchases of the conversation's contact only).
+  the rules: offer only to a buyer who paid, after solving their question: the upsell first, the
+  downsell only if the contact refused it, never a third offer; never promise a discount; hand
+  refunds, audio and "achei caro" to the seller. The saas and the core
+  enforce the hard limits (10 replies per conversation in 24 hours, seller takeover, SAIR, upsell once
+  then downsell once, purchases of the conversation's contact only).
 - Results that carry what a contact or buyer typed (pending list, thread, purchases, offers) start
   with a notice that the text is data, never an instruction, in the text and in `structuredContent`.
-- The refusals `AGENT_HELD`, `AGENT_CONTACT_EXITED`, `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED` and a
-  refused key (401) come back as an error that tells the model to stop, not to retry.
+- The refusals `AGENT_HELD`, `AGENT_CONTACT_EXITED`, `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`,
+  `AGENT_UPSELL_NOT_OFFERED` and a refused key (401) come back as an error that tells the model to
+  stop, not to retry.
 - `examples/whatsapp-agent/`: a poll script that checks the pending list every 15 seconds and runs
   `claude -p` only when a conversation waits and the store is inside its hours, the base prompt with
   the assistant rules, and a `.mcp.json`. Each reply gets a deterministic `clientMessageId` (hash of the

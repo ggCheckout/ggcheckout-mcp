@@ -34,7 +34,7 @@ const HUMAN = 'Call hold_whatsapp_conversation instead of answering when the con
  * nothing else then). Unlike the inbox tools of the panel view, the model reads and answers
  * conversations here, so every result that carries what a contact or a buyer typed goes out behind
  * the third-party notice, and the descriptions carry the rules the agent must keep. The saas and the
- * core enforce the hard limits (10 replies in 24 h, seller takeover, SAIR, one offer, purchase scope).
+ * core enforce the hard limits (10 replies in 24 h, seller takeover, SAIR, upsell once then downsell once, purchase scope).
  */
 export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppAgentService) {
   server.registerTool('list_pending_whatsapp_conversations', {
@@ -113,17 +113,18 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
   server.registerTool('list_purchase_offers', {
     description:
       'List the upsell and downsell offers the seller set for the product of a PAID purchase of this contact, with oneClickUntil (the end '
-      + 'of the one-click window). Look at offers only after the contact\'s question is solved, at most once per conversation, and never '
+      + 'of the one-click window). Look at offers only after the contact\'s question is solved, at most one upsell and one downsell per '
+      + 'conversation, and never '
       + 'after the contact asked to stop, said they do not want it, or complained.',
     inputSchema: { contactKey, paymentId },
   }, withNotice('list_purchase_offers', async ({ contactKey, paymentId }) => service.listOffers(contactKey, paymentId)));
 
   server.registerTool('create_offer_link', {
     description:
-      'Create the link of one offer from list_purchase_offers and mark the conversation as offered: one offer per conversation (the upsell; '
-      + 'the downsell only if the contact refused the upsell in this same offer). Inside the one-click window the link buys in one click, '
-      + 'after it the link opens the normal checkout. Present it once, without pressure and without promising a discount. Refused with '
-      + 'AGENT_ALREADY_OFFERED: do not offer again.',
+      'Create the link of one offer from list_purchase_offers and mark it as offered in this conversation. Offer the upsell first; only if '
+      + 'the contact refuses it, the downsell; never a third offer. Inside the one-click window the link buys in one click, after it the '
+      + 'link opens the normal checkout. Present each link once, without pressure and without promising a discount. Refused with '
+      + 'AGENT_ALREADY_OFFERED or AGENT_UPSELL_NOT_OFFERED: do not offer again in this conversation.',
     inputSchema: {
       contactKey,
       paymentId,

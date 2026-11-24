@@ -187,7 +187,9 @@ describe('agent tools', () => {
     expect(description('send_whatsapp_reply')).toMatch(/virtual assistant/);
     expect(description('hold_whatsapp_conversation')).toMatch(/refund.*audio.*price is too high/s);
     expect(description('list_purchase_offers')).toMatch(/PAID purchase/);
-    expect(description('list_purchase_offers')).toMatch(/after the contact's question is solved, at most once per conversation/);
+    expect(description('list_purchase_offers')).toMatch(/after the contact's question is solved, at most one upsell and one downsell/);
+    expect(description('create_offer_link')).toMatch(/upsell first; only if the contact refuses it, the downsell; never a third offer/);
+    expect(description('create_offer_link')).toMatch(/AGENT_ALREADY_OFFERED or AGENT_UPSELL_NOT_OFFERED: do not offer again/);
     expect(description('get_payment_recovery_link')).toMatch(/never offer a cheaper product or a discount/);
   });
 });

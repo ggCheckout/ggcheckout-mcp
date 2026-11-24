@@ -12,7 +12,9 @@ const BASE = '/api/whatsapp/agent';
 const conversation = (contactKey: string) => `${BASE}/conversations/${seg(contactKey)}`;
 const purchase = (contactKey: string, paymentId: string) => `${conversation(contactKey)}/purchases/${seg(paymentId)}`;
 
-const REFUSAL_CODES: AgentRefusalCode[] = ['AGENT_HELD', 'AGENT_CONTACT_EXITED', 'AGENT_REPLY_CAP', 'AGENT_ALREADY_OFFERED'];
+const REFUSAL_CODES: AgentRefusalCode[] = [
+  'AGENT_HELD', 'AGENT_CONTACT_EXITED', 'AGENT_REPLY_CAP', 'AGENT_ALREADY_OFFERED', 'AGENT_UPSELL_NOT_OFFERED',
+];
 
 function translate(error: unknown): unknown {
   // 401 here is the agent key itself: revoked, or the seller turned the assistant off.
@@ -36,7 +38,7 @@ async function agentCall<T>(call: () => Promise<T>): Promise<T> {
 /**
  * The saas routes of the WhatsApp agent (`/api/whatsapp/agent`), accepted only with a `ggck_agent_`
  * key. A route this deployment does not have reads as "not available yet"; the deliberate refusals
- * (seller took over, SAIR, reply cap, second offer, key revoked) become a typed error whose message
+ * (seller took over, SAIR, reply cap, offer out of order or repeated, key revoked) become a typed error whose message
  * tells the model to stop.
  */
 export class WhatsAppAgentApiAdapter implements WhatsAppAgentPort {

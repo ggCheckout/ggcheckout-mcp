@@ -62,6 +62,7 @@ describe('WhatsAppAgentApiAdapter', () => {
     ['AGENT_CONTACT_EXITED', new ApiError(409, 'Contato pediu para sair (AGENT_CONTACT_EXITED; detail)')],
     ['AGENT_REPLY_CAP', new RateLimitError('Teto atingido (AGENT_REPLY_CAP). Retry after 3600 seconds.')],
     ['AGENT_ALREADY_OFFERED', new ApiError(409, 'Oferta já feita (AGENT_ALREADY_OFFERED)')],
+    ['AGENT_UPSELL_NOT_OFFERED', new ApiError(409, 'Downsell antes do upsell (AGENT_UPSELL_NOT_OFFERED)')],
     ['AGENT_KEY_REFUSED', new AuthenticationError('Chave inválida')],
   ])('turns %s into a refusal that tells the model to stop', async (code, error) => {
     vi.mocked(http.post).mockRejectedValue(error);

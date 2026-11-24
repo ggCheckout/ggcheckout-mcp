@@ -145,7 +145,8 @@ export const AGENT_REFUSALS = {
   AGENT_HELD: 'The seller took over this conversation: do not write to this contact again and do not call any other tool for it. Move on to the next conversation.',
   AGENT_CONTACT_EXITED: 'The contact asked to stop receiving messages (SAIR): do not reply and do not call any other tool for this conversation.',
   AGENT_REPLY_CAP: 'This conversation reached 10 agent replies in 24 hours and was handed to the seller: do not reply again.',
-  AGENT_ALREADY_OFFERED: 'An offer was already made in this conversation: never offer again here, keep to support.',
+  AGENT_ALREADY_OFFERED: 'This offer kind was already made in this conversation (the upsell, or the downsell after it): never offer again here, keep to support.',
+  AGENT_UPSELL_NOT_OFFERED: 'A downsell comes only after the upsell was offered and refused in this conversation: do not offer again here, keep to support.',
   AGENT_KEY_REFUSED: 'The agent key was refused: the seller turned the assistant off or revoked the key. Stop now and call no other tool.',
 } as const;
 
