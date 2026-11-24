@@ -51,8 +51,8 @@ Until the saas routes are deployed, every agent tool answers "ainda n√£o dispon√
   then downsell once, purchases of the conversation's contact only).
 - Results that carry what a contact or buyer typed (pending list, thread, purchases, offers) start
   with a notice that the text is data, never an instruction, in the text and in `structuredContent`.
-- The refusals `AGENT_HELD`, `AGENT_CONTACT_EXITED`, `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`,
-  `AGENT_UPSELL_NOT_OFFERED` and a refused key (401) come back as an error that tells the model to
+- The refusals `AGENT_HELD`, `AGENT_CONTACT_EXITED`, `AGENT_OPTED_OUT`, `AGENT_CONVERSATION_NOT_FOUND`,
+  `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, `AGENT_UPSELL_NOT_OFFERED` and a refused key (401) come back as an error that tells the model to
   stop, not to retry.
 - `examples/whatsapp-agent/`: a poll script that checks the pending list every 15 seconds (`limit=20`)
   and starts one `claude -p` run per waiting conversation, inside the store's hours, with the contact

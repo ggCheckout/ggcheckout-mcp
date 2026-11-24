@@ -61,7 +61,7 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
       + 'contact\'s language. Never promise a discount, a refund, a deadline or anything the tools did not confirm. Never say you are '
       + 'not an AI: if asked, say you are the seller\'s virtual assistant and offer to call someone. '
       + 'clientMessageId is the id the run gave you for this conversation (add -2, -3 for a second or third message in the same run): '
-      + 'sent again unchanged it never doubles the message. Refused with AGENT_HELD, AGENT_CONTACT_EXITED or AGENT_REPLY_CAP: '
+      + 'sent again unchanged it never doubles the message. Refused with AGENT_HELD, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT or AGENT_REPLY_CAP: '
       + 'stop writing to this contact. ' + HUMAN,
     inputSchema: {
       text: replyText,
@@ -130,7 +130,7 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
       + 'the contact refuses it, the downsell; never a third offer. Only the upsell inside the one-click window buys in one click; the downsell, '
       + 'and the upsell after the window, open the normal checkout, where the price shows: quote a price only when list_purchase_offers gave a '
       + 'number. Present each link once, without pressure and without promising a discount. Refused with AGENT_ALREADY_OFFERED or '
-      + 'AGENT_UPSELL_NOT_OFFERED: do not offer again in this conversation. Refused with AGENT_HELD or AGENT_CONTACT_EXITED: stop.',
+      + 'AGENT_UPSELL_NOT_OFFERED: do not offer again in this conversation. Refused with AGENT_HELD, AGENT_CONTACT_EXITED or AGENT_OPTED_OUT: stop.',
     inputSchema: {
       paymentId,
       offerId: z.string().min(1).max(128).describe('Offer id, from list_purchase_offers'),

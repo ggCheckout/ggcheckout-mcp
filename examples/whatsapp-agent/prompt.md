@@ -60,7 +60,7 @@ reembolso", "mandou áudio"), no buyer personal data beyond what the seller need
   reply is the last one: say someone from the team will continue, send it, then hold the conversation.
 - Usually one message per conversation per run. Use the `clientMessageId` given for the conversation
   for that message, adding `-2`, `-3` only if you must send a second or third one.
-- A tool answering `AGENT_HELD`, `AGENT_CONTACT_EXITED` or `AGENT_REPLY_CAP` is final (also on a
+- A tool answering `AGENT_HELD`, `AGENT_CONTACT_EXITED`, `AGENT_OPTED_OUT`, `AGENT_CONVERSATION_NOT_FOUND` or `AGENT_REPLY_CAP` is final (also on a
   resend, a recovery link or an offer link): stop writing to that conversation. `AGENT_ALREADY_OFFERED` or `AGENT_UPSELL_NOT_OFFERED`: do not offer
   again in that conversation, keep to support. `AGENT_KEY_REFUSED`: stop now.
 - If nothing needs an answer (the contact only said "ok", "obrigado"), do not reply.

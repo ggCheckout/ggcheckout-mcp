@@ -736,7 +736,7 @@ Every result that carries what a contact or a buyer typed starts with a notice t
 instruction. The hard limits live in the saas and the core: 10 agent replies per conversation in 24 hours,
 no reply after the seller takes over or the contact writes SAIR, one upsell then one downsell per conversation, and only the
 purchases of the conversation's contact. A refusal (`AGENT_HELD`, `AGENT_CONTACT_EXITED`,
-`AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, `AGENT_UPSELL_NOT_OFFERED`, or a revoked key) tells the model to stop.
+`AGENT_OPTED_OUT`, `AGENT_CONVERSATION_NOT_FOUND`, `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, `AGENT_UPSELL_NOT_OFFERED`, or a revoked key) tells the model to stop.
 
 Version 0.7.0 is published with `npm publish --tag next` for the pilot, so `@latest` stays 0.6.0; the recipe
 pins `ggcheckout-mcp@0.7.0`.

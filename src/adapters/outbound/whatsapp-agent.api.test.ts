@@ -74,6 +74,8 @@ describe('WhatsAppAgentApiAdapter', () => {
   it.each([
     ['AGENT_HELD', new ApiError(409, 'Conversa assumida (AGENT_HELD)')],
     ['AGENT_CONTACT_EXITED', new ApiError(409, 'Contato pediu para sair (AGENT_CONTACT_EXITED; detail)')],
+    ['AGENT_OPTED_OUT', new ApiError(409, 'Contato saiu da lista (AGENT_OPTED_OUT)')],
+    ['AGENT_CONVERSATION_NOT_FOUND', new ApiError(404, 'Conversa não encontrada (AGENT_CONVERSATION_NOT_FOUND)')],
     ['AGENT_REPLY_CAP', new RateLimitError('Teto atingido (AGENT_REPLY_CAP). Retry after 3600 seconds.')],
     ['AGENT_ALREADY_OFFERED', new ApiError(409, 'Oferta já feita (AGENT_ALREADY_OFFERED)')],
     ['AGENT_UPSELL_NOT_OFFERED', new ApiError(409, 'Downsell antes do upsell (AGENT_UPSELL_NOT_OFFERED)')],
