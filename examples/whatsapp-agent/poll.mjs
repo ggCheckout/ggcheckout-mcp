@@ -27,10 +27,21 @@ const SELLER_NAME = process.env.AGENT_SELLER_NAME || 'the store';
 const HOURS = process.env.AGENT_HOURS || '08:00-20:00';
 const DAYS = process.env.AGENT_DAYS || '1-7';
 const TZ = process.env.AGENT_TZ || 'America/Sao_Paulo';
-const POLL_MS = Number(process.env.AGENT_POLL_SECONDS || 15) * 1000;
-const RUN_TIMEOUT_MS = Number(process.env.AGENT_RUN_TIMEOUT_SECONDS || 600) * 1000;
+const POLL_MS = seconds('AGENT_POLL_SECONDS', 15) * 1000;
+const RUN_TIMEOUT_MS = seconds('AGENT_RUN_TIMEOUT_SECONDS', 600) * 1000;
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude';
 const FAILED_RUN_BACKOFF_MS = 5 * 60 * 1000;
+
+/** A whole number of seconds, or the default: "15s" would make the loop spin and spend the key's budget. */
+function seconds(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  if (!/^[1-9][0-9]*$/.test(raw)) {
+    console.error(`${name} must be a whole number of seconds, got ${raw}`);
+    process.exit(1);
+  }
+  return Number(raw);
+}
 
 const SERVER = 'ggcheckout';
 const TOOLS = [
