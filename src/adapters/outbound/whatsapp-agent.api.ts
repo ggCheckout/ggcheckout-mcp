@@ -2,19 +2,19 @@ import type { WhatsAppAgentPort } from '../../core/ports/whatsapp-agent.port.js'
 import type {
   AgentMessagesPage, AgentMessagesQuery, AgentPendingPage, AgentPendingQuery, AgentReplyInput, AgentResponse,
 } from '../../core/types/whatsapp-agent.js';
-import { AppError, AuthenticationError, WhatsAppAgentRefusalError, type AgentRefusalCode } from '../../shared/errors.js';
+import { AGENT_REFUSALS, AppError, AuthenticationError, WhatsAppAgentRefusalError, type AgentRefusalCode } from '../../shared/errors.js';
 import type { HttpClient } from './http-client.js';
 import { guarded } from './whatsapp-guard.js';
 
 const seg = encodeURIComponent;
 const BASE = '/api/whatsapp/agent';
+const AGENT_UNAVAILABLE = 'Ainda não disponível nesta conta: as rotas do assistente de WhatsApp não existem neste ambiente. (FEATURE_UNAVAILABLE)';
 
 const conversation = (contactKey: string) => `${BASE}/conversations/${seg(contactKey)}`;
 const purchase = (contactKey: string, paymentId: string) => `${conversation(contactKey)}/purchases/${seg(paymentId)}`;
 
-const REFUSAL_CODES: AgentRefusalCode[] = [
-  'AGENT_HELD', 'AGENT_CONTACT_EXITED', 'AGENT_REPLY_CAP', 'AGENT_ALREADY_OFFERED', 'AGENT_UPSELL_NOT_OFFERED',
-];
+/** The refusals the API answers with a code; AGENT_KEY_REFUSED is the 401 and has none. */
+const REFUSAL_CODES = (Object.keys(AGENT_REFUSALS) as AgentRefusalCode[]).filter((code) => code !== 'AGENT_KEY_REFUSED');
 
 function translate(error: unknown): unknown {
   // 401 here is the agent key itself: revoked, or the seller turned the assistant off.
@@ -29,7 +29,7 @@ function translate(error: unknown): unknown {
 
 async function agentCall<T>(call: () => Promise<T>): Promise<T> {
   try {
-    return await guarded(call);
+    return await guarded(call, AGENT_UNAVAILABLE);
   } catch (error) {
     throw translate(error);
   }
@@ -65,8 +65,12 @@ export class WhatsAppAgentApiAdapter implements WhatsAppAgentPort {
     return agentCall(() => this.http.post<AgentResponse>(`${conversation(contactKey)}/hold`, { reason }));
   }
 
-  findPurchases(contactKey: string, email?: string): Promise<AgentResponse> {
-    return agentCall(() => this.http.get<AgentResponse>(`${conversation(contactKey)}/purchases`, email ? { email } : undefined));
+  findPurchases(contactKey: string): Promise<AgentResponse> {
+    return agentCall(() => this.http.get<AgentResponse>(`${conversation(contactKey)}/purchases`));
+  }
+
+  resendDeliveryByEmail(contactKey: string, email: string): Promise<AgentResponse> {
+    return agentCall(() => this.http.post<AgentResponse>(`${conversation(contactKey)}/resend-by-email`, { email }));
   }
 
   resendDelivery(contactKey: string, paymentId: string): Promise<AgentResponse> {

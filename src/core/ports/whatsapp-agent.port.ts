@@ -8,8 +8,13 @@ export interface WhatsAppAgentPort {
   listMessages(contactKey: string, query: AgentMessagesQuery): Promise<AgentMessagesPage>;
   sendReply(contactKey: string, input: AgentReplyInput): Promise<AgentResponse>;
   hold(contactKey: string, reason: string): Promise<AgentResponse>;
-  /** Purchases made with the conversation's phone, or with `email` when the contact bought with another number. */
-  findPurchases(contactKey: string, email?: string): Promise<AgentResponse>;
+  /** Purchases made with the conversation's phone only. */
+  findPurchases(contactKey: string): Promise<AgentResponse>;
+  /**
+   * Resends the delivery of the paid purchases of `email` to the purchase owner (that e-mail and the
+   * purchase's own phone), never to the conversation. The saas answers `{ accepted: true }` whether or not one exists.
+   */
+  resendDeliveryByEmail(contactKey: string, email: string): Promise<AgentResponse>;
   resendDelivery(contactKey: string, paymentId: string): Promise<AgentResponse>;
   createRecoveryLink(contactKey: string, paymentId: string): Promise<AgentResponse>;
   listOffers(contactKey: string, paymentId: string): Promise<AgentResponse>;

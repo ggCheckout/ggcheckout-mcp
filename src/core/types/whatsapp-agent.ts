@@ -8,7 +8,8 @@ import type { InboxMessage, InboxPage } from './whatsapp-inbox.js';
 
 /** The thread and the reply use the inbox limits (`INBOX_LIMITS`): same core route behind them. */
 export const AGENT_LIMITS = {
-  pendingPage: 50,
+  /** The core caps the pending page at 20. */
+  pendingPage: 20,
   holdReasonMaxChars: 500,
 } as const;
 

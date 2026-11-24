@@ -12,7 +12,8 @@ export class WhatsAppAgentService {
   async readConversation(contactKey: string, query: AgentMessagesQuery) { return this.port.listMessages(contactKey, query); }
   async sendReply(contactKey: string, input: AgentReplyInput) { return this.port.sendReply(contactKey, input); }
   async hold(contactKey: string, reason: string) { return this.port.hold(contactKey, reason); }
-  async findPurchases(contactKey: string, email?: string) { return this.port.findPurchases(contactKey, email); }
+  async findPurchases(contactKey: string) { return this.port.findPurchases(contactKey); }
+  async resendDeliveryByEmail(contactKey: string, email: string) { return this.port.resendDeliveryByEmail(contactKey, email); }
   async resendDelivery(contactKey: string, paymentId: string) { return this.port.resendDelivery(contactKey, paymentId); }
   async createRecoveryLink(contactKey: string, paymentId: string) { return this.port.createRecoveryLink(contactKey, paymentId); }
   async listOffers(contactKey: string, paymentId: string) { return this.port.listOffers(contactKey, paymentId); }

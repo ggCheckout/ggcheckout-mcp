@@ -83,6 +83,7 @@ import { registerTrackingLinkTools } from './adapters/inbound/tools/tracking-lin
 import { WhatsAppAgentApiAdapter } from './adapters/outbound/whatsapp-agent.api.js';
 import { WhatsAppAgentService } from './core/services/whatsapp-agent.service.js';
 import { registerWhatsAppAgentTools } from './adapters/inbound/tools/whatsapp-agent.tools.js';
+import { contactKey } from './adapters/inbound/tools/whatsapp-schemas.js';
 import { registerAppViews } from './adapters/inbound/apps/apps.js';
 
 
@@ -104,7 +105,8 @@ export interface CreatedServer {
  * The composition root. The key decides the tool set: a seller key (`ggck_live_`) gets every group
  * and the views; the WhatsApp assistant key (`ggck_agent_`) gets the agent tools and nothing else,
  * not even the payments API tools, so a model that reads customer messages has no other lever.
- * Throws on a malformed key.
+ * Throws on a malformed key, and on an agent key without a valid GGCHECKOUT_AGENT_CONTACT: the run
+ * is pinned to that one conversation.
  */
 export function createServer({ apiKey, apiUrl, version, env }: ServerOptions): CreatedServer {
   const keyKind = apiKeyKind(apiKey);
@@ -112,13 +114,23 @@ export function createServer({ apiKey, apiUrl, version, env }: ServerOptions): C
   const server = new McpServer({ name: 'ggcheckout-mcp', version });
 
   if (keyKind === 'agent') {
-    registerWhatsAppAgentTools(server, new WhatsAppAgentService(new WhatsAppAgentApiAdapter(httpClient)));
+    registerWhatsAppAgentTools(server, new WhatsAppAgentService(new WhatsAppAgentApiAdapter(httpClient)), agentContact(env));
     return { server, keyKind };
   }
 
   registerSellerTools(server, httpClient, apiUrl, env);
   const paymentsUrl = registerPaymentsApiToolsFromEnv(server, env, version);
   return { server, keyKind, paymentsUrl };
+}
+
+/** The conversation an agent run is pinned to, in the same format the tools used to take as input. */
+function agentContact(env: NodeJS.ProcessEnv): string {
+  const parsed = contactKey.safeParse(env.GGCHECKOUT_AGENT_CONTACT);
+  if (!parsed.success) {
+    throw new Error('GGCHECKOUT_AGENT_CONTACT is required with a ggck_agent_ key: the conversation this run answers, as the inbox keys it '
+      + '(the contact phone in digits with country code, a Brazilian mobile without the ninth digit, or a "lid:" WhatsApp id)');
+  }
+  return parsed.data;
 }
 
 function registerSellerTools(server: McpServer, httpClient: HttpClient, apiUrl: string, env: NodeJS.ProcessEnv): void {

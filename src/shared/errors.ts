@@ -95,9 +95,9 @@ export class EdgeBlockedError extends AppError {
  * released there yet. Not a refusal and not a crash: the caller says it is unavailable.
  */
 export class FeatureUnavailableError extends AppError {
-  constructor(cause?: Error) {
+  constructor(cause?: Error, message = 'Ainda não disponível nesta conta: o funil e a caixa de entrada do WhatsApp não existem neste ambiente. (FEATURE_UNAVAILABLE)') {
     super(
-      'Ainda não disponível nesta conta: o funil e a caixa de entrada do WhatsApp não existem neste ambiente. (FEATURE_UNAVAILABLE)',
+      message,
       'FEATURE_UNAVAILABLE',
       404,
       cause,

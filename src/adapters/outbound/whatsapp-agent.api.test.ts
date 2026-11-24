@@ -24,8 +24,8 @@ describe('WhatsAppAgentApiAdapter', () => {
   });
 
   it('lists pending conversations and reads a thread with the query as strings', async () => {
-    await adapter.listPending({ limit: 10 });
-    expect(http.get).toHaveBeenCalledWith(BASE, { limit: '10' });
+    await adapter.listPending({ limit: 20 });
+    expect(http.get).toHaveBeenCalledWith(BASE, { limit: '20' });
     await adapter.listMessages('lid:abc@lid', { limit: 30, before: '12-3' });
     expect(http.get).toHaveBeenLastCalledWith(`${BASE}/lid%3Aabc%40lid/messages`, { limit: '30', before: '12-3' });
   });
@@ -37,11 +37,14 @@ describe('WhatsAppAgentApiAdapter', () => {
     expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/hold`, { reason: 'mandou áudio' });
   });
 
-  it('finds purchases by phone, or by the e-mail the contact gave', async () => {
+  it('finds purchases by the conversation phone alone: no query', async () => {
     await adapter.findPurchases(KEY);
-    expect(http.get).toHaveBeenCalledWith(`${BASE}/${KEY}/purchases`, undefined);
-    await adapter.findPurchases(KEY, 'ana@example.com');
-    expect(http.get).toHaveBeenLastCalledWith(`${BASE}/${KEY}/purchases`, { email: 'ana@example.com' });
+    expect(http.get).toHaveBeenCalledWith(`${BASE}/${KEY}/purchases`);
+  });
+
+  it('resends by e-mail through its own route, with the e-mail in the body', async () => {
+    await adapter.resendDeliveryByEmail(KEY, 'ana@example.com');
+    expect(http.post).toHaveBeenCalledWith(`${BASE}/${KEY}/resend-by-email`, { email: 'ana@example.com' });
   });
 
   it('acts on one purchase of the conversation', async () => {
@@ -56,6 +59,19 @@ describe('WhatsAppAgentApiAdapter', () => {
     ]);
     expect(http.get).toHaveBeenCalledWith(`${BASE}/${KEY}/purchases/p1/offers`);
   });
+
+  it.each(['resend-by-email', 'purchases/p1/resend', 'purchases/p1/recovery-link', 'purchases/p1/offer-link'])(
+    'a route that refuses with AGENT_HELD on %s stops the model',
+    async (route) => {
+      vi.mocked(http.post).mockRejectedValue(new ApiError(409, 'Conversa assumida (AGENT_HELD)'));
+      const call = route === 'resend-by-email' ? adapter.resendDeliveryByEmail(KEY, 'a@b.co')
+        : route.endsWith('/resend') ? adapter.resendDelivery(KEY, 'p1')
+          : route.endsWith('recovery-link') ? adapter.createRecoveryLink(KEY, 'p1') : adapter.createOfferLink(KEY, 'p1', 'o');
+      const failure = await call.catch((e) => e);
+      expect(failure).toBeInstanceOf(WhatsAppAgentRefusalError);
+      expect(failure.code).toBe('AGENT_HELD');
+    },
+  );
 
   it.each([
     ['AGENT_HELD', new ApiError(409, 'Conversa assumida (AGENT_HELD)')],
@@ -83,6 +99,9 @@ describe('WhatsAppAgentApiAdapter', () => {
 
   it('reads a route this deployment does not have as not available yet', async () => {
     vi.mocked(http.get).mockRejectedValue(new ApiError(404, 'Request failed with status 404'));
-    await expect(adapter.listPending({})).rejects.toBeInstanceOf(FeatureUnavailableError);
+    const failure = await adapter.listPending({}).catch((e) => e);
+    expect(failure).toBeInstanceOf(FeatureUnavailableError);
+    expect(failure.message).toMatch(/assistente de WhatsApp/);
+    expect(failure.message).not.toMatch(/funil|caixa de entrada/);
   });
 });
