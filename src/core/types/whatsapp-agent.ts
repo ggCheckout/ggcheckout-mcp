@@ -1,0 +1,35 @@
+import type { InboxMessage, InboxPage } from './whatsapp-inbox.js';
+
+/**
+ * The WhatsApp agent routes of the saas (`/api/whatsapp/agent/**`), called with the restricted
+ * `ggck_agent_` key. The request shapes are the saas contract; the responses reach the model as the
+ * saas sends them, so only the fields the tools describe are named here.
+ */
+
+/** The thread and the reply use the inbox limits (`INBOX_LIMITS`): same core route behind them. */
+export const AGENT_LIMITS = {
+  holdReasonMaxChars: 500,
+} as const;
+
+/** Who wrote an outgoing message; null on incoming ones and on messages older than the agent. */
+export type AgentMessageAuthor = 'agent' | 'seller' | 'auto' | null;
+
+export interface AgentMessage extends InboxMessage {
+  by?: AgentMessageAuthor;
+}
+
+export type AgentMessagesPage = InboxPage<AgentMessage>;
+
+export interface AgentMessagesQuery {
+  limit?: number;
+  before?: string;
+}
+
+export interface AgentReplyInput {
+  text: string;
+  /** Deterministic per answered message, so a rerun of the agent never sends the same reply twice. */
+  clientMessageId: string;
+}
+
+/** A saas answer the tools pass on unchanged (purchases, offers, links, the sent reply). */
+export type AgentResponse = Record<string, unknown>;

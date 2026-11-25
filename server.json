@@ -7,25 +7,31 @@
     "url": "https://github.com/ggCheckout/ggcheckout-mcp",
     "source": "github"
   },
-  "version": "0.6.0",
+  "version": "0.7.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "ggcheckout-mcp",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
           "name": "GGCHECKOUT_API_KEY",
-          "description": "GG Checkout API key (ggck_live_...)",
+          "description": "GG Checkout API key: ggck_live_... (seller, every tool) or ggck_agent_... (WhatsApp assistant, agent tools only)",
           "isRequired": true,
           "isSecret": true
         },
         {
           "name": "GG_PAYMENTS_API_KEY",
           "description": "Optional: enables the payments API tools (ggpk_test_ = simulated, ggpk_live_ = real money)",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "GGCHECKOUT_AGENT_CONTACT",
+          "description": "Conversation key (phone digits or lid:...) the run is pinned to. Required with a ggck_agent_ key; ignored with a seller key",
           "isRequired": false,
           "isSecret": true
         }

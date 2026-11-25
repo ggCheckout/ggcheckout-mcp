@@ -4,7 +4,7 @@ import type { WhatsAppInboxService } from '../../../core/services/whatsapp-inbox
 import { INBOX_LIMITS, type InboxState, type InboxSummary } from '../../../core/types/whatsapp-inbox.js';
 import { createToolHandler, type ToolResult } from '../tool-handler.js';
 import { appMeta, appOnlyMeta, whenAppsSupported } from '../apps/apps.js';
-import { codePoints, contactKey, funnelVariables, guid } from './whatsapp-schemas.js';
+import { clientMessageId, contactKey, funnelVariables, guid, messagesCursor, replyText } from './whatsapp-schemas.js';
 
 const APP_ONLY = 'App only: the WhatsApp inbox view calls it, the model does not.';
 
@@ -63,7 +63,7 @@ export function registerWhatsAppInboxTools(server: McpServer, service: WhatsAppI
       inputSchema: {
         contactKey,
         limit: z.number().int().min(1).max(INBOX_LIMITS.messagesPage).optional().describe(`Page size (default ${INBOX_LIMITS.messagesPage})`),
-        before: z.string().max(41).regex(/^[0-9]{1,20}-[0-9]{1,20}$/).optional().describe('Cursor: the nextBefore of the previous page'),
+        before: messagesCursor.optional(),
       },
       _meta: appOnlyMeta(),
     }, createToolHandler('list_whatsapp_messages', async ({ contactKey, ...query }) => service.listMessages(contactKey, query)));
@@ -72,11 +72,8 @@ export function registerWhatsAppInboxTools(server: McpServer, service: WhatsAppI
       description: `${APP_ONLY} Send a reply in a conversation. clientMessageId is made once per message and sent again unchanged on a retry, so a retry never doubles the message.`,
       inputSchema: {
         contactKey,
-        text: z.string()
-          .refine((text) => text.trim().length > 0, { message: 'Message must not be empty' })
-          .refine((text) => codePoints(text) <= INBOX_LIMITS.replyMaxChars, { message: `At most ${INBOX_LIMITS.replyMaxChars} characters` })
-          .describe(`Message text, up to ${INBOX_LIMITS.replyMaxChars} characters`),
-        clientMessageId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).describe('Idempotency id, one per message'),
+        text: replyText,
+        clientMessageId: clientMessageId.describe('Idempotency id, one per message'),
         chipId: guid().optional().describe('Chip to send with; absent keeps the conversation\'s chip'),
       },
       _meta: appOnlyMeta(),

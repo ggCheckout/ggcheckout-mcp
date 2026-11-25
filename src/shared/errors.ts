@@ -95,9 +95,9 @@ export class EdgeBlockedError extends AppError {
  * released there yet. Not a refusal and not a crash: the caller says it is unavailable.
  */
 export class FeatureUnavailableError extends AppError {
-  constructor(cause?: Error) {
+  constructor(cause?: Error, message = 'Ainda não disponível nesta conta: o funil e a caixa de entrada do WhatsApp não existem neste ambiente. (FEATURE_UNAVAILABLE)') {
     super(
-      'Ainda não disponível nesta conta: o funil e a caixa de entrada do WhatsApp não existem neste ambiente. (FEATURE_UNAVAILABLE)',
+      message,
       'FEATURE_UNAVAILABLE',
       404,
       cause,
@@ -134,5 +134,30 @@ export class InboxTermsRequiredError extends AppError {
       cause,
     );
     this.name = 'InboxTermsRequiredError';
+  }
+}
+
+/**
+ * What the agent routes refuse on purpose, read by the model that runs the agent. Each message says
+ * what to do next, so a refusal stops the agent instead of making it retry.
+ */
+export const AGENT_REFUSALS = {
+  AGENT_HELD: 'The seller is handling this conversation (took it over, is answering it, or you handed it over): do not write to this contact again and do not call any other tool for it. Stop here.',
+  AGENT_CONTACT_EXITED: 'The contact asked to stop receiving messages (SAIR): do not reply and do not call any other tool for this conversation.',
+  AGENT_OPTED_OUT: 'The contact opted out of messages from this store: do not reply and do not call any other tool for this conversation.',
+  AGENT_CONVERSATION_NOT_FOUND: 'This conversation no longer exists in the inbox (it expired or was removed): do not reply and do not call any other tool for it.',
+  AGENT_REPLY_CAP: 'This conversation reached 10 agent replies in 24 hours and was handed to the seller: do not reply again.',
+  AGENT_ALREADY_OFFERED: 'This offer kind was already made in this conversation (the upsell, or the downsell after it): never offer again here, keep to support.',
+  AGENT_UPSELL_NOT_OFFERED: 'A downsell comes only after the upsell was offered and refused in this conversation: do not offer again here, keep to support.',
+  AGENT_UNAVAILABLE: 'The assistant is not available in this environment (it runs only on the QA environment for now): stop now and do not try any other tool.',
+  AGENT_KEY_REFUSED: 'The agent key was refused: the seller turned the assistant off or revoked the key. Stop now and call no other tool.',
+} as const;
+
+export type AgentRefusalCode = keyof typeof AGENT_REFUSALS;
+
+export class WhatsAppAgentRefusalError extends AppError {
+  constructor(code: AgentRefusalCode, statusCode: number | undefined, cause?: Error) {
+    super(`${AGENT_REFUSALS[code]} (${code})`, code, statusCode, cause);
+    this.name = 'WhatsAppAgentRefusalError';
   }
 }

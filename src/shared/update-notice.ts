@@ -1,4 +1,5 @@
 let notice: string | undefined;
+let muted = false;
 
 /** Parses `major.minor.patch` (a pre-release suffix is ignored); undefined when it is not one. */
 function parseVersion(version: string): [number, number, number] | undefined {
@@ -47,10 +48,19 @@ export function observeVersionHeaders(
 
 /** The short line tool responses carry while the API says this install is behind. */
 export function getUpdateNotice(): string | undefined {
-  return notice;
+  return muted ? undefined : notice;
 }
 
-/** Test seam: forgets the notice. */
+/**
+ * Agent mode: the tool output goes to a model that talks to a buyer, so it never carries
+ * "tell the user how to update". The seller reads the update advice from the seller-key MCP.
+ */
+export function muteUpdateNotice(): void {
+  muted = true;
+}
+
+/** Test seam: forgets the notice and unmutes. */
 export function resetUpdateNotice(): void {
   notice = undefined;
+  muted = false;
 }

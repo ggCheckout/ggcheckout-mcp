@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createToolHandler } from './tool-handler.js';
-import { observeVersionHeaders, resetUpdateNotice } from '../../shared/update-notice.js';
+import { muteUpdateNotice, observeVersionHeaders, resetUpdateNotice } from '../../shared/update-notice.js';
 
 vi.mock('../../shared/logger.js', () => ({
   info: vi.fn(),
@@ -63,6 +63,15 @@ describe('createToolHandler', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toBe('Error: boom');
       expect(result.content[1].text).toContain('0.5.0 is available');
+    });
+
+    it('adds nothing in agent mode: the output goes to the model that talks to the buyer', async () => {
+      behind();
+      muteUpdateNotice();
+      const ok = await createToolHandler('test_tool', async () => ({ ok: true }))({});
+      const failed = await createToolHandler('test_tool', async () => { throw new Error('boom'); })({});
+      expect(ok.content).toHaveLength(1);
+      expect(failed.content).toHaveLength(1);
     });
 
     it('adds nothing when the install is current', async () => {
