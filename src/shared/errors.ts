@@ -142,7 +142,7 @@ export class InboxTermsRequiredError extends AppError {
  * what to do next, so a refusal stops the agent instead of making it retry.
  */
 export const AGENT_REFUSALS = {
-  AGENT_HELD: 'The seller is handling this conversation (took it over, is answering it, or you handed it over): do not write to this contact again and do not call any other tool for it. Move on to the next conversation.',
+  AGENT_HELD: 'The seller is handling this conversation (took it over, is answering it, or you handed it over): do not write to this contact again and do not call any other tool for it. Stop here.',
   AGENT_CONTACT_EXITED: 'The contact asked to stop receiving messages (SAIR): do not reply and do not call any other tool for this conversation.',
   AGENT_OPTED_OUT: 'The contact opted out of messages from this store: do not reply and do not call any other tool for this conversation.',
   AGENT_CONVERSATION_NOT_FOUND: 'This conversation no longer exists in the inbox (it expired or was removed): do not reply and do not call any other tool for it.',
