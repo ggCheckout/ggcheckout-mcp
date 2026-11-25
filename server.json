@@ -28,6 +28,12 @@
           "description": "Optional: enables the payments API tools (ggpk_test_ = simulated, ggpk_live_ = real money)",
           "isRequired": false,
           "isSecret": true
+        },
+        {
+          "name": "GGCHECKOUT_AGENT_CONTACT",
+          "description": "Conversation key (phone digits or lid:...) the run is pinned to. Required with a ggck_agent_ key; ignored with a seller key",
+          "isRequired": false,
+          "isSecret": true
         }
       ]
     }

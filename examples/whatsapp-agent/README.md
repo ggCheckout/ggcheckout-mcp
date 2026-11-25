@@ -3,6 +3,9 @@
 Runs the seller's own Claude (`claude -p`, on the seller's Claude subscription) on the GG Checkout
 WhatsApp inbox, through this MCP server with the restricted assistant key.
 
+**The pilot runs only on the QA environment (`https://qa.ggcheckout.app`).** In production the assistant
+routes answer `404 AGENT_UNAVAILABLE`, and the script stops with exit code 2 when the pending list answers 404.
+
 | File | What it is |
 |---|---|
 | `poll.mjs` | Checks the pending conversations every 15 s and starts one `claude -p` run per waiting conversation, inside the store's hours |
@@ -18,7 +21,7 @@ WhatsApp inbox, through this MCP server with the restricted assistant key.
 3. Run, from this folder:
 
 ```bash
-GGCHECKOUT_AGENT_KEY=ggck_agent_... AGENT_SELLER_NAME="Minha Loja" AGENT_HOURS=08:00-20:00 AGENT_DAYS=1-6 node poll.mjs
+GGCHECKOUT_API_URL=https://qa.ggcheckout.app GGCHECKOUT_AGENT_KEY=ggck_agent_... AGENT_SELLER_NAME="Minha Loja" AGENT_HOURS=08:00-20:00 AGENT_DAYS=1-6 node poll.mjs
 ```
 
 Every option is listed at the top of `poll.mjs` (`GGCHECKOUT_API_URL`, `AGENT_TZ`, `AGENT_POLL_SECONDS`,
@@ -44,6 +47,10 @@ Every option is listed at the top of `poll.mjs` (`GGCHECKOUT_API_URL`, `AGENT_TZ
   `AGENT_MAX_ATTEMPTS` (3); then that conversation state is given up and logged, until the contact writes
   again. One failing conversation never blocks the others. The log has a short hash per conversation, never
   a phone number or a buyer's text.
+- 404 on the pending list: the API has no assistant (production, or an older API). The script logs it and
+  stops with exit code 2 instead of polling forever; point `GGCHECKOUT_API_URL` at the QA.
+- A `SIGKILL` (or a crash of the machine) skips the cleanup of a run: its temp directory, with the key in
+  `mcp.json` (0600), stays on disk under the OS temp dir until you delete it (`ggcheckout-agent-*`).
 - 429 or 503: waits the `Retry-After` the API sent. 401: the seller turned the assistant off or revoked the
   key, and the script stops.
 - `400 GGCHECKOUT_MCP_OUTDATED`: the API no longer accepts the pinned `ggcheckout-mcp`, and the script

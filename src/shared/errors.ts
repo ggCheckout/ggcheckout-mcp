@@ -149,6 +149,7 @@ export const AGENT_REFUSALS = {
   AGENT_REPLY_CAP: 'This conversation reached 10 agent replies in 24 hours and was handed to the seller: do not reply again.',
   AGENT_ALREADY_OFFERED: 'This offer kind was already made in this conversation (the upsell, or the downsell after it): never offer again here, keep to support.',
   AGENT_UPSELL_NOT_OFFERED: 'A downsell comes only after the upsell was offered and refused in this conversation: do not offer again here, keep to support.',
+  AGENT_UNAVAILABLE: 'The assistant is not available in this environment (it runs only on the QA environment for now): stop now and do not try any other tool.',
   AGENT_KEY_REFUSED: 'The agent key was refused: the seller turned the assistant off or revoked the key. Stop now and call no other tool.',
 } as const;
 

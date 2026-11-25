@@ -8,7 +8,7 @@ import { guarded } from './whatsapp-guard.js';
 
 const seg = encodeURIComponent;
 const BASE = '/api/whatsapp/agent';
-const AGENT_UNAVAILABLE = 'Ainda não disponível nesta conta: as rotas do assistente de WhatsApp não existem neste ambiente. (FEATURE_UNAVAILABLE)';
+const AGENT_ROUTES_MISSING = 'O assistente de WhatsApp não está disponível neste ambiente: as rotas dele não existem aqui. Pare e não tente outras ferramentas. (FEATURE_UNAVAILABLE)';
 
 const conversation = (contactKey: string) => `${BASE}/conversations/${seg(contactKey)}`;
 const purchase = (contactKey: string, paymentId: string) => `${conversation(contactKey)}/purchases/${seg(paymentId)}`;
@@ -29,7 +29,7 @@ function translate(error: unknown): unknown {
 
 async function agentCall<T>(call: () => Promise<T>): Promise<T> {
   try {
-    return await guarded(call, AGENT_UNAVAILABLE);
+    return await guarded(call, AGENT_ROUTES_MISSING);
   } catch (error) {
     throw translate(error);
   }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -7,6 +7,7 @@ import { APP_MIME_TYPE } from '../apps/apps.js';
 import { createServer } from '../../../server.js';
 import { apiKeyKind } from '../../../shared/api-key.js';
 import { WHATSAPP_THIRD_PARTY_NOTICE } from '../../../shared/third-party-data.js';
+import { getUpdateNotice, observeVersionHeaders, resetUpdateNotice } from '../../../shared/update-notice.js';
 import { WhatsAppAgentRefusalError } from '../../../shared/errors.js';
 
 vi.mock('../../../shared/logger.js', () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
@@ -44,6 +45,18 @@ async function agentClient() {
 
 beforeEach(() => {
   for (const fn of Object.values(service) as ReturnType<typeof vi.fn>[]) fn.mockReset().mockResolvedValue({});
+});
+
+describe('agent mode and the update notice', () => {
+  afterEach(() => resetUpdateNotice());
+
+  it('mutes "tell the user how to update" with an agent key, not with a seller key', () => {
+    observeVersionHeaders((n) => ({ 'x-gg-mcp-latest': '0.9.0', 'x-gg-mcp-update': 'u' } as Record<string, string>)[n], '0.7.0');
+    serverFor(LIVE_KEY);
+    expect(getUpdateNotice()).toContain('Tell the user how to update');
+    serverFor(AGENT_KEY);
+    expect(getUpdateNotice()).toBeUndefined();
+  });
 });
 
 describe('the key decides the tool set', () => {

@@ -105,7 +105,11 @@ only. The key is `ggck_agent_` followed by 64 lowercase hex characters; the serv
 otherwise.
 
 A ready recipe that runs one `claude -p` per waiting conversation on the seller's own Claude subscription,
-inside the store's hours, is in [`examples/whatsapp-agent/`](./examples/whatsapp-agent/).
+inside the store's hours, is in [`examples/whatsapp-agent/`](https://github.com/ggCheckout/ggcheckout-mcp/tree/main/examples/whatsapp-agent).
+
+**The assistant is a pilot that exists only on the QA environment** (`https://qa.ggcheckout.app`; set
+`GGCHECKOUT_API_URL` to it). In production its routes answer `404 AGENT_UNAVAILABLE` and the server tells
+the model to stop.
 
 ### Upload folder
 
@@ -736,10 +740,10 @@ Every result that carries what a contact or a buyer typed starts with a notice t
 instruction. The hard limits live in the saas and the core: 10 agent replies per conversation in 24 hours,
 no reply after the seller takes over or the contact writes SAIR, one upsell then one downsell per conversation, and only the
 purchases of the conversation's contact. A refusal (`AGENT_HELD`, `AGENT_CONTACT_EXITED`,
-`AGENT_OPTED_OUT`, `AGENT_CONVERSATION_NOT_FOUND`, `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, `AGENT_UPSELL_NOT_OFFERED`, or a revoked key) tells the model to stop.
+`AGENT_OPTED_OUT`, `AGENT_CONVERSATION_NOT_FOUND`, `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, `AGENT_UPSELL_NOT_OFFERED`, `AGENT_UNAVAILABLE` (production: the assistant exists only on the QA), or a revoked key) tells the model to stop.
 
-Version 0.7.0 is published with `npm publish --tag next` for the pilot, so `@latest` stays 0.6.0; the recipe
-pins `ggcheckout-mcp@0.7.0`. The saas does not send the assistant key the update advice
+Version 0.7.0 is published with `npm publish --tag next`, so `@latest` stays 0.6.0 until the saas release
+with the assistant (saas-checkout#2571) is in production; the recipe pins `ggcheckout-mcp@0.7.0`. The saas does not send the assistant key the update advice
 (`X-GG-MCP-Latest`), so no tool result of a run asks to update; below the minimum version it refuses
 the key like any other, and the recipe's script stops (see `examples/whatsapp-agent/README.md`,
 "Updating the MCP version").

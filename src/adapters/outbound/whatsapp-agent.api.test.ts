@@ -79,6 +79,8 @@ describe('WhatsAppAgentApiAdapter', () => {
     ['AGENT_REPLY_CAP', new RateLimitError('Teto atingido (AGENT_REPLY_CAP). Retry after 3600 seconds.')],
     ['AGENT_ALREADY_OFFERED', new ApiError(409, 'Oferta já feita (AGENT_ALREADY_OFFERED)')],
     ['AGENT_UPSELL_NOT_OFFERED', new ApiError(409, 'Downsell antes do upsell (AGENT_UPSELL_NOT_OFFERED)')],
+    // The saas answer outside the QA (saas-checkout#2586): 404 with a body, which is not a missing route.
+    ['AGENT_UNAVAILABLE', new ApiError(404, 'O assistente não está disponível. (AGENT_UNAVAILABLE)')],
     ['AGENT_KEY_REFUSED', new AuthenticationError('Chave inválida')],
   ])('turns %s into a refusal that tells the model to stop', async (code, error) => {
     vi.mocked(http.post).mockRejectedValue(error);
@@ -103,5 +105,6 @@ describe('WhatsAppAgentApiAdapter', () => {
     expect(failure).toBeInstanceOf(FeatureUnavailableError);
     expect(failure.message).toMatch(/assistente de WhatsApp/);
     expect(failure.message).not.toMatch(/funil|caixa de entrada/);
+    expect(failure.message).toMatch(/Pare e não tente outras ferramentas/);
   });
 });

@@ -4,7 +4,7 @@
 //
 // Environment:
 //   GGCHECKOUT_AGENT_KEY   the assistant key (ggck_agent_ + 64 hex), shown once when the seller turns the assistant on
-//   GGCHECKOUT_API_URL     default https://ggcheckout.app
+//   GGCHECKOUT_API_URL     default https://ggcheckout.app; the pilot runs only on https://qa.ggcheckout.app (production answers 404 AGENT_UNAVAILABLE)
 //   AGENT_SELLER_NAME      the store name the assistant speaks for (fills {{SELLER_NAME}} in prompt.md)
 //   AGENT_HOURS            answering window, local time, default 08:00-20:00 (22:00-06:00 crosses midnight)
 //   AGENT_DAYS             ISO weekdays, 1 = Monday, default 1-7 (e.g. 1-5 or 1,2,3,4,5,6)
@@ -79,6 +79,7 @@ class HttpError extends Error {
     this.status = status;
     this.retryAfter = retryAfter;
     this.outdated = outdated;
+    this.unavailable = false;
   }
 }
 
@@ -126,7 +127,15 @@ const endsThePass = (error) => error instanceof HttpError && (error.outdated || 
 
 /** One pass: every pending conversation that changed since its last run gets its own run. */
 async function pass() {
-  const { items = [] } = await api(`/conversations?limit=${PENDING_LIMIT}`);
+  let list;
+  try {
+    list = await api(`/conversations?limit=${PENDING_LIMIT}`);
+  } catch (error) {
+    // 404 on the pending list: this API has no assistant (production answers 404 AGENT_UNAVAILABLE, an older one has no route).
+    if (error instanceof HttpError && error.status === 404) error.unavailable = true;
+    throw error;
+  }
+  const { items = [] } = list;
   for (const item of items) {
     // A pass of many runs can cross the end of the window: check it again before each one.
     if (!insideWindow({ tz: TZ, hours, days })) return;
@@ -165,6 +174,10 @@ for (;;) {
   } catch (error) {
     if (error instanceof HttpError && error.outdated) {
       log(`the API refuses ggcheckout-mcp ${MCP_VERSION} as too old: raise the pin in .mcp.json (see the README). Stopping.`);
+      process.exit(2);
+    }
+    if (error instanceof HttpError && error.unavailable) {
+      log(`${API_URL} has no WhatsApp assistant (404 on the pending list): the pilot runs only on https://qa.ggcheckout.app. Set GGCHECKOUT_API_URL to it. Stopping.`);
       process.exit(2);
     }
     if (error instanceof HttpError && error.status === 401) {

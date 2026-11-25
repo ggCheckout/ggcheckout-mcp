@@ -85,6 +85,7 @@ import { WhatsAppAgentService } from './core/services/whatsapp-agent.service.js'
 import { registerWhatsAppAgentTools } from './adapters/inbound/tools/whatsapp-agent.tools.js';
 import { contactKey } from './adapters/inbound/tools/whatsapp-schemas.js';
 import { registerAppViews } from './adapters/inbound/apps/apps.js';
+import { muteUpdateNotice } from './shared/update-notice.js';
 
 
 export interface ServerOptions {
@@ -114,6 +115,7 @@ export function createServer({ apiKey, apiUrl, version, env }: ServerOptions): C
   const server = new McpServer({ name: 'ggcheckout-mcp', version });
 
   if (keyKind === 'agent') {
+    muteUpdateNotice();
     registerWhatsAppAgentTools(server, new WhatsAppAgentService(new WhatsAppAgentApiAdapter(httpClient)), agentContact(env));
     return { server, keyKind };
   }

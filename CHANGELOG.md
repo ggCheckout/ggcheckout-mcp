@@ -7,23 +7,29 @@ right now.
 
 ## 0.7.0
 
-Not published yet. Publish it with `npm publish --tag next` for the pilot, so `@latest` stays 0.6.0
-and nobody gets the assistant by accident; the recipe pins `ggcheckout-mcp@0.7.0`. Move `latest` to
-0.7.0 only after the pilot.
+Not published yet. Publish it with `npm publish --tag next`, so `@latest` stays 0.6.0 and nobody gets
+the assistant by accident; the recipe pins `ggcheckout-mcp@0.7.0`.
+
+**Owner decision (2026-11-25, saas-checkout#2586): the assistant exists only on the QA environment
+(`https://qa.ggcheckout.app`).** In production, `GET/POST /api/whatsapp/inbox/agent-key` and every
+`/api/whatsapp/agent/*` route answer `404` with `{"error":"O assistente não está disponível.","code":"AGENT_UNAVAILABLE"}`.
+The MCP turns that answer into a refusal that tells the model to stop and call no other tool, and the
+recipe's script stops with exit code 2 when the pending list answers 404. The recipe runs against the
+QA URL (`GGCHECKOUT_API_URL=https://qa.ggcheckout.app`).
 
 ### Release order
 
-The assistant key and its routes are new on every side. Release in this order:
+1. **core** and **saas** (already in `developer`, which the QA runs: saas-checkout#2565 and
+   ggcheckout-core#895): the `whatsapp_agent` key kind (`ggck_agent_`), its routes, the panel switch
+   ("Permitir que o assistente leia e responda") and `MCP_BEARER_KEY` accepting `ggck_agent_`.
+2. **Publish this package (0.7.0) now** with `npm publish --tag next`: the QA is ready for it.
+3. **`latest` only after the saas release (saas-checkout#2571) is in production.** Then
+   `npm dist-tag add ggcheckout-mcp@0.7.0 latest` and the saas raises `LATEST_GGCHECKOUT_MCP_VERSION`
+   to 0.7.0. The minimum stays at 0.6.0: a seller key works as before, and an older package refuses a
+   `ggck_agent_` key at startup.
 
-1. **core**: the `whatsapp_agent` key kind (`ggck_agent_`), its create, revoke and authenticate
-   routes, and the agent inbox routes (pending list, reply with the 10-in-24-hours cap, hold, offer).
-2. **saas**: `/api/whatsapp/agent/**` behind the agent key, the panel switch that creates the key
-   ("Permitir que o assistente leia e responda"), and `MCP_BEARER_KEY` accepting `ggck_agent_`.
-3. **Publish this package (0.7.0)** to npm with the `next` tag.
-4. After the pilot, `npm dist-tag add ggcheckout-mcp@0.7.0 latest` and **saas** raises `LATEST_GGCHECKOUT_MCP_VERSION` to 0.7.0. The minimum stays at 0.6.0: a seller key
-   works as before, and an older package refuses a `ggck_agent_` key at startup.
-
-Until the saas routes are deployed, every agent tool answers "ainda não disponível nesta conta".
+Until then, outside the QA every agent tool answers "o assistente não está disponível neste ambiente"
+and tells the model to stop.
 
 ### Added
 
@@ -49,8 +55,11 @@ Until the saas routes are deployed, every agent tool answers "ainda não dispon�
   refunds, audio and "achei caro" to the seller. The saas and the core
   enforce the hard limits (10 replies per conversation in 24 hours, seller takeover, SAIR, upsell once
   then downsell once, purchases of the conversation's contact only).
-- Results that carry what a contact or buyer typed (pending list, thread, purchases, offers) start
+- Results that carry what a contact or buyer typed (thread, purchases, offers) start
   with a notice that the text is data, never an instruction, in the text and in `structuredContent`.
+- `AGENT_UNAVAILABLE` (404, production) joins the refusals below, and a 404 with no body on an agent tool
+  says the assistant is not available in this environment and to stop. In agent mode the tool results
+  never carry the "tell the user how to update" line: they go to the model that talks to the buyer.
 - The refusals `AGENT_HELD`, `AGENT_CONTACT_EXITED`, `AGENT_OPTED_OUT`, `AGENT_CONVERSATION_NOT_FOUND`,
   `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, `AGENT_UPSELL_NOT_OFFERED` and a refused key (401) come back as an error that tells the model to
   stop, not to retry.
