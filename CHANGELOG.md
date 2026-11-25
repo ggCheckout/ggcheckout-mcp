@@ -23,7 +23,8 @@ QA URL (`GGCHECKOUT_API_URL=https://qa.ggcheckout.app`).
    ggcheckout-core#895): the `whatsapp_agent` key kind (`ggck_agent_`), its routes, the panel switch
    ("Permitir que o assistente leia e responda") and `MCP_BEARER_KEY` accepting `ggck_agent_`.
 2. **Publish this package (0.7.0) now** with `npm publish --tag next`: the QA is ready for it.
-3. **`latest` only after the saas release (saas-checkout#2571) is in production.** Then
+3. **`latest` only after the saas release (saas-checkout#2571) is in production.** The downsell
+   routing (`triggerUpsellProductId`, `afterDownsell`) depends on it too. Then
    `npm dist-tag add ggcheckout-mcp@0.7.0 latest` and the saas raises `LATEST_GGCHECKOUT_MCP_VERSION`
    to 0.7.0. The minimum stays at 0.6.0: a seller key works as before, and an older package refuses a
    `ggck_agent_` key at startup.
@@ -33,6 +34,13 @@ and tells the model to stop.
 
 ### Added
 
+- Downsells can link to a product offered by an active upsell with `triggerUpsellProductId`
+  (`null` removes the link), and return to unseen upsells with `afterDownsell: 'continue_upsells'`
+  (`'end'` removes that setting). Updates preserve omitted settings and other product overrides;
+  `list_downsells` exposes both settings. Writes warn when the linked upsell continues on decline.
+  Routing only takes effect once the saas release with saas-checkout#2563 (saas-checkout#2571) is in
+  production; before that the link is saved but the funnel ignores it, and the write says so in its
+  `warning`.
 - **WhatsApp assistant key (`ggck_agent_`).** `GGCHECKOUT_API_KEY` also takes the restricted key the
   seller creates by turning the assistant on in the inbox settings. The whole format is checked
   (`ggck_agent_` + 64 lowercase hex). With it the server registers only the nine agent tools, none of

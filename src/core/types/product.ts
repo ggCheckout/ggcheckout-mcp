@@ -290,6 +290,9 @@ export interface CreateUpsellPayload extends Omit<CreateUpsellInput, 'imageUrl'>
 }
 
 export interface DownsellSequenceItem {
+  /** Derived from the offered product override on list. */
+  triggerUpsellProductId?: string;
+  afterDownsell?: 'end' | 'continue_upsells';
   uid: string;
   /** The row's own UUID; the API deletes and reorders by `uid`, never by this. */
   id?: string;
@@ -324,6 +327,8 @@ export interface DownsellSequenceItem {
 }
 
 export interface CreateDownsellInput {
+  triggerUpsellProductId?: string | null;
+  afterDownsell?: 'end' | 'continue_upsells';
   downsellProductId: string;
   title: string;
   description?: string;
@@ -385,7 +390,7 @@ export interface OfferProductPage {
 }
 
 /** What the API stores for a downsell: the input plus the keys the dashboard editor always writes. */
-export interface CreateDownsellPayload extends CreateDownsellInput {
+export interface CreateDownsellPayload extends Omit<CreateDownsellInput, 'triggerUpsellProductId' | 'afterDownsell'> {
   uid: string;
   id: string;
   downsellProductIds: string[];
