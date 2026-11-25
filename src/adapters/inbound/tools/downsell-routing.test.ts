@@ -17,7 +17,8 @@ describe('downsell routing through MCP', () => {
   let server: McpServer;
   let service: ProductService;
   let port: ProductPort;
-  const warning = "Este upsell está em 'Continuar sequência': recusar ele segue direto para o próximo upsell, então este downsell não vai aparecer.";
+  const chainWarning = "Este upsell está em 'Continuar sequência': recusar ele segue direto para o próximo upsell, então este downsell não vai aparecer.";
+  const caveat = "o funil só o respeita se o painel do vendedor já mostrar o campo 'Ligado ao upsell'";
   const stored = {
     uid: 'd', downsellProductId: 'down', downsellProductIds: ['down'], order: 1,
     productOverrides: { down: { price: 1200, triggerUpsellProductId: 'up', afterDownsell: 'continue_upsells', displayMode: 'external' } },
@@ -53,7 +54,8 @@ describe('downsell routing through MCP', () => {
     expect(body.success).toBe(true);
     expect(body.downsell.productOverrides.down).toEqual({ price: 1200, triggerUpsellProductId: 'up', afterDownsell: 'continue_upsells' });
     expect(body.downsell).not.toHaveProperty('triggerUpsellProductId');
-    expect(body).not.toHaveProperty('warning');
+    expect(body.warning).toContain(caveat);
+    expect(body.warning).not.toContain('Continuar sequência');
     expect(port.listUpsells).toHaveBeenCalledWith('parent');
   });
 
@@ -91,7 +93,9 @@ describe('downsell routing through MCP', () => {
     vi.mocked(port.listUpsells).mockResolvedValue([{ upsellProductId: 'up', status: 'active', chainBehavior: 'continue' }] as any);
     const args = tool === 'create_downsell' ? create : { productId: 'parent', downsellId: 'd', afterDownsell: 'continue_upsells' };
     const { body } = await call(tool, args);
-    expect(body).toMatchObject({ success: true, warning, downsell: { uid: 'd' } });
+    expect(body).toMatchObject({ success: true, downsell: { uid: 'd' } });
+    expect(body.warning).toContain(chainWarning);
+    expect(body.warning).toContain(caveat);
     expect(body.downsell).not.toHaveProperty('warning');
     const written = tool === 'create_downsell' ? vi.mocked(port.createDownsell).mock.calls[0][2] : vi.mocked(port.saveOffer).mock.calls[0][3];
     expect(written).not.toHaveProperty('warning');
@@ -111,6 +115,43 @@ describe('downsell routing through MCP', () => {
     expect(error).toBeFalsy();
     expect(body.downsell.productOverrides.down.triggerUpsellProductId).toBe('up');
     await expect(service.createDownsell('parent', 'd', create as any)).rejects.toThrow(/none/i);
+  });
+
+  it.each([
+    ['trigger link', { triggerUpsellProductId: 'up' }, true],
+    ['continue_upsells', { afterDownsell: 'continue_upsells' }, true],
+    ['clearing with null and end', { triggerUpsellProductId: null, afterDownsell: 'end' }, false],
+    ['an unrelated field', { title: 'Changed' }, false],
+  ])('update_downsell carries the panel caveat only when it writes routing: %s', async (_name, input, expected) => {
+    const { body } = await call('update_downsell', { productId: 'parent', downsellId: 'd', ...input });
+    if (expected) expect(body.warning).toContain(caveat);
+    else expect(body).not.toHaveProperty('warning');
+  });
+
+  it('create_downsell without routing has no warning', async () => {
+    const { body } = await call('create_downsell', { productId: 'parent', downsellId: 'd', downsellProductId: 'down', title: 'Offer', price: 1200 });
+    expect(body).not.toHaveProperty('warning');
+  });
+
+  it('create_downsell with triggerUpsellProductId null against an unknown upsell is not validated', async () => {
+    vi.mocked(port.listUpsells).mockResolvedValue([]);
+    const { error, body } = await call('create_downsell', { productId: 'parent', downsellId: 'd', downsellProductId: 'down', title: 'Offer', price: 1200, triggerUpsellProductId: null });
+    expect(error).toBeFalsy();
+    expect(body.downsell.productOverrides.down).toEqual({ price: 1200 });
+    expect(body).not.toHaveProperty('warning');
+  });
+
+  it('lists a downsell without the legacy upsellId field', async () => {
+    expect(stored).not.toHaveProperty('upsellId');
+    const { body } = await call('list_downsells', { productId: 'parent' });
+    expect(body.downsells[0]).not.toHaveProperty('upsellId');
+    expect(body.downsells[0].triggerUpsellProductId).toBe('up');
+  });
+
+  it('keeps the link on the first offered product of a multi-product downsell', async () => {
+    vi.mocked(port.listDownsells).mockResolvedValue({ downsells: [{ uid: 'm', downsellProductIds: ['a', 'b'], order: 1, productOverrides: { a: { price: 100, triggerUpsellProductId: 'up' }, b: { price: 200, triggerUpsellProductId: 'up2' } } }], count: 1 } as any);
+    const { body } = await call('list_downsells', { productId: 'parent' });
+    expect(body.downsells[0].triggerUpsellProductId).toBe('up');
   });
 
   it('lists routing fields from the offered product override', async () => {
@@ -148,6 +189,7 @@ it('round-trips routing through the real HTTP adapter against a localhost API fi
       downsellProductId: 'down', title: 'Fixture', price: 1200, triggerUpsellProductId: 'up', afterDownsell: 'continue_upsells',
     });
     expect(created.warning).toContain('Continuar sequência');
+    expect(created.warning).toContain("'Ligado ao upsell'");
     expect(stored.productOverrides.down).toEqual({ price: 1200, triggerUpsellProductId: 'up', afterDownsell: 'continue_upsells' });
     expect(stored).not.toHaveProperty('warning');
     expect(stored).not.toHaveProperty('triggerUpsellProductId');

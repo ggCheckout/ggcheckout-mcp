@@ -22,6 +22,14 @@ import { AppError, NotFoundError, ValidationError } from '../../shared/errors.js
 import { composeOffer } from './offer-payload.js';
 import { buildExternalOfferSnippet, externalOfferRef, externalPageOf } from '../../shared/external-offer-snippet.js';
 
+/** Shown whenever a downsell write sets routing: the model must not claim "linked" without it. */
+const DOWNSELL_ROUTING_CAVEAT = "O vínculo foi salvo, mas o funil só o respeita se o painel do vendedor já mostrar o campo 'Ligado ao upsell'; sem ele, o funil ignora este vínculo e o downsell segue a fila geral.";
+
+/** True when the call sets a link or a return to the upsells (clearing with null / 'end' needs no caveat). */
+function writesRouting(input: { triggerUpsellProductId?: string | null; afterDownsell?: string }): boolean {
+  return typeof input.triggerUpsellProductId === 'string' || input.afterDownsell === 'continue_upsells';
+}
+
 export class ProductService {
   /** `appUrl` is the app the seller's page loads the upsell script from (the API base URL). */
   constructor(private readonly productPort: ProductPort, private readonly appUrl: string) {}
@@ -242,7 +250,7 @@ export class ProductService {
 
   /** Same editor shape as {@link createUpsell}: `order` is required, products go in `downsellProductIds`. */
   async createDownsell(productId: string, downsellId: string, input: CreateDownsellInput): Promise<DownsellSequenceItem & { warning?: string }> {
-    const warning = await this.downsellWarning(productId, input.triggerUpsellProductId, true);
+    const warning = await this.downsellWarning(productId, input.triggerUpsellProductId, true, writesRouting(input));
     const order = input.order ?? nextOrder((await this.productPort.listDownsells(productId)).downsells);
     const offer = composeOffer('downsell', input.downsellProductId, {}, input as unknown as Record<string, unknown>);
     const saved = await this.productPort.createDownsell(productId, downsellId, {
@@ -260,8 +268,9 @@ export class ProductService {
   }
 
   /** New links must target an active upsell; an omitted, now-orphaned link is left for the saas. */
-  private async downsellWarning(productId: string, trigger: unknown, validate: boolean): Promise<string | undefined> {
-    if (typeof trigger !== 'string' || !trigger) return undefined;
+  private async downsellWarning(productId: string, trigger: unknown, validate: boolean, routingWritten: boolean): Promise<string | undefined> {
+    const caveat = routingWritten ? DOWNSELL_ROUTING_CAVEAT : undefined;
+    if (typeof trigger !== 'string' || !trigger) return caveat;
     // Same rule as the saas funnel (isActiveFunnelOffer): no status means active.
     const active = (await this.productPort.listUpsells(productId))
       .filter((offer) => offer.status == null || offer.status === 'active');
@@ -273,10 +282,10 @@ export class ProductService {
       }));
       throw new ValidationError(`triggerUpsellProductId must be a product offered by an active upsell of this product. Valid products: ${valid.join(', ') || 'none'}.`);
     }
-    if (linked.some((offer) => offer.chainBehavior === 'continue')) {
-      return "Este upsell está em 'Continuar sequência': recusar ele segue direto para o próximo upsell, então este downsell não vai aparecer.";
-    }
-    return undefined;
+    const chain = linked.some((offer) => offer.chainBehavior === 'continue')
+      ? "Este upsell está em 'Continuar sequência': recusar ele segue direto para o próximo upsell, então este downsell não vai aparecer."
+      : undefined;
+    return [chain, caveat].filter(Boolean).join(' ') || undefined;
   }
 
   async deleteDownsell(productId: string, downsellKey: string): Promise<void> {
@@ -304,7 +313,7 @@ export class ProductService {
       updatedAt: new Date().toISOString(),
     };
     const warning = kind === 'downsell'
-      ? await this.downsellWarning(productId, (doc.productOverrides as DownsellSequenceItem['productOverrides'])?.[offeredProductId]?.triggerUpsellProductId, input.triggerUpsellProductId !== undefined)
+      ? await this.downsellWarning(productId, (doc.productOverrides as DownsellSequenceItem['productOverrides'])?.[offeredProductId]?.triggerUpsellProductId, input.triggerUpsellProductId !== undefined, writesRouting(input))
       : undefined;
     const saved = await this.productPort.saveOffer(productId, kind, offer.uid, doc);
     return { ...(saved ?? doc), ...(warning ? { warning } : {}) } as unknown as Upsell | DownsellSequenceItem;

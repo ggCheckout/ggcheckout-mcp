@@ -57,7 +57,7 @@ export const upsellFields = {
 /** Fields a downsell takes on create and on update. Prices are in CENTS. */
 export const downsellFields = {
   triggerUpsellProductId: z.string().min(1).nullable().optional()
-    .describe('Product ID offered by an active upsell of this product (upsellProductIds/upsellProductId from list_upsells), not the upsell document ID. Show this downsell only when that upsell is declined; null removes the link and returns it to the general queue'),
+    .describe('Product ID offered by an active upsell of this product (upsellProductIds/upsellProductId from list_upsells), not the upsell document ID. Show this downsell only when that upsell is declined; null removes the link kept by this tool (per offered product); a downsell linked through the old seller editor (document with `upsellId`) stays tied to that upsell and only the seller panel changes it. Only the FIRST offered product of a multi-product downsell carries the link. If the seller panel does not show "Ligado ao upsell" yet, the funnel ignores the link'),
   afterDownsell: z.enum(['end', 'continue_upsells']).optional()
     .describe('end (default) ends the funnel; continue_upsells returns to the next unseen upsell after accepting this downsell, or declining it with no next downsell in the queue'),
   description: z.string().max(5000).optional().describe('Downsell description'),

@@ -296,15 +296,22 @@ is the charged price of the offered product, `customImage` and `videosSection` a
 
 - `triggerUpsellProductId` links the downsell to a product offered by an **active upsell of the
   same product**: use `upsellProductIds` / `upsellProductId` from `list_upsells`, not the upsell
-  document's uid. It appears only when that upsell is declined. `null` removes the link and puts
-  it back in the general downsell queue; a link orphaned later also falls back to that queue.
+  document's uid. It appears only when that upsell is declined. `null` removes the link kept
+  by this tool (per offered product). A downsell linked through the old seller editor (document with
+  `upsellId`, which this tool does not expose) stays tied to that upsell, and only the seller panel
+  changes it; a link orphaned later falls back to the general queue.
+- On a downsell with several offered products, the link and the return setting are stored on and
+  listed for the **first** offered product only.
 - `afterDownsell: 'continue_upsells'` returns to the next unseen upsell after acceptance, or after
   declining with no next downsell in the queue. Omitted / `'end'` ends the funnel; sending `'end'`
   removes the stored setting. On update, omitted routing fields keep their stored values.
 - Both settings live beside price in `productOverrides[downsellProductId]` and are exposed by
   `list_downsells`. Create/update responses include a pt-BR `warning` if the linked upsell has
   `chainBehavior: 'continue'`: declining it skips downsells and goes straight to the next upsell.
-  **Routing only takes effect once the saas containing saas-checkout#2563 is in production.**
+  **Routing only applies if the seller panel shows the "Ligado ao upsell"
+  field; otherwise the funnel ignores the link** (the value is saved, and an old editor save erases it).
+  Create/update responses carry this caveat in `warning` whenever they set a link or
+  `continue_upsells`.
 
 **Example prompt:** "Add a downsell to product abc123 with a 50% discount headline"
 
