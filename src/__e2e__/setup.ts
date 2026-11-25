@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { apiKeyKind } from '../shared/api-key.js';
 import { HttpClient } from '../adapters/outbound/http-client.js';
 import { AuthApiAdapter } from '../adapters/outbound/auth.api.js';
 import { ProductApiAdapter } from '../adapters/outbound/product.api.js';
@@ -30,8 +31,12 @@ export const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const API_KEY = process.env.GGCHECKOUT_API_KEY;
 const API_URL = process.env.GGCHECKOUT_API_URL || 'https://ggcheckout.app';
 
-if (!API_KEY || !API_KEY.startsWith('ggck_live_')) {
+if (!API_KEY) {
   throw new Error('E2E tests require GGCHECKOUT_API_KEY in .env');
+}
+// The suite drives the seller tools; a ggck_agent_ key opens only the WhatsApp agent routes.
+if (apiKeyKind(API_KEY) !== 'seller') {
+  throw new Error('E2E tests require a seller key (ggck_live_) in GGCHECKOUT_API_KEY, not a ggck_agent_ key');
 }
 
 const httpClient = new HttpClient(API_URL, API_KEY, 'e2e');

@@ -23,7 +23,7 @@ const service = {
 
 async function connect(drawsViews: boolean, { withAppViews = false } = {}) {
   const server = new McpServer({ name: 'test', version: '0.0.1' });
-  // As in index.ts, other tools are registered before the connection: that is what declares the tools capability.
+  // As in server.ts, other tools are registered before the connection: that is what declares the tools capability.
   server.registerTool('always_there', { description: 'Always registered' }, async () => ({ content: [] }));
   registerWhatsAppInboxTools(server, service);
   if (withAppViews) registerAppViews(server);

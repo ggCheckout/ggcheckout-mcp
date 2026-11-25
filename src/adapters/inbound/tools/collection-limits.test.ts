@@ -58,7 +58,7 @@ describe('collection size limits', () => {
   let client: Client;
   const services = { membersArea: spyService(), telegram: spyService(), funnel: spyService() };
 
-  // Every tool family is registered, as in index.ts: one schema zod's toJSONSchema cannot
+  // Every tool family is registered, as in server.ts: one schema zod's toJSONSchema cannot
   // convert makes tools/list fail for the whole server.
   beforeAll(async () => {
     const server = new McpServer({ name: 'test', version: '0.0.1' });
