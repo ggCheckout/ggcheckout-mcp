@@ -5,7 +5,7 @@ import { AGENT_LIMITS } from '../../../core/types/whatsapp-agent.js';
 import { INBOX_LIMITS } from '../../../core/types/whatsapp-inbox.js';
 import { createToolHandler } from '../tool-handler.js';
 import { asThirdPartyData, WHATSAPP_THIRD_PARTY_NOTICE } from '../../../shared/third-party-data.js';
-import { clientMessageId, messagesCursor, replyText } from './whatsapp-schemas.js';
+import { clientMessageId, holdReason, messagesCursor, replyText } from './whatsapp-schemas.js';
 
 /**
  * The names, in the order they are registered: with a `ggck_agent_` key they are the whole tool list.
@@ -75,7 +75,7 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
       + 'Before holding, you may send one short message saying someone from the team will answer. After holding, call no other tool for it. '
       + 'The reason is stored and shown to the seller in the panel: write it short and factual, with no buyer personal data beyond what the seller needs.',
     inputSchema: {
-      reason: z.string().trim().min(1).max(AGENT_LIMITS.holdReasonMaxChars)
+      reason: holdReason(AGENT_LIMITS.holdReasonMaxChars)
         .describe('Why, in a few words the seller reads (e.g. "pediu reembolso", "mandou áudio", "achou caro")'),
     },
   }, createToolHandler('hold_whatsapp_conversation', async ({ reason }) => service.hold(contact, reason)));

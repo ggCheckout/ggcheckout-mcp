@@ -205,6 +205,7 @@ describe('agent tools', () => {
     ['send_whatsapp_reply', { text: '  ', clientMessageId: 'x' }],
     ['send_whatsapp_reply', { text: 'a'.repeat(4097), clientMessageId: 'x' }],
     ['hold_whatsapp_conversation', { reason: '   ' }],
+    ['hold_whatsapp_conversation', { reason: `${'😀'.repeat(250)}${'a'.repeat(251)}` }],
     ['resend_delivery_by_email', { email: 'not-an-email' }],
     ['resend_delivery', { paymentId: '../payments/other' }],
     ['create_offer_link', { paymentId: PAYMENT, offerId: '' }],
@@ -212,6 +213,13 @@ describe('agent tools', () => {
     const result = await (await agentClient()).callTool({ name, arguments: args });
     expect(result.isError).toBe(true);
     for (const fn of Object.values(service) as ReturnType<typeof vi.fn>[]) expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('hold_whatsapp_conversation counts the reason in code points, like the saas and the core', async () => {
+    const atCap = `${'😀'.repeat(250)}${'a'.repeat(250)}`;
+    const result = await (await agentClient()).callTool({ name: 'hold_whatsapp_conversation', arguments: { reason: atCap } });
+    expect(result.isError).toBeFalsy();
+    expect(service.hold).toHaveBeenCalledWith(CONTACT, atCap);
   });
 
   it('routes every purchase action with the pinned conversation and the payment', async () => {
