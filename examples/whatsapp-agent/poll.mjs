@@ -20,8 +20,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, fillMcpConfig, fingerprintOf, insideWindow, logId,
-  parseDays, parseWindow,
+  buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, fillMcpConfig, fingerprintOf, insideWindow,
+  isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion,
 } from './lib.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -65,6 +65,7 @@ if (!/^ggck_agent_[a-f0-9]{64}$/.test(KEY)) {
 
 const rules = readFileSync(join(here, 'prompt.md'), 'utf-8').replaceAll('{{SELLER_NAME}}', SELLER_NAME);
 const mcpTemplate = JSON.parse(readFileSync(join(here, '.mcp.json'), 'utf-8'));
+const MCP_VERSION = pinnedMcpVersion(mcpTemplate, SERVER);
 const hours = parseWindow(HOURS);
 const days = parseDays(DAYS);
 const tracker = createAttemptTracker({ maxAttempts: MAX_ATTEMPTS });
@@ -73,19 +74,24 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const log = (message) => console.error(`${new Date().toISOString()} ${message}`);
 
 class HttpError extends Error {
-  constructor(status, retryAfter) {
+  constructor(status, retryAfter, outdated = false) {
     super(`HTTP ${status}`);
     this.status = status;
     this.retryAfter = retryAfter;
+    this.outdated = outdated;
   }
 }
 
 async function api(path) {
   const res = await fetch(`${API_URL}/api/whatsapp/agent${path}`, {
-    headers: { Authorization: `Bearer ${KEY}`, Accept: 'application/json' },
+    // The pinned server's User-Agent: the API refuses this script when it refuses that server.
+    headers: { Authorization: `Bearer ${KEY}`, Accept: 'application/json', 'User-Agent': `ggcheckout-mcp/${MCP_VERSION}` },
     signal: AbortSignal.timeout(15000),
   });
-  if (!res.ok) throw new HttpError(res.status, Number(res.headers.get('retry-after')) || undefined);
+  if (!res.ok) {
+    const body = res.status === 400 ? await res.json().catch(() => null) : null;
+    throw new HttpError(res.status, Number(res.headers.get('retry-after')) || undefined, isOutdatedMcpRefusal(res.status, body));
+  }
   return res.json();
 }
 
@@ -115,8 +121,8 @@ function runClaude({ contactKey, clientMessageId: replyId }) {
   });
 }
 
-/** True when the error ends the whole pass (key refused, API asked to slow down): anything else only skips one conversation. */
-const endsThePass = (error) => error instanceof HttpError && [401, 429, 503].includes(error.status);
+/** True when the error ends the whole pass (key refused, MCP too old, API asked to slow down): anything else only skips one conversation. */
+const endsThePass = (error) => error instanceof HttpError && (error.outdated || [401, 429, 503].includes(error.status));
 
 /** One pass: every pending conversation that changed since its last run gets its own run. */
 async function pass() {
@@ -157,6 +163,10 @@ for (;;) {
   try {
     await pass();
   } catch (error) {
+    if (error instanceof HttpError && error.outdated) {
+      log(`the API refuses ggcheckout-mcp ${MCP_VERSION} as too old: raise the pin in .mcp.json (see the README). Stopping.`);
+      process.exit(2);
+    }
     if (error instanceof HttpError && error.status === 401) {
       log('the assistant key was refused: the seller turned the assistant off or revoked the key. Stopping.');
       process.exit(2);

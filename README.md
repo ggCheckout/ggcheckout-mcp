@@ -739,7 +739,10 @@ purchases of the conversation's contact. A refusal (`AGENT_HELD`, `AGENT_CONTACT
 `AGENT_OPTED_OUT`, `AGENT_CONVERSATION_NOT_FOUND`, `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, `AGENT_UPSELL_NOT_OFFERED`, or a revoked key) tells the model to stop.
 
 Version 0.7.0 is published with `npm publish --tag next` for the pilot, so `@latest` stays 0.6.0; the recipe
-pins `ggcheckout-mcp@0.7.0`.
+pins `ggcheckout-mcp@0.7.0`. The saas does not send the assistant key the update advice
+(`X-GG-MCP-Latest`), so no tool result of a run asks to update; below the minimum version it refuses
+the key like any other, and the recipe's script stops (see `examples/whatsapp-agent/README.md`,
+"Updating the MCP version").
 
 ---
 

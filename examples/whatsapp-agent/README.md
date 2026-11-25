@@ -46,6 +46,17 @@ Every option is listed at the top of `poll.mjs` (`GGCHECKOUT_API_URL`, `AGENT_TZ
   a phone number or a buyer's text.
 - 429 or 503: waits the `Retry-After` the API sent. 401: the seller turned the assistant off or revoked the
   key, and the script stops.
+- `400 GGCHECKOUT_MCP_OUTDATED`: the API no longer accepts the pinned `ggcheckout-mcp`, and the script
+  stops with exit code 2 (a run would only meet the same refusal in every tool).
+
+## Updating the MCP version
+
+`.mcp.json` pins an exact version on purpose: a new release changes the tools under the prompt, so it is
+taken by reading its notes, never by `@latest`. The script reads the pin and sends it as its own
+`User-Agent` (`ggcheckout-mcp/<version>`), so the API refuses the script exactly when it refuses that
+server. The API does not send the assistant key the "update available" advice the seller's own MCP
+gets, so nothing in the run's tools asks to update. To update: change `ggcheckout-mcp@<version>` in
+`.mcp.json` to the new release and restart the script.
 
 ## What the model can reach
 

@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import {
-  buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, fillMcpConfig, fingerprintOf, insideWindow, logId,
-  parseDays, parseWindow,
+  buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, fillMcpConfig, fingerprintOf, insideWindow,
+  isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion,
 } from './lib.mjs';
 
 const TZ = 'America/Sao_Paulo';
@@ -134,5 +135,28 @@ describe('run setup', () => {
     expect(after('--permission-prompts')).toBe('none');
     expect(args).not.toContain('--disallowedTools');
     expect(args).not.toContain('--dangerously-skip-permissions');
+  });
+});
+
+describe('the pinned MCP version', () => {
+  const template = (args) => ({ mcpServers: { ggcheckout: { command: 'npx', args } } });
+
+  it('reads the exact pin of the recipe template', () => {
+    const recipe = JSON.parse(readFileSync(new URL('./.mcp.json', import.meta.url), 'utf-8'));
+    expect(pinnedMcpVersion(recipe, 'ggcheckout')).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(pinnedMcpVersion(template(['-y', 'ggcheckout-mcp@0.7.0']), 'ggcheckout')).toBe('0.7.0');
+  });
+
+  it('refuses a template without an exact pin', () => {
+    expect(() => pinnedMcpVersion(template(['-y', 'ggcheckout-mcp@latest']), 'ggcheckout')).toThrow(/must pin/);
+    expect(() => pinnedMcpVersion(template(['-y', 'ggcheckout-mcp']), 'ggcheckout')).toThrow(/must pin/);
+    expect(() => pinnedMcpVersion(template(['-y', 'ggcheckout-mcp@0.7.0']), 'other')).toThrow(/must pin/);
+  });
+
+  it('tells the version refusal from any other 400', () => {
+    expect(isOutdatedMcpRefusal(400, { code: 'GGCHECKOUT_MCP_OUTDATED', minVersion: '0.8.0' })).toBe(true);
+    expect(isOutdatedMcpRefusal(400, { code: 'AGENT_KEY_INVALID' })).toBe(false);
+    expect(isOutdatedMcpRefusal(400, null)).toBe(false);
+    expect(isOutdatedMcpRefusal(403, { code: 'GGCHECKOUT_MCP_OUTDATED' })).toBe(false);
   });
 });

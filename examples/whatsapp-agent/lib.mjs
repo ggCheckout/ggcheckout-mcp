@@ -83,6 +83,26 @@ export function createAttemptTracker({ maxAttempts = 3, backoffMs = 5 * 60 * 100
   };
 }
 
+/**
+ * The ggcheckout-mcp version the MCP config template pins (`ggcheckout-mcp@x.y.z` in the server's
+ * args). The script sends it as its own User-Agent, so the API refuses the script exactly when it
+ * refuses the pinned server. A template without an exact pin is an error: `@latest` would change the
+ * tools under the prompt without anyone reading the release.
+ */
+export function pinnedMcpVersion(template, serverName) {
+  const args = template?.mcpServers?.[serverName]?.args ?? [];
+  for (const arg of args) {
+    const pin = /^ggcheckout-mcp@(\d+\.\d+\.\d+)$/.exec(arg);
+    if (pin) return pin[1];
+  }
+  throw new Error(`the MCP config template must pin ggcheckout-mcp@<x.y.z> in the args of "${serverName}"`);
+}
+
+/** The API refused the pinned MCP as below its minimum version (`400 GGCHECKOUT_MCP_OUTDATED`): every call will be refused. */
+export function isOutdatedMcpRefusal(status, body) {
+  return status === 400 && body?.code === 'GGCHECKOUT_MCP_OUTDATED';
+}
+
 /** Replaces `${NAME}` in every string of the MCP config template with the run's values; an unknown name is an error. */
 export function fillMcpConfig(template, values) {
   const fill = (node) => {
