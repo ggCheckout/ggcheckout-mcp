@@ -231,6 +231,13 @@
       }
     ]
   },
+  "invalid/agent-task-reply-body-without-contact.json": {
+    "esperado": [
+      {
+        "keyword": "required"
+      }
+    ]
+  },
   "invalid/conversation-page-human-hold-with-note.json": {
     "esperado": [
       {

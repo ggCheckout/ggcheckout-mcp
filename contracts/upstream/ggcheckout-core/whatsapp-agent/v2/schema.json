@@ -2284,7 +2284,7 @@
       }
     },
     "AgentTask": {
-      "description": "A message the assistant starts. recovery: an unpaid PIX (dueAt 15 min, deadlineAt 3 h; past the deadline unsent, the seller's pix_unpaid funnel runs instead). recovery_followup: 3 h after the contact replied and went quiet. welcome: 3 to 8 min after a paid purchase (deadline 30 min). upsell: 24 to 72 h after it. At most one started message per contact per day.",
+      "description": "A contact with a live task (due, or past due inside its deadline) reads as a conversation even before it ever wrote: GET state answers a free state (counters at zero), and offer and marks accept it, creating the summary. A contact with neither keeps answering 404 AGENT_CONVERSATION_NOT_FOUND. A message the assistant starts. recovery: an unpaid PIX (dueAt 15 min, deadlineAt 3 h; past the deadline unsent, the seller's pix_unpaid funnel runs instead). recovery_followup: 3 h after the contact replied and went quiet. welcome: 3 to 8 min after a paid purchase (deadline 30 min). upsell: 24 to 72 h after it. At most one started message per contact per day.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -2336,15 +2336,19 @@
       }
     },
     "AgentTaskReplyBody": {
-      "description": "The task's message. Always sent (a started message is never a draft); category is recovery for recovery tasks, sale for upsell, free for welcome.",
+      "description": "The task's message. Always sent (a started message is never a draft); category is recovery for recovery tasks, sale for upsell, free for welcome. contactKey is the contact the saas reviewed the links against: a task of another contact (or of another seller) answers 404 AGENT_TASK_NOT_FOUND, never revealing that it exists.",
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "contactKey",
         "bubbles",
         "clientMessageId",
         "privateNote"
       ],
       "properties": {
+        "contactKey": {
+          "$ref": "#/$defs/agentContactKey"
+        },
         "bubbles": {
           "$ref": "#/$defs/bubbles"
         },

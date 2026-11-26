@@ -1,6 +1,7 @@
 {
   "def": "AgentTaskReplyBody",
   "body": {
+    "contactKey": "5511912345678",
     "bubbles": [
       "Oi, Ana! Vi que o Pix do guia ficou em aberto",
       "https://loja.example/r/abc"

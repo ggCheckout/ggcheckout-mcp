@@ -12,8 +12,8 @@ import { describe, expect, it } from 'vitest';
  */
 const CORE_MANIFEST_PINS = {
   'whatsapp-agent/v2': {
-    coreCommit: '2dbe9bb596663c99f230aa547868a78df60e9aa2',
-    manifestSha256: '3ca6a613eff0f8556473d5c70dfbda3a96e3bfa49ef9dc1ff81633077675e279',
+    coreCommit: '168c496177152a5047f7e9b399ed60d48761b8fe',
+    manifestSha256: '5ea245256ace6b0571cc42c402ee579e8c459f6b54add505c8fd9dae39b44af1',
   },
 } as const;
 
