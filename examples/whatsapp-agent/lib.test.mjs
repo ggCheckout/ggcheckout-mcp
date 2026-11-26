@@ -245,10 +245,11 @@ describe('scheduled tasks, against the core contract (whatsapp-agent/v2)', () =>
     expect(dueTasks({ items: [] })).toEqual([]);
   });
 
-  it('the reply id of a task is stable and a valid clientMessageId of the contract', () => {
-    const pattern = new RegExp(schema.$defs.clientMessageId.pattern);
+  it('the reply ids are stable and valid turn ids of the contract, a third turn of the run included', () => {
+    const pattern = new RegExp(schema.$defs.turnClientMessageId.pattern);
     const id = taskClientMessageId('0192a000-0000-4000-8000-000000000020');
     expect(id).toMatch(pattern);
+    expect(`${clientMessageId('553199998888', '1700-1')}-3`).toMatch(pattern);
     expect(taskClientMessageId('0192a000-0000-4000-8000-000000000020')).toBe(id);
     expect(taskFingerprint({ id: 'a' })).not.toBe(taskFingerprint({ id: 'b' }));
   });

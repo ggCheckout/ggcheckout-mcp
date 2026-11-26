@@ -13,6 +13,8 @@ export const AGENT_LIMITS = {
   bubbleMaxChars: 4096,
   privateNoteMaxChars: 300,
   escalationSummaryMaxChars: 500,
+  /** The core stores bubble i under <id>-b<i> and the voice under <id>-audio, inside a 64-char delivery id. */
+  turnClientMessageIdMaxChars: 56,
 } as const;
 
 /**

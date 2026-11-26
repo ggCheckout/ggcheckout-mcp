@@ -26,7 +26,8 @@ answer that the assistant is not available here.
 
 - **`send_whatsapp_reply` sends a turn:** `bubbles` (1 to 3, a link alone in its bubble), `category`
   (`support`, `retention`, `free` or `sale`; `recovery` and `access` are proven by the saas, never
-  declared), `privateNote` (one line for the seller, or null) and `clientMessageId`. The answer says
+  declared), `privateNote` (one line for the seller, or null) and `clientMessageId` (at most 56
+  characters: the core derives one id per bubble and for the voice from it). The answer says
   `sent` or `draft` (the seller approves a draft before it goes). `text` is gone.
 - **Voice:** `send_whatsapp_reply` takes an optional `audio`, the text of one voice note (at most 450
   characters, no link, ElevenLabs v3 tone tags) that the saas synthesizes with the store's key and sends

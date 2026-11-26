@@ -194,8 +194,8 @@ what the contact already told you, and never send what the timeline shows as sen
 
 A task is text only: never a voice note.
 
-A refusal `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED` or `AGENT_DAILY_PROACTIVE_CAP` ends the task: send nothing
-and call no other tool.
+A refusal `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED`, `AGENT_DAILY_PROACTIVE_CAP` or `AGENT_HELD` ends the task:
+send nothing and call no other tool.
 
 ## Limits
 

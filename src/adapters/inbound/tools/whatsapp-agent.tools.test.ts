@@ -264,6 +264,7 @@ describe('agent tools', () => {
     ['send_whatsapp_reply', { ...TURN, category: 'access' }],
     ['send_whatsapp_reply', { ...TURN, privateNote: 'a'.repeat(301) }],
     ['send_whatsapp_reply', { ...TURN, audio: '   ' }],
+    ['send_whatsapp_reply', { ...TURN, clientMessageId: 'a'.repeat(57) }],
     ['send_whatsapp_reply', { ...TURN, audio: 'a'.repeat(451) }],
     ['escalate_whatsapp_conversation', { code: 'refund', summary: '   ' }],
     ['escalate_whatsapp_conversation', { code: 'refund', summary: `${'😀'.repeat(250)}${'a'.repeat(251)}` }],

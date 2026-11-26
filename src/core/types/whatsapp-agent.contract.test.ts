@@ -21,6 +21,8 @@ describe('agent limits against the core contract (whatsapp-agent/v2)', () => {
     expect(AGENT_LIMITS.privateNoteMaxChars).toBe(defs.privateNote.maxLength);
     expect(AGENT_LIMITS.escalationSummaryMaxChars).toBe(limits.escalationSummaryMaxChars);
     expect(AGENT_LIMITS.escalationSummaryMaxChars).toBe(defs.AgentEscalateBody.properties.summary.maxLength);
+    expect(AGENT_LIMITS.turnClientMessageIdMaxChars).toBe(limits.turnClientMessageIdMaxChars);
+    expect(defs.turnClientMessageId.pattern).toBe(`^[A-Za-z0-9_-]{1,${AGENT_LIMITS.turnClientMessageIdMaxChars}}$`);
   });
 
   it('the model declares only the categories the saas does not prove', () => {

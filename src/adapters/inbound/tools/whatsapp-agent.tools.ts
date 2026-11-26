@@ -5,7 +5,7 @@ import { AGENT_DECLARED_CATEGORIES, AGENT_ESCALATION_CODES, AGENT_LIMITS, AGENT_
 import { INBOX_LIMITS } from '../../../core/types/whatsapp-inbox.js';
 import { createToolHandler, type ToolResult } from '../tool-handler.js';
 import { asThirdPartyData, WHATSAPP_THIRD_PARTY_NOTICE } from '../../../shared/third-party-data.js';
-import { clientMessageId, messagesCursor, messageText, trimmedNote } from './whatsapp-schemas.js';
+import { messagesCursor, messageText, trimmedNote } from './whatsapp-schemas.js';
 
 /**
  * The names, in the order they are registered: with a `ggck_agent_` key they are the whole tool list.
@@ -47,6 +47,9 @@ const audio = messageText(AGENT_VOICE_LIMITS.textMaxChars).optional()
   .describe(`What a voice note in the store's voice says, sent before the bubbles; at most ${AGENT_VOICE_LIMITS.textMaxChars} characters, no link and no `
     + `number to copy, ElevenLabs v3 tone tags allowed ([warmly], [laughs]). At most ${AGENT_VOICE_LIMITS.bubblesMaxWithVoice} bubbles with it. Only when store.voice in the state is true; omit for a text-only turn.`);
 
+/** The id of one turn: the core derives an id per bubble and for the voice from it, so it stays shorter than a delivery id. */
+const turnId = z.string().regex(new RegExp(`^[A-Za-z0-9_-]{1,${AGENT_LIMITS.turnClientMessageIdMaxChars}}$`));
+
 const withNotice = <TArgs>(name: string, handler: (args: TArgs) => Promise<unknown>): ((args: TArgs) => Promise<ToolResult>) =>
   asThirdPartyData(WHATSAPP_THIRD_PARTY_NOTICE, createToolHandler(name, handler));
 
@@ -87,7 +90,7 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
         'Send the message of the scheduled task of this run to the contact, in the store\'s name and tone. Its category comes from the '
         + 'task. clientMessageId is the id the run gave you: sent again unchanged it never doubles the message. Refused with '
         + 'AGENT_TASK_EXPIRED, AGENT_TASK_NOT_FOUND or AGENT_DAILY_PROACTIVE_CAP: send nothing. ' + STOP + ' ' + REVIEW,
-      inputSchema: { bubbles, clientMessageId: clientMessageId.describe('Idempotency id given by the run'), privateNote },
+      inputSchema: { bubbles, clientMessageId: turnId.describe('Idempotency id given by the run'), privateNote },
     }, createToolHandler('send_whatsapp_reply', async ({ bubbles: texts, clientMessageId: id, privateNote: note }) =>
       service.sendTaskReply(contact, taskId, { bubbles: texts, clientMessageId: id, privateNote: note })));
   } else {
@@ -104,7 +107,7 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
         + STOP + ' ' + REVIEW,
       inputSchema: {
         bubbles,
-        clientMessageId: clientMessageId.describe('Idempotency id given by the run, one per turn'),
+        clientMessageId: turnId.describe('Idempotency id given by the run, one per turn'),
         category: z.enum(AGENT_DECLARED_CATEGORIES).describe(
           'What the turn is about: "support" (help, access, doubts), "retention" (a refund request you try to solve first), "free" '
           + '(small talk, goodbyes, off topic) or "sale" (talking about a product to sell). A link from a tool sets the category itself.',
