@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { FUNNEL_LIMITS } from '../../../core/types/whatsapp-funnel.js';
 import { INBOX_LIMITS } from '../../../core/types/whatsapp-inbox.js';
+import { codePoints } from '../../../shared/text.js';
 
-/** The saas counts text in code points (an emoji is 1), not UTF-16 units: `.max()` would miscount. */
-export const codePoints = (text: string): number => Array.from(text).length;
+export { codePoints };
 
 /** Text capped in code points; `trim` mirrors the fields the core trims before counting. */
 export const cappedText = (max: number, { trim = false } = {}) =>

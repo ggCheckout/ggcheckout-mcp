@@ -64,6 +64,10 @@ answer that the assistant is not available here.
     as sent.
 - `read_whatsapp_conversation` points the model at `buyerTimeline` in the state (what the notices and
   funnels sent the contact and what comes next).
+- Seller key: `get_buyer_messaging_overview` reads who messages a buyer at each moment (the "Visão
+  geral" of Recuperar vendas: the notices, the funnel that owns each recovery moment, the conversation,
+  the daily limit per person and the link to the screen), checked against the saas contract
+  `buyer-messaging/overview/v1` mirrored in `contracts/upstream/saas-checkout/`.
 - Seller key: the resource `ggcheckout://docs/buyer-messaging`, in pt-BR for the seller, explains who
   messages a buyer at each moment (the three bands, one owner per moment, the daily limit per person).
 

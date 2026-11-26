@@ -219,7 +219,7 @@ key creates a simulated charge, a `ggpk_live_` key a real one. / O último preci
 
 ---
 
-## Available Tools (210)
+## Available Tools (211)
 
 ### Products (21 tools)
 
@@ -694,7 +694,7 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 
 ---
 
-### WhatsApp (26 tools)
+### WhatsApp (27 tools)
 
 Follows the dashboard: **chips** are the connected numbers, and an **operation** ("Operações" in the
 dashboard, a session in the API and in the tool names) is a primary chip with up to two fallbacks
@@ -717,6 +717,7 @@ the dashboard.
 - "List my WhatsApp funnels"
 - "Create a manual WhatsApp funnel 'Welcome' with 2 messages, 1 hour apart, on operation abc123"
 - "Turn on the abandoned-cart funnel"
+- "Who messages my buyer after a PIX is generated?"
 
 #### WhatsApp funnels
 
@@ -730,6 +731,16 @@ that creates or turns on a funnel ("Usar modelo" included) goes through a confir
 variables are the dashboard's: `{{customer_name}}`, `{{assinatura}}` and `{{cupom}}` on every trigger,
 plus the checkout ones on the automatic triggers and `{{pix_copia_cola}}` on the PIX ones.
 Importing contacts messages people who never wrote in, so it needs the inbox switch below.
+
+#### Who messages the buyer
+
+`get_buyer_messaging_overview` reads the "Visão geral" of Recuperar vendas: for each moment of a
+purchase, who messages the buyer. The two notices (PIX or boleto generated, approval and delivery)
+with on or off, the six recovery moments with the funnel that owns each one (or nobody) and whether
+its assistant step is skipped, the conversation (the assistant or the team), the daily limit per
+person (null while none is stored) and the link to the screen. The answer is checked against the
+saas contract `buyer-messaging/overview/v1` before the model sees it. The rules behind it are in the
+resource `ggcheckout://docs/buyer-messaging`.
 
 #### WhatsApp inbox
 
