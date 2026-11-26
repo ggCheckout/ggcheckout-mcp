@@ -20,8 +20,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, fillMcpConfig, fingerprintOf, insideWindow,
-  isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion, RUN_STDIO, summarizeRun,
+  buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, dueTasks, fillMcpConfig, fingerprintOf, insideWindow,
+  isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion, RUN_STDIO, summarizeRun, taskClientMessageId, taskFingerprint,
 } from './lib.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -99,20 +99,22 @@ async function api(path) {
 }
 
 /**
- * One `claude -p` run for one conversation. The MCP config is a temp file (0600, in its own 0700
- * directory) with this run's contact in the server's environment, deleted when the run ends; the
- * claude process does not get the assistant key in its own environment. Resolves true on exit code 0.
- * `id` is the conversation's log id (a hash, never the contact).
+ * One `claude -p` run for one conversation, or for one scheduled task (`task`, from the pending
+ * page). The MCP config is a temp file (0600, in its own 0700 directory) with this run's contact, and
+ * its task id when there is one, in the server's environment, deleted when the run ends; the claude
+ * process does not get the assistant key in its own environment. Resolves true on exit code 0.
+ * `id` is the run's log id (a hash, never the contact).
  */
-function runClaude({ id, contactKey, clientMessageId: replyId }) {
+function runClaude({ id, contactKey, clientMessageId: replyId, task = null }) {
   const dir = mkdtempSync(join(tmpdir(), 'ggcheckout-agent-'));
   const mcpConfigPath = join(dir, 'mcp.json');
   const config = fillMcpConfig(mcpTemplate, {
     GGCHECKOUT_AGENT_KEY: KEY, GGCHECKOUT_API_URL: API_URL, GGCHECKOUT_AGENT_CONTACT: contactKey,
+    GGCHECKOUT_AGENT_TASK: task?.id ?? '',
   });
   writeFileSync(mcpConfigPath, JSON.stringify(config), { mode: 0o600 });
   const args = buildClaudeArgs({
-    task: buildTask({ contactKey, clientMessageId: replyId }), rules, mcpConfigPath, serverName: SERVER, toolNames: TOOLS,
+    task: buildTask({ contactKey, clientMessageId: replyId, task }), rules, mcpConfigPath, serverName: SERVER, toolNames: TOOLS,
   });
   const { GGCHECKOUT_AGENT_KEY: _key, ...env } = process.env;
   return new Promise((resolve) => {
@@ -136,7 +138,7 @@ function runClaude({ id, contactKey, clientMessageId: replyId }) {
       rmSync(dir, { recursive: true, force: true });
       const output = stdoutBytes <= MAX_RUN_OUTPUT_BYTES ? summarizeRun(Buffer.concat(stdout).toString('utf-8'))
         : `output over ${MAX_RUN_OUTPUT_BYTES} bytes`;
-      log(`conversation ${id}: exit=${code ?? 'none'} ${output} stderrBytes=${stderrBytes}`);
+      log(`run ${id}: exit=${code ?? 'none'} ${output} stderrBytes=${stderrBytes}`);
       resolve(ok);
     };
     const timer = setTimeout(() => child.kill('SIGTERM'), RUN_TIMEOUT_MS);
@@ -148,7 +150,21 @@ function runClaude({ id, contactKey, clientMessageId: replyId }) {
 /** True when the error ends the whole pass (key refused, MCP too old, API asked to slow down): anything else only skips one conversation. */
 const endsThePass = (error) => error instanceof HttpError && (error.outdated || [401, 429, 503].includes(error.status));
 
-/** One pass: every pending conversation that changed since its last run gets its own run. */
+/** Records how a run ended in the tracker and logs it: a failed state is retried later, then given up. */
+function track(fingerprint, id, ok) {
+  if (ok) {
+    tracker.succeeded(fingerprint);
+    return;
+  }
+  const { attempts, givenUp } = tracker.failed(fingerprint);
+  log(givenUp ? `run ${id}: failed ${attempts} times, given up`
+    : `run ${id}: failed (${attempts}/${MAX_ATTEMPTS}), trying again later`);
+}
+
+/**
+ * One pass: every pending conversation that changed since its last run gets its own run, then every
+ * task due now (oldest first). A conversation goes first: someone is waiting for it.
+ */
 async function pass() {
   let list;
   try {
@@ -170,18 +186,19 @@ async function pass() {
       const lastIn = (page.items ?? []).find((message) => message.dir === 'in');
       if (!lastIn) continue;
       log(`running claude for conversation ${id}`);
-      const ok = await runClaude({ id, contactKey: item.contactKey, clientMessageId: clientMessageId(item.contactKey, lastIn.id) });
-      if (ok) {
-        tracker.succeeded(fingerprint);
-        continue;
-      }
-      const { attempts, givenUp } = tracker.failed(fingerprint);
-      log(givenUp ? `conversation ${id}: run failed ${attempts} times, giving up until the contact writes again`
-        : `conversation ${id}: run failed (${attempts}/${MAX_ATTEMPTS}), trying again later`);
+      track(fingerprint, id, await runClaude({ id, contactKey: item.contactKey, clientMessageId: clientMessageId(item.contactKey, lastIn.id) }));
     } catch (error) {
       if (endsThePass(error)) throw error;
       log(`conversation ${id}: ${error.message}`);
     }
+  }
+  for (const task of dueTasks(list)) {
+    if (!insideWindow({ tz: TZ, hours, days })) return;
+    const fingerprint = taskFingerprint(task);
+    if (!tracker.shouldRun(fingerprint)) continue;
+    const id = logId(fingerprint);
+    log(`running claude for task ${id} (${task.kind})`);
+    track(fingerprint, id, await runClaude({ id, contactKey: task.contactKey, clientMessageId: taskClientMessageId(task.id), task }));
   }
 }
 

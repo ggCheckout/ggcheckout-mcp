@@ -119,10 +119,46 @@ export function fillMcpConfig(template, values) {
   return fill(template);
 }
 
-/** The prompt of one run: only the contact key and the reply id, never what the buyer wrote. */
-export function buildTask({ contactKey, clientMessageId: id }) {
-  return 'Answer the pending WhatsApp conversation of this run, under your rules. Read it first.\n'
-    + `contactKey: ${contactKey}, clientMessageId: ${id}`;
+/**
+ * The prompt of one run: the contact key and the reply id, and for a scheduled task its kind and the
+ * ids it is about. Never what the buyer wrote.
+ */
+export function buildTask({ contactKey, clientMessageId: id, task = null }) {
+  if (!task) {
+    return 'Answer the pending WhatsApp conversation of this run, under your rules. Read it first.\n'
+      + `contactKey: ${contactKey}, clientMessageId: ${id}`;
+  }
+  return 'Write the scheduled message of this run, under your rules for scheduled tasks. Read the conversation first.\n'
+    + `contactKey: ${contactKey}, clientMessageId: ${id}, task: ${task.kind}, `
+    + `paymentId: ${task.paymentId ?? 'none'}, productId: ${task.productId ?? 'none'}`;
+}
+
+/** The kinds of task the core schedules (`AgentTask.kind` in the core's whatsapp/agent v2 contract). */
+export const TASK_KINDS = Object.freeze(['recovery', 'recovery_followup', 'welcome', 'upsell']);
+
+const TASK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const TASK_CONTACT = /^[1-9][0-9]{7,14}$/;
+/** A payment or product id goes into the run's prompt: only id characters, as the agent tools accept them. */
+const TASK_REF = /^[A-Za-z0-9_-]{1,128}$/;
+
+const isRunnableTask = (task) => Boolean(task)
+  && TASK_ID.test(task.id) && TASK_KINDS.includes(task.kind) && TASK_CONTACT.test(task.contactKey)
+  && (task.paymentId === null || TASK_REF.test(task.paymentId))
+  && (task.productId === null || TASK_REF.test(task.productId));
+
+/** The tasks of a pending page that can start a run; one in an unknown shape is skipped, never run. */
+export function dueTasks(page) {
+  return Array.isArray(page?.tasks) ? page.tasks.filter(isRunnableTask) : [];
+}
+
+/** A task runs until it ends well or is given up: its id is its whole state. */
+export function taskFingerprint(task) {
+  return `task|${task.id}`;
+}
+
+/** Same task, same id: a rerun after a crash or a timeout never sends the task's message twice. */
+export function taskClientMessageId(taskId) {
+  return createHash('sha256').update(`task:${taskId}`).digest('hex').slice(0, 40);
 }
 
 /**
