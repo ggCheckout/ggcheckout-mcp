@@ -24,6 +24,7 @@
       "retentionSent": 0
     },
     "held": false,
-    "agentHeldAt": null
+    "agentHeldAt": null,
+    "audioMessage": null
   }
 }

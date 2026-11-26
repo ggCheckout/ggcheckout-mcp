@@ -138,11 +138,35 @@
       }
     ]
   },
+  "invalid/agent-reply-body-draft-with-voice.json": {
+    "esperado": [
+      {
+        "keyword": "type",
+        "instancePath": "/audio"
+      }
+    ]
+  },
   "invalid/agent-reply-body-four-bubbles.json": {
     "esperado": [
       {
         "keyword": "maxItems",
         "instancePath": "/bubbles"
+      }
+    ]
+  },
+  "invalid/agent-reply-body-voice-http.json": {
+    "esperado": [
+      {
+        "keyword": "anyOf",
+        "instancePath": "/audio"
+      }
+    ]
+  },
+  "invalid/agent-reply-body-voice-too-long.json": {
+    "esperado": [
+      {
+        "keyword": "anyOf",
+        "instancePath": "/audio"
       }
     ]
   },

@@ -39,7 +39,9 @@
     "storeNameMaxChars": 80,
     "catalogMaxItems": 20,
     "catalogPitchMaxChars": 600,
-    "pendingTasksMax": 20
+    "pendingTasksMax": 20,
+    "voiceNoteMaxSeconds": 60,
+    "voiceNoteUrlMaxChars": 2048
   },
   "x-routes": [
     {
@@ -663,7 +665,8 @@
         "category",
         "categoryProven",
         "mode",
-        "privateNote"
+        "privateNote",
+        "audio"
       ],
       "properties": {
         "bubbles": {
@@ -686,6 +689,16 @@
         },
         "privateNote": {
           "$ref": "#/$defs/privateNote"
+        },
+        "audio": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VoiceNote"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "allOf": [
@@ -730,6 +743,25 @@
             "properties": {
               "categoryProven": {
                 "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "draft"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "audio": {
+                "type": "null"
               }
             }
           }
@@ -809,7 +841,8 @@
         "category",
         "counters",
         "held",
-        "agentHeldAt"
+        "agentHeldAt",
+        "audioMessage"
       ],
       "properties": {
         "status": {
@@ -836,6 +869,16 @@
         },
         "agentHeldAt": {
           "$ref": "#/$defs/nullableInstant"
+        },
+        "audioMessage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AudioMessage"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "allOf": [
@@ -856,6 +899,9 @@
                 "maxItems": 0
               },
               "agentHeldAt": {
+                "type": "null"
+              },
+              "audioMessage": {
                 "type": "null"
               }
             }
@@ -1564,6 +1610,58 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 500
+        }
+      }
+    },
+    "VoiceNote": {
+      "description": "A voice note the saas already synthesized (the seller's ElevenLabs key) and hosts at url. The core delivers it as a WhatsApp voice message BEFORE the bubbles. A failed synthesis never reaches the core: the saas sends only the bubbles.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "mimeType",
+        "durationSeconds"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://\\S+$"
+        },
+        "mimeType": {
+          "enum": [
+            "audio/ogg",
+            "audio/mpeg"
+          ]
+        },
+        "durationSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        }
+      }
+    },
+    "AudioMessage": {
+      "description": "The stored voice note of a turn: its own message and delivery, sent first.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "messageId",
+        "deliveryId",
+        "at"
+      ],
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "pattern": "^reply:"
+        },
+        "deliveryId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "at": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },

@@ -35,6 +35,7 @@
       "retentionSent": 0
     },
     "held": true,
-    "agentHeldAt": "2026-11-26T14:00:00.000Z"
+    "agentHeldAt": "2026-11-26T14:00:00.000Z",
+    "audioMessage": null
   }
 }
