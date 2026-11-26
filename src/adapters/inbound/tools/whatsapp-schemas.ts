@@ -34,11 +34,13 @@ export const funnelVariables = z.record(z.string().regex(/^[a-z0-9_]{1,40}$/), c
 export const trimmedNote = (max: number) => z.string().trim().min(1)
   .refine((reason) => codePoints(reason) <= max, { message: `At most ${max} characters` });
 
-/** A reply as the inbox route takes it: not blank, at most 4096 code points. */
-export const replyText = z.string()
+/** A WhatsApp message text: not blank, at most `max` code points, kept as typed (the core counts it untrimmed). */
+export const messageText = (max: number) => z.string()
   .refine((text) => text.trim().length > 0, { message: 'Message must not be empty' })
-  .refine((text) => codePoints(text) <= INBOX_LIMITS.replyMaxChars, { message: `At most ${INBOX_LIMITS.replyMaxChars} characters` })
-  .describe(`Message text, up to ${INBOX_LIMITS.replyMaxChars} characters`);
+  .refine((text) => codePoints(text) <= max, { message: `At most ${max} characters` });
+
+/** A reply as the inbox route takes it: not blank, at most 4096 code points. */
+export const replyText = messageText(INBOX_LIMITS.replyMaxChars).describe(`Message text, up to ${INBOX_LIMITS.replyMaxChars} characters`);
 
 /** The idempotency id of a reply: the same value on a retry never sends the message twice. */
 export const clientMessageId = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);

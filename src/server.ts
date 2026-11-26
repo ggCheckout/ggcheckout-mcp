@@ -83,7 +83,7 @@ import { registerTrackingLinkTools } from './adapters/inbound/tools/tracking-lin
 import { WhatsAppAgentApiAdapter } from './adapters/outbound/whatsapp-agent.api.js';
 import { WhatsAppAgentService } from './core/services/whatsapp-agent.service.js';
 import { registerWhatsAppAgentTools } from './adapters/inbound/tools/whatsapp-agent.tools.js';
-import { contactKey } from './adapters/inbound/tools/whatsapp-schemas.js';
+import { contactKey, guid } from './adapters/inbound/tools/whatsapp-schemas.js';
 import { registerAppViews } from './adapters/inbound/apps/apps.js';
 import { muteUpdateNotice } from './shared/update-notice.js';
 
@@ -137,13 +137,11 @@ function agentContact(env: NodeJS.ProcessEnv): string {
   return parsed.data;
 }
 
-const TASK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
 /** The scheduled task an agent run writes, or null for a run that answers the conversation (unset or empty). */
 function agentTask(env: NodeJS.ProcessEnv): string | null {
   const value = env.GGCHECKOUT_AGENT_TASK;
   if (value === undefined || value === '') return null;
-  if (!TASK_ID.test(value)) throw new Error('GGCHECKOUT_AGENT_TASK must be the id of the scheduled task this run writes (a UUID), or empty');
+  if (!guid().safeParse(value).success) throw new Error('GGCHECKOUT_AGENT_TASK must be the id of the scheduled task this run writes (a UUID), or empty');
   return value;
 }
 
