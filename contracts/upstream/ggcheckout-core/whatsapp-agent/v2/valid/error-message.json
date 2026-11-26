@@ -1,0 +1,6 @@
+{
+  "def": "ErrorMessage",
+  "body": {
+    "error": "Chave inválida"
+  }
+}

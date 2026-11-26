@@ -1,0 +1,8 @@
+{
+  "def": "RateLimitedBody",
+  "body": {
+    "error": "rate limited",
+    "limit_type": "whatsapp_inbox_reply_contact",
+    "retry_after": 600
+  }
+}

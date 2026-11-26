@@ -1,0 +1,15 @@
+{
+  "def": "ConversationPage",
+  "body": {
+    "items": [],
+    "nextBefore": null,
+    "exitRequestedAt": null,
+    "optedOut": false,
+    "agentHeldAt": "2026-11-24T10:15:30.123Z",
+    "agentHeldReason": "human",
+    "agentHeldNote": "x",
+    "agentUpsellOfferedAt": null,
+    "agentDownsellOfferedAt": null,
+    "agentRepliesToday": 0
+  }
+}

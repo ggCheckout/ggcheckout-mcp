@@ -1,0 +1,13 @@
+{
+  "def": "ConversationFlags",
+  "body": {
+    "exitRequestedAt": null,
+    "optedOut": false,
+    "agentHeldAt": null,
+    "agentHeldReason": null,
+    "agentHeldNote": null,
+    "agentUpsellOfferedAt": null,
+    "agentDownsellOfferedAt": null,
+    "agentRepliesToday": 0
+  }
+}

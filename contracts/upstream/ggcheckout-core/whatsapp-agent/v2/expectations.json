@@ -1,0 +1,267 @@
+{
+  "invalid/agent-escalate-body-unknown-code.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/code"
+      }
+    ]
+  },
+  "invalid/agent-escalate-response-legal-continue.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/code"
+      }
+    ]
+  },
+  "invalid/agent-hold-response-nanosecond-stamp.json": {
+    "esperado": [
+      {
+        "keyword": "pattern",
+        "instancePath": "/agentHeldAt"
+      }
+    ]
+  },
+  "invalid/agent-hold-response-note-on-seller.json": {
+    "esperado": [
+      {
+        "keyword": "type",
+        "instancePath": "/agentHeldNote"
+      }
+    ]
+  },
+  "invalid/agent-hold-response-reason-human.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/agentHeldReason"
+      }
+    ]
+  },
+  "invalid/agent-hold-response-without-created.json": {
+    "esperado": [
+      {
+        "keyword": "required"
+      }
+    ]
+  },
+  "invalid/agent-key-authenticate-body-personal-key.json": {
+    "esperado": [
+      {
+        "keyword": "pattern",
+        "instancePath": "/key"
+      }
+    ]
+  },
+  "invalid/agent-key-authenticated-wrong-era.json": {
+    "esperado": [
+      {
+        "keyword": "const",
+        "instancePath": "/era"
+      }
+    ]
+  },
+  "invalid/agent-key-created-personal-key.json": {
+    "esperado": [
+      {
+        "keyword": "pattern",
+        "instancePath": "/key"
+      }
+    ]
+  },
+  "invalid/agent-key-status-active-without-id.json": {
+    "esperado": [
+      {
+        "keyword": "required"
+      }
+    ]
+  },
+  "invalid/agent-key-status-inactive-with-preview.json": {
+    "esperado": [
+      {
+        "keyword": "not"
+      }
+    ]
+  },
+  "invalid/agent-offer-body-kind-outside.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/kind"
+      }
+    ]
+  },
+  "invalid/agent-refusal-category-cap-without-category.json": {
+    "esperado": [
+      {
+        "keyword": "required"
+      }
+    ]
+  },
+  "invalid/agent-refusal-reply-cap-v1.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/error"
+      }
+    ]
+  },
+  "invalid/agent-refusal-unknown-code.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/error"
+      }
+    ]
+  },
+  "invalid/agent-release-response-without-released.json": {
+    "esperado": [
+      {
+        "keyword": "required"
+      }
+    ]
+  },
+  "invalid/agent-reply-body-blank-bubble.json": {
+    "esperado": [
+      {
+        "keyword": "pattern",
+        "instancePath": "/bubbles/0"
+      }
+    ]
+  },
+  "invalid/agent-reply-body-declared-recovery.json": {
+    "esperado": [
+      {
+        "keyword": "const",
+        "instancePath": "/categoryProven"
+      }
+    ]
+  },
+  "invalid/agent-reply-body-four-bubbles.json": {
+    "esperado": [
+      {
+        "keyword": "maxItems",
+        "instancePath": "/bubbles"
+      }
+    ]
+  },
+  "invalid/agent-reply-body-with-text.json": {
+    "esperado": [
+      {
+        "keyword": "additionalProperties"
+      }
+    ]
+  },
+  "invalid/agent-reply-response-draft-with-message.json": {
+    "esperado": [
+      {
+        "keyword": "maxItems",
+        "instancePath": "/messages"
+      }
+    ]
+  },
+  "invalid/agent-reply-response-held-at-not-held.json": {
+    "esperado": [
+      {
+        "keyword": "const",
+        "instancePath": "/held"
+      }
+    ]
+  },
+  "invalid/agent-settings-put-body-retention-three.json": {
+    "esperado": [
+      {
+        "keyword": "maximum",
+        "instancePath": "/limits/retentionAttempts"
+      }
+    ]
+  },
+  "invalid/agent-settings-put-body-sale-above-ceiling.json": {
+    "esperado": [
+      {
+        "keyword": "maximum",
+        "instancePath": "/limits/sale"
+      }
+    ]
+  },
+  "invalid/agent-settings-put-body-without-expected.json": {
+    "esperado": [
+      {
+        "keyword": "required"
+      }
+    ]
+  },
+  "invalid/agent-state-held-without-stamp.json": {
+    "esperado": [
+      {
+        "keyword": "type",
+        "instancePath": "/agentHeldAt"
+      }
+    ]
+  },
+  "invalid/agent-state-with-replies-today.json": {
+    "esperado": [
+      {
+        "keyword": "additionalProperties"
+      }
+    ]
+  },
+  "invalid/conversation-page-human-hold-with-note.json": {
+    "esperado": [
+      {
+        "keyword": "unevaluatedProperties"
+      },
+      {
+        "keyword": "type",
+        "instancePath": "/agentHeldNote"
+      }
+    ]
+  },
+  "invalid/conversation-page-unknown-field.json": {
+    "esperado": [
+      {
+        "keyword": "unevaluatedProperties"
+      }
+    ]
+  },
+  "invalid/pending-item-lid-contact.json": {
+    "esperado": [
+      {
+        "keyword": "pattern",
+        "instancePath": "/items/0/contactKey"
+      }
+    ]
+  },
+  "invalid/pending-page-without-tasks.json": {
+    "esperado": [
+      {
+        "keyword": "required"
+      }
+    ]
+  },
+  "invalid/pending-query-limit-above-20.json": {
+    "esperado": [
+      {
+        "keyword": "maximum",
+        "instancePath": "/limit"
+      }
+    ]
+  },
+  "invalid/pending-query-limit-zero.json": {
+    "esperado": [
+      {
+        "keyword": "minimum",
+        "instancePath": "/limit"
+      }
+    ]
+  },
+  "invalid/reply-refused-unknown-reason.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/reason"
+      }
+    ]
+  }
+}

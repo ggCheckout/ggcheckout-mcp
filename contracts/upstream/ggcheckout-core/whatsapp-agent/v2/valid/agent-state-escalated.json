@@ -1,0 +1,46 @@
+{
+  "def": "AgentState",
+  "body": {
+    "held": false,
+    "agentHeldAt": null,
+    "agentHeldReason": null,
+    "agentHeldNote": null,
+    "agentHeldCode": null,
+    "exited": false,
+    "optedOut": false,
+    "upsellOfferedAt": null,
+    "downsellOfferedAt": null,
+    "counters": {
+      "global": {
+        "used": 1,
+        "limit": 10
+      },
+      "sale": {
+        "used": 0,
+        "limit": 4
+      },
+      "recovery": {
+        "used": 0,
+        "limit": 2
+      },
+      "free": {
+        "used": 0,
+        "limit": 2
+      },
+      "retentionSent": 2
+    },
+    "escalation": {
+      "code": "refund",
+      "at": "2026-11-26T14:00:00.000Z",
+      "summary": "pediu reembolso"
+    },
+    "releasedAt": null,
+    "releasedCode": null,
+    "purchaseLookupEmptyAt": "2026-11-26T14:00:00.000Z",
+    "emailLookupAt": null,
+    "lastAgentReplyAt": null,
+    "recentRealSend": true,
+    "chipBusinessOnly": false,
+    "hasDraft": false
+  }
+}

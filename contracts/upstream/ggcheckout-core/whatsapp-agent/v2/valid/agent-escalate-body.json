@@ -1,0 +1,7 @@
+{
+  "def": "AgentEscalateBody",
+  "body": {
+    "code": "refund",
+    "summary": "pediu reembolso de novo"
+  }
+}

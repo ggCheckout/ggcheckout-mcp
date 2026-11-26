@@ -1,0 +1,2262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.ggcheckout.internal/whatsapp/agent/v2/whatsapp-agent.json",
+  "x-contractName": "whatsapp.agent",
+  "x-contractVersion": "v2",
+  "x-owner": "ggcheckout-core",
+  "x-consumers": "saas-checkout, ggcheckout-mcp",
+  "x-source": "docs/whatsapp-caixa-entrada.md, section Assistente",
+  "description": "WhatsApp inbox assistant, phase 2 (specs/agente-fase2.md): bubbles per turn, categories with per-conversation caps, drafts, escalation in two kinds, the seller's agent settings, proactive tasks. Replaces v1, which nothing in production consumed.",
+  "x-limits": {
+    "pendingLimitMin": 1,
+    "pendingLimitMax": 20,
+    "pendingLimitDefault": 10,
+    "replyTextMaxChars": 4096,
+    "holdReasonMaxCodePoints": 500,
+    "replyWindowSeconds": 86400,
+    "humanHoldSeconds": 43200,
+    "bubblesMin": 1,
+    "bubblesMax": 3,
+    "privateNoteMaxChars": 300,
+    "escalationSummaryMaxChars": 500,
+    "reescalationBlockSeconds": 86400,
+    "globalDefault": 10,
+    "globalMin": 3,
+    "globalCeiling": 20,
+    "saleDefault": 4,
+    "saleCeiling": 6,
+    "saleLinksMax": 2,
+    "recoveryDefault": 2,
+    "recoveryCeiling": 2,
+    "freeDefault": 2,
+    "freeCeiling": 4,
+    "retentionAttemptsDefault": 2,
+    "retentionAttemptsMax": 2,
+    "policyTextMaxChars": 500,
+    "noticesTextMaxChars": 1500,
+    "guaranteeDaysMax": 365,
+    "agentNameMaxChars": 40,
+    "storeNameMaxChars": 80,
+    "catalogMaxItems": 20,
+    "catalogPitchMaxChars": 600,
+    "pendingTasksMax": 20
+  },
+  "x-routes": [
+    {
+      "method": "GET",
+      "path": "/internal/whatsapp-inbox/agent/pending",
+      "scope": "whatsapp-inbox:agent",
+      "query": "PendingQuery",
+      "responses": {
+        "200": "PendingPage",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/internal/whatsapp-inbox/agent/conversations/{contactKey}/messages",
+      "scope": "whatsapp-inbox:agent",
+      "responses": {
+        "200": "ConversationPage",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/whatsapp-inbox/agent/conversations/{contactKey}/messages",
+      "scope": "whatsapp-inbox:agent",
+      "request": "AgentReplyBody",
+      "responses": {
+        "201": "AgentReplyResponse",
+        "200": "AgentReplyResponse (same clientMessageId replayed, or status draft)",
+        "404": "AgentRefusalError (AGENT_CONVERSATION_NOT_FOUND)",
+        "409": "AgentRefusalError (AGENT_HELD, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT, AGENT_OPEN_PROBLEM) or ReplyRefusedError (chip_down, no_sender_capacity)",
+        "422": "ReplyRefusedError",
+        "429": "AgentRefusalError (AGENT_GLOBAL_CAP, AGENT_CATEGORY_CAP) or RateLimitedBody (the contact bucket shared with the panel)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/whatsapp-inbox/agent/conversations/{contactKey}/escalate",
+      "scope": "whatsapp-inbox:agent",
+      "request": "AgentEscalateBody",
+      "responses": {
+        "200": "AgentEscalateResponse",
+        "404": "AgentRefusalError (AGENT_CONVERSATION_NOT_FOUND)",
+        "409": "AgentRefusalError (AGENT_ALREADY_ESCALATED, AGENT_RETENTION_GATE, AGENT_ASK_EMAIL_FIRST, AGENT_HELD)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/whatsapp-inbox/agent/conversations/{contactKey}/marks",
+      "scope": "whatsapp-inbox:agent",
+      "request": "AgentMarkBody",
+      "responses": {
+        "200": "AgentMarkResponse",
+        "404": "AgentRefusalError (AGENT_CONVERSATION_NOT_FOUND)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/internal/whatsapp-inbox/agent/conversations/{contactKey}/state",
+      "scope": "whatsapp-inbox:agent",
+      "responses": {
+        "200": "AgentState",
+        "404": "AgentRefusalError (AGENT_CONVERSATION_NOT_FOUND)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/whatsapp-inbox/agent/conversations/{contactKey}/offer",
+      "scope": "whatsapp-inbox:agent",
+      "request": "AgentOfferBody",
+      "responses": {
+        "200": "AgentOfferResponse",
+        "404": "AgentRefusalError (AGENT_CONVERSATION_NOT_FOUND)",
+        "409": "AgentRefusalError (AGENT_HELD, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT, AGENT_ALREADY_OFFERED, AGENT_UPSELL_NOT_OFFERED, AGENT_OPEN_PROBLEM)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/internal/whatsapp-inbox/agent/settings",
+      "scope": "whatsapp-inbox:agent",
+      "responses": {
+        "200": "AgentSettings",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/whatsapp-inbox/agent/tasks/{taskId}/messages",
+      "scope": "whatsapp-inbox:agent",
+      "request": "AgentTaskReplyBody",
+      "responses": {
+        "201": "AgentReplyResponse",
+        "200": "AgentReplyResponse (same clientMessageId replayed)",
+        "404": "AgentRefusalError (AGENT_TASK_NOT_FOUND)",
+        "409": "AgentRefusalError (AGENT_TASK_EXPIRED, AGENT_DAILY_PROACTIVE_CAP, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT) or ReplyRefusedError",
+        "422": "ReplyRefusedError",
+        "429": "AgentRefusalError (AGENT_CATEGORY_CAP)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/internal/whatsapp-inbox/agent-settings",
+      "scope": "whatsapp-inbox:reply",
+      "note": "The panel screen.",
+      "responses": {
+        "200": "AgentSettings",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/internal/whatsapp-inbox/agent-settings",
+      "scope": "whatsapp-inbox:reply",
+      "request": "AgentSettingsPutBody",
+      "responses": {
+        "200": "AgentSettings",
+        "409": "AgentRefusalError (AGENT_SETTINGS_CHANGED)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/internal/whatsapp-inbox/conversations/{contactKey}/agent-draft",
+      "scope": "whatsapp-inbox:reply",
+      "responses": {
+        "200": "AgentDraftResponse",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/whatsapp-inbox/conversations/{contactKey}/agent-draft/approve",
+      "scope": "whatsapp-inbox:reply",
+      "note": "Enviar in the panel: sends the draft as the assistant, approved by the seller; it counts and never sets the human hold. Body empty.",
+      "responses": {
+        "201": "AgentReplyResponse",
+        "404": "AgentRefusalError (AGENT_DRAFT_NOT_FOUND, AGENT_CONVERSATION_NOT_FOUND)",
+        "409": "AgentRefusalError (AGENT_HELD, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT) or ReplyRefusedError",
+        "422": "ReplyRefusedError",
+        "429": "AgentRefusalError (AGENT_GLOBAL_CAP, AGENT_CATEGORY_CAP)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/internal/whatsapp-inbox/conversations/{contactKey}/agent-draft",
+      "scope": "whatsapp-inbox:reply",
+      "note": "Descartar (also after Editar, which is a normal panel reply). Answers draft null.",
+      "responses": {
+        "200": "AgentDraftResponse",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/whatsapp-inbox/conversations/{contactKey}/agent-hold",
+      "scope": "whatsapp-inbox:reply",
+      "note": "Assumir in the panel. Body empty.",
+      "responses": {
+        "200": "AgentHoldResponse",
+        "404": "AgentRefusalError (AGENT_CONVERSATION_NOT_FOUND)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/internal/whatsapp-inbox/conversations/{contactKey}/agent-hold",
+      "scope": "whatsapp-inbox:reply",
+      "note": "Soltar in the panel. Releases the hold and the open escalation; the window counters stay.",
+      "responses": {
+        "200": "AgentReleaseResponse",
+        "404": "AgentRefusalError (AGENT_CONVERSATION_NOT_FOUND)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/v2/api-keys/agent/status",
+      "request": "AgentKeyByUserBody",
+      "responses": {
+        "200": "AgentKeyStatus"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/v2/api-keys/agent/create",
+      "request": "AgentKeyByUserBody",
+      "responses": {
+        "201": "AgentKeyCreated",
+        "409": "AgentKeyExistsError"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/v2/api-keys/agent/revoke",
+      "request": "AgentKeyByUserBody",
+      "responses": {
+        "200": "AgentKeyRevoked"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/api-keys/agent/authenticate",
+      "request": "AgentKeyAuthenticateBody",
+      "responses": {
+        "200": "AgentKeyAuthenticated",
+        "400": "ErrorMessage (malformed key, before any lookup)",
+        "401": "ErrorMessage (unknown or revoked key)"
+      }
+    }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "isoInstant": {
+      "type": "string",
+      "description": "UTC instant with milliseconds and Z. Every agentHeldAt (explicit and human hold), every offer stamp and createdAt use this one format.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z$"
+    },
+    "nullableInstant": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z$"
+    },
+    "receivedInstant": {
+      "type": "string",
+      "description": "RFC 3339 arrival stamp of a message (up to nanoseconds, +00:00), as the inbox stores it.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{1,9})?(Z|[+]00:00)$"
+    },
+    "nullableReceivedInstant": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{1,9})?(Z|[+]00:00)$"
+    },
+    "agentContactKey": {
+      "type": "string",
+      "description": "A phone in E.164 digits. The assistant never reaches a lid: contact (the reply refuses it with contact_without_phone, the pending list skips it).",
+      "pattern": "^[1-9][0-9]{7,14}$"
+    },
+    "contactKey": {
+      "type": "string",
+      "pattern": "^([1-9][0-9]{7,14}|lid:[A-Za-z0-9_@.-]{1,128})$"
+    },
+    "clientMessageId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "holdReason": {
+      "description": "seller (Assumir), agent (the assistant asked for a human) and cap (the 10th reply of the window) are EXPLICIT; human (a human reply from the panel or the phone) is IMPLICIT and expires 12 hours after the last human message.",
+      "enum": [
+        "seller",
+        "agent",
+        "cap",
+        "human"
+      ]
+    },
+    "explicitHoldReason": {
+      "enum": [
+        "seller",
+        "agent",
+        "cap"
+      ]
+    },
+    "holdFieldsCoherence": {
+      "description": "agentHeldAt, agentHeldReason and agentHeldNote move together: no hold, no reason and no note; a note only with reason agent.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "agentHeldAt": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "agentHeldAt"
+            ]
+          },
+          "then": {
+            "properties": {
+              "agentHeldReason": {
+                "type": "null"
+              },
+              "agentHeldNote": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "agentHeldReason": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "agentHeldReason": {
+                "type": "string",
+                "enum": [
+                  "seller",
+                  "cap",
+                  "human"
+                ]
+              }
+            },
+            "required": [
+              "agentHeldReason"
+            ]
+          },
+          "then": {
+            "properties": {
+              "agentHeldNote": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "PendingQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      }
+    },
+    "PendingConversation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contactKey",
+        "name",
+        "pendingSince",
+        "lastText",
+        "lastType",
+        "agentRepliesToday"
+      ],
+      "properties": {
+        "contactKey": {
+          "$ref": "#/$defs/agentContactKey"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pendingSince": {
+          "$ref": "#/$defs/receivedInstant"
+        },
+        "lastText": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastType": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "text, media, other or reaction."
+        },
+        "agentRepliesToday": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        }
+      }
+    },
+    "PendingPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "tasks"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/PendingConversation"
+          }
+        },
+        "tasks": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/AgentTask"
+          },
+          "description": "Tasks due now, oldest first. The run for a task sends with POST agent/tasks/{taskId}/messages."
+        }
+      }
+    },
+    "Message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "messageId",
+        "dir",
+        "auto",
+        "chipId",
+        "type",
+        "text",
+        "at",
+        "by"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "messageId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dir": {
+          "enum": [
+            "in",
+            "out"
+          ]
+        },
+        "auto": {
+          "type": "boolean"
+        },
+        "chipId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "by": {
+          "description": "Who wrote an outgoing message: agent, seller (panel or phone) or auto (funnel, rule); null on incoming.",
+          "enum": [
+            "agent",
+            "seller",
+            "auto",
+            null
+          ]
+        }
+      }
+    },
+    "ConversationFlagsFields": {
+      "required": [
+        "exitRequestedAt",
+        "optedOut",
+        "agentHeldAt",
+        "agentHeldReason",
+        "agentHeldNote",
+        "agentUpsellOfferedAt",
+        "agentDownsellOfferedAt",
+        "agentRepliesToday"
+      ],
+      "properties": {
+        "exitRequestedAt": {
+          "$ref": "#/$defs/nullableReceivedInstant"
+        },
+        "optedOut": {
+          "type": "boolean"
+        },
+        "agentHeldAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "agentHeldReason": {
+          "enum": [
+            "seller",
+            "agent",
+            "cap",
+            "human",
+            null
+          ]
+        },
+        "agentHeldNote": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "agentUpsellOfferedAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "agentDownsellOfferedAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "agentRepliesToday": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/holdFieldsCoherence"
+        }
+      ]
+    },
+    "ConversationFlags": {
+      "description": "The header of a conversation: the fields of the detail, at the same level as the page of messages.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/ConversationFlagsFields"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ConversationPage": {
+      "description": "GET .../messages, panel and assistant: a page of messages and the ConversationFlags at the same level. agentHeldAt is null for an expired implicit hold.",
+      "type": "object",
+      "required": [
+        "items",
+        "nextBefore"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Message"
+          }
+        },
+        "nextBefore": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/ConversationFlagsFields"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "AgentReplyBody": {
+      "description": "One turn of the assistant. The saas decides mode (draft for a contact outside the auto-send list) and category/categoryProven (a link it minted); the core never takes either from the model. No keyId: authorship is by=agent on the stored messages.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bubbles",
+        "clientMessageId",
+        "category",
+        "categoryProven",
+        "mode",
+        "privateNote"
+      ],
+      "properties": {
+        "bubbles": {
+          "$ref": "#/$defs/bubbles"
+        },
+        "clientMessageId": {
+          "$ref": "#/$defs/clientMessageId"
+        },
+        "category": {
+          "$ref": "#/$defs/category"
+        },
+        "categoryProven": {
+          "type": "boolean"
+        },
+        "mode": {
+          "enum": [
+            "send",
+            "draft"
+          ]
+        },
+        "privateNote": {
+          "$ref": "#/$defs/privateNote"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "enum": [
+                  "recovery",
+                  "access"
+                ]
+              }
+            },
+            "required": [
+              "category"
+            ]
+          },
+          "then": {
+            "properties": {
+              "categoryProven": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "enum": [
+                  "support",
+                  "retention",
+                  "free"
+                ]
+              }
+            },
+            "required": [
+              "category"
+            ]
+          },
+          "then": {
+            "properties": {
+              "categoryProven": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ReplyMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "messageId",
+        "deliveryId",
+        "contactKey",
+        "chipId",
+        "text",
+        "at",
+        "chipSwitch",
+        "duplicate"
+      ],
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "pattern": "^reply:"
+        },
+        "deliveryId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "contactKey": {
+          "$ref": "#/$defs/agentContactKey"
+        },
+        "chipId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chipSwitch": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "fromChipId",
+            "at"
+          ],
+          "properties": {
+            "fromChipId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "at": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "duplicate": {
+          "type": "boolean",
+          "description": "true when the same clientMessageId was already stored (a replay): status 200 instead of 201."
+        }
+      }
+    },
+    "AgentReplyResponse": {
+      "description": "status sent: messages are the stored bubbles in order (each a delivery). status draft: nothing left, no counter moved. agentHeldAt is non-null ONLY when THIS turn created the cap hold (the last of the global cap).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "messages",
+        "category",
+        "counters",
+        "held",
+        "agentHeldAt"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "sent",
+            "draft"
+          ]
+        },
+        "messages": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/ReplyMessage"
+          }
+        },
+        "category": {
+          "$ref": "#/$defs/category"
+        },
+        "counters": {
+          "$ref": "#/$defs/Counters"
+        },
+        "held": {
+          "type": "boolean"
+        },
+        "agentHeldAt": {
+          "$ref": "#/$defs/nullableInstant"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "draft"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "messages": {
+                "maxItems": 0
+              },
+              "agentHeldAt": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "messages": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "agentHeldAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "agentHeldAt"
+            ]
+          },
+          "then": {
+            "properties": {
+              "held": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AgentHoldResponse": {
+      "description": "The explicit hold the summary holds after the call (agent hold and the panel Assumir). created is true ONLY when THIS call created it; calling again on an explicitly held conversation rewrites nothing (stamp, reason and note stay the first) and answers created false. An explicit hold replaces an implicit one. agentHeldNote only with reason agent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agentHeldAt",
+        "agentHeldReason",
+        "agentHeldNote",
+        "created"
+      ],
+      "properties": {
+        "agentHeldAt": {
+          "$ref": "#/$defs/isoInstant"
+        },
+        "agentHeldReason": {
+          "$ref": "#/$defs/explicitHoldReason"
+        },
+        "agentHeldNote": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "created": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/holdFieldsCoherence"
+        }
+      ]
+    },
+    "AgentReleaseResponse": {
+      "description": "The panel Soltar (DELETE agent-hold): the hold and the open escalation go; the counters of the window STAY. releasedAt is now; releasedCode the escalation code that was open or held (null when none), refused for 24 h after this (AGENT_ALREADY_ESCALATED).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agentHeldAt",
+        "agentHeldReason",
+        "agentHeldNote",
+        "created",
+        "releasedAt",
+        "releasedCode"
+      ],
+      "properties": {
+        "agentHeldAt": {
+          "type": "null"
+        },
+        "agentHeldReason": {
+          "type": "null"
+        },
+        "agentHeldNote": {
+          "type": "null"
+        },
+        "created": {
+          "const": false
+        },
+        "releasedAt": {
+          "$ref": "#/$defs/isoInstant"
+        },
+        "releasedCode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/escalationCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "AgentOfferBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "upsell",
+            "downsell"
+          ]
+        }
+      }
+    },
+    "AgentOfferResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok"
+      ],
+      "properties": {
+        "ok": {
+          "const": true
+        }
+      }
+    },
+    "AgentState": {
+      "description": "GET .../state: what the saas reads before every action and hands to the model. counters replace repliesToday. escalation is the open continue-kind one; agentHeldCode the code of a silence-kind hold. recentRealSend: the chip sent this contact a real GG delivery in the last 7 days; chipBusinessOnly: the conversation chip is marked store-only. Both feed the saas auto-send decision.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "held",
+        "agentHeldAt",
+        "agentHeldReason",
+        "agentHeldNote",
+        "exited",
+        "optedOut",
+        "upsellOfferedAt",
+        "downsellOfferedAt",
+        "agentHeldCode",
+        "counters",
+        "escalation",
+        "releasedAt",
+        "releasedCode",
+        "purchaseLookupEmptyAt",
+        "emailLookupAt",
+        "lastAgentReplyAt",
+        "recentRealSend",
+        "chipBusinessOnly",
+        "hasDraft"
+      ],
+      "properties": {
+        "held": {
+          "type": "boolean"
+        },
+        "agentHeldAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "agentHeldReason": {
+          "enum": [
+            "seller",
+            "agent",
+            "cap",
+            "human",
+            null
+          ]
+        },
+        "agentHeldNote": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "exited": {
+          "type": "boolean",
+          "description": "The contact sent SAIR or PARAR."
+        },
+        "optedOut": {
+          "type": "boolean",
+          "description": "The seller marked the contact as opt-out."
+        },
+        "upsellOfferedAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "downsellOfferedAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "agentHeldCode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/escalationCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "counters": {
+          "$ref": "#/$defs/Counters"
+        },
+        "escalation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Escalation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "releasedAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "releasedCode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/escalationCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "purchaseLookupEmptyAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "emailLookupAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "lastAgentReplyAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "recentRealSend": {
+          "type": "boolean"
+        },
+        "chipBusinessOnly": {
+          "type": "boolean"
+        },
+        "hasDraft": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/holdFieldsCoherence"
+        },
+        {
+          "if": {
+            "properties": {
+              "held": {
+                "const": true
+              }
+            },
+            "required": [
+              "held"
+            ]
+          },
+          "then": {
+            "properties": {
+              "agentHeldAt": {
+                "type": "string"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "agentHeldAt": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AgentRefusalError": {
+      "description": "A refusal of the assistant. 409: AGENT_HELD, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT, AGENT_ALREADY_OFFERED, AGENT_UPSELL_NOT_OFFERED, AGENT_ALREADY_ESCALATED (same code open, or released less than 24 h ago), AGENT_OPEN_PROBLEM (a sale turn while an escalation is open), AGENT_RETENTION_GATE (refund before the seller's retention attempts were SENT), AGENT_ASK_EMAIL_FIRST (purchase escalation with the phone search empty, no e-mail search and no reply since), AGENT_SETTINGS_CHANGED, AGENT_TASK_EXPIRED, AGENT_DAILY_PROACTIVE_CAP. 429: AGENT_GLOBAL_CAP, AGENT_CATEGORY_CAP (with category). 404: AGENT_CONVERSATION_NOT_FOUND, AGENT_DRAFT_NOT_FOUND, AGENT_TASK_NOT_FOUND.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "enum": [
+            "AGENT_HELD",
+            "AGENT_CONTACT_EXITED",
+            "AGENT_OPTED_OUT",
+            "AGENT_ALREADY_OFFERED",
+            "AGENT_UPSELL_NOT_OFFERED",
+            "AGENT_CONVERSATION_NOT_FOUND",
+            "AGENT_GLOBAL_CAP",
+            "AGENT_CATEGORY_CAP",
+            "AGENT_ALREADY_ESCALATED",
+            "AGENT_OPEN_PROBLEM",
+            "AGENT_RETENTION_GATE",
+            "AGENT_ASK_EMAIL_FIRST",
+            "AGENT_DRAFT_NOT_FOUND",
+            "AGENT_SETTINGS_CHANGED",
+            "AGENT_TASK_NOT_FOUND",
+            "AGENT_TASK_EXPIRED",
+            "AGENT_DAILY_PROACTIVE_CAP"
+          ]
+        },
+        "category": {
+          "$ref": "#/$defs/category"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "const": "AGENT_CATEGORY_CAP"
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "required": [
+              "category"
+            ],
+            "properties": {
+              "category": {
+                "enum": [
+                  "sale",
+                  "recovery",
+                  "free"
+                ]
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "category"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "ReplyRefusedError": {
+      "description": "The reply cannot leave. 409 for chip_down and no_sender_capacity (the seller can choose another chip or wait), 422 for the rest.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error",
+        "reason"
+      ],
+      "properties": {
+        "error": {
+          "const": "INBOX_REPLY_REFUSED"
+        },
+        "reason": {
+          "enum": [
+            "chip_down",
+            "no_sender_capacity",
+            "invalid_chip",
+            "contact_without_phone",
+            "delivery_refused",
+            "client_message_id_reused"
+          ]
+        }
+      }
+    },
+    "InboxErrorBody": {
+      "description": "400 INVALID_INBOX_PAYLOAD (also a pending limit outside 1 to 20, an empty or oversized reason, an unknown body field such as keyId), 403 INBOX_TERMS_REQUIRED or INBOX_SCOPE_REQUIRED, 404 CHIP_NOT_FOUND, 409 INBOX_TERMS_VERSION_CHANGED, 503 INBOX_UNAVAILABLE (with Retry-After; a reply that left but was not stored answers it too, and the same clientMessageId replays the write).",
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]+$"
+        }
+      }
+    },
+    "RateLimitedBody": {
+      "description": "429 from a rate bucket (the Retry-After header carries the wait). The reply contact bucket is shared with the panel; an assistant refusal that is a pure read (held, SAIR, opt-out, cap) never charges it.",
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit_type": {
+          "type": "string"
+        },
+        "retry_after": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "ErrorMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "AgentKeyByUserBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "userId"
+      ],
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "agentKeyPreview": {
+      "type": "string",
+      "pattern": "^ggck_agent_[0-9a-f]{3}•+[0-9a-f]{3}$"
+    },
+    "AgentKeyStatus": {
+      "description": "Inactive: only {active: false}. Active: the id, the preview and the creation stamp, never the key.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active"
+      ],
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "keyId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "keyPreview": {
+          "$ref": "#/$defs/agentKeyPreview"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/isoInstant"
+        }
+      },
+      "if": {
+        "properties": {
+          "active": {
+            "const": true
+          }
+        },
+        "required": [
+          "active"
+        ]
+      },
+      "then": {
+        "required": [
+          "keyId",
+          "keyPreview",
+          "createdAt"
+        ]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "keyId"
+              ]
+            },
+            {
+              "required": [
+                "keyPreview"
+              ]
+            },
+            {
+              "required": [
+                "createdAt"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "AgentKeyCreated": {
+      "description": "201. The only time the plaintext key is ever answered.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "keyId",
+        "keyPreview",
+        "message"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^ggck_agent_[0-9a-f]{64}$"
+        },
+        "keyId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "keyPreview": {
+          "$ref": "#/$defs/agentKeyPreview"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "AgentKeyRevoked": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revoked"
+      ],
+      "properties": {
+        "revoked": {
+          "type": "boolean"
+        }
+      }
+    },
+    "AgentKeyExistsError": {
+      "description": "409: the seller already has a live agent key (one per seller).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error",
+        "code"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "minLength": 1
+        },
+        "code": {
+          "const": "AGENT_KEY_EXISTS"
+        }
+      }
+    },
+    "AgentKeyAuthenticateBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^ggck_agent_[0-9a-f]{64}$"
+        }
+      }
+    },
+    "AgentKeyAuthenticated": {
+      "description": "200: the owner of the key. keyId identifies the key (panel and audit); it is NOT an actor of the replies.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "userId",
+        "era",
+        "keyId"
+      ],
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "era": {
+          "const": "v2"
+        },
+        "keyId": {
+          "$ref": "#/$defs/uuid"
+        }
+      }
+    },
+    "category": {
+      "description": "What a turn is about. sale, recovery and access are proven by the saas (a link it minted or the tool used); support, retention and free are declared by the model. support and access count only on the global cap; retention feeds the refund gate.",
+      "enum": [
+        "support",
+        "retention",
+        "free",
+        "sale",
+        "recovery",
+        "access"
+      ]
+    },
+    "bubble": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "\\S"
+    },
+    "bubbles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/bubble"
+      }
+    },
+    "privateNote": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 300,
+      "pattern": "\\S"
+    },
+    "escalationCode": {
+      "description": "Continue kind (the assistant keeps answering): refund, double_charge, unsolved, off_topic, unreadable_media. Silence kind (an explicit hold): legal, human_requested.",
+      "enum": [
+        "refund",
+        "double_charge",
+        "unsolved",
+        "off_topic",
+        "unreadable_media",
+        "legal",
+        "human_requested"
+      ]
+    },
+    "counter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "used",
+        "limit"
+      ],
+      "properties": {
+        "used": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        }
+      }
+    },
+    "Counters": {
+      "description": "Use of the 24 h window of the conversation. global counts every sent turn; sale, recovery and free their own; retentionSent the sent retention turns (drafts never count).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "global",
+        "sale",
+        "recovery",
+        "free",
+        "retentionSent"
+      ],
+      "properties": {
+        "global": {
+          "$ref": "#/$defs/counter"
+        },
+        "sale": {
+          "$ref": "#/$defs/counter"
+        },
+        "recovery": {
+          "$ref": "#/$defs/counter"
+        },
+        "free": {
+          "$ref": "#/$defs/counter"
+        },
+        "retentionSent": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Escalation": {
+      "description": "The open continue-kind escalation: the assistant still answers, without sale links (AGENT_OPEN_PROBLEM).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "at",
+        "summary"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/escalationCode"
+        },
+        "at": {
+          "$ref": "#/$defs/isoInstant"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "AgentEscalateBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "summary"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/escalationCode"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "\\S"
+        }
+      }
+    },
+    "AgentEscalateResponse": {
+      "description": "kind continue: the escalation is open and the assistant keeps the conversation (held false). kind silence: an explicit hold (reason agent, the summary as note). created is true only when THIS call opened it; the saas pushes once per creation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "code",
+        "escalatedAt",
+        "created",
+        "held"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "continue",
+            "silence"
+          ]
+        },
+        "code": {
+          "$ref": "#/$defs/escalationCode"
+        },
+        "escalatedAt": {
+          "$ref": "#/$defs/isoInstant"
+        },
+        "created": {
+          "type": "boolean"
+        },
+        "held": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "silence"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "held": {
+                "const": true
+              },
+              "code": {
+                "enum": [
+                  "legal",
+                  "human_requested"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "held": {
+                "const": false
+              },
+              "code": {
+                "enum": [
+                  "refund",
+                  "double_charge",
+                  "unsolved",
+                  "off_topic",
+                  "unreadable_media"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AgentMarkBody": {
+      "description": "purchase_lookup_empty: the search by the conversation phone found nothing. email_lookup: a search by a typed e-mail ran. Both feed AGENT_ASK_EMAIL_FIRST.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mark"
+      ],
+      "properties": {
+        "mark": {
+          "enum": [
+            "purchase_lookup_empty",
+            "email_lookup"
+          ]
+        }
+      }
+    },
+    "AgentMarkResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mark",
+        "at"
+      ],
+      "properties": {
+        "mark": {
+          "enum": [
+            "purchase_lookup_empty",
+            "email_lookup"
+          ]
+        },
+        "at": {
+          "$ref": "#/$defs/isoInstant"
+        }
+      }
+    },
+    "AgentDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clientMessageId",
+        "bubbles",
+        "category",
+        "categoryProven",
+        "privateNote",
+        "createdAt"
+      ],
+      "properties": {
+        "clientMessageId": {
+          "$ref": "#/$defs/clientMessageId"
+        },
+        "bubbles": {
+          "$ref": "#/$defs/bubbles"
+        },
+        "category": {
+          "$ref": "#/$defs/category"
+        },
+        "categoryProven": {
+          "type": "boolean"
+        },
+        "privateNote": {
+          "$ref": "#/$defs/privateNote"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/isoInstant"
+        }
+      }
+    },
+    "AgentDraftResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draft"
+      ],
+      "properties": {
+        "draft": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentDraft"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "AgentSettings": {
+      "description": "The seller's assistant settings. A seller who never saved reads the GG defaults with updatedAt null.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policies",
+        "persona",
+        "limits",
+        "proactive",
+        "catalog",
+        "updatedAt"
+      ],
+      "properties": {
+        "policies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "guaranteeDays",
+            "deliveryText",
+            "refundText",
+            "teamHoursText",
+            "noticesText"
+          ],
+          "properties": {
+            "guaranteeDays": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 365
+            },
+            "deliveryText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "refundText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "teamHoursText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "noticesText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 1500,
+              "pattern": "\\S"
+            }
+          }
+        },
+        "persona": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "agentName",
+            "storeName",
+            "tone",
+            "grammaticalGender",
+            "emoji"
+          ],
+          "properties": {
+            "agentName": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 40,
+              "pattern": "\\S"
+            },
+            "storeName": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "\\S"
+            },
+            "tone": {
+              "enum": [
+                "casual",
+                "neutral",
+                "formal"
+              ]
+            },
+            "grammaticalGender": {
+              "enum": [
+                "feminine",
+                "masculine",
+                "neutral"
+              ]
+            },
+            "emoji": {
+              "enum": [
+                "none",
+                "few",
+                "free"
+              ]
+            }
+          }
+        },
+        "limits": {
+          "description": "The seller's caps inside the GG ceilings (x-limits). retentionAttempts may only go down from 2.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "global",
+            "sale",
+            "recovery",
+            "free",
+            "retentionAttempts"
+          ],
+          "properties": {
+            "global": {
+              "type": "integer",
+              "minimum": 3,
+              "maximum": 20
+            },
+            "sale": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 6
+            },
+            "recovery": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "free": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "retentionAttempts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            }
+          }
+        },
+        "proactive": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "recoveryEnabled",
+            "welcomeEnabled",
+            "upsellEnabled"
+          ],
+          "properties": {
+            "recoveryEnabled": {
+              "type": "boolean"
+            },
+            "welcomeEnabled": {
+              "type": "boolean"
+            },
+            "upsellEnabled": {
+              "type": "boolean"
+            }
+          }
+        },
+        "catalog": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "productId",
+              "checkoutId",
+              "pitch"
+            ],
+            "properties": {
+              "productId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^\\S+$"
+              },
+              "checkoutId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^\\S+$"
+              },
+              "pitch": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 600,
+                "pattern": "\\S"
+              }
+            }
+          }
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/nullableInstant"
+        }
+      }
+    },
+    "AgentSettingsPutBody": {
+      "description": "Replaces the whole settings. expectedUpdatedAt is the updatedAt the screen read (null when it read the defaults): a different stored one is refused with 409 AGENT_SETTINGS_CHANGED, so a screen opened earlier never undoes an edit made elsewhere.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policies",
+        "persona",
+        "limits",
+        "proactive",
+        "catalog",
+        "expectedUpdatedAt"
+      ],
+      "properties": {
+        "policies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "guaranteeDays",
+            "deliveryText",
+            "refundText",
+            "teamHoursText",
+            "noticesText"
+          ],
+          "properties": {
+            "guaranteeDays": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 365
+            },
+            "deliveryText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "refundText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "teamHoursText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "noticesText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 1500,
+              "pattern": "\\S"
+            }
+          }
+        },
+        "persona": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "agentName",
+            "storeName",
+            "tone",
+            "grammaticalGender",
+            "emoji"
+          ],
+          "properties": {
+            "agentName": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 40,
+              "pattern": "\\S"
+            },
+            "storeName": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "\\S"
+            },
+            "tone": {
+              "enum": [
+                "casual",
+                "neutral",
+                "formal"
+              ]
+            },
+            "grammaticalGender": {
+              "enum": [
+                "feminine",
+                "masculine",
+                "neutral"
+              ]
+            },
+            "emoji": {
+              "enum": [
+                "none",
+                "few",
+                "free"
+              ]
+            }
+          }
+        },
+        "limits": {
+          "description": "The seller's caps inside the GG ceilings (x-limits). retentionAttempts may only go down from 2.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "global",
+            "sale",
+            "recovery",
+            "free",
+            "retentionAttempts"
+          ],
+          "properties": {
+            "global": {
+              "type": "integer",
+              "minimum": 3,
+              "maximum": 20
+            },
+            "sale": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 6
+            },
+            "recovery": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "free": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "retentionAttempts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            }
+          }
+        },
+        "proactive": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "recoveryEnabled",
+            "welcomeEnabled",
+            "upsellEnabled"
+          ],
+          "properties": {
+            "recoveryEnabled": {
+              "type": "boolean"
+            },
+            "welcomeEnabled": {
+              "type": "boolean"
+            },
+            "upsellEnabled": {
+              "type": "boolean"
+            }
+          }
+        },
+        "catalog": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "productId",
+              "checkoutId",
+              "pitch"
+            ],
+            "properties": {
+              "productId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^\\S+$"
+              },
+              "checkoutId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^\\S+$"
+              },
+              "pitch": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 600,
+                "pattern": "\\S"
+              }
+            }
+          }
+        },
+        "expectedUpdatedAt": {
+          "$ref": "#/$defs/nullableInstant"
+        }
+      }
+    },
+    "AgentTask": {
+      "description": "A message the assistant starts. recovery: an unpaid PIX (dueAt 15 min, deadlineAt 3 h; past the deadline unsent, the seller's pix_unpaid funnel runs instead). recovery_followup: 3 h after the contact replied and went quiet. welcome: 3 to 8 min after a paid purchase (deadline 30 min). upsell: 24 to 72 h after it. At most one started message per contact per day.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "contactKey",
+        "paymentId",
+        "productId",
+        "dueAt",
+        "deadlineAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "kind": {
+          "enum": [
+            "recovery",
+            "recovery_followup",
+            "welcome",
+            "upsell"
+          ]
+        },
+        "contactKey": {
+          "$ref": "#/$defs/agentContactKey"
+        },
+        "paymentId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "productId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "dueAt": {
+          "$ref": "#/$defs/isoInstant"
+        },
+        "deadlineAt": {
+          "$ref": "#/$defs/isoInstant"
+        }
+      }
+    },
+    "AgentTaskReplyBody": {
+      "description": "The task's message. Always sent (a started message is never a draft); category is recovery for recovery tasks, sale for upsell, free for welcome.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bubbles",
+        "clientMessageId",
+        "privateNote"
+      ],
+      "properties": {
+        "bubbles": {
+          "$ref": "#/$defs/bubbles"
+        },
+        "clientMessageId": {
+          "$ref": "#/$defs/clientMessageId"
+        },
+        "privateNote": {
+          "$ref": "#/$defs/privateNote"
+        }
+      }
+    }
+  }
+}

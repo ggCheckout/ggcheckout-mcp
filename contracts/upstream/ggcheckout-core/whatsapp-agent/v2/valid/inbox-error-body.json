@@ -1,0 +1,6 @@
+{
+  "def": "InboxErrorBody",
+  "body": {
+    "error": "INVALID_INBOX_PAYLOAD"
+  }
+}

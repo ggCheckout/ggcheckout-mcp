@@ -1,0 +1,10 @@
+{
+  "def": "AgentEscalateResponse",
+  "body": {
+    "kind": "continue",
+    "code": "refund",
+    "escalatedAt": "2026-11-26T14:00:00.000Z",
+    "created": true,
+    "held": false
+  }
+}

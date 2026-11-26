@@ -1,0 +1,6 @@
+{
+  "def": "AgentOfferBody",
+  "body": {
+    "kind": "cupom"
+  }
+}

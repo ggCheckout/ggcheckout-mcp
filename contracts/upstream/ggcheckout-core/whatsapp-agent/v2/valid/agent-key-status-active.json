@@ -1,0 +1,9 @@
+{
+  "def": "AgentKeyStatus",
+  "body": {
+    "active": true,
+    "keyId": "0192a000-0000-4000-8000-000000000003",
+    "keyPreview": "ggck_agent_ab1••••••••d34",
+    "createdAt": "2026-11-24T14:00:00.000Z"
+  }
+}

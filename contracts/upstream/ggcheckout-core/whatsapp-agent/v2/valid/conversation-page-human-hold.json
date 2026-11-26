@@ -1,0 +1,27 @@
+{
+  "def": "ConversationPage",
+  "body": {
+    "items": [
+      {
+        "id": "1763990000000-1",
+        "messageId": "m-1",
+        "dir": "out",
+        "auto": false,
+        "chipId": "0192a000-0000-4000-8000-000000000001",
+        "type": "text",
+        "text": "Hi, this is the seller",
+        "at": "2026-11-24T13:51:00+00:00",
+        "by": "seller"
+      }
+    ],
+    "nextBefore": null,
+    "exitRequestedAt": "2026-11-24T10:00:00.000000000+00:00",
+    "optedOut": false,
+    "agentHeldAt": "2026-11-24T10:15:30.123Z",
+    "agentHeldReason": "human",
+    "agentHeldNote": null,
+    "agentUpsellOfferedAt": "2026-11-24T14:00:00.000Z",
+    "agentDownsellOfferedAt": null,
+    "agentRepliesToday": 0
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "def": "AgentReplyResponse",
+  "body": {
+    "status": "draft",
+    "messages": [],
+    "category": "free",
+    "counters": {
+      "global": {
+        "used": 1,
+        "limit": 10
+      },
+      "sale": {
+        "used": 0,
+        "limit": 4
+      },
+      "recovery": {
+        "used": 0,
+        "limit": 2
+      },
+      "free": {
+        "used": 0,
+        "limit": 2
+      },
+      "retentionSent": 0
+    },
+    "held": false,
+    "agentHeldAt": null
+  }
+}

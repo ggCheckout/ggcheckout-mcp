@@ -1,0 +1,26 @@
+{
+  "def": "PendingPage",
+  "body": {
+    "items": [
+      {
+        "contactKey": "5511912345678",
+        "name": "Ana",
+        "pendingSince": "2026-11-26T13:59:00.123456789Z",
+        "lastText": "nao recebi",
+        "lastType": "text",
+        "agentRepliesToday": 0
+      }
+    ],
+    "tasks": [
+      {
+        "id": "0192a000-0000-4000-8000-000000000020",
+        "kind": "recovery",
+        "contactKey": "5511912345678",
+        "paymentId": "pay_0192a0000000",
+        "productId": "0192a000-0000-4000-8000-000000000010",
+        "dueAt": "2026-11-26T14:00:00.000Z",
+        "deadlineAt": "2026-11-26T17:00:00.000Z"
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "def": "AgentDraftResponse",
+  "body": {
+    "draft": {
+      "clientMessageId": "t-2",
+      "bubbles": [
+        "Bom dia!"
+      ],
+      "category": "free",
+      "categoryProven": false,
+      "privateNote": null,
+      "createdAt": "2026-11-26T14:00:00.000Z"
+    }
+  }
+}

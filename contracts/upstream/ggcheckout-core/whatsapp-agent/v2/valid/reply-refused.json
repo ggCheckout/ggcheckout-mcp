@@ -1,0 +1,7 @@
+{
+  "def": "ReplyRefusedError",
+  "body": {
+    "error": "INBOX_REPLY_REFUSED",
+    "reason": "contact_without_phone"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "def": "AgentState",
+  "body": {
+    "held": true,
+    "agentHeldAt": "2026-11-26T14:00:00.000Z",
+    "agentHeldReason": "human",
+    "agentHeldNote": null,
+    "agentHeldCode": null,
+    "exited": false,
+    "optedOut": false,
+    "upsellOfferedAt": null,
+    "downsellOfferedAt": null,
+    "counters": {
+      "global": {
+        "used": 1,
+        "limit": 10
+      },
+      "sale": {
+        "used": 0,
+        "limit": 4
+      },
+      "recovery": {
+        "used": 0,
+        "limit": 2
+      },
+      "free": {
+        "used": 0,
+        "limit": 2
+      },
+      "retentionSent": 0
+    },
+    "escalation": null,
+    "releasedAt": "2026-11-26T14:00:00.000Z",
+    "releasedCode": "refund",
+    "purchaseLookupEmptyAt": null,
+    "emailLookupAt": null,
+    "lastAgentReplyAt": null,
+    "recentRealSend": true,
+    "chipBusinessOnly": false,
+    "hasDraft": false
+  }
+}

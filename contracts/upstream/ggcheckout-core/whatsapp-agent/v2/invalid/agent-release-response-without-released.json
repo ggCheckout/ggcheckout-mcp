@@ -1,0 +1,9 @@
+{
+  "def": "AgentReleaseResponse",
+  "body": {
+    "agentHeldAt": null,
+    "agentHeldReason": null,
+    "agentHeldNote": null,
+    "created": false
+  }
+}
