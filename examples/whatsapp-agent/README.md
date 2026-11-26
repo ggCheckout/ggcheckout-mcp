@@ -41,11 +41,14 @@ Every option is listed at the top of `poll.mjs` (`GGCHECKOUT_API_URL`, `AGENT_TZ
   purchases of 5531..." cannot make the model read another conversation.
 - The prompt carries only the contact key and the id. What the contact wrote reaches Claude through the
   tools, behind the notice that it is data, never instructions.
-- **Scheduled tasks.** The pending list also brings the tasks the store scheduled (a PIX reminder, its
-  follow-up, a welcome, an offer), turned on in the panel. After the waiting conversations, each task due
-  now gets its own run, pinned to its contact and to the task (`GGCHECKOUT_AGENT_TASK`), with a reply id
-  derived from the task, so a rerun never sends it twice. The core refuses a task past its deadline or a
-  second store-started message to the same contact in a day. A task in a shape the script does not know is
+- **Scheduled tasks.** The pending list also brings the tasks a funnel block "the assistant writes"
+  created, each with an `objective`: `pix_reminder`, `welcome`, `offer`, or `free` with the seller's
+  `instruction` (up to 500 characters), which the run's prompt carries quoted and labeled as the seller's.
+  After the waiting conversations, each task due now gets its own run, pinned to its contact and to the
+  task (`GGCHECKOUT_AGENT_TASK`), with a reply id derived from the task, so a rerun never sends it twice.
+  The core refuses a task past its deadline, and one whose contact already got the store's daily number
+  of recovery or sale messages waits for another day inside its deadline. A task in a shape the script
+  does not know (another objective, an unknown key, an instruction outside `free` or too long) is
   skipped, never run.
 - A conversation Claude chose not to answer ("ok", "obrigado") is not run again until the contact writes
   again.

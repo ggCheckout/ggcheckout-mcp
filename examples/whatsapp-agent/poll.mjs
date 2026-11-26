@@ -194,7 +194,7 @@ async function pass() {
     if (!tracker.shouldRun(fingerprint)) continue;
     const id = logId(fingerprint);
     try {
-      log(`running claude for task ${id} (${task.kind})`);
+      log(`running claude for task ${id} (${task.objective})`);
       track(fingerprint, id, await runClaude({ id, contactKey: task.contactKey, clientMessageId: taskClientMessageId(task.id), task }));
     } catch (error) {
       log(`task ${id}: ${error.message}`);

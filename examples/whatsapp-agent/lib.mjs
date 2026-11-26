@@ -120,8 +120,10 @@ export function fillMcpConfig(template, values) {
 }
 
 /**
- * The prompt of one run: the contact key and the reply id, and for a scheduled task its kind and the
- * ids it is about. Never what the buyer wrote.
+ * The prompt of one run: the contact key and the reply id, and for a scheduled task its objective, the
+ * ids it is about and, for `free`, the seller's instruction. Never what the buyer wrote. The instruction
+ * is the store's text, labeled as the seller's and JSON-quoted so a line break or a quote in it cannot
+ * pass for another line of this prompt.
  */
 export function buildTask({ contactKey, clientMessageId: id, task = null }) {
   if (!task) {
@@ -129,20 +131,33 @@ export function buildTask({ contactKey, clientMessageId: id, task = null }) {
       + `contactKey: ${contactKey}, clientMessageId: ${id}`;
   }
   return 'Write the scheduled message of this run, under your rules for scheduled tasks. Read the conversation first.\n'
-    + `contactKey: ${contactKey}, clientMessageId: ${id}, task: ${task.kind}, `
-    + `paymentId: ${task.paymentId ?? 'none'}, productId: ${task.productId ?? 'none'}`;
+    + `contactKey: ${contactKey}, clientMessageId: ${id}, task: ${task.objective}, `
+    + `paymentId: ${task.paymentId ?? 'none'}, productId: ${task.productId ?? 'none'}`
+    + (typeof task.instruction !== 'string' ? '' : `\nThe store's instruction for this step (the seller's text): ${JSON.stringify(task.instruction)}`);
 }
 
-/** The kinds of task the core schedules (`AgentTask.kind` in the core's whatsapp/agent v2 contract). */
-export const TASK_KINDS = Object.freeze(['recovery', 'recovery_followup', 'welcome', 'upsell']);
+/** What a journey block asks the assistant to write (`AgentTask.objective` in the core's whatsapp/agent v2 contract). */
+export const TASK_OBJECTIVES = Object.freeze(['pix_reminder', 'welcome', 'offer', 'free']);
+
+/** The seller's instruction of a `free` task: up to `taskInstructionMaxCodePoints` code points, never blank. */
+export const TASK_INSTRUCTION_MAX_CODE_POINTS = 500;
 
 const TASK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const TASK_CONTACT = /^[1-9][0-9]{7,14}$/;
 /** A payment or product id goes into the run's prompt: only id characters, as the agent tools accept them. */
 const TASK_REF = /^[A-Za-z0-9_-]{1,128}$/;
 
-const isRunnableTask = (task) => Boolean(task)
-  && TASK_ID.test(task.id) && TASK_KINDS.includes(task.kind) && TASK_CONTACT.test(task.contactKey)
+const isInstruction = (text) => typeof text === 'string' && /\S/.test(text)
+  && Array.from(text).length <= TASK_INSTRUCTION_MAX_CODE_POINTS;
+
+/** Every key of `AgentTask`, none other (the contract closes it): a task with a key it does not know is skipped. */
+export const TASK_KEYS = Object.freeze(['id', 'objective', 'instruction', 'contactKey', 'paymentId', 'productId', 'dueAt', 'deadlineAt']);
+
+const hasTaskKeys = (task) => Object.keys(task).length === TASK_KEYS.length && TASK_KEYS.every((key) => Object.hasOwn(task, key));
+
+const isRunnableTask = (task) => Boolean(task) && typeof task === 'object' && hasTaskKeys(task)
+  && TASK_ID.test(task.id) && TASK_OBJECTIVES.includes(task.objective) && TASK_CONTACT.test(task.contactKey)
+  && (task.objective === 'free' ? isInstruction(task.instruction) : task.instruction === null)
   && (task.paymentId === null || TASK_REF.test(task.paymentId))
   && (task.productId === null || TASK_REF.test(task.productId));
 
