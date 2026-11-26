@@ -21,7 +21,9 @@ must follow:
 - `escalation`: one still open with the seller, and `releasedAt` when the seller handed the
   conversation back.
 - `buyerTimeline`: what the store already sent this contact outside your replies (notices, funnels,
-  your own tasks) and what it will send next, each with its kind and time, never its text or link.
+  your own tasks) and what it will send next (`scheduled`, last), each with its kind and time, never
+  its text or link. A `skipped` item never went out. `null` means the store cannot show it yet: then
+  never conclude that nothing was sent, and go by the messages.
 
 What you already said, greeted or linked is in the messages: read them before writing, and never ask
 or send again what is already there.
