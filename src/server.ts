@@ -107,7 +107,7 @@ export interface CreatedServer {
  * and the views; the WhatsApp assistant key (`ggck_agent_`) gets the agent tools and nothing else,
  * not even the payments API tools, so a model that reads customer messages has no other lever.
  * Throws on a malformed key, and on an agent key without a valid GGCHECKOUT_AGENT_CONTACT: the run
- * is pinned to that one conversation.
+ * is pinned to that one conversation (and to GGCHECKOUT_AGENT_TASK when it writes a scheduled task).
  */
 export function createServer({ apiKey, apiUrl, version, env }: ServerOptions): CreatedServer {
   const keyKind = apiKeyKind(apiKey);
@@ -116,7 +116,9 @@ export function createServer({ apiKey, apiUrl, version, env }: ServerOptions): C
 
   if (keyKind === 'agent') {
     muteUpdateNotice();
-    registerWhatsAppAgentTools(server, new WhatsAppAgentService(new WhatsAppAgentApiAdapter(httpClient)), agentContact(env));
+    registerWhatsAppAgentTools(server, new WhatsAppAgentService(new WhatsAppAgentApiAdapter(httpClient)), {
+      contact: agentContact(env), taskId: agentTask(env),
+    });
     return { server, keyKind };
   }
 
@@ -133,6 +135,16 @@ function agentContact(env: NodeJS.ProcessEnv): string {
       + '(the contact phone in digits with country code, a Brazilian mobile without the ninth digit, or a "lid:" WhatsApp id)');
   }
   return parsed.data;
+}
+
+const TASK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** The scheduled task an agent run writes, or null for a run that answers the conversation (unset or empty). */
+function agentTask(env: NodeJS.ProcessEnv): string | null {
+  const value = env.GGCHECKOUT_AGENT_TASK;
+  if (value === undefined || value === '') return null;
+  if (!TASK_ID.test(value)) throw new Error('GGCHECKOUT_AGENT_TASK must be the id of the scheduled task this run writes (a UUID), or empty');
+  return value;
 }
 
 function registerSellerTools(server: McpServer, httpClient: HttpClient, apiUrl: string, env: NodeJS.ProcessEnv): void {

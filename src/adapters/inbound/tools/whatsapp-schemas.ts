@@ -28,10 +28,10 @@ export const funnelVariables = z.record(z.string().regex(/^[a-z0-9_]{1,40}$/), c
   .refine((variables) => Object.keys(variables).length <= FUNNEL_LIMITS.maxVariables, { message: `At most ${FUNNEL_LIMITS.maxVariables} variables` });
 
 /**
- * The hold reason: trimmed, then counted in code points like the saas and the core (an emoji is 1;
- * `.max()` would refuse a reason with emoji that both accept).
+ * A short note for the seller (escalation summary, private note): trimmed, then counted in code
+ * points like the saas and the core (an emoji is 1; `.max()` would refuse a note with emoji that both accept).
  */
-export const holdReason = (max: number) => z.string().trim().min(1)
+export const trimmedNote = (max: number) => z.string().trim().min(1)
   .refine((reason) => codePoints(reason) <= max, { message: `At most ${max} characters` });
 
 /** A reply as the inbox route takes it: not blank, at most 4096 code points. */

@@ -92,7 +92,12 @@ export class HttpClient {
         // `code` as a discriminator and `message`/`details` beside it. Without the extras the
         // caller only saw "Request failed with status 409" and could not act on it.
         const apiMessage = body?.error || body?.message;
-        const extras = [body?.code, body?.message !== apiMessage ? body?.message : undefined]
+        // `codes`: every check that refused, when a route answers more than one (the assistant's
+        // review). Only code-shaped strings get in: the list reaches the model.
+        const codes = Array.isArray(body?.codes)
+          ? body.codes.filter((c: unknown): c is string => typeof c === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(c)).join(', ')
+          : undefined;
+        const extras = [body?.code, body?.message !== apiMessage ? body?.message : undefined, codes]
           .filter((v): v is string => typeof v === 'string' && v.length > 0);
         const detail = extras.length ? ` (${extras.join('; ')})` : '';
 
