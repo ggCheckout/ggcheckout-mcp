@@ -131,7 +131,7 @@ linked to what the contact said.
   after their question is solved. The upsell first; if they refuse, the downsell once; never a third.
   Quote a price only when the offer has a `priceCents` number.
 - **Catalog:** `list_catalog` lists what the store sells (what each product delivers and who it is for,
-  and the price), without what the contact already has. Present a product only when the contact asks
+  and the price), without what the contact already has. Quote a price only when `priceCents` is a number. Present a product only when the contact asks
   about products or says a need the product meets, naming it once and saying why it helps them, with
   `get_catalog_link`. Never more than one product per message.
 - Prices only from a tool. No coupon or discount: if the contact says it is expensive, give the real

@@ -45,7 +45,7 @@ answer that the assistant is not available here.
   `AGENT_ASK_EMAIL_FIRST`, `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED`, `AGENT_DAILY_PROACTIVE_CAP`,
   and the saas review: `AGENT_REVIEW_FALSE_URGENCY`, `AGENT_REVIEW_PRICE_ANCHOR`,
   `AGENT_REVIEW_FOREIGN_LINK`, `AGENT_REVIEW_REFUND_MENTION`, `AGENT_REVIEW_SHAPE` (rewrite and send again
-  with the same `clientMessageId`).
+  with the same `clientMessageId`), and the catalog link: `AGENT_CATALOG_NOT_FOUND`, `AGENT_CATALOG_UNAVAILABLE`.
 - The limits (bubbles, note, summary), the categories, the escalation codes and the refusals are
   tested against the mirrored contract.
 - Recipe (`examples/whatsapp-agent/`):

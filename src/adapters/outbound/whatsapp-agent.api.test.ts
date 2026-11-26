@@ -98,6 +98,8 @@ describe('WhatsAppAgentApiAdapter', () => {
     ['AGENT_TASK_EXPIRED', new ApiError(409, 'Tarefa vencida (AGENT_TASK_EXPIRED)')],
     ['AGENT_ALREADY_OFFERED', new ApiError(409, 'Oferta já feita (AGENT_ALREADY_OFFERED)')],
     ['AGENT_UPSELL_NOT_OFFERED', new ApiError(409, 'Downsell antes do upsell (AGENT_UPSELL_NOT_OFFERED)')],
+    ['AGENT_CATALOG_NOT_FOUND', new ApiError(409, 'Este produto não está no catálogo do assistente. (AGENT_CATALOG_NOT_FOUND)')],
+    ['AGENT_CATALOG_UNAVAILABLE', new ApiError(409, 'O checkout deste produto não está publicado. (AGENT_CATALOG_UNAVAILABLE)')],
     // The saas answer outside the QA (saas-checkout#2586): 404 with a body, which is not a missing route.
     ['AGENT_UNAVAILABLE', new ApiError(404, 'O assistente não está disponível. (AGENT_UNAVAILABLE)')],
     ['AGENT_KEY_REFUSED', new AuthenticationError('Chave inválida')],

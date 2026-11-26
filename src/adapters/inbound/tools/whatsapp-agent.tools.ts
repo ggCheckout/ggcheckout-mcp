@@ -194,7 +194,7 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
   server.registerTool('list_catalog', {
     description:
       'List the products the store sells through you, without the ones this contact already bought: what each delivers and who it is for '
-      + '(written by the seller) and its price. Use it when the contact asks about products or tells a need one of them meets; never while a '
+      + '(written by the seller) and its price (`priceCents`; null when the store has none to show, then quote no price). Use it when the contact asks about products or tells a need one of them meets; never while a '
       + 'problem is open, after a complaint, or to list everything at once.',
     inputSchema: {},
   }, withNotice('list_catalog', async () => service.listCatalog(contact)));
