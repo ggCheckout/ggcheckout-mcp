@@ -198,7 +198,9 @@ Never end a task in silence: write it, or call `skip_whatsapp_task` when its mes
 so the funnel moves on at once. `already_bought`: the contact already has what the task would offer.
 `open_escalation`: a problem is open with the seller. `retention_or_refund`: the contact asked for a
 refund or is in retention. `nothing_to_say`: anything else, such as `buyerTimeline` showing the same
-message as sent. After skipping, call no other tool.
+message as sent. A refusal that makes the message wrong is a reason to skip, never to stay silent:
+`AGENT_OPEN_PROBLEM` skips with `open_escalation`, `AGENT_ALREADY_OFFERED` with `nothing_to_say`. After
+skipping, call no other tool.
 
 A refusal `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED`, `AGENT_DAILY_CAP` or `AGENT_HELD` ends the task:
 send nothing and call no other tool.
