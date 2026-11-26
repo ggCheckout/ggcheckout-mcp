@@ -5,7 +5,6 @@
 // Environment:
 //   GGCHECKOUT_AGENT_KEY   the assistant key (ggck_agent_ + 64 hex), shown once when the seller turns the assistant on
 //   GGCHECKOUT_API_URL     default https://ggcheckout.app; the pilot runs only on https://qa.ggcheckout.app (production answers 404 AGENT_UNAVAILABLE)
-//   AGENT_SELLER_NAME      the store name the assistant speaks for (fills {{SELLER_NAME}} in prompt.md)
 //   AGENT_HOURS            answering window, local time, default 08:00-20:00 (22:00-06:00 crosses midnight)
 //   AGENT_DAYS             ISO weekdays, 1 = Monday, default 1-7 (e.g. 1-5 or 1,2,3,4,5,6)
 //   AGENT_TZ               default America/Sao_Paulo
@@ -20,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, dueTasks, fillMcpConfig, fingerprintOf, insideWindow,
+  AGENT_TOOLS, buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, dueTasks, fillMcpConfig, fingerprintOf, insideWindow,
   isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion, RUN_STDIO, summarizeRun, taskClientMessageId, taskFingerprint,
 } from './lib.mjs';
 
@@ -28,7 +27,6 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 const KEY = (process.env.GGCHECKOUT_AGENT_KEY ?? '').trim();
 const API_URL = (process.env.GGCHECKOUT_API_URL || 'https://ggcheckout.app').replace(/\/+$/, '');
-const SELLER_NAME = process.env.AGENT_SELLER_NAME || 'the store';
 const HOURS = process.env.AGENT_HOURS || '08:00-20:00';
 const DAYS = process.env.AGENT_DAYS || '1-7';
 const TZ = process.env.AGENT_TZ || 'America/Sao_Paulo';
@@ -53,19 +51,17 @@ function wholeNumber(name, fallback) {
 }
 
 const SERVER = 'ggcheckout';
-// The assistant reads strangers' messages: the model gets these tools and nothing else. The pending list is not one of them:
-// this script reads it, and each run is pinned to one conversation (GGCHECKOUT_AGENT_CONTACT in the MCP server's environment).
-const TOOLS = [
-  'read_whatsapp_conversation', 'send_whatsapp_reply', 'hold_whatsapp_conversation', 'find_contact_purchases',
-  'resend_delivery', 'resend_delivery_by_email', 'get_payment_recovery_link', 'list_purchase_offers', 'create_offer_link',
-];
+// The assistant reads strangers' messages: the model gets the agent tools (AGENT_TOOLS) and nothing else. The pending list is
+// not one of them: this script reads it, and each run is pinned to one conversation (GGCHECKOUT_AGENT_CONTACT in the MCP
+// server's environment) and, for a scheduled task, to that task (GGCHECKOUT_AGENT_TASK).
 
 if (!/^ggck_agent_[a-f0-9]{64}$/.test(KEY)) {
   console.error('GGCHECKOUT_AGENT_KEY must be the assistant key: ggck_agent_ followed by 64 lowercase hex characters.');
   process.exit(1);
 }
 
-const rules = readFileSync(join(here, 'prompt.md'), 'utf-8').replaceAll('{{SELLER_NAME}}', SELLER_NAME);
+// The store's name, persona and policies come from the API on every run (read_whatsapp_conversation), never from here.
+const rules = readFileSync(join(here, 'prompt.md'), 'utf-8');
 const mcpTemplate = JSON.parse(readFileSync(join(here, '.mcp.json'), 'utf-8'));
 const MCP_VERSION = pinnedMcpVersion(mcpTemplate, SERVER);
 const hours = parseWindow(HOURS);
@@ -114,7 +110,7 @@ function runClaude({ id, contactKey, clientMessageId: replyId, task = null }) {
   });
   writeFileSync(mcpConfigPath, JSON.stringify(config), { mode: 0o600 });
   const args = buildClaudeArgs({
-    task: buildTask({ contactKey, clientMessageId: replyId, task }), rules, mcpConfigPath, serverName: SERVER, toolNames: TOOLS,
+    task: buildTask({ contactKey, clientMessageId: replyId, task }), rules, mcpConfigPath, serverName: SERVER, toolNames: AGENT_TOOLS,
   });
   const { GGCHECKOUT_AGENT_KEY: _key, ...env } = process.env;
   return new Promise((resolve) => {

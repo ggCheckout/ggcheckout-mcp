@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
+import { WHATSAPP_AGENT_TOOLS } from '../../src/adapters/inbound/tools/whatsapp-agent.tools.js';
 import {
-  buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, dueTasks, fillMcpConfig, fingerprintOf, insideWindow,
+  AGENT_TOOLS, buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, dueTasks, fillMcpConfig, fingerprintOf, insideWindow,
   isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion, RUN_STDIO, summarizeRun, TASK_KINDS,
   taskClientMessageId, taskFingerprint,
 } from './lib.mjs';
@@ -137,6 +138,10 @@ describe('run setup', () => {
     expect(args).not.toContain('--disallowedTools');
     expect(args).not.toContain('--dangerously-skip-permissions');
     expect(after('--output-format')).toBe('json');
+  });
+
+  it('a run gets exactly the agent tools of the MCP server, none more', () => {
+    expect([...AGENT_TOOLS]).toEqual([...WHATSAPP_AGENT_TOOLS]);
   });
 
   it('the run output is piped to the script, never inherited by the terminal', () => {

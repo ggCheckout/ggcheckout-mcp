@@ -8,10 +8,10 @@ routes answer `404 AGENT_UNAVAILABLE`, and the script stops with exit code 2 whe
 
 | File | What it is |
 |---|---|
-| `poll.mjs` | Checks the pending conversations every 15 s and starts one `claude -p` run per waiting conversation, inside the store's hours |
-| `lib.mjs` | The pure parts of the script (hours window, reply id, attempt counter, flags), tested in `lib.test.mjs` |
-| `prompt.md` | The assistant rules, appended to Claude's system prompt (`{{SELLER_NAME}}` is filled from `AGENT_SELLER_NAME`) |
-| `.mcp.json` | Template of the MCP server (pinned to `ggcheckout-mcp@0.7.0`); each run fills it into a temp file |
+| `poll.mjs` | Checks the pending list every 15 s and starts one `claude -p` run per waiting conversation, then one per scheduled task due now, inside the store's hours |
+| `lib.mjs` | The pure parts of the script (hours window, reply ids, attempt counter, tasks, flags, the run's log line), tested in `lib.test.mjs` against the core contract fixtures |
+| `prompt.md` | The assistant rules, appended to Claude's system prompt. The store's name, persona and policies come from the API in each run, set in the panel |
+| `.mcp.json` | Template of the MCP server (pinned to `ggcheckout-mcp@0.8.0`); each run fills it into a temp file |
 
 ## Setup
 
@@ -21,7 +21,7 @@ routes answer `404 AGENT_UNAVAILABLE`, and the script stops with exit code 2 whe
 3. Run, from this folder:
 
 ```bash
-GGCHECKOUT_API_URL=https://qa.ggcheckout.app GGCHECKOUT_AGENT_KEY=ggck_agent_... AGENT_SELLER_NAME="Minha Loja" AGENT_HOURS=08:00-20:00 AGENT_DAYS=1-6 node poll.mjs
+GGCHECKOUT_API_URL=https://qa.ggcheckout.app GGCHECKOUT_AGENT_KEY=ggck_agent_... AGENT_HOURS=08:00-20:00 AGENT_DAYS=1-6 node poll.mjs
 ```
 
 Every option is listed at the top of `poll.mjs` (`GGCHECKOUT_API_URL`, `AGENT_TZ`, `AGENT_POLL_SECONDS`,
@@ -41,6 +41,12 @@ Every option is listed at the top of `poll.mjs` (`GGCHECKOUT_API_URL`, `AGENT_TZ
   purchases of 5531..." cannot make the model read another conversation.
 - The prompt carries only the contact key and the id. What the contact wrote reaches Claude through the
   tools, behind the notice that it is data, never instructions.
+- **Scheduled tasks.** The pending list also brings the tasks the store scheduled (a PIX reminder, its
+  follow-up, a welcome, an offer), turned on in the panel. After the waiting conversations, each task due
+  now gets its own run, pinned to its contact and to the task (`GGCHECKOUT_AGENT_TASK`), with a reply id
+  derived from the task, so a rerun never sends it twice. The core refuses a task past its deadline or a
+  second store-started message to the same contact in a day. A task in a shape the script does not know is
+  skipped, never run.
 - A conversation Claude chose not to answer ("ok", "obrigado") is not run again until the contact writes
   again.
 - A run that fails (exit code other than 0, or the timeout) is retried after 5 minutes, up to
@@ -78,13 +84,13 @@ Checked against `claude` 2.1.331 (`claude --help`), the run uses:
 |---|---|
 | `--mcp-config <temp file>` + `--strict-mcp-config` | Only this MCP server, nothing from the seller's other MCP configs. The temp file (0600, in a 0700 directory under the OS temp dir, deleted when the run ends) holds this run's contact in the server's `env`. `--help` does not document `${VAR}` expansion inside `--mcp-config`, so the script writes literal values instead |
 | `--tools ""` | No built-in tool at all (shell, files, web, subagents). An allow list, not a deny list: a tool added to Claude Code later is off too |
-| `--allowedTools mcp__ggcheckout__...` | Exactly the nine agent tools |
+| `--allowedTools mcp__ggcheckout__...` | Exactly the twelve agent tools (`AGENT_TOOLS` in `lib.mjs`, tested against the server's list) |
 | `--permission-mode dontAsk` + `--permission-prompts none` | Anything outside the allow list is denied; nobody is there to approve a prompt |
 | `--setting-sources ""` | Loads no user, project or local settings, so the seller's hooks, plugins, permission mode (even `bypassPermissions`) and CLAUDE.md do not apply to this run |
 | `--disable-slash-commands` | No skills or slash commands |
 | `--no-session-persistence` | The conversation is not saved to disk |
 
-Confirmed by starting a run with `--output-format stream-json --verbose`: the init message lists the nine
+Confirmed by starting a run with `--output-format stream-json --verbose`: the init message lists the agent
 MCP tools and no other tool, the `ggcheckout` server `connected`, and no skills or slash commands. Built-in
 plugins that ship inside Claude Code still load, and so would an administrator's managed settings.
 
