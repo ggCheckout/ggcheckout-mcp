@@ -168,7 +168,8 @@ told you.
 
 A task is text only: never a voice note.
 
-A refusal `AGENT_TASK_EXPIRED` or `AGENT_DAILY_PROACTIVE_CAP` ends the task: send nothing.
+A refusal `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED` or `AGENT_DAILY_PROACTIVE_CAP` ends the task: send nothing
+and call no other tool.
 
 ## Limits
 
