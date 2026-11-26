@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, fillMcpConfig, fingerprintOf, insideWindow,
-  isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion,
+  isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion, RUN_STDIO, summarizeRun,
 } from './lib.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +38,8 @@ const MAX_ATTEMPTS = wholeNumber('AGENT_MAX_ATTEMPTS', 3);
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude';
 /** The core caps the pending page at 20. */
 const PENDING_LIMIT = 20;
+/** The JSON result of a run is a few KB; past this, the output is not kept (and not parsed). */
+const MAX_RUN_OUTPUT_BYTES = 1024 * 1024;
 
 /** A whole number (seconds or a count), or the default: "15s" would make the loop spin and spend the key's budget. */
 function wholeNumber(name, fallback) {
@@ -100,8 +102,9 @@ async function api(path) {
  * One `claude -p` run for one conversation. The MCP config is a temp file (0600, in its own 0700
  * directory) with this run's contact in the server's environment, deleted when the run ends; the
  * claude process does not get the assistant key in its own environment. Resolves true on exit code 0.
+ * `id` is the conversation's log id (a hash, never the contact).
  */
-function runClaude({ contactKey, clientMessageId: replyId }) {
+function runClaude({ id, contactKey, clientMessageId: replyId }) {
   const dir = mkdtempSync(join(tmpdir(), 'ggcheckout-agent-'));
   const mcpConfigPath = join(dir, 'mcp.json');
   const config = fillMcpConfig(mcpTemplate, {
@@ -114,11 +117,31 @@ function runClaude({ contactKey, clientMessageId: replyId }) {
   const { GGCHECKOUT_AGENT_KEY: _key, ...env } = process.env;
   return new Promise((resolve) => {
     // cwd is the empty temp directory: no project files or CLAUDE.md of this repo for the run to find.
-    const child = spawn(CLAUDE_BIN, args, { cwd: dir, env, stdio: ['ignore', 'inherit', 'inherit'] });
-    const done = (ok) => { clearTimeout(timer); rmSync(dir, { recursive: true, force: true }); resolve(ok); };
+    // stdout and stderr are piped, never inherited: the run's output carries what the buyer wrote, and
+    // only `summarizeRun` (counts, duration, cost) and the size of stderr reach the log.
+    const child = spawn(CLAUDE_BIN, args, { cwd: dir, env, stdio: [...RUN_STDIO] });
+    const stdout = [];
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
+    child.stdout.on('data', (chunk) => {
+      stdoutBytes += chunk.length;
+      if (stdoutBytes <= MAX_RUN_OUTPUT_BYTES) stdout.push(chunk);
+    });
+    child.stderr.on('data', (chunk) => { stderrBytes += chunk.length; });
+    let settled = false;
+    const done = (ok, code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      rmSync(dir, { recursive: true, force: true });
+      const output = stdoutBytes <= MAX_RUN_OUTPUT_BYTES ? summarizeRun(Buffer.concat(stdout).toString('utf-8'))
+        : `output over ${MAX_RUN_OUTPUT_BYTES} bytes`;
+      log(`conversation ${id}: exit=${code ?? 'none'} ${output} stderrBytes=${stderrBytes}`);
+      resolve(ok);
+    };
     const timer = setTimeout(() => child.kill('SIGTERM'), RUN_TIMEOUT_MS);
-    child.on('error', (error) => { log(`could not start ${CLAUDE_BIN}: ${error.message}`); done(false); });
-    child.on('exit', (code) => done(code === 0));
+    child.on('error', (error) => { log(`could not start ${CLAUDE_BIN}: ${error.code ?? error.name}`); done(false); });
+    child.on('close', (code) => done(code === 0, code));
   });
 }
 
@@ -147,7 +170,7 @@ async function pass() {
       const lastIn = (page.items ?? []).find((message) => message.dir === 'in');
       if (!lastIn) continue;
       log(`running claude for conversation ${id}`);
-      const ok = await runClaude({ contactKey: item.contactKey, clientMessageId: clientMessageId(item.contactKey, lastIn.id) });
+      const ok = await runClaude({ id, contactKey: item.contactKey, clientMessageId: clientMessageId(item.contactKey, lastIn.id) });
       if (ok) {
         tracker.succeeded(fingerprint);
         continue;

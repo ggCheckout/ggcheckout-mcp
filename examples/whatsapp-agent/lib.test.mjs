@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import {
   buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, fillMcpConfig, fingerprintOf, insideWindow,
-  isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion,
+  isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion, RUN_STDIO, summarizeRun,
 } from './lib.mjs';
 
 const TZ = 'America/Sao_Paulo';
@@ -135,6 +135,52 @@ describe('run setup', () => {
     expect(after('--permission-prompts')).toBe('none');
     expect(args).not.toContain('--disallowedTools');
     expect(args).not.toContain('--dangerously-skip-permissions');
+    expect(after('--output-format')).toBe('json');
+  });
+
+  it('the run output is piped to the script, never inherited by the terminal', () => {
+    expect(RUN_STDIO).toEqual(['ignore', 'pipe', 'pipe']);
+  });
+});
+
+describe('run log line', () => {
+  const PHONE = '5531999998888';
+  const BUYER_TEXT = 'meu email é ana@example.com';
+  const result = {
+    type: 'result',
+    subtype: 'success',
+    is_error: false,
+    num_turns: 4,
+    duration_ms: 18250,
+    total_cost_usd: 0.03712,
+    usage: { input_tokens: 12, output_tokens: 410, cache_read_input_tokens: 9100, cache_creation_input_tokens: 2771 },
+    permission_denials: [{ tool_name: 'Bash', tool_input: { command: `echo ${PHONE}` } }],
+    result: `Respondi ${PHONE}: "${BUYER_TEXT}"`,
+  };
+
+  it('has the outcome, counts, duration and cost', () => {
+    expect(summarizeRun(JSON.stringify(result))).toBe(
+      'outcome=success error=false turns=4 durationMs=18250 in=12 out=410 cacheRead=9100 cacheWrite=2771 costUsd=0.0371 denials=1',
+    );
+  });
+
+  it('never carries the final text, a tool input, a phone or the buyer text', () => {
+    const line = summarizeRun(JSON.stringify(result));
+    expect(line).not.toContain(PHONE);
+    expect(line).not.toContain('ana@example.com');
+    expect(line).not.toContain('Respondi');
+    expect(line).not.toContain('echo');
+  });
+
+  it('logs only the size of an output that is not the JSON result', () => {
+    expect(summarizeRun(`Oi ${PHONE}`)).toBe('output not JSON (16 bytes)');
+    expect(summarizeRun(JSON.stringify({ type: 'assistant', text: PHONE }))).toMatch(/^unexpected output \(\d+ bytes\)$/);
+  });
+
+  it('does not echo an odd subtype or missing numbers', () => {
+    const line = summarizeRun(JSON.stringify({ type: 'result', subtype: `x ${PHONE}` }));
+    expect(line).not.toContain(PHONE);
+    expect(line).toContain('outcome=? error=false turns=? durationMs=?');
   });
 });
 

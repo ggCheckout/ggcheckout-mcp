@@ -126,6 +126,43 @@ export function buildTask({ contactKey, clientMessageId: id }) {
 }
 
 /**
+ * The stdio of a run: stdout and stderr piped to the script, never inherited, so nothing the run prints
+ * (the model's answer, a tool input) reaches the seller's terminal or log.
+ */
+export const RUN_STDIO = Object.freeze(['ignore', 'pipe', 'pipe']);
+
+const TOKEN_FIELDS = [
+  ['in', 'input_tokens'], ['out', 'output_tokens'], ['cacheRead', 'cache_read_input_tokens'], ['cacheWrite', 'cache_creation_input_tokens'],
+];
+
+/**
+ * One log line from the `--output-format json` result of a run: outcome, counts, duration and cost.
+ * The result carries the model's final text and `permission_denials` carries tool inputs, both with
+ * what the buyer wrote: only their size or count goes to the log, never their content.
+ */
+export function summarizeRun(stdout) {
+  let result;
+  try {
+    result = JSON.parse(stdout);
+  } catch {
+    return `output not JSON (${Buffer.byteLength(stdout)} bytes)`;
+  }
+  if (!result || typeof result !== 'object' || result.type !== 'result') return `unexpected output (${Buffer.byteLength(stdout)} bytes)`;
+  const number = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : '?');
+  const usage = result.usage && typeof result.usage === 'object' ? result.usage : {};
+  const parts = [
+    `outcome=${typeof result.subtype === 'string' && /^[a-z_]{1,40}$/.test(result.subtype) ? result.subtype : '?'}`,
+    `error=${result.is_error === true}`,
+    `turns=${number(result.num_turns)}`,
+    `durationMs=${number(result.duration_ms)}`,
+    ...TOKEN_FIELDS.map(([label, field]) => `${label}=${number(usage[field])}`),
+    `costUsd=${typeof result.total_cost_usd === 'number' ? result.total_cost_usd.toFixed(4) : '?'}`,
+    `denials=${Array.isArray(result.permission_denials) ? result.permission_denials.length : 0}`,
+  ];
+  return parts.join(' ');
+}
+
+/**
  * The claude flags of one run. Only the agent tools exist for the model: no built-in tool, no other
  * MCP server, no settings, hooks or CLAUDE.md of the seller, no skills, nobody to approve a prompt.
  */
@@ -142,6 +179,6 @@ export function buildClaudeArgs({ task, rules, mcpConfigPath, serverName, toolNa
     '--setting-sources', '',
     '--disable-slash-commands',
     '--no-session-persistence',
-    '--output-format', 'text',
+    '--output-format', 'json',
   ];
 }

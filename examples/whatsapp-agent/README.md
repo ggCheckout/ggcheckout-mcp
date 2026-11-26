@@ -47,6 +47,11 @@ Every option is listed at the top of `poll.mjs` (`GGCHECKOUT_API_URL`, `AGENT_TZ
   `AGENT_MAX_ATTEMPTS` (3); then that conversation state is given up and logged, until the contact writes
   again. One failing conversation never blocks the others. The log has a short hash per conversation, never
   a phone number or a buyer's text.
+- Claude's own output never reaches the terminal: the run uses `--output-format json`, its stdout and stderr
+  are piped to the script, and each run logs one line with the outcome, turns, duration, tokens, cost and
+  the size of stderr (`conversation 1a2b3c4d: exit=0 outcome=success error=false turns=4 durationMs=18250
+  in=12 out=410 cacheRead=9100 cacheWrite=2771 costUsd=0.0371 denials=0 stderrBytes=0`). The final text and
+  the tool inputs stay out, since they carry what the buyer wrote.
 - 404 on the pending list: the API has no assistant (production, or an older API). The script logs it and
   stops with exit code 2 instead of polling forever; point `GGCHECKOUT_API_URL` at the QA.
 - A `SIGKILL` (or a crash of the machine) skips the cleanup of a run: its temp directory, with the key in
