@@ -45,7 +45,7 @@ const privateNote = trimmedNote(AGENT_LIMITS.privateNoteMaxChars).nullable()
 
 const audio = messageText(AGENT_VOICE_LIMITS.textMaxChars).optional()
   .describe(`What a voice note in the store's voice says, sent before the bubbles; at most ${AGENT_VOICE_LIMITS.textMaxChars} characters, no link and no `
-    + `number to copy, ElevenLabs v3 tone tags allowed ([warmly], [laughs]). At most ${AGENT_VOICE_LIMITS.bubblesMaxWithVoice} bubbles with it. Omit for a text-only turn.`);
+    + `number to copy, ElevenLabs v3 tone tags allowed ([warmly], [laughs]). At most ${AGENT_VOICE_LIMITS.bubblesMaxWithVoice} bubbles with it. Only when store.voice in the state is true; omit for a text-only turn.`);
 
 const withNotice = <TArgs>(name: string, handler: (args: TArgs) => Promise<unknown>): ((args: TArgs) => Promise<ToolResult>) =>
   asThirdPartyData(WHATSAPP_THIRD_PARTY_NOTICE, createToolHandler(name, handler));
@@ -98,7 +98,8 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
         + 'approves it before it goes: carry on as if it was sent. clientMessageId is the id the run gave you for this conversation (add '
         + '-2, -3 for a second or third turn in the same run): sent again unchanged it never doubles the message. Refused with '
         + 'AGENT_CATEGORY_CAP: nothing more of that category today. AGENT_OPEN_PROBLEM: no selling while a problem is open. '
-        + '`audio` adds one voice note: a draft drops it, and `audio: "failed"` in the answer means only the bubbles went out. '
+        + '`audio` adds one voice note: a draft drops it, and `audio: "failed"` or `"unavailable"` in the answer means only the bubbles '
+        + 'went out. '
         + STOP + ' ' + REVIEW,
       inputSchema: {
         bubbles,

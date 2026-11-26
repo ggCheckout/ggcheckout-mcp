@@ -30,8 +30,9 @@ answer that the assistant is not available here.
   `sent` or `draft` (the seller approves a draft before it goes). `text` is gone.
 - **Voice:** `send_whatsapp_reply` takes an optional `audio`, the text of one voice note (at most 450
   characters, no link, ElevenLabs v3 tone tags) that the saas synthesizes with the store's key and sends
-  before the bubbles; a turn with it has at most 2 bubbles. A draft drops it, `audio: "failed"` means
-  only the bubbles went out, and a task run has no voice.
+  before the bubbles; a turn with it has at most 2 bubbles, and only when the state's `store.voice` is
+  true. The answer's `audio` says `sent`, `failed` or `unavailable` (the last two: only the bubbles went
+  out); a draft drops it, and a task run has no voice.
 - **`escalate_whatsapp_conversation` replaces `hold_whatsapp_conversation`:** a `code` and a one line
   `summary`. `refund`, `double_charge`, `unsolved`, `off_topic` and `unreadable_media` keep the
   assistant answering; `legal` and `human_requested` hold the conversation.
