@@ -35,9 +35,8 @@ export const trimmedNote = (max: number) => z.string().trim().min(1)
   .refine((reason) => codePoints(reason) <= max, { message: `At most ${max} characters` });
 
 /** A WhatsApp message text: not blank, at most `max` code points, kept as typed (the core counts it untrimmed). */
-export const messageText = (max: number) => z.string()
-  .refine((text) => text.trim().length > 0, { message: 'Message must not be empty' })
-  .refine((text) => codePoints(text) <= max, { message: `At most ${max} characters` });
+export const messageText = (max: number) => cappedText(max)
+  .refine((text) => text.trim().length > 0, { message: 'Message must not be empty' });
 
 /** A reply as the inbox route takes it: not blank, at most 4096 code points. */
 export const replyText = messageText(INBOX_LIMITS.replyMaxChars).describe(`Message text, up to ${INBOX_LIMITS.replyMaxChars} characters`);
