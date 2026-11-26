@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 export const BUYER_MESSAGING_URI = 'ggcheckout://docs/buyer-messaging';
+const MARKDOWN = 'text/markdown';
 
 /**
  * How the store talks to a buyer, for the seller's own Claude: the three bands, the owner of each
@@ -54,9 +55,9 @@ Tudo que foi enviado a um contato (aviso, funil, passo do assistente, resposta),
 /** Registered for a seller key only: an assistant run (`ggck_agent_`) reads its rules from its prompt. */
 export function registerBuyerMessagingDoc(server: McpServer): void {
   server.registerResource('buyer_messaging', BUYER_MESSAGING_URI, {
-    mimeType: 'text/markdown',
+    mimeType: MARKDOWN,
     description: 'How the store talks to its buyers (in pt-BR, for the seller): the three bands (notices, recovery and sales, conversation), the owner of each moment, the "assistant writes" funnel step and the daily limit per person.',
   }, async () => ({
-    contents: [{ uri: BUYER_MESSAGING_URI, mimeType: 'text/markdown', text: BUYER_MESSAGING_DOC }],
+    contents: [{ uri: BUYER_MESSAGING_URI, mimeType: MARKDOWN, text: BUYER_MESSAGING_DOC }],
   }));
 }
