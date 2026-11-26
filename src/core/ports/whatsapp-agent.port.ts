@@ -9,7 +9,7 @@ export interface WhatsAppAgentPort {
   readState(contactKey: string): Promise<AgentResponse>;
   sendReply(contactKey: string, input: AgentReplyInput): Promise<AgentResponse>;
   /** The message of a scheduled task; the task belongs to the run's contact. */
-  sendTaskReply(taskId: string, input: AgentTaskReplyInput): Promise<AgentResponse>;
+  sendTaskReply(contactKey: string, taskId: string, input: AgentTaskReplyInput): Promise<AgentResponse>;
   escalate(contactKey: string, input: AgentEscalationInput): Promise<AgentResponse>;
   /** Purchases made with the conversation's phone only. */
   findPurchases(contactKey: string): Promise<AgentResponse>;

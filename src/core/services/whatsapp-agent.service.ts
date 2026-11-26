@@ -22,7 +22,9 @@ export class WhatsAppAgentService {
   }
 
   async sendReply(contactKey: string, input: AgentReplyInput): Promise<AgentResponse> { return await this.port.sendReply(contactKey, input); }
-  async sendTaskReply(taskId: string, input: AgentTaskReplyInput): Promise<AgentResponse> { return await this.port.sendTaskReply(taskId, input); }
+  async sendTaskReply(contactKey: string, taskId: string, input: AgentTaskReplyInput): Promise<AgentResponse> {
+    return await this.port.sendTaskReply(contactKey, taskId, input);
+  }
   async escalate(contactKey: string, input: AgentEscalationInput): Promise<AgentResponse> { return await this.port.escalate(contactKey, input); }
   async findPurchases(contactKey: string): Promise<AgentResponse> { return await this.port.findPurchases(contactKey); }
   async sendPurchaseAccess(contactKey: string, paymentId: string): Promise<AgentResponse> {

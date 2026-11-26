@@ -242,7 +242,7 @@ describe('agent tools', () => {
     expect(Object.keys(send?.inputSchema.properties ?? {}).sort()).toEqual(['bubbles', 'clientMessageId', 'privateNote']);
     const { category: _category, ...message } = TURN;
     await client.callTool({ name: 'send_whatsapp_reply', arguments: { ...message, category: 'sale' } });
-    expect(service.sendTaskReply).toHaveBeenCalledWith(TASK, message);
+    expect(service.sendTaskReply).toHaveBeenCalledWith(CONTACT, TASK, message);
     expect(service.sendReply).not.toHaveBeenCalled();
   });
 

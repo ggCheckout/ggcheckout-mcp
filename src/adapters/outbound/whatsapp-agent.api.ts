@@ -12,7 +12,6 @@ const AGENT_ROUTES_MISSING = 'O assistente de WhatsApp não está disponível ne
 
 const conversation = (contactKey: string) => `${BASE}/conversations/${seg(contactKey)}`;
 const purchase = (contactKey: string, paymentId: string) => `${conversation(contactKey)}/purchases/${seg(paymentId)}`;
-const task = (taskId: string) => `${BASE}/tasks/${seg(taskId)}`;
 
 /** The refusals the API answers with a code; AGENT_KEY_REFUSED is the 401 and has none. */
 const REFUSAL_CODES = (Object.keys(AGENT_REFUSALS) as AgentRefusalCode[]).filter((code) => code !== 'AGENT_KEY_REFUSED');
@@ -68,8 +67,8 @@ export class WhatsAppAgentApiAdapter implements WhatsAppAgentPort {
     return agentCall(() => this.http.post<AgentResponse>(`${conversation(contactKey)}/reply`, { bubbles, clientMessageId, category, privateNote }));
   }
 
-  sendTaskReply(taskId: string, { bubbles, clientMessageId, privateNote }: AgentTaskReplyInput): Promise<AgentResponse> {
-    return agentCall(() => this.http.post<AgentResponse>(`${task(taskId)}/messages`, { bubbles, clientMessageId, privateNote }));
+  sendTaskReply(contactKey: string, taskId: string, { bubbles, clientMessageId, privateNote }: AgentTaskReplyInput): Promise<AgentResponse> {
+    return agentCall(() => this.http.post<AgentResponse>(`${conversation(contactKey)}/tasks/${seg(taskId)}/messages`, { bubbles, clientMessageId, privateNote }));
   }
 
   escalate(contactKey: string, { code, summary }: AgentEscalationInput): Promise<AgentResponse> {

@@ -35,8 +35,8 @@ describe('WhatsAppAgentApiAdapter', () => {
     expect(http.get).toHaveBeenLastCalledWith(`${BASE}/${KEY}/state`);
     await adapter.sendReply(KEY, TURN);
     expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/reply`, TURN);
-    await adapter.sendTaskReply(TASK, { bubbles: ['Oi, Ana!'], clientMessageId: 't1', privateNote: null });
-    expect(http.post).toHaveBeenLastCalledWith(`/api/whatsapp/agent/tasks/${TASK}/messages`, { bubbles: ['Oi, Ana!'], clientMessageId: 't1', privateNote: null });
+    await adapter.sendTaskReply(KEY, TASK, { bubbles: ['Oi, Ana!'], clientMessageId: 't1', privateNote: null });
+    expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/tasks/${TASK}/messages`, { bubbles: ['Oi, Ana!'], clientMessageId: 't1', privateNote: null });
     await adapter.escalate(KEY, { code: 'unreadable_media', summary: 'mandou áudio' });
     expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/escalate`, { code: 'unreadable_media', summary: 'mandou áudio' });
   });
