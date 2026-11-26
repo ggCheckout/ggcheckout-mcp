@@ -63,7 +63,7 @@ const REVIEW = 'Refused with a code starting with AGENT_REVIEW_: rewrite only wh
  * The run is pinned to one conversation: `contact` comes from the server's environment and no tool
  * takes a `contactKey`, so text a buyer writes can never steer the model to another contact's data.
  * A run of a scheduled task is also pinned to that task: its reply goes to the task's route, with the
- * category the task kind gives.
+ * category the task objective gives.
  */
 export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppAgentService, { contact, taskId }: AgentRun): void {
   server.registerTool('read_whatsapp_conversation', {
