@@ -163,7 +163,7 @@ export const AGENT_REFUSALS = {
   AGENT_REVIEW_PRICE_ANCHOR: 'Refused: a "de R$ X por R$ Y" or crossed-out price. Never compare prices; rewrite and send again with the same clientMessageId.',
   AGENT_REVIEW_FOREIGN_LINK: 'Refused: a link no tool gave you in this conversation. Use only links from the tools; rewrite and send again with the same clientMessageId.',
   AGENT_REVIEW_REFUND_MENTION: 'Refused: you brought up refund, chargeback, guarantee or giving up to someone who bought. Only the contact brings it up; rewrite and send again with the same clientMessageId.',
-  AGENT_REVIEW_SHAPE: 'Refused: the turn is not in the expected shape (at most 3 bubbles). Rewrite and send again with the same clientMessageId.',
+  AGENT_REVIEW_SHAPE: 'Refused: the turn is not in the expected shape (at most 3 bubbles, or 2 with audio; audio with no link, at most 450 characters). Rewrite and send again with the same clientMessageId.',
   AGENT_UNAVAILABLE: 'The assistant is not available in this environment (it runs only on the QA environment for now): stop now and do not try any other tool.',
   AGENT_KEY_REFUSED: 'The agent key was refused: the seller turned the assistant off or revoked the key. Stop now and call no other tool.',
 } as const;

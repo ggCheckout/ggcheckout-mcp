@@ -28,6 +28,10 @@ answer that the assistant is not available here.
   (`support`, `retention`, `free` or `sale`; `recovery` and `access` are proven by the saas, never
   declared), `privateNote` (one line for the seller, or null) and `clientMessageId`. The answer says
   `sent` or `draft` (the seller approves a draft before it goes). `text` is gone.
+- **Voice:** `send_whatsapp_reply` takes an optional `audio`, the text of one voice note (at most 450
+  characters, no link, ElevenLabs v3 tone tags) that the saas synthesizes with the store's key and sends
+  before the bubbles; a turn with it has at most 2 bubbles. A draft drops it, `audio: "failed"` means
+  only the bubbles went out, and a task run has no voice.
 - **`escalate_whatsapp_conversation` replaces `hold_whatsapp_conversation`:** a `code` and a one line
   `summary`. `refund`, `double_charge`, `unsolved`, `off_topic` and `unreadable_media` keep the
   assistant answering; `legal` and `human_requested` hold the conversation.
@@ -54,7 +58,7 @@ answer that the assistant is not available here.
   - it runs the scheduled tasks of the pending page after the waiting conversations;
   - `AGENT_SELLER_NAME` is gone: the store's name, persona and policies come from the API;
   - the prompt follows phase 2 (problem first, retention before a refund, escalation in two kinds, ask
-    for the e-mail before escalating, catalog, scheduled tasks).
+    for the e-mail before escalating, catalog, scheduled tasks, when to speak with a voice note).
 
 ## 0.7.0
 

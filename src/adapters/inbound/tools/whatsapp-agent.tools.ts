@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { WhatsAppAgentService } from '../../../core/services/whatsapp-agent.service.js';
-import { AGENT_DECLARED_CATEGORIES, AGENT_ESCALATION_CODES, AGENT_LIMITS } from '../../../core/types/whatsapp-agent.js';
+import { AGENT_DECLARED_CATEGORIES, AGENT_ESCALATION_CODES, AGENT_LIMITS, AGENT_VOICE_LIMITS } from '../../../core/types/whatsapp-agent.js';
 import { INBOX_LIMITS } from '../../../core/types/whatsapp-inbox.js';
 import { createToolHandler, type ToolResult } from '../tool-handler.js';
 import { asThirdPartyData, WHATSAPP_THIRD_PARTY_NOTICE } from '../../../shared/third-party-data.js';
@@ -42,6 +42,10 @@ const bubbles = z.array(messageText(AGENT_LIMITS.bubbleMaxChars)).min(AGENT_LIMI
 
 const privateNote = trimmedNote(AGENT_LIMITS.privateNoteMaxChars).nullable()
   .describe('One line for the seller, never sent to the contact: where what you said came from ("achei Pix pendente de 14/11"). null when there is nothing to note.');
+
+const audio = messageText(AGENT_VOICE_LIMITS.textMaxChars).optional()
+  .describe(`What a voice note in the store's voice says, sent before the bubbles; at most ${AGENT_VOICE_LIMITS.textMaxChars} characters, no link and no `
+    + `number to copy, ElevenLabs v3 tone tags allowed ([warmly], [laughs]). At most ${AGENT_VOICE_LIMITS.bubblesMaxWithVoice} bubbles with it. Omit for a text-only turn.`);
 
 const withNotice = <TArgs>(name: string, handler: (args: TArgs) => Promise<unknown>): ((args: TArgs) => Promise<ToolResult>) =>
   asThirdPartyData(WHATSAPP_THIRD_PARTY_NOTICE, createToolHandler(name, handler));
@@ -94,6 +98,7 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
         + 'approves it before it goes: carry on as if it was sent. clientMessageId is the id the run gave you for this conversation (add '
         + '-2, -3 for a second or third turn in the same run): sent again unchanged it never doubles the message. Refused with '
         + 'AGENT_CATEGORY_CAP: nothing more of that category today. AGENT_OPEN_PROBLEM: no selling while a problem is open. '
+        + '`audio` adds one voice note: a draft drops it, and `audio: "failed"` in the answer means only the bubbles went out. '
         + STOP + ' ' + REVIEW,
       inputSchema: {
         bubbles,
@@ -103,9 +108,10 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
           + '(small talk, goodbyes, off topic) or "sale" (talking about a product to sell). A link from a tool sets the category itself.',
         ),
         privateNote,
+        audio,
       },
-    }, createToolHandler('send_whatsapp_reply', async ({ bubbles: texts, clientMessageId: id, category, privateNote: note }) =>
-      service.sendReply(contact, { bubbles: texts, clientMessageId: id, category, privateNote: note })));
+    }, createToolHandler('send_whatsapp_reply', async ({ bubbles: texts, clientMessageId: id, category, privateNote: note, audio: voice }) =>
+      service.sendReply(contact, { bubbles: texts, clientMessageId: id, category, privateNote: note, ...(voice === undefined ? {} : { audio: voice }) })));
   }
 
   server.registerTool('escalate_whatsapp_conversation', {

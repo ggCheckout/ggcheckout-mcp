@@ -749,9 +749,10 @@ Registered only with the assistant key, and then alone, pinned to the contact in
 - `read_whatsapp_conversation`: the messages and the state the model follows (the store's persona and
   policies, counters per category, an open escalation, the seller handing the conversation back).
 - `send_whatsapp_reply`: one turn of 1 to 3 bubbles, with a declared `category` (`support`, `retention`,
-  `free`, `sale`), a `privateNote` for the seller and a `clientMessageId` (the same one on a retry). The
-  saas decides whether it goes or waits as a draft for the seller. In a task run it writes the task, with
-  no category.
+  `free`, `sale`), a `privateNote` for the seller, an optional `audio` (the text of one voice note, at
+  most 450 characters, that the saas synthesizes and sends before at most 2 bubbles) and a
+  `clientMessageId` (the same one on a retry). The saas decides whether it goes or waits as a draft for the seller. In a task run it writes the task, with
+  no category and no voice.
 - `escalate_whatsapp_conversation`: a code and a summary for the seller. `refund`, `double_charge`,
   `unsolved`, `off_topic` and `unreadable_media` keep the assistant answering; `legal` and
   `human_requested` hold the conversation.

@@ -235,13 +235,22 @@ describe('agent tools', () => {
     expect(service.sendReply).toHaveBeenCalledTimes(1);
   });
 
+  it('send_whatsapp_reply passes the voice text, counted in code points, only when the model wrote one', async () => {
+    const client = await agentClient();
+    const atCap = `[warmly] ${'😀'.repeat(200)}${'a'.repeat(241)}`;
+    expect((await client.callTool({ name: 'send_whatsapp_reply', arguments: { ...TURN, audio: atCap } })).isError).toBeFalsy();
+    expect(service.sendReply).toHaveBeenLastCalledWith(CONTACT, { ...TURN, audio: atCap });
+    await client.callTool({ name: 'send_whatsapp_reply', arguments: TURN });
+    expect(service.sendReply).toHaveBeenLastCalledWith(CONTACT, TURN);
+  });
+
   it('a run of a scheduled task sends to the task, without a category the model could choose', async () => {
     const client = await agentClient(TASK);
     const { tools } = await client.listTools();
     const send = tools.find((t) => t.name === 'send_whatsapp_reply');
     expect(Object.keys(send?.inputSchema.properties ?? {}).sort()).toEqual(['bubbles', 'clientMessageId', 'privateNote']);
     const { category: _category, ...message } = TURN;
-    await client.callTool({ name: 'send_whatsapp_reply', arguments: { ...message, category: 'sale' } });
+    await client.callTool({ name: 'send_whatsapp_reply', arguments: { ...message, category: 'sale', audio: 'Oi, tudo bem?' } });
     expect(service.sendTaskReply).toHaveBeenCalledWith(CONTACT, TASK, message);
     expect(service.sendReply).not.toHaveBeenCalled();
   });
@@ -254,6 +263,8 @@ describe('agent tools', () => {
     ['send_whatsapp_reply', { ...TURN, category: 'recovery' }],
     ['send_whatsapp_reply', { ...TURN, category: 'access' }],
     ['send_whatsapp_reply', { ...TURN, privateNote: 'a'.repeat(301) }],
+    ['send_whatsapp_reply', { ...TURN, audio: '   ' }],
+    ['send_whatsapp_reply', { ...TURN, audio: 'a'.repeat(451) }],
     ['escalate_whatsapp_conversation', { code: 'refund', summary: '   ' }],
     ['escalate_whatsapp_conversation', { code: 'refund', summary: `${'😀'.repeat(250)}${'a'.repeat(251)}` }],
     ['escalate_whatsapp_conversation', { code: 'angry', summary: 'x' }],

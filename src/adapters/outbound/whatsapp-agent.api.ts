@@ -63,8 +63,10 @@ export class WhatsAppAgentApiAdapter implements WhatsAppAgentPort {
     return agentCall(() => this.http.get<AgentResponse>(`${conversation(contactKey)}/state`));
   }
 
-  sendReply(contactKey: string, { bubbles, clientMessageId, category, privateNote }: AgentReplyInput): Promise<AgentResponse> {
-    return agentCall(() => this.http.post<AgentResponse>(`${conversation(contactKey)}/reply`, { bubbles, clientMessageId, category, privateNote }));
+  sendReply(contactKey: string, { bubbles, clientMessageId, category, privateNote, audio }: AgentReplyInput): Promise<AgentResponse> {
+    // A text-only turn sends no `audio` key: the saas body is strict.
+    const body = { bubbles, clientMessageId, category, privateNote, ...(audio === undefined ? {} : { audio }) };
+    return agentCall(() => this.http.post<AgentResponse>(`${conversation(contactKey)}/reply`, body));
   }
 
   sendTaskReply(contactKey: string, taskId: string, { bubbles, clientMessageId, privateNote }: AgentTaskReplyInput): Promise<AgentResponse> {

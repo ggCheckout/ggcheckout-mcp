@@ -16,6 +16,16 @@ export const AGENT_LIMITS = {
 } as const;
 
 /**
+ * The voice of a turn, checked by the saas review before it synthesizes the note (spec section 3.2):
+ * the model writes text, the saas turns it into the VoiceNote of the core contract. A turn with voice
+ * carries at most 2 bubbles.
+ */
+export const AGENT_VOICE_LIMITS = {
+  textMaxChars: 450,
+  bubblesMaxWithVoice: 2,
+} as const;
+
+/**
  * The categories the model declares on a turn. `recovery` and `access` are never declared: the saas
  * proves them by the link it minted or the tool used, and the core refuses them as declared.
  */
@@ -50,10 +60,12 @@ export interface AgentReplyInput {
   category: AgentDeclaredCategory;
   /** One line for the seller, never sent to the contact. */
   privateNote: string | null;
+  /** What the voice note says, synthesized by the saas and sent before the bubbles; absent for a text-only turn. */
+  audio?: string;
 }
 
 /** The message of a scheduled task: its category comes from the task kind, not from the model. */
-export type AgentTaskReplyInput = Omit<AgentReplyInput, 'category'>;
+export type AgentTaskReplyInput = Omit<AgentReplyInput, 'category' | 'audio'>;
 
 export interface AgentEscalationInput {
   code: AgentEscalationCode;
