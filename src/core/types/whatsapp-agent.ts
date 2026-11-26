@@ -66,7 +66,7 @@ export interface AgentReplyInput {
   audio?: string;
 }
 
-/** The message of a scheduled task: its category comes from the task kind, not from the model. */
+/** The message of a scheduled task: its category comes from the task objective, not from the model. */
 export type AgentTaskReplyInput = Omit<AgentReplyInput, 'category' | 'audio'>;
 
 export interface AgentEscalationInput {

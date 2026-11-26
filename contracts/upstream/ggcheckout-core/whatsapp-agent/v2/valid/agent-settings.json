@@ -22,11 +22,6 @@
       "free": 2,
       "retentionAttempts": 2
     },
-    "proactive": {
-      "recoveryEnabled": true,
-      "welcomeEnabled": false,
-      "upsellEnabled": false
-    },
     "catalog": [
       {
         "productId": "0192a000-0000-4000-8000-000000000010",
@@ -34,6 +29,11 @@
         "pitch": "PDF com 30 projetos passo a passo, bom pra quem esta comecando"
       }
     ],
+    "voice": {
+      "configured": true,
+      "last4": "a1B2",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM"
+    },
     "updatedAt": "2026-11-26T14:00:00.000Z"
   }
 }

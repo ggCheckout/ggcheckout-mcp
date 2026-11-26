@@ -1,0 +1,8 @@
+{
+  "def": "AgentVoiceLookupBody",
+  "body": {
+    "provider": "waha",
+    "sessionId": "loja-x-chip-1",
+    "metaNumberId": null
+  }
+}

@@ -12,8 +12,8 @@ import { describe, expect, it } from 'vitest';
  */
 const UPSTREAM_PINS = {
   'ggcheckout-core/whatsapp-agent/v2': {
-    commit: '2d9297404900ede5a393b2c14e9b84594fef5969',
-    manifestSha256: '8fd7505aeced008d08efcf8a47bfba7c59019142e880a84c50bce2b21a775777',
+    commit: '2dd43aa8d90ba6e91e35c8eb58e34a969223dbf7',
+    manifestSha256: '108bb166c8a068b118cf769b00493b6e92c243eb2af3084eafc333b32d45b235',
   },
   'saas-checkout/buyer-messaging/overview/v1': {
     commit: '8f1ed336d4485faa63fa3804f64df8b33f4bfb8c',

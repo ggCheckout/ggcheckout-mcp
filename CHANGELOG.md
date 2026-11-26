@@ -48,7 +48,7 @@ answer that the assistant is not available here.
   the run answers the conversation. A malformed value refuses to start.
 - New refusals, each with what to do next: `AGENT_GLOBAL_CAP` (replaces `AGENT_REPLY_CAP`),
   `AGENT_CATEGORY_CAP`, `AGENT_ALREADY_ESCALATED`, `AGENT_OPEN_PROBLEM`, `AGENT_RETENTION_GATE`,
-  `AGENT_ASK_EMAIL_FIRST`, `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED`, `AGENT_DAILY_PROACTIVE_CAP`,
+  `AGENT_ASK_EMAIL_FIRST`, `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED`, `AGENT_DAILY_CAP`,
   and the saas review: `AGENT_REVIEW_FALSE_URGENCY`, `AGENT_REVIEW_PRICE_ANCHOR`,
   `AGENT_REVIEW_FOREIGN_LINK`, `AGENT_REVIEW_REFUND_MENTION`, `AGENT_REVIEW_SHAPE` (rewrite and send again
   with the same `clientMessageId`), and the catalog link: `AGENT_CATALOG_NOT_FOUND`, `AGENT_CATALOG_UNAVAILABLE`.
@@ -57,7 +57,9 @@ answer that the assistant is not available here.
 - Recipe (`examples/whatsapp-agent/`):
   - the run's output no longer reaches the terminal (`--output-format json`, piped stdio); each run
     logs one line with outcome, turns, duration, tokens and cost, never the buyer's text;
-  - it runs the scheduled tasks of the pending page after the waiting conversations;
+  - it runs the scheduled tasks of the pending page after the waiting conversations, by the task's
+    `objective` (`pix_reminder`, `welcome`, `offer`, `free`), with the seller's `instruction` of a `free`
+    task quoted in the run's prompt;
   - `AGENT_SELLER_NAME` is gone: the store's name, persona and policies come from the API;
   - the prompt follows phase 2 (problem first, retention before a refund, escalation in two kinds, ask
     for the e-mail before escalating, catalog, scheduled tasks, when to speak with a voice note) and

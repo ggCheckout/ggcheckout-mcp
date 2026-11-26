@@ -14,7 +14,8 @@
     "tasks": [
       {
         "id": "0192a000-0000-4000-8000-000000000020",
-        "kind": "recovery",
+        "objective": "pix_reminder",
+        "instruction": null,
         "contactKey": "5511912345678",
         "paymentId": "pay_0192a0000000",
         "productId": "0192a000-0000-4000-8000-000000000010",

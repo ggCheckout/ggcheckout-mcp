@@ -22,12 +22,12 @@
       "free": 2,
       "retentionAttempts": 2
     },
-    "proactive": {
-      "recoveryEnabled": true,
-      "welcomeEnabled": false,
-      "upsellEnabled": false
-    },
     "catalog": [],
+    "voice": {
+      "configured": false,
+      "last4": null,
+      "voiceId": null
+    },
     "updatedAt": null
   }
 }

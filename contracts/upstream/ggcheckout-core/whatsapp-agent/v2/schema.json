@@ -42,9 +42,69 @@
     "pendingTasksMax": 20,
     "voiceNoteMaxSeconds": 60,
     "voiceNoteUrlMaxChars": 2048,
-    "turnClientMessageIdMaxChars": 56
+    "turnClientMessageIdMaxChars": 56,
+    "taskInstructionMaxCodePoints": 500,
+    "voiceCiphertextMaxChars": 4096,
+    "voiceIdMaxChars": 64
   },
   "x-routes": [
+    {
+      "method": "POST",
+      "path": "/internal/whatsapp-inbox/agent/tasks/{taskId}/skip",
+      "scope": "whatsapp-inbox:agent",
+      "request": "AgentTaskSkipBody",
+      "responses": {
+        "200": "AgentTaskResult (also when the task was already resolved: the stored result)",
+        "404": "AgentRefusalError (AGENT_TASK_NOT_FOUND)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/internal/whatsapp-inbox/agent-voice",
+      "scope": "whatsapp-inbox:reply",
+      "request": "AgentVoicePutBody",
+      "note": "The panel only: the agent key never writes the voice key.",
+      "responses": {
+        "200": "AgentVoice",
+        "409": "AgentRefusalError (AGENT_VOICE_KEY_MISSING)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/internal/whatsapp-inbox/agent-voice",
+      "scope": "whatsapp-inbox:reply",
+      "note": "Removes the key and the voice; answers configured false.",
+      "responses": {
+        "200": "AgentVoice",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/internal/whatsapp-inbox/agent-voice/lookup",
+      "scope": "whatsapp-inbox:ingest",
+      "request": "AgentVoiceLookupBody",
+      "note": "System scope of the webhook, once per received voice note (never per text). The answer carries the key: nothing of it is logged.",
+      "responses": {
+        "200": "AgentVoiceLookup",
+        "404": "AgentRefusalError (AGENT_VOICE_NOT_FOUND)",
+        "400": "InboxErrorBody",
+        "403": "InboxErrorBody",
+        "429": "RateLimitedBody",
+        "503": "InboxErrorBody"
+      }
+    },
     {
       "method": "GET",
       "path": "/internal/whatsapp-inbox/agent/pending",
@@ -149,7 +209,7 @@
       "path": "/internal/whatsapp-inbox/agent/settings",
       "scope": "whatsapp-inbox:agent",
       "responses": {
-        "200": "AgentSettings",
+        "200": "AgentSettingsForAgent",
         "400": "InboxErrorBody",
         "403": "InboxErrorBody",
         "429": "RateLimitedBody",
@@ -165,7 +225,7 @@
         "201": "AgentReplyResponse",
         "200": "AgentReplyResponse (same clientMessageId replayed)",
         "404": "AgentRefusalError (AGENT_TASK_NOT_FOUND)",
-        "409": "AgentRefusalError (AGENT_TASK_EXPIRED, AGENT_DAILY_PROACTIVE_CAP, AGENT_HELD, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT) or ReplyRefusedError",
+        "409": "AgentRefusalError (AGENT_TASK_EXPIRED, AGENT_DAILY_CAP, AGENT_HELD, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT) or ReplyRefusedError",
         "422": "ReplyRefusedError",
         "429": "AgentRefusalError (AGENT_CATEGORY_CAP)",
         "400": "InboxErrorBody",
@@ -1194,7 +1254,7 @@
       ]
     },
     "AgentRefusalError": {
-      "description": "A refusal of the assistant. 409: AGENT_HELD, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT, AGENT_ALREADY_OFFERED, AGENT_UPSELL_NOT_OFFERED, AGENT_ALREADY_ESCALATED (same code open, or released less than 24 h ago), AGENT_OPEN_PROBLEM (a sale turn while an escalation is open), AGENT_RETENTION_GATE (refund before the seller's retention attempts were SENT), AGENT_ASK_EMAIL_FIRST (purchase escalation with the phone search empty, no e-mail search and no reply since), AGENT_SETTINGS_CHANGED, AGENT_TASK_EXPIRED, AGENT_DAILY_PROACTIVE_CAP. 429: AGENT_GLOBAL_CAP, AGENT_CATEGORY_CAP (with category). 404: AGENT_CONVERSATION_NOT_FOUND, AGENT_DRAFT_NOT_FOUND, AGENT_TASK_NOT_FOUND.",
+      "description": "A refusal of the assistant. 409: AGENT_HELD, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT, AGENT_ALREADY_OFFERED, AGENT_UPSELL_NOT_OFFERED, AGENT_ALREADY_ESCALATED (same code open, or released less than 24 h ago), AGENT_OPEN_PROBLEM (a sale turn while an escalation is open), AGENT_RETENTION_GATE (refund before the seller's retention attempts were SENT), AGENT_ASK_EMAIL_FIRST (purchase escalation with the phone search empty, no e-mail search and no reply since), AGENT_SETTINGS_CHANGED, AGENT_TASK_EXPIRED (the task is no longer pending: resolved or past its deadline), AGENT_DAILY_CAP (the contact already got the seller's daily number of recovery or sale messages: the task waits for the next BRT day inside its deadline), AGENT_VOICE_KEY_MISSING. 429: AGENT_GLOBAL_CAP, AGENT_CATEGORY_CAP (with category). 404: AGENT_CONVERSATION_NOT_FOUND, AGENT_DRAFT_NOT_FOUND, AGENT_TASK_NOT_FOUND, AGENT_VOICE_NOT_FOUND.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -1219,7 +1279,9 @@
             "AGENT_SETTINGS_CHANGED",
             "AGENT_TASK_NOT_FOUND",
             "AGENT_TASK_EXPIRED",
-            "AGENT_DAILY_PROACTIVE_CAP"
+            "AGENT_DAILY_CAP",
+            "AGENT_VOICE_KEY_MISSING",
+            "AGENT_VOICE_NOT_FOUND"
           ]
         },
         "category": {
@@ -1852,16 +1914,16 @@
       }
     },
     "AgentSettings": {
-      "description": "The seller's assistant settings. A seller who never saved reads the GG defaults with updatedAt null.",
+      "description": "The seller's assistant settings. A seller who never saved reads the GG defaults with updatedAt null. voice is the panel view (never the key); the key has its own routes (agent-voice).",
       "type": "object",
       "additionalProperties": false,
       "required": [
         "policies",
         "persona",
         "limits",
-        "proactive",
         "catalog",
-        "updatedAt"
+        "updatedAt",
+        "voice"
       ],
       "properties": {
         "policies": {
@@ -2012,26 +2074,6 @@
             }
           }
         },
-        "proactive": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "recoveryEnabled",
-            "welcomeEnabled",
-            "upsellEnabled"
-          ],
-          "properties": {
-            "recoveryEnabled": {
-              "type": "boolean"
-            },
-            "welcomeEnabled": {
-              "type": "boolean"
-            },
-            "upsellEnabled": {
-              "type": "boolean"
-            }
-          }
-        },
         "catalog": {
           "type": "array",
           "maxItems": 20,
@@ -2067,6 +2109,9 @@
         },
         "updatedAt": {
           "$ref": "#/$defs/nullableInstant"
+        },
+        "voice": {
+          "$ref": "#/$defs/AgentVoice"
         }
       }
     },
@@ -2078,7 +2123,6 @@
         "policies",
         "persona",
         "limits",
-        "proactive",
         "catalog",
         "expectedUpdatedAt"
       ],
@@ -2231,26 +2275,6 @@
             }
           }
         },
-        "proactive": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "recoveryEnabled",
-            "welcomeEnabled",
-            "upsellEnabled"
-          ],
-          "properties": {
-            "recoveryEnabled": {
-              "type": "boolean"
-            },
-            "welcomeEnabled": {
-              "type": "boolean"
-            },
-            "upsellEnabled": {
-              "type": "boolean"
-            }
-          }
-        },
         "catalog": {
           "type": "array",
           "maxItems": 20,
@@ -2290,12 +2314,13 @@
       }
     },
     "AgentTask": {
-      "description": "A contact with a live task (due, or past due inside its deadline) reads as a conversation even before it ever wrote: GET state answers a free state (counters at zero), and offer and marks accept it, creating the summary. A contact with neither keeps answering 404 AGENT_CONVERSATION_NOT_FOUND. A message the assistant starts. recovery: an unpaid PIX (dueAt 15 min, deadlineAt 3 h; past the deadline unsent, the seller's pix_unpaid funnel runs instead). recovery_followup: 3 h after the contact replied and went quiet. welcome: 3 to 8 min after a paid purchase (deadline 30 min). upsell: 24 to 72 h after it. At most one started message per contact per day.",
+      "description": "A message the assistant starts for the journey block 'Assistente escreve'. The journey creates the task when a buyer reaches the block; it is listed in PendingPage.tasks from dueAt until deadlineAt (dueAt moves to the next BRT day when the contact's daily cap is full, and the task expires with daily_cap if that day is past the deadline). A task resolves ONCE (AgentTaskResult) and the journey follows 'Mandou' on sent and 'Nao mandou ate o prazo' on expired or refused. A contact with a live task reads as a conversation even before it ever wrote (GET state answers a free state with counters at zero; offer and marks accept it). Voice notes are never part of a task.",
       "type": "object",
       "additionalProperties": false,
       "required": [
         "id",
-        "kind",
+        "objective",
+        "instruction",
         "contactKey",
         "paymentId",
         "productId",
@@ -2306,12 +2331,17 @@
         "id": {
           "$ref": "#/$defs/uuid"
         },
-        "kind": {
-          "enum": [
-            "recovery",
-            "recovery_followup",
-            "welcome",
-            "upsell"
+        "objective": {
+          "$ref": "#/$defs/agentObjective"
+        },
+        "instruction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/taskInstruction"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "contactKey": {
@@ -2339,10 +2369,38 @@
         "deadlineAt": {
           "$ref": "#/$defs/isoInstant"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "objective": {
+                "const": "free"
+              }
+            },
+            "required": [
+              "objective"
+            ]
+          },
+          "then": {
+            "properties": {
+              "instruction": {
+                "type": "string"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "instruction": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
     },
     "AgentTaskReplyBody": {
-      "description": "The task's message. Always sent (a started message is never a draft); category is recovery for recovery tasks, sale for upsell, free for welcome. contactKey is the contact the saas reviewed the links against: a task of another contact (or of another seller) answers 404 AGENT_TASK_NOT_FOUND, never revealing that it exists.",
+      "description": "The task's message. Always sent (a started message is never a draft, never a voice note); the category follows the objective: pix_reminder recovery, offer sale, welcome and free free. contactKey is the contact the saas reviewed the links against: a task of another contact (or of another seller) answers 404 AGENT_TASK_NOT_FOUND, never revealing that it exists. The accepted turn resolves the task as sent.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -2370,6 +2428,609 @@
       "description": "The clientMessageId of a turn: at most 56, because bubble i (i >= 1) is stored under <id>-b<i> and the voice note under <id>-audio, and every derived id stays inside the 64 of the delivery idempotency.",
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]{1,56}$"
+    },
+    "agentObjective": {
+      "description": "What the journey block asks the assistant to write. pix_reminder: the unpaid PIX (category recovery). welcome: after the purchase, no link, no question, no offer (category free). offer: the next upsell or a catalog item with its link (category sale). free: the seller's instruction (category free).",
+      "enum": [
+        "pix_reminder",
+        "welcome",
+        "offer",
+        "free"
+      ]
+    },
+    "taskInstruction": {
+      "description": "The seller's own instruction configured on a free block: STORE text, handed to the model inside the store block, never inside the untrusted buyer block. Up to 500 code points.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "\\S"
+    },
+    "taskResultCode": {
+      "description": "Why a task did not resolve as sent. expired: deadline (nothing sent in time), daily_cap (the contact's daily cap never opened before the deadline). refused at creation or send: agent_disabled (no live agent key), opted_out, contact_exited (SAIR), held, no_phone. refused by the saas (POST .../skip): open_escalation, retention_or_refund, already_bought, nothing_to_say.",
+      "enum": [
+        "deadline",
+        "daily_cap",
+        "agent_disabled",
+        "opted_out",
+        "contact_exited",
+        "held",
+        "no_phone",
+        "open_escalation",
+        "retention_or_refund",
+        "already_bought",
+        "nothing_to_say"
+      ]
+    },
+    "AgentTaskResult": {
+      "description": "The final result of a task, decided once under the task's row lock: a send that loses the race to the deadline answers 409 AGENT_TASK_EXPIRED, and an expiry that loses to the send reads sent. The journey run event shows it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "status",
+        "code",
+        "at"
+      ],
+      "properties": {
+        "taskId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "status": {
+          "enum": [
+            "sent",
+            "expired",
+            "refused"
+          ]
+        },
+        "code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/taskResultCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "at": {
+          "$ref": "#/$defs/isoInstant"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "sent"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "code": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "code": {
+                "$ref": "#/$defs/taskResultCode"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "expired"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "code": {
+                "enum": [
+                  "deadline",
+                  "daily_cap"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AgentTaskSkipBody": {
+      "description": "The saas decided the task should not be written (the offer conditions of the spec, or the model had nothing to say): the task resolves refused at once and the journey takes 'Nao mandou' without waiting for the deadline.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contactKey",
+        "reason"
+      ],
+      "properties": {
+        "contactKey": {
+          "$ref": "#/$defs/agentContactKey"
+        },
+        "reason": {
+          "enum": [
+            "open_escalation",
+            "retention_or_refund",
+            "already_bought",
+            "nothing_to_say"
+          ]
+        }
+      }
+    },
+    "voiceCiphertext": {
+      "description": "The seller's ElevenLabs key, AES-256-GCM by the saas with the sellerId in the AAD. Opaque to the core: stored and returned as is, never decrypted, never logged.",
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 4096,
+      "pattern": "^[A-Za-z0-9+/_=-]+$"
+    },
+    "voiceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "AgentVoice": {
+      "description": "The panel view of the voice key: whether one is stored, its last 4 characters and the voice. Never the key.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configured",
+        "last4",
+        "voiceId"
+      ],
+      "properties": {
+        "configured": {
+          "type": "boolean"
+        },
+        "last4": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^\\S{4}$"
+        },
+        "voiceId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/voiceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "configured": {
+                "const": true
+              }
+            },
+            "required": [
+              "configured"
+            ]
+          },
+          "then": {
+            "properties": {
+              "last4": {
+                "type": "string"
+              },
+              "voiceId": {
+                "$ref": "#/$defs/voiceId"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "last4": {
+                "type": "null"
+              },
+              "voiceId": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AgentVoiceSecret": {
+      "description": "The voice key as the assistant reads it (GET agent/settings, agent key only).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elevenlabsKeyCiphertext",
+        "elevenlabsVoiceId"
+      ],
+      "properties": {
+        "elevenlabsKeyCiphertext": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/voiceCiphertext"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "elevenlabsVoiceId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/voiceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "AgentSettingsForAgent": {
+      "description": "GET agent/settings: the settings with the voice key the assistant needs to synthesize and transcribe.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policies",
+        "persona",
+        "limits",
+        "catalog",
+        "updatedAt",
+        "voice"
+      ],
+      "properties": {
+        "policies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "guaranteeDays",
+            "deliveryText",
+            "refundText",
+            "teamHoursText",
+            "noticesText"
+          ],
+          "properties": {
+            "guaranteeDays": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 365
+            },
+            "deliveryText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "refundText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "teamHoursText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "noticesText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 1500,
+              "pattern": "\\S"
+            }
+          }
+        },
+        "persona": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "agentName",
+            "storeName",
+            "tone",
+            "grammaticalGender",
+            "emoji"
+          ],
+          "properties": {
+            "agentName": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 40,
+              "pattern": "\\S"
+            },
+            "storeName": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "\\S"
+            },
+            "tone": {
+              "enum": [
+                "casual",
+                "neutral",
+                "formal"
+              ]
+            },
+            "grammaticalGender": {
+              "enum": [
+                "feminine",
+                "masculine",
+                "neutral"
+              ]
+            },
+            "emoji": {
+              "enum": [
+                "none",
+                "few",
+                "free"
+              ]
+            }
+          }
+        },
+        "limits": {
+          "description": "The seller's caps inside the GG ceilings (x-limits). retentionAttempts may only go down from 2.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "global",
+            "sale",
+            "recovery",
+            "free",
+            "retentionAttempts"
+          ],
+          "properties": {
+            "global": {
+              "type": "integer",
+              "minimum": 3,
+              "maximum": 20
+            },
+            "sale": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 6
+            },
+            "recovery": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "free": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "retentionAttempts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            }
+          }
+        },
+        "catalog": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "productId",
+              "checkoutId",
+              "pitch"
+            ],
+            "properties": {
+              "productId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^\\S+$"
+              },
+              "checkoutId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^\\S+$"
+              },
+              "pitch": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 600,
+                "pattern": "\\S"
+              }
+            }
+          }
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/nullableInstant"
+        },
+        "voice": {
+          "$ref": "#/$defs/AgentVoiceSecret"
+        }
+      }
+    },
+    "AgentVoicePutBody": {
+      "description": "Saves the voice key and voice (panel session only, never the agent key). elevenlabsKeyCiphertext and last4 null keep the stored key and change only the voice (409 AGENT_VOICE_KEY_MISSING when none is stored).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elevenlabsKeyCiphertext",
+        "last4",
+        "voiceId"
+      ],
+      "properties": {
+        "elevenlabsKeyCiphertext": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/voiceCiphertext"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last4": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^\\S{4}$"
+        },
+        "voiceId": {
+          "$ref": "#/$defs/voiceId"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "elevenlabsKeyCiphertext": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "elevenlabsKeyCiphertext"
+            ]
+          },
+          "then": {
+            "properties": {
+              "last4": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "last4": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AgentVoiceLookupBody": {
+      "description": "The webhook of a received voice note: the chip it arrived on, as the ingest identifies it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "sessionId",
+        "metaNumberId"
+      ],
+      "properties": {
+        "provider": {
+          "enum": [
+            "waha",
+            "meta"
+          ]
+        },
+        "sessionId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "metaNumberId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "provider": {
+                "const": "waha"
+              }
+            },
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "metaNumberId": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "sessionId": {
+                "type": "null"
+              },
+              "metaNumberId": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AgentVoiceLookup": {
+      "description": "Only when the chip's seller has the assistant on AND a stored key; any other case (unknown chip, assistant off, no key) is the same 404 AGENT_VOICE_NOT_FOUND.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sellerId",
+        "elevenlabsKeyCiphertext",
+        "elevenlabsVoiceId"
+      ],
+      "properties": {
+        "sellerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "elevenlabsKeyCiphertext": {
+          "$ref": "#/$defs/voiceCiphertext"
+        },
+        "elevenlabsVoiceId": {
+          "$ref": "#/$defs/voiceId"
+        }
+      }
     }
   }
 }

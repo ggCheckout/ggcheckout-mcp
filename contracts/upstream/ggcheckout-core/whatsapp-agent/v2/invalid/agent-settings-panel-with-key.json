@@ -1,0 +1,40 @@
+{
+  "def": "AgentSettings",
+  "body": {
+    "policies": {
+      "guaranteeDays": 7,
+      "deliveryText": "Por e-mail, logo depois do pagamento",
+      "refundText": null,
+      "teamHoursText": "Seg a sex, 9h as 18h",
+      "noticesText": null
+    },
+    "persona": {
+      "agentName": "Julia",
+      "storeName": "Loja X",
+      "tone": "casual",
+      "grammaticalGender": "feminine",
+      "emoji": "few"
+    },
+    "limits": {
+      "global": 10,
+      "sale": 4,
+      "recovery": 2,
+      "free": 2,
+      "retentionAttempts": 2
+    },
+    "catalog": [
+      {
+        "productId": "0192a000-0000-4000-8000-000000000010",
+        "checkoutId": "0192a000-0000-4000-8000-000000000011",
+        "pitch": "PDF com 30 projetos passo a passo, bom pra quem esta comecando"
+      }
+    ],
+    "voice": {
+      "configured": true,
+      "last4": "a1B2",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "elevenlabsKeyCiphertext": "djEuAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "updatedAt": "2026-11-26T14:00:00.000Z"
+  }
+}

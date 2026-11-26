@@ -1,0 +1,8 @@
+{
+  "def": "AgentVoicePutBody",
+  "body": {
+    "elevenlabsKeyCiphertext": "djEuAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "last4": null,
+    "voiceId": "x"
+  }
+}

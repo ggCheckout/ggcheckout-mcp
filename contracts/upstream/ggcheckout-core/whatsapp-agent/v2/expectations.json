@@ -99,6 +99,14 @@
       }
     ]
   },
+  "invalid/agent-refusal-daily-proactive-cap.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/error"
+      }
+    ]
+  },
   "invalid/agent-refusal-reply-cap-v1.json": {
     "esperado": [
       {
@@ -112,6 +120,13 @@
       {
         "keyword": "enum",
         "instancePath": "/error"
+      }
+    ]
+  },
+  "invalid/agent-refusal-voice-not-found-with-key.json": {
+    "esperado": [
+      {
+        "keyword": "additionalProperties"
       }
     ]
   },
@@ -201,6 +216,14 @@
       }
     ]
   },
+  "invalid/agent-settings-panel-with-key.json": {
+    "esperado": [
+      {
+        "keyword": "additionalProperties",
+        "instancePath": "/voice"
+      }
+    ]
+  },
   "invalid/agent-settings-put-body-retention-three.json": {
     "esperado": [
       {
@@ -224,6 +247,13 @@
       }
     ]
   },
+  "invalid/agent-settings-with-proactive.json": {
+    "esperado": [
+      {
+        "keyword": "additionalProperties"
+      }
+    ]
+  },
   "invalid/agent-state-held-without-stamp.json": {
     "esperado": [
       {
@@ -239,10 +269,105 @@
       }
     ]
   },
+  "invalid/agent-task-free-without-instruction.json": {
+    "esperado": [
+      {
+        "keyword": "type",
+        "instancePath": "/instruction"
+      }
+    ]
+  },
+  "invalid/agent-task-instruction-above-500.json": {
+    "esperado": [
+      {
+        "keyword": "anyOf",
+        "instancePath": "/instruction"
+      }
+    ]
+  },
+  "invalid/agent-task-offer-with-instruction.json": {
+    "esperado": [
+      {
+        "keyword": "type",
+        "instancePath": "/instruction"
+      }
+    ]
+  },
   "invalid/agent-task-reply-body-without-contact.json": {
     "esperado": [
       {
         "keyword": "required"
+      }
+    ]
+  },
+  "invalid/agent-task-result-expired-skipped.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/code"
+      }
+    ]
+  },
+  "invalid/agent-task-result-refused-without-code.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/code"
+      }
+    ]
+  },
+  "invalid/agent-task-skip-body-free-reason.json": {
+    "esperado": [
+      {
+        "keyword": "enum",
+        "instancePath": "/reason"
+      }
+    ]
+  },
+  "invalid/agent-task-with-kind.json": {
+    "esperado": [
+      {
+        "keyword": "additionalProperties"
+      }
+    ]
+  },
+  "invalid/agent-voice-configured-without-last4.json": {
+    "esperado": [
+      {
+        "keyword": "type",
+        "instancePath": "/last4"
+      }
+    ]
+  },
+  "invalid/agent-voice-lookup-body-waha-without-session.json": {
+    "esperado": [
+      {
+        "keyword": "type",
+        "instancePath": "/sessionId"
+      }
+    ]
+  },
+  "invalid/agent-voice-lookup-without-key.json": {
+    "esperado": [
+      {
+        "keyword": "type",
+        "instancePath": "/elevenlabsKeyCiphertext"
+      }
+    ]
+  },
+  "invalid/agent-voice-put-body-key-without-last4.json": {
+    "esperado": [
+      {
+        "keyword": "type",
+        "instancePath": "/last4"
+      }
+    ]
+  },
+  "invalid/agent-voice-put-body-plain-key.json": {
+    "esperado": [
+      {
+        "keyword": "anyOf",
+        "instancePath": "/elevenlabsKeyCiphertext"
       }
     ]
   },

@@ -1,0 +1,8 @@
+{
+  "def": "AgentVoicePutBody",
+  "body": {
+    "elevenlabsKeyCiphertext": "sk_live key with spaces",
+    "last4": "aces",
+    "voiceId": "x"
+  }
+}

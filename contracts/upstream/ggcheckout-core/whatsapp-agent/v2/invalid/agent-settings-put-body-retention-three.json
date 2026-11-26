@@ -22,11 +22,6 @@
       "free": 2,
       "retentionAttempts": 3
     },
-    "proactive": {
-      "recoveryEnabled": true,
-      "welcomeEnabled": false,
-      "upsellEnabled": false
-    },
     "catalog": [
       {
         "productId": "0192a000-0000-4000-8000-000000000010",

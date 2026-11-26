@@ -89,7 +89,7 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
       description:
         'Send the message of the scheduled task of this run to the contact, in the store\'s name and tone. Its category comes from the '
         + 'task. clientMessageId is the id the run gave you: sent again unchanged it never doubles the message. Refused with '
-        + 'AGENT_TASK_EXPIRED, AGENT_TASK_NOT_FOUND or AGENT_DAILY_PROACTIVE_CAP: send nothing. ' + STOP + ' ' + REVIEW,
+        + 'AGENT_TASK_EXPIRED, AGENT_TASK_NOT_FOUND or AGENT_DAILY_CAP: send nothing. ' + STOP + ' ' + REVIEW,
       inputSchema: { bubbles, clientMessageId: turnId.describe('Idempotency id given by the run'), privateNote },
     }, createToolHandler('send_whatsapp_reply', async ({ bubbles: texts, clientMessageId: id, privateNote: note }) =>
       service.sendTaskReply(contact, taskId, { bubbles: texts, clientMessageId: id, privateNote: note })));

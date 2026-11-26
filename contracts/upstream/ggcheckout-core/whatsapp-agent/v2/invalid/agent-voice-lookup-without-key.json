@@ -1,0 +1,8 @@
+{
+  "def": "AgentVoiceLookup",
+  "body": {
+    "sellerId": "seller-0001",
+    "elevenlabsKeyCiphertext": null,
+    "elevenlabsVoiceId": "21m00Tcm4TlvDq8ikWAM"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "def": "AgentTask",
+  "body": {
+    "id": "0192a000-0000-4000-8000-000000000020",
+    "objective": "free",
+    "instruction": "Agradeça a compra e lembre que o grupo VIP abre sexta aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa🎉",
+    "contactKey": "5511912345678",
+    "paymentId": null,
+    "productId": null,
+    "dueAt": "2026-11-26T14:00:00.000Z",
+    "deadlineAt": "2026-11-26T17:00:00.000Z"
+  }
+}

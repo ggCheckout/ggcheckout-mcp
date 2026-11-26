@@ -9,7 +9,8 @@ const defs = schema.$defs;
 const limits = schema['x-limits'];
 
 /** Refusals only the seller's panel meets: the assistant never calls those routes. */
-const PANEL_ONLY = ['AGENT_DRAFT_NOT_FOUND', 'AGENT_SETTINGS_CHANGED'];
+/** Refusals of the panel's routes and of the webhook's voice lookup: the agent key never meets them. */
+const PANEL_ONLY = ['AGENT_DRAFT_NOT_FOUND', 'AGENT_SETTINGS_CHANGED', 'AGENT_VOICE_KEY_MISSING', 'AGENT_VOICE_NOT_FOUND'];
 
 describe('agent limits against the core contract (whatsapp-agent/v2)', () => {
   it('the turn limits are the contract\'s', () => {

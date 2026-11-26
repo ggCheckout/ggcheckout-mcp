@@ -158,7 +158,7 @@ export const AGENT_REFUSALS = {
   AGENT_CATALOG_UNAVAILABLE: 'This product cannot be bought right now (its checkout is not published): do not offer it and do not promise a link.',
   AGENT_TASK_NOT_FOUND: 'This scheduled task no longer exists or is not for this contact: send nothing and call no other tool.',
   AGENT_TASK_EXPIRED: 'This scheduled task is past its deadline: send nothing.',
-  AGENT_DAILY_PROACTIVE_CAP: 'This contact already got a message started by the store today: send nothing for this task.',
+  AGENT_DAILY_CAP: 'This contact already got the store\'s daily number of recovery or sale messages: send nothing for this task and call no other tool (it waits for another day inside its deadline).',
   AGENT_REVIEW_FALSE_URGENCY: 'Refused: false urgency ("só hoje", "última chance", "últimas vagas", "hoje" next to a price). Rewrite without it and send again with the same clientMessageId.',
   AGENT_REVIEW_PRICE_ANCHOR: 'Refused: a "de R$ X por R$ Y" or crossed-out price. Never compare prices; rewrite and send again with the same clientMessageId.',
   AGENT_REVIEW_FOREIGN_LINK: 'Refused: a link no tool gave you in this conversation. Use only links from the tools; rewrite and send again with the same clientMessageId.',
