@@ -59,7 +59,13 @@ answer that the assistant is not available here.
   - it runs the scheduled tasks of the pending page after the waiting conversations;
   - `AGENT_SELLER_NAME` is gone: the store's name, persona and policies come from the API;
   - the prompt follows phase 2 (problem first, retention before a refund, escalation in two kinds, ask
-    for the e-mail before escalating, catalog, scheduled tasks, when to speak with a voice note).
+    for the e-mail before escalating, catalog, scheduled tasks, when to speak with a voice note) and
+    how the store talks to the buyer: the three bands, and never repeating what `buyerTimeline` shows
+    as sent.
+- `read_whatsapp_conversation` points the model at `buyerTimeline` in the state (what the notices and
+  funnels sent the contact and what comes next).
+- Seller key: the resource `ggcheckout://docs/buyer-messaging`, in pt-BR for the seller, explains who
+  messages a buyer at each moment (the three bands, one owner per moment, the daily limit per person).
 
 ## 0.7.0
 

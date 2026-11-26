@@ -85,6 +85,7 @@ import { WhatsAppAgentService } from './core/services/whatsapp-agent.service.js'
 import { registerWhatsAppAgentTools } from './adapters/inbound/tools/whatsapp-agent.tools.js';
 import { contactKey, guid } from './adapters/inbound/tools/whatsapp-schemas.js';
 import { registerAppViews } from './adapters/inbound/apps/apps.js';
+import { registerBuyerMessagingDoc } from './adapters/inbound/docs/buyer-messaging.js';
 import { muteUpdateNotice } from './shared/update-notice.js';
 
 
@@ -231,4 +232,5 @@ function registerSellerTools(server: McpServer, httpClient: HttpClient, apiUrl: 
     appOriginOf(apiUrl),
   );
   registerAppViews(server);
+  registerBuyerMessagingDoc(server);
 }

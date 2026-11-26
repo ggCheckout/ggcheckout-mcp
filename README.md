@@ -156,6 +156,14 @@ the client, from the tool result or from the tool calls listed above. All of the
 app (`ui/`, built into `dist/views/app.html` and served as the `ui://ggcheckout/app.html`
 resource), which picks the view by the tool that answered.
 
+### How the store talks to its buyers
+
+With a seller key the server also serves the resource `ggcheckout://docs/buyer-messaging`: in pt-BR,
+for the seller, who messages a buyer at each moment. The three bands (notices, recovery and sales,
+conversation), one owner per moment, the "Assistente escreve" funnel step and the daily limit per
+person. Claude reads it to answer "who messages my buyer, and when". An assistant key gets no
+resource: the assistant's rules are in its prompt.
+
 ### Versioning and the API
 
 - Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>`, so the API
