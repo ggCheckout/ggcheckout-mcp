@@ -178,12 +178,13 @@ export function taskClientMessageId(taskId) {
 
 /**
  * The tools a run may call: the whole agent tool list of the pinned ggcheckout-mcp (its
- * `WHATSAPP_AGENT_TOOLS`, compared in the tests). The pending list is not one of them.
+ * `WHATSAPP_AGENT_TOOLS`, then `WHATSAPP_AGENT_TASK_TOOLS`, which the server registers only in a task's
+ * run; compared in the tests). The pending list is not one of them.
  */
 export const AGENT_TOOLS = Object.freeze([
   'read_whatsapp_conversation', 'send_whatsapp_reply', 'escalate_whatsapp_conversation', 'find_contact_purchases',
   'send_purchase_access', 'resend_delivery', 'resend_delivery_by_email', 'get_payment_recovery_link', 'list_purchase_offers',
-  'create_offer_link', 'list_catalog', 'get_catalog_link',
+  'create_offer_link', 'list_catalog', 'get_catalog_link', 'skip_whatsapp_task',
 ]);
 
 /**

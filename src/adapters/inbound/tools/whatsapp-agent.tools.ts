@@ -1,15 +1,17 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { WhatsAppAgentService } from '../../../core/services/whatsapp-agent.service.js';
-import { AGENT_DECLARED_CATEGORIES, AGENT_ESCALATION_CODES, AGENT_LIMITS, AGENT_VOICE_LIMITS } from '../../../core/types/whatsapp-agent.js';
+import {
+  AGENT_DECLARED_CATEGORIES, AGENT_ESCALATION_CODES, AGENT_LIMITS, AGENT_TASK_SKIP_REASONS, AGENT_VOICE_LIMITS,
+} from '../../../core/types/whatsapp-agent.js';
 import { INBOX_LIMITS } from '../../../core/types/whatsapp-inbox.js';
 import { createToolHandler, type ToolResult } from '../tool-handler.js';
 import { asThirdPartyData, WHATSAPP_THIRD_PARTY_NOTICE } from '../../../shared/third-party-data.js';
 import { messagesCursor, messageText, trimmedNote } from './whatsapp-schemas.js';
 
 /**
- * The names, in the order they are registered: with a `ggck_agent_` key they are the whole tool list.
- * The pending list is not one of them: the run script reads it over REST and hands the model one
+ * The names, in the order they are registered: with a `ggck_agent_` key they are the whole tool list of
+ * a conversation's run (a task's run adds WHATSAPP_AGENT_TASK_TOOLS). The pending list is not one of them: the run script reads it over REST and hands the model one
  * conversation or one task, so the model never sees another contact's key.
  */
 export const WHATSAPP_AGENT_TOOLS = [
@@ -26,6 +28,9 @@ export const WHATSAPP_AGENT_TOOLS = [
   'list_catalog',
   'get_catalog_link',
 ] as const;
+
+/** Registered only in the run of a scheduled task, after the others. */
+export const WHATSAPP_AGENT_TASK_TOOLS = ['skip_whatsapp_task'] as const;
 
 /** What one run is pinned to: the contact, and the scheduled task when the run writes one. */
 export interface AgentRun {
@@ -216,4 +221,18 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
       + 'contact. Quote only the price list_catalog gave, never compare it with another price, never a coupon.',
     inputSchema: { productId: pathId('Product id, from list_catalog') },
   }, createToolHandler('get_catalog_link', async ({ productId }) => service.createCatalogLink(contact, productId)));
+
+  if (taskId) {
+    server.registerTool('skip_whatsapp_task', {
+      description:
+        'End the scheduled task of this run WITHOUT writing, when its message would be wrong now, so the store\'s funnel moves on at '
+        + 'once instead of waiting for the deadline. Never end a task in silence: write it with send_whatsapp_reply, or skip it here. '
+        + '`reason`: "already_bought" (the contact already has the product the task would offer), "open_escalation" (a problem is open '
+        + 'with the seller), "retention_or_refund" (the contact asked for a refund or is in retention), "nothing_to_say" (anything else, '
+        + 'such as buyerTimeline showing the same message as sent). Never after send_whatsapp_reply was accepted. The answer is the task\'s '
+        + 'result; status "sent" means its message had already gone. Then call no other tool. Refused with AGENT_TASK_NOT_FOUND or '
+        + 'AGENT_TASK_EXPIRED: the task is over, stop.',
+      inputSchema: { reason: z.enum(AGENT_TASK_SKIP_REASONS).describe('Why the message of this task should not go') },
+    }, createToolHandler('skip_whatsapp_task', async ({ reason }) => service.skipTask(contact, taskId, reason)));
+  }
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { registerWhatsAppAgentTools, WHATSAPP_AGENT_TOOLS } from './whatsapp-agent.tools.js';
+import { registerWhatsAppAgentTools, WHATSAPP_AGENT_TASK_TOOLS, WHATSAPP_AGENT_TOOLS } from './whatsapp-agent.tools.js';
 import { APP_MIME_TYPE } from '../apps/apps.js';
 import { createServer } from '../../../server.js';
 import { apiKeyKind } from '../../../shared/api-key.js';
@@ -18,12 +18,12 @@ const CONTACT = '553199998888';
 const PAYMENT = 'pay_9Fh2kLmN';
 
 /** The agent tools that have no seller-side namesake: none of them may exist with a seller key. */
-const AGENT_ONLY = WHATSAPP_AGENT_TOOLS.filter((name) => name !== 'send_whatsapp_reply' && name !== 'resend_delivery');
+const AGENT_ONLY = [...WHATSAPP_AGENT_TOOLS, ...WHATSAPP_AGENT_TASK_TOOLS].filter((name) => name !== 'send_whatsapp_reply' && name !== 'resend_delivery');
 
 const TASK = '0192a000-0000-4000-8000-000000000020';
 
 const service = {
-  readConversation: vi.fn(), sendReply: vi.fn(), sendTaskReply: vi.fn(), escalate: vi.fn(), findPurchases: vi.fn(),
+  readConversation: vi.fn(), sendReply: vi.fn(), sendTaskReply: vi.fn(), skipTask: vi.fn(), escalate: vi.fn(), findPurchases: vi.fn(),
   sendPurchaseAccess: vi.fn(), resendDelivery: vi.fn(), resendDeliveryByEmail: vi.fn(), createRecoveryLink: vi.fn(),
   listOffers: vi.fn(), createOfferLink: vi.fn(), listCatalog: vi.fn(), createCatalogLink: vi.fn(),
 } as any;
@@ -72,6 +72,12 @@ describe('the key decides the tool set', () => {
     expect(tools.map((t) => t.name).sort()).toEqual([...WHATSAPP_AGENT_TOOLS].sort());
     expect(tools).toHaveLength(12);
     expect(tools.map((t) => t.name)).not.toContain('list_pending_whatsapp_conversations');
+  });
+
+  it('a ggck_agent_ key in the run of a scheduled task adds only the task tools', async () => {
+    const { server } = serverFor(AGENT_KEY, { GGCHECKOUT_AGENT_CONTACT: CONTACT, GGCHECKOUT_AGENT_TASK: TASK });
+    const { tools } = await (await listen(server)).listTools();
+    expect(tools.map((t) => t.name)).toEqual([...WHATSAPP_AGENT_TOOLS, ...WHATSAPP_AGENT_TASK_TOOLS]);
   });
 
   it('a ggck_agent_ key ignores GG_PAYMENTS_API_KEY: no payments tool next to customer messages', async () => {
@@ -160,8 +166,9 @@ describe('the pinned contact', () => {
     await client.callTool({ name: 'create_offer_link', arguments: { contactKey: other, paymentId: PAYMENT, offerId: 'o1' } });
     await client.callTool({ name: 'list_catalog', arguments: { contactKey: other } });
     await client.callTool({ name: 'get_catalog_link', arguments: { contactKey: other, productId: 'prod-1' } });
-    const { sendTaskReply, ...conversationCalls } = service;
+    const { sendTaskReply, skipTask, ...conversationCalls } = service;
     expect(sendTaskReply).not.toHaveBeenCalled();
+    expect(skipTask).not.toHaveBeenCalled();
     for (const fn of Object.values(conversationCalls) as ReturnType<typeof vi.fn>[]) {
       expect(fn).toHaveBeenCalledTimes(1);
       expect(fn.mock.calls[0][0]).toBe(CONTACT);
@@ -253,6 +260,23 @@ describe('agent tools', () => {
     await client.callTool({ name: 'send_whatsapp_reply', arguments: { ...message, category: 'sale', audio: 'Oi, tudo bem?' } });
     expect(service.sendTaskReply).toHaveBeenCalledWith(CONTACT, TASK, message);
     expect(service.sendReply).not.toHaveBeenCalled();
+  });
+
+  it('a run of a scheduled task can skip it, for the run\'s contact and task only, with a reason of the contract', async () => {
+    const client = await agentClient(TASK);
+    const { tools } = await client.listTools();
+    const skip = tools.find((t) => t.name === 'skip_whatsapp_task');
+    expect(Object.keys(skip?.inputSchema.properties ?? {})).toEqual(['reason']);
+    expect(skip?.description).toContain('Never end a task in silence');
+    await client.callTool({ name: 'skip_whatsapp_task', arguments: { reason: 'already_bought', taskId: 'other', contactKey: '5511000000000' } });
+    expect(service.skipTask).toHaveBeenCalledWith(CONTACT, TASK, 'already_bought');
+    expect((await client.callTool({ name: 'skip_whatsapp_task', arguments: { reason: 'deadline' } })).isError).toBe(true);
+    expect(service.skipTask).toHaveBeenCalledTimes(1);
+  });
+
+  it('a conversation run has no task to skip', async () => {
+    const { tools } = await (await agentClient()).listTools();
+    expect(tools.map((t) => t.name)).not.toContain('skip_whatsapp_task');
   });
 
   it.each([

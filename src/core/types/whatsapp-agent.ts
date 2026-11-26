@@ -69,6 +69,14 @@ export interface AgentReplyInput {
 /** The message of a scheduled task: its category comes from the task objective, not from the model. */
 export type AgentTaskReplyInput = Omit<AgentReplyInput, 'category' | 'audio'>;
 
+/**
+ * Why a scheduled task is not written, read by the model from the conversation and its state: the
+ * offer's product is already bought, a problem is open with the seller, the contact is in a refund or
+ * retention, or anything else that makes the message wrong now.
+ */
+export const AGENT_TASK_SKIP_REASONS = ['open_escalation', 'retention_or_refund', 'already_bought', 'nothing_to_say'] as const;
+export type AgentTaskSkipReason = typeof AGENT_TASK_SKIP_REASONS[number];
+
 export interface AgentEscalationInput {
   code: AgentEscalationCode;
   summary: string;

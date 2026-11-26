@@ -1,6 +1,6 @@
 import type { WhatsAppAgentPort } from '../ports/whatsapp-agent.port.js';
 import type {
-  AgentEscalationInput, AgentMessagesPage, AgentMessagesQuery, AgentReplyInput, AgentResponse, AgentTaskReplyInput,
+  AgentEscalationInput, AgentMessagesPage, AgentMessagesQuery, AgentReplyInput, AgentResponse, AgentTaskReplyInput, AgentTaskSkipReason,
 } from '../types/whatsapp-agent.js';
 
 /** What the model reads before it acts: the thread, and the state and store it must follow. */
@@ -24,6 +24,9 @@ export class WhatsAppAgentService {
   async sendReply(contactKey: string, input: AgentReplyInput): Promise<AgentResponse> { return await this.port.sendReply(contactKey, input); }
   async sendTaskReply(contactKey: string, taskId: string, input: AgentTaskReplyInput): Promise<AgentResponse> {
     return await this.port.sendTaskReply(contactKey, taskId, input);
+  }
+  async skipTask(contactKey: string, taskId: string, reason: AgentTaskSkipReason): Promise<AgentResponse> {
+    return await this.port.skipTask(contactKey, taskId, reason);
   }
   async escalate(contactKey: string, input: AgentEscalationInput): Promise<AgentResponse> { return await this.port.escalate(contactKey, input); }
   async findPurchases(contactKey: string): Promise<AgentResponse> { return await this.port.findPurchases(contactKey); }

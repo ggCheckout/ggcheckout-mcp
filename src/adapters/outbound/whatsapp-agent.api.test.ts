@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WhatsAppAgentApiAdapter } from './whatsapp-agent.api.js';
 import type { HttpClient } from './http-client.js';
+import type { AgentTaskSkipReason } from '../../core/types/whatsapp-agent.js';
 import {
   ApiError, AuthenticationError, FeatureUnavailableError, RateLimitError, WhatsAppAgentRefusalError,
 } from '../../shared/errors.js';
@@ -41,6 +43,13 @@ describe('WhatsAppAgentApiAdapter', () => {
     expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/tasks/${TASK}/messages`, { bubbles: ['Oi, Ana!'], clientMessageId: 't1', privateNote: null });
     await adapter.escalate(KEY, { code: 'unreadable_media', summary: 'mandou áudio' });
     expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/escalate`, { code: 'unreadable_media', summary: 'mandou áudio' });
+  });
+
+  it('skips a task with the core\'s skip body, its contactKey taken from the path', async () => {
+    const fixture = new URL('../../../contracts/upstream/ggcheckout-core/whatsapp-agent/v2/valid/agent-task-skip-body.json', import.meta.url);
+    const { body: { contactKey, ...body } } = JSON.parse(readFileSync(fixture, 'utf-8')) as { body: { contactKey: string; reason: AgentTaskSkipReason } };
+    await adapter.skipTask(contactKey, TASK, body.reason);
+    expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${contactKey}/tasks/${TASK}/skip`, body);
   });
 
   it('gets the access of a purchase and the catalog of the conversation', async () => {

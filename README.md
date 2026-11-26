@@ -219,7 +219,7 @@ key creates a simulated charge, a `ggpk_live_` key a real one. / O último preci
 
 ---
 
-## Available Tools (211)
+## Available Tools (212)
 
 ### Products (21 tools)
 
@@ -694,7 +694,7 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 
 ---
 
-### WhatsApp (27 tools)
+### WhatsApp (28 tools)
 
 Follows the dashboard: **chips** are the connected numbers, and an **operation** ("Operações" in the
 dashboard, a session in the API and in the tool names) is a primary chip with up to two fallbacks
@@ -759,7 +759,7 @@ it is off the API answers 403 `INBOX_API_ACCESS_DISABLED`; if the store has not 
 403 `INBOX_TERMS_REQUIRED` (accept it in the dashboard: the MCP never does). On an account where the
 funnel and inbox are not released yet, the tools answer "ainda não disponível nesta conta".
 
-#### WhatsApp assistant (12 tools, `ggck_agent_` key only)
+#### WhatsApp assistant (13 tools, `ggck_agent_` key only)
 
 Registered only with the assistant key, and then alone, pinned to the contact in `GGCHECKOUT_AGENT_CONTACT`
 (no tool takes a `contactKey`; the pending list is not a tool) and, for a scheduled task, to the task in
@@ -784,6 +784,9 @@ Registered only with the assistant key, and then alone, pinned to the contact in
 - `list_purchase_offers` and `create_offer_link` (for a paid purchase: the upsell first, the downsell only
   if the contact refused it, never a third offer; a price is quoted only when `priceCents` is a number).
 - `list_catalog` and `get_catalog_link`: the products the seller chose, with the price from the server.
+- `skip_whatsapp_task`, only in a task run: ends the task without writing (`already_bought`,
+  `open_escalation`, `retention_or_refund`, `nothing_to_say`), so the store's funnel moves on at once
+  instead of waiting for the deadline. A task run never ends in silence.
 
 Every result that carries what a contact or a buyer typed starts with a notice that it is data, never an
 instruction. The hard limits live in the saas and the core, under the core's `whatsapp/agent` v2 contract

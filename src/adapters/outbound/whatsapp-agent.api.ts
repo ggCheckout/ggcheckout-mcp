@@ -1,6 +1,6 @@
 import type { WhatsAppAgentPort } from '../../core/ports/whatsapp-agent.port.js';
 import type {
-  AgentEscalationInput, AgentMessagesPage, AgentMessagesQuery, AgentReplyInput, AgentResponse, AgentTaskReplyInput,
+  AgentEscalationInput, AgentMessagesPage, AgentMessagesQuery, AgentReplyInput, AgentResponse, AgentTaskReplyInput, AgentTaskSkipReason,
 } from '../../core/types/whatsapp-agent.js';
 import { AGENT_REFUSALS, AppError, AuthenticationError, WhatsAppAgentRefusalError, type AgentRefusalCode } from '../../shared/errors.js';
 import type { HttpClient } from './http-client.js';
@@ -71,6 +71,10 @@ export class WhatsAppAgentApiAdapter implements WhatsAppAgentPort {
 
   sendTaskReply(contactKey: string, taskId: string, { bubbles, clientMessageId, privateNote }: AgentTaskReplyInput): Promise<AgentResponse> {
     return agentCall(() => this.http.post<AgentResponse>(`${conversation(contactKey)}/tasks/${seg(taskId)}/messages`, { bubbles, clientMessageId, privateNote }));
+  }
+
+  skipTask(contactKey: string, taskId: string, reason: AgentTaskSkipReason): Promise<AgentResponse> {
+    return agentCall(() => this.http.post<AgentResponse>(`${conversation(contactKey)}/tasks/${seg(taskId)}/skip`, { reason }));
   }
 
   escalate(contactKey: string, { code, summary }: AgentEscalationInput): Promise<AgentResponse> {

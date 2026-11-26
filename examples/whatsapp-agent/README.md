@@ -87,7 +87,7 @@ Checked against `claude` 2.1.331 (`claude --help`), the run uses:
 |---|---|
 | `--mcp-config <temp file>` + `--strict-mcp-config` | Only this MCP server, nothing from the seller's other MCP configs. The temp file (0600, in a 0700 directory under the OS temp dir, deleted when the run ends) holds this run's contact in the server's `env`. `--help` does not document `${VAR}` expansion inside `--mcp-config`, so the script writes literal values instead |
 | `--tools ""` | No built-in tool at all (shell, files, web, subagents). An allow list, not a deny list: a tool added to Claude Code later is off too |
-| `--allowedTools mcp__ggcheckout__...` | Exactly the twelve agent tools (`AGENT_TOOLS` in `lib.mjs`, tested against the server's list) |
+| `--allowedTools mcp__ggcheckout__...` | Exactly the agent tools, `skip_whatsapp_task` included (`AGENT_TOOLS` in `lib.mjs`, tested against the server's lists) |
 | `--permission-mode dontAsk` + `--permission-prompts none` | Anything outside the allow list is denied; nobody is there to approve a prompt |
 | `--setting-sources ""` | Loads no user, project or local settings, so the seller's hooks, plugins, permission mode (even `bypassPermissions`) and CLAUDE.md do not apply to this run |
 | `--disable-slash-commands` | No skills or slash commands |

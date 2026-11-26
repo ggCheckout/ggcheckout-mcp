@@ -44,8 +44,10 @@ answer that the assistant is not available here.
   purchase found by the conversation's phone), `list_catalog` and `get_catalog_link` (the products the
   seller chose, with the price from the server).
 - **Scheduled tasks.** With `GGCHECKOUT_AGENT_TASK` (a task id from the pending page), the run writes
-  that task: `send_whatsapp_reply` posts to the task's route and takes no `category`. Empty or unset:
-  the run answers the conversation. A malformed value refuses to start.
+  that task: `send_whatsapp_reply` posts to the task's route and takes no `category`, and
+  `skip_whatsapp_task` (only in a task run) ends it without writing, with a reason of the core contract,
+  so the funnel moves on at once. Empty or unset: the run answers the conversation. A malformed value
+  refuses to start.
 - New refusals, each with what to do next: `AGENT_GLOBAL_CAP` (replaces `AGENT_REPLY_CAP`),
   `AGENT_CATEGORY_CAP`, `AGENT_ALREADY_ESCALATED`, `AGENT_OPEN_PROBLEM`, `AGENT_RETENTION_GATE`,
   `AGENT_ASK_EMAIL_FIRST`, `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED`, `AGENT_DAILY_CAP`,

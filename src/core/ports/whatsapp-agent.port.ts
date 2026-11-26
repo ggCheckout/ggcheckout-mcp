@@ -1,5 +1,5 @@
 import type {
-  AgentEscalationInput, AgentMessagesPage, AgentMessagesQuery, AgentReplyInput, AgentResponse, AgentTaskReplyInput,
+  AgentEscalationInput, AgentMessagesPage, AgentMessagesQuery, AgentReplyInput, AgentResponse, AgentTaskReplyInput, AgentTaskSkipReason,
 } from '../types/whatsapp-agent.js';
 
 /** The saas routes the `ggck_agent_` key may call. Every purchase route is scoped to the conversation's contact. */
@@ -10,6 +10,8 @@ export interface WhatsAppAgentPort {
   sendReply(contactKey: string, input: AgentReplyInput): Promise<AgentResponse>;
   /** The message of a scheduled task; the task belongs to the run's contact. */
   sendTaskReply(contactKey: string, taskId: string, input: AgentTaskReplyInput): Promise<AgentResponse>;
+  /** Ends a scheduled task of the run's contact without writing it; answers the task's result. */
+  skipTask(contactKey: string, taskId: string, reason: AgentTaskSkipReason): Promise<AgentResponse>;
   escalate(contactKey: string, input: AgentEscalationInput): Promise<AgentResponse>;
   /** Purchases made with the conversation's phone only. */
   findPurchases(contactKey: string): Promise<AgentResponse>;
