@@ -130,6 +130,14 @@
       }
     ]
   },
+  "invalid/agent-reply-body-client-id-above-56.json": {
+    "esperado": [
+      {
+        "keyword": "pattern",
+        "instancePath": "/clientMessageId"
+      }
+    ]
+  },
   "invalid/agent-reply-body-declared-recovery.json": {
     "esperado": [
       {

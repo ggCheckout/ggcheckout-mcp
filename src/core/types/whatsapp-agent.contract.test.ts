@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { AGENT_DECLARED_CATEGORIES, AGENT_ESCALATION_CODES, AGENT_LIMITS } from './whatsapp-agent.js';
 import { AGENT_REFUSALS } from '../../shared/errors.js';
 
-/** The core's whatsapp-agent v2 contract, mirrored byte by byte (see contracts/upstream/ggcheckout-core/README.md). */
+/** The core's whatsapp-agent v2 contract, mirrored byte by byte (see contracts/upstream/README.md). */
 const schema = JSON.parse(readFileSync(new URL('../../../contracts/upstream/ggcheckout-core/whatsapp-agent/v2/schema.json', import.meta.url), 'utf-8'));
 const defs = schema.$defs;
 const limits = schema['x-limits'];

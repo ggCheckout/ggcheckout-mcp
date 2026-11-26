@@ -1,0 +1,66 @@
+{
+  "def": "BuyerMessagingOverview",
+  "body": {
+    "url": "https://app.ggcheckout.com/settings/buyer-messaging",
+    "dailyCap": 2,
+    "rows": [
+      {
+        "lane": "notices",
+        "moment": "pending",
+        "on": false
+      },
+      {
+        "lane": "notices",
+        "moment": "approved",
+        "on": true
+      },
+      {
+        "lane": "recovery",
+        "moment": "pix_unpaid",
+        "owner": {
+          "journeyId": "0192a000-0000-4000-8000-000000000001",
+          "name": "Recuperação de PIX"
+        },
+        "assistantSkipped": true
+      },
+      {
+        "lane": "recovery",
+        "moment": "pix_expired",
+        "owner": null,
+        "assistantSkipped": false
+      },
+      {
+        "lane": "recovery",
+        "moment": "card_refused",
+        "owner": null,
+        "assistantSkipped": false
+      },
+      {
+        "lane": "recovery",
+        "moment": "card_cancelled",
+        "owner": null,
+        "assistantSkipped": false
+      },
+      {
+        "lane": "recovery",
+        "moment": "abandoned_cart",
+        "owner": {
+          "journeyId": "0192a000-0000-4000-8000-000000000002",
+          "name": "Recuperação 🚀xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        },
+        "assistantSkipped": false
+      },
+      {
+        "lane": "recovery",
+        "moment": "purchase_approved",
+        "owner": null,
+        "assistantSkipped": false
+      },
+      {
+        "lane": "conversation",
+        "moment": "buyer_replied",
+        "owner": "assistant"
+      }
+    ]
+  }
+}

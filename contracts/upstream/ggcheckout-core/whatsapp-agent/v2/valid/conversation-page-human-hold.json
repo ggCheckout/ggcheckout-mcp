@@ -11,7 +11,8 @@
         "type": "text",
         "text": "Hi, this is the seller",
         "at": "2026-11-24T13:51:00+00:00",
-        "by": "seller"
+        "by": "seller",
+        "privateNote": null
       }
     ],
     "nextBefore": null,

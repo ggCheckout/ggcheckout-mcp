@@ -1,0 +1,18 @@
+{
+  "contract": "buyer-messaging.overview",
+  "version": "v1",
+  "owner": "saas-checkout",
+  "schemaVersion": 1,
+  "note": "Canonical package of the producer (saas-checkout): the body of GET /api/whatsapp/buyer-messaging. A fixture is {def, body}: the body is validated against #/$defs/<def> of schema.json. The saas route test parses every real answer with lib/messages/buyerMessagingContract.ts, and its contract test parses every fixture and compares the caps. ggcheckout-mcp mirrors this folder byte by byte. Not consumed in production yet: while that holds, v1 is edited IN PLACE and the hashes below are regenerated together. This manifest does NOT include its own hash nor the commit that contains it.",
+  "files": {
+    "invalid/overview-cap-four.json": "8e3ed91f69e6887b41ae38b41a8f4a475052f142c77ee1b12b0b7b253ffe6f73",
+    "invalid/overview-moments-out-of-order.json": "2935ff4f7eea996c480c1adaa8917f779412671d577087bf76a7518fc23d5c6b",
+    "invalid/overview-notice-with-text.json": "7939281483efc59b343e195b9cd53c5ac691007098f900a30681c10ae2ca6974",
+    "invalid/overview-owner-name-81.json": "b95c56f09ac2aa0a3bfc62b128b773fefe60cafefe53e44b1727bc4232d5e376",
+    "invalid/overview-without-conversation.json": "fc0ea0329ea71eb11d6bc8ced77084f46d80a140a98615ac98025633e708b355",
+    "invalid/overview-without-skipped.json": "a78416289c6cdcf8253f766c83a7b61c665fe3fa8e27c3ac2f75ab9ba08898a9",
+    "schema.json": "115cbc45c2252678a21c22b51e039cf10fc1bc0b1ee33f46d4f7453ced15c849",
+    "valid/overview-no-cap-nobody.json": "31912009b81af28c6937e7844864d31120a60a3722911d3e852936bac35eb600",
+    "valid/overview-owners-assistant.json": "63dd3d78744443c0d1a6d23857126120013a99e4a04a5ba875e6106bd993c23a"
+  }
+}

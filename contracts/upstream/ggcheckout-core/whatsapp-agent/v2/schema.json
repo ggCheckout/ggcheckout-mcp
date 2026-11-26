@@ -41,7 +41,8 @@
     "catalogPitchMaxChars": 600,
     "pendingTasksMax": 20,
     "voiceNoteMaxSeconds": 60,
-    "voiceNoteUrlMaxChars": 2048
+    "voiceNoteUrlMaxChars": 2048,
+    "turnClientMessageIdMaxChars": 56
   },
   "x-routes": [
     {
@@ -164,7 +165,7 @@
         "201": "AgentReplyResponse",
         "200": "AgentReplyResponse (same clientMessageId replayed)",
         "404": "AgentRefusalError (AGENT_TASK_NOT_FOUND)",
-        "409": "AgentRefusalError (AGENT_TASK_EXPIRED, AGENT_DAILY_PROACTIVE_CAP, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT) or ReplyRefusedError",
+        "409": "AgentRefusalError (AGENT_TASK_EXPIRED, AGENT_DAILY_PROACTIVE_CAP, AGENT_HELD, AGENT_CONTACT_EXITED, AGENT_OPTED_OUT) or ReplyRefusedError",
         "422": "ReplyRefusedError",
         "429": "AgentRefusalError (AGENT_CATEGORY_CAP)",
         "400": "InboxErrorBody",
@@ -512,7 +513,8 @@
         "type",
         "text",
         "at",
-        "by"
+        "by",
+        "privateNote"
       ],
       "properties": {
         "id": {
@@ -558,6 +560,10 @@
             "auto",
             null
           ]
+        },
+        "privateNote": {
+          "description": "The assistant's private note for the seller, on the FIRST message of its turn (shown in the inbox, never sent); null on every other message.",
+          "$ref": "#/$defs/privateNote"
         }
       }
     },
@@ -673,7 +679,7 @@
           "$ref": "#/$defs/bubbles"
         },
         "clientMessageId": {
-          "$ref": "#/$defs/clientMessageId"
+          "$ref": "#/$defs/turnClientMessageId"
         },
         "category": {
           "$ref": "#/$defs/category"
@@ -1807,7 +1813,7 @@
       ],
       "properties": {
         "clientMessageId": {
-          "$ref": "#/$defs/clientMessageId"
+          "$ref": "#/$defs/turnClientMessageId"
         },
         "bubbles": {
           "$ref": "#/$defs/bubbles"
@@ -2353,12 +2359,17 @@
           "$ref": "#/$defs/bubbles"
         },
         "clientMessageId": {
-          "$ref": "#/$defs/clientMessageId"
+          "$ref": "#/$defs/turnClientMessageId"
         },
         "privateNote": {
           "$ref": "#/$defs/privateNote"
         }
       }
+    },
+    "turnClientMessageId": {
+      "description": "The clientMessageId of a turn: at most 56, because bubble i (i >= 1) is stored under <id>-b<i> and the voice note under <id>-audio, and every derived id stays inside the 64 of the delivery idempotency.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,56}$"
     }
   }
 }
