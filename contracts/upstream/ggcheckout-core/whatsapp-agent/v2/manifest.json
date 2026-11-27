@@ -61,7 +61,7 @@
     "invalid/pending-query-limit-above-20.json": "bbd2aaa042c3df2a92a7adf0612a37730c523be44b8d98cb6f139ac8a99f56bf",
     "invalid/pending-query-limit-zero.json": "dbee557567eb7f25595d69f4df6f8cf9cf37e0f2b7dd407a1494767411a2669e",
     "invalid/reply-refused-unknown-reason.json": "d2c1589167133c4fc1f57e95143e8487a19c516d5a1b1765ac2ef5e4dedd53cb",
-    "schema.json": "fbf517cc68514bb2c7a21f9d0674ca6c76a99604d73dcbf7bdb3fbfcead5c2ad",
+    "schema.json": "81cba212c2b4cec420cb12d8505bad4bc397ccb68a671a5306c316102de5ddd7",
     "valid/agent-draft-response-empty.json": "fbc775c6308e53a3682a08a7e7230dca269e7ef5d90efe9a78482bb233399166",
     "valid/agent-draft-response.json": "2419ed81f1cf5b08ff01c923104416b770bb787798390c9c6b1f522780f5245e",
     "valid/agent-escalate-body.json": "a37cfefba6ad68c783a8deec033cbf76e6385a2d88a6f95768c0a20875292861",

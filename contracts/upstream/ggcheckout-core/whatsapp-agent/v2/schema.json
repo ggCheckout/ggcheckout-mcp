@@ -56,6 +56,7 @@
       "responses": {
         "200": "AgentTaskResult (also when the task was already resolved: the stored result)",
         "404": "AgentRefusalError (AGENT_TASK_NOT_FOUND)",
+        "409": "AgentRefusalError (AGENT_TASK_EXPIRED: a send already claimed the task, which decides it)",
         "400": "InboxErrorBody",
         "403": "InboxErrorBody",
         "429": "RateLimitedBody",

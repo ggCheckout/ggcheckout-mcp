@@ -274,6 +274,18 @@ describe('agent tools', () => {
     expect(service.skipTask).toHaveBeenCalledTimes(1);
   });
 
+  it('a task send refused with AGENT_TASK_EXPIRED ends the run: no retry and no skip', async () => {
+    const client = await agentClient(TASK);
+    const send = (await client.listTools()).tools.find((t) => t.name === 'send_whatsapp_reply');
+    expect(send?.description).toContain('AGENT_TASK_EXPIRED: the task is over, do not retry and call no other tool (not skip_whatsapp_task either)');
+    service.sendTaskReply.mockRejectedValue(new WhatsAppAgentRefusalError('AGENT_TASK_EXPIRED', 409));
+    const { category: _category, ...message } = TURN;
+    const result: any = await client.callTool({ name: 'send_whatsapp_reply', arguments: message });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/do not retry, and call no other tool, skip_whatsapp_task included\. Stop here\. \(AGENT_TASK_EXPIRED\)/);
+    expect(service.skipTask).not.toHaveBeenCalled();
+  });
+
   it('a conversation run has no task to skip', async () => {
     const { tools } = await (await agentClient()).listTools();
     expect(tools.map((t) => t.name)).not.toContain('skip_whatsapp_task');

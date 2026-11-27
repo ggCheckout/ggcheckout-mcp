@@ -122,6 +122,30 @@ describe('WhatsAppAgentApiAdapter', () => {
     expect(failure.message).toContain(`(${code})`);
   });
 
+  describe('a task already decided (409 AGENT_TASK_EXPIRED of the core contract)', () => {
+    const schema = JSON.parse(readFileSync(new URL('../../../contracts/upstream/ggcheckout-core/whatsapp-agent/v2/schema.json', import.meta.url), 'utf-8')) as {
+      'x-routes': { path: string; responses: Record<string, string> }[];
+      $defs: { AgentRefusalError: { properties: { error: { enum: string[] } } } };
+    };
+    const conflictOf = (path: string): string | undefined => schema['x-routes'].find((route) => route.path === path)?.responses['409'];
+
+    it.each([
+      ['/internal/whatsapp-inbox/agent/tasks/{taskId}/messages', () => adapter.sendTaskReply(KEY, TASK, { bubbles: ['Oi, Ana!'], clientMessageId: 't1', privateNote: null })],
+      ['/internal/whatsapp-inbox/agent/tasks/{taskId}/skip', () => adapter.skipTask(KEY, TASK, 'nothing_to_say')],
+    ])('on %s tells the model the task is over: no retry, no skip', async (path, call) => {
+      expect(conflictOf(path)).toContain('AGENT_TASK_EXPIRED');
+      expect(schema.$defs.AgentRefusalError.properties.error.enum).toContain('AGENT_TASK_EXPIRED');
+      // The saas passes the core's `{ error: code }` on as `{ error: message, code }`, which the HTTP client reads as "message (code)".
+      vi.mocked(http.post).mockRejectedValue(new ApiError(409, 'O prazo desta tarefa passou. Não mande a mensagem. (AGENT_TASK_EXPIRED)'));
+      const failure = await call().catch((e) => e);
+      expect(failure).toBeInstanceOf(WhatsAppAgentRefusalError);
+      expect(failure.code).toBe('AGENT_TASK_EXPIRED');
+      expect(failure.message).toMatch(/a send already decided it/);
+      expect(failure.message).toMatch(/do not retry/);
+      expect(failure.message).toMatch(/skip_whatsapp_task included/);
+    });
+  });
+
   it.each([
     ['AGENT_ALREADY_ESCALATED', 409],
     ['AGENT_RETENTION_GATE', 409],

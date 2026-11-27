@@ -47,7 +47,8 @@ answer that the assistant is not available here.
   that task: `send_whatsapp_reply` posts to the task's route and takes no `category`, and
   `skip_whatsapp_task` (only in a task run) ends it without writing, with a reason of the core contract,
   so the funnel moves on at once. Empty or unset: the run answers the conversation. A malformed value
-  refuses to start.
+  refuses to start. A send or a skip refused with `409 AGENT_TASK_EXPIRED` (another send already
+  decided the task, or its deadline passed) tells the model to stop: no retry, no skip.
 - New refusals, each with what to do next: `AGENT_GLOBAL_CAP` (replaces `AGENT_REPLY_CAP`),
   `AGENT_CATEGORY_CAP`, `AGENT_ALREADY_ESCALATED`, `AGENT_OPEN_PROBLEM`, `AGENT_RETENTION_GATE`,
   `AGENT_ASK_EMAIL_FIRST`, `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED`, `AGENT_DAILY_CAP`,

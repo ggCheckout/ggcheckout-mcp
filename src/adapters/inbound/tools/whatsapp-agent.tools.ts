@@ -94,7 +94,8 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
       description:
         'Send the message of the scheduled task of this run to the contact, in the store\'s name and tone. Its category comes from the '
         + 'task. clientMessageId is the id the run gave you: sent again unchanged it never doubles the message. Refused with '
-        + 'AGENT_TASK_EXPIRED, AGENT_TASK_NOT_FOUND or AGENT_DAILY_CAP: send nothing. ' + STOP + ' ' + REVIEW,
+        + 'AGENT_TASK_EXPIRED: the task is over, do not retry and call no other tool (not skip_whatsapp_task either). '
+        + 'AGENT_TASK_NOT_FOUND or AGENT_DAILY_CAP: send nothing. ' + STOP + ' ' + REVIEW,
       inputSchema: { bubbles, clientMessageId: turnId.describe('Idempotency id given by the run'), privateNote },
     }, createToolHandler('send_whatsapp_reply', async ({ bubbles: texts, clientMessageId: id, privateNote: note }) =>
       service.sendTaskReply(contact, taskId, { bubbles: texts, clientMessageId: id, privateNote: note })));
@@ -231,7 +232,7 @@ export function registerWhatsAppAgentTools(server: McpServer, service: WhatsAppA
         + 'with the seller), "retention_or_refund" (the contact asked for a refund or is in retention), "nothing_to_say" (anything else, '
         + 'such as buyerTimeline showing the same message as sent). Never after send_whatsapp_reply was accepted. The answer is the task\'s '
         + 'result; status "sent" means its message had already gone. Then call no other tool. Refused with AGENT_TASK_NOT_FOUND or '
-        + 'AGENT_TASK_EXPIRED: the task is over, stop.',
+        + 'AGENT_TASK_EXPIRED (a send already decided it, or its deadline passed): the task is over, stop.',
       inputSchema: { reason: z.enum(AGENT_TASK_SKIP_REASONS).describe('Why the message of this task should not go') },
     }, createToolHandler('skip_whatsapp_task', async ({ reason }) => service.skipTask(contact, taskId, reason)));
   }

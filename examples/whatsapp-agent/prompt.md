@@ -203,7 +203,8 @@ message as sent. A refusal that makes the message wrong is a reason to skip, nev
 skipping, call no other tool.
 
 A refusal `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED`, `AGENT_DAILY_CAP` or `AGENT_HELD` ends the task:
-send nothing and call no other tool.
+send nothing and call no other tool. `AGENT_TASK_EXPIRED` means a send already decided the task or its
+deadline passed: never retry it and never skip it.
 
 ## Limits
 
