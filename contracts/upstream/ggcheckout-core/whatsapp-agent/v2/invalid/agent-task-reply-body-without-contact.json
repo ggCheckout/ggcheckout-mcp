@@ -1,0 +1,10 @@
+{
+  "def": "AgentTaskReplyBody",
+  "body": {
+    "bubbles": [
+      "Oi"
+    ],
+    "clientMessageId": "task-1",
+    "privateNote": null
+  }
+}

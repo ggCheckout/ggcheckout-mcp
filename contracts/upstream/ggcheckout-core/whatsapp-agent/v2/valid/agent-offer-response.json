@@ -1,0 +1,6 @@
+{
+  "def": "AgentOfferResponse",
+  "body": {
+    "ok": true
+  }
+}

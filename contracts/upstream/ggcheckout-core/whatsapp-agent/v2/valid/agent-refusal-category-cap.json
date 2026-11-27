@@ -1,0 +1,7 @@
+{
+  "def": "AgentRefusalError",
+  "body": {
+    "error": "AGENT_CATEGORY_CAP",
+    "category": "sale"
+  }
+}

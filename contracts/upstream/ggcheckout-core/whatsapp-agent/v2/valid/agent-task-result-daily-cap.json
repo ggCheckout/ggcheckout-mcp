@@ -1,0 +1,9 @@
+{
+  "def": "AgentTaskResult",
+  "body": {
+    "taskId": "0192a000-0000-4000-8000-000000000020",
+    "status": "expired",
+    "code": "daily_cap",
+    "at": "2026-11-26T14:00:00.000Z"
+  }
+}

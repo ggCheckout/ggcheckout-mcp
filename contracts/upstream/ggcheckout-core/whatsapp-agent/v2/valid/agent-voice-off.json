@@ -1,0 +1,8 @@
+{
+  "def": "AgentVoice",
+  "body": {
+    "configured": false,
+    "last4": null,
+    "voiceId": null
+  }
+}

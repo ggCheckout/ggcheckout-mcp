@@ -1,0 +1,6 @@
+{
+  "def": "AgentKeyRevoked",
+  "body": {
+    "revoked": true
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "def": "AgentDraftResponse",
+  "body": {
+    "draft": null
+  }
+}

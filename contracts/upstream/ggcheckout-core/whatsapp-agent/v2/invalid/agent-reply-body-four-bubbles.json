@@ -1,0 +1,17 @@
+{
+  "def": "AgentReplyBody",
+  "body": {
+    "bubbles": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "clientMessageId": "t-1",
+    "category": "access",
+    "categoryProven": true,
+    "mode": "send",
+    "privateNote": "achei a compra paga pelo telefone",
+    "audio": null
+  }
+}

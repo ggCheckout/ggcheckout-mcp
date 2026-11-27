@@ -5,7 +5,6 @@
 // Environment:
 //   GGCHECKOUT_AGENT_KEY   the assistant key (ggck_agent_ + 64 hex), shown once when the seller turns the assistant on
 //   GGCHECKOUT_API_URL     default https://ggcheckout.app; the pilot runs only on https://qa.ggcheckout.app (production answers 404 AGENT_UNAVAILABLE)
-//   AGENT_SELLER_NAME      the store name the assistant speaks for (fills {{SELLER_NAME}} in prompt.md)
 //   AGENT_HOURS            answering window, local time, default 08:00-20:00 (22:00-06:00 crosses midnight)
 //   AGENT_DAYS             ISO weekdays, 1 = Monday, default 1-7 (e.g. 1-5 or 1,2,3,4,5,6)
 //   AGENT_TZ               default America/Sao_Paulo
@@ -20,15 +19,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, fillMcpConfig, fingerprintOf, insideWindow,
-  isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion,
+  AGENT_TOOLS, buildClaudeArgs, buildTask, clientMessageId, createAttemptTracker, dueTasks, fillMcpConfig, fingerprintOf, insideWindow,
+  isOutdatedMcpRefusal, logId, parseDays, parseWindow, pinnedMcpVersion, RUN_STDIO, summarizeRun, taskClientMessageId, taskFingerprint,
 } from './lib.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 const KEY = (process.env.GGCHECKOUT_AGENT_KEY ?? '').trim();
 const API_URL = (process.env.GGCHECKOUT_API_URL || 'https://ggcheckout.app').replace(/\/+$/, '');
-const SELLER_NAME = process.env.AGENT_SELLER_NAME || 'the store';
 const HOURS = process.env.AGENT_HOURS || '08:00-20:00';
 const DAYS = process.env.AGENT_DAYS || '1-7';
 const TZ = process.env.AGENT_TZ || 'America/Sao_Paulo';
@@ -38,6 +36,8 @@ const MAX_ATTEMPTS = wholeNumber('AGENT_MAX_ATTEMPTS', 3);
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude';
 /** The core caps the pending page at 20. */
 const PENDING_LIMIT = 20;
+/** The JSON result of a run is a few KB; past this, the output is not kept (and not parsed). */
+const MAX_RUN_OUTPUT_BYTES = 1024 * 1024;
 
 /** A whole number (seconds or a count), or the default: "15s" would make the loop spin and spend the key's budget. */
 function wholeNumber(name, fallback) {
@@ -51,19 +51,17 @@ function wholeNumber(name, fallback) {
 }
 
 const SERVER = 'ggcheckout';
-// The assistant reads strangers' messages: the model gets these tools and nothing else. The pending list is not one of them:
-// this script reads it, and each run is pinned to one conversation (GGCHECKOUT_AGENT_CONTACT in the MCP server's environment).
-const TOOLS = [
-  'read_whatsapp_conversation', 'send_whatsapp_reply', 'hold_whatsapp_conversation', 'find_contact_purchases',
-  'resend_delivery', 'resend_delivery_by_email', 'get_payment_recovery_link', 'list_purchase_offers', 'create_offer_link',
-];
+// The assistant reads strangers' messages: the model gets the agent tools (AGENT_TOOLS) and nothing else. The pending list is
+// not one of them: this script reads it, and each run is pinned to one conversation (GGCHECKOUT_AGENT_CONTACT in the MCP
+// server's environment) and, for a scheduled task, to that task (GGCHECKOUT_AGENT_TASK).
 
 if (!/^ggck_agent_[a-f0-9]{64}$/.test(KEY)) {
   console.error('GGCHECKOUT_AGENT_KEY must be the assistant key: ggck_agent_ followed by 64 lowercase hex characters.');
   process.exit(1);
 }
 
-const rules = readFileSync(join(here, 'prompt.md'), 'utf-8').replaceAll('{{SELLER_NAME}}', SELLER_NAME);
+// The store's name, persona and policies come from the API on every run (read_whatsapp_conversation), never from here.
+const rules = readFileSync(join(here, 'prompt.md'), 'utf-8');
 const mcpTemplate = JSON.parse(readFileSync(join(here, '.mcp.json'), 'utf-8'));
 const MCP_VERSION = pinnedMcpVersion(mcpTemplate, SERVER);
 const hours = parseWindow(HOURS);
@@ -97,35 +95,72 @@ async function api(path) {
 }
 
 /**
- * One `claude -p` run for one conversation. The MCP config is a temp file (0600, in its own 0700
- * directory) with this run's contact in the server's environment, deleted when the run ends; the
- * claude process does not get the assistant key in its own environment. Resolves true on exit code 0.
+ * One `claude -p` run for one conversation, or for one scheduled task (`task`, from the pending
+ * page). The MCP config is a temp file (0600, in its own 0700 directory) with this run's contact, and
+ * its task id when there is one, in the server's environment, deleted when the run ends; the claude
+ * process does not get the assistant key in its own environment. Resolves true on exit code 0.
+ * `id` is the run's log id (a hash, never the contact).
  */
-function runClaude({ contactKey, clientMessageId: replyId }) {
+function runClaude({ id, contactKey, clientMessageId: replyId, task = null }) {
   const dir = mkdtempSync(join(tmpdir(), 'ggcheckout-agent-'));
   const mcpConfigPath = join(dir, 'mcp.json');
   const config = fillMcpConfig(mcpTemplate, {
     GGCHECKOUT_AGENT_KEY: KEY, GGCHECKOUT_API_URL: API_URL, GGCHECKOUT_AGENT_CONTACT: contactKey,
+    GGCHECKOUT_AGENT_TASK: task?.id ?? '',
   });
   writeFileSync(mcpConfigPath, JSON.stringify(config), { mode: 0o600 });
   const args = buildClaudeArgs({
-    task: buildTask({ contactKey, clientMessageId: replyId }), rules, mcpConfigPath, serverName: SERVER, toolNames: TOOLS,
+    task: buildTask({ contactKey, clientMessageId: replyId, task }), rules, mcpConfigPath, serverName: SERVER, toolNames: AGENT_TOOLS,
   });
   const { GGCHECKOUT_AGENT_KEY: _key, ...env } = process.env;
   return new Promise((resolve) => {
     // cwd is the empty temp directory: no project files or CLAUDE.md of this repo for the run to find.
-    const child = spawn(CLAUDE_BIN, args, { cwd: dir, env, stdio: ['ignore', 'inherit', 'inherit'] });
-    const done = (ok) => { clearTimeout(timer); rmSync(dir, { recursive: true, force: true }); resolve(ok); };
+    // stdout and stderr are piped, never inherited: the run's output carries what the buyer wrote, and
+    // only `summarizeRun` (counts, duration, cost) and the size of stderr reach the log.
+    const child = spawn(CLAUDE_BIN, args, { cwd: dir, env, stdio: [...RUN_STDIO] });
+    const stdout = [];
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
+    child.stdout.on('data', (chunk) => {
+      stdoutBytes += chunk.length;
+      if (stdoutBytes <= MAX_RUN_OUTPUT_BYTES) stdout.push(chunk);
+    });
+    child.stderr.on('data', (chunk) => { stderrBytes += chunk.length; });
+    let settled = false;
+    const done = (ok, code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      rmSync(dir, { recursive: true, force: true });
+      const output = stdoutBytes <= MAX_RUN_OUTPUT_BYTES ? summarizeRun(Buffer.concat(stdout).toString('utf-8'))
+        : `output over ${MAX_RUN_OUTPUT_BYTES} bytes`;
+      log(`run ${id}: exit=${code ?? 'none'} ${output} stderrBytes=${stderrBytes}`);
+      resolve(ok);
+    };
     const timer = setTimeout(() => child.kill('SIGTERM'), RUN_TIMEOUT_MS);
-    child.on('error', (error) => { log(`could not start ${CLAUDE_BIN}: ${error.message}`); done(false); });
-    child.on('exit', (code) => done(code === 0));
+    child.on('error', (error) => { log(`could not start ${CLAUDE_BIN}: ${error.code ?? error.name}`); done(false); });
+    child.on('close', (code) => done(code === 0, code));
   });
 }
 
 /** True when the error ends the whole pass (key refused, MCP too old, API asked to slow down): anything else only skips one conversation. */
 const endsThePass = (error) => error instanceof HttpError && (error.outdated || [401, 429, 503].includes(error.status));
 
-/** One pass: every pending conversation that changed since its last run gets its own run. */
+/** Records how a run ended in the tracker and logs it: a failed state is retried later, then given up. */
+function track(fingerprint, id, ok) {
+  if (ok) {
+    tracker.succeeded(fingerprint);
+    return;
+  }
+  const { attempts, givenUp } = tracker.failed(fingerprint);
+  log(givenUp ? `run ${id}: failed ${attempts} times, given up`
+    : `run ${id}: failed (${attempts}/${MAX_ATTEMPTS}), trying again later`);
+}
+
+/**
+ * One pass: every pending conversation that changed since its last run gets its own run, then every
+ * task due now (oldest first). A conversation goes first: someone is waiting for it.
+ */
 async function pass() {
   let list;
   try {
@@ -147,17 +182,22 @@ async function pass() {
       const lastIn = (page.items ?? []).find((message) => message.dir === 'in');
       if (!lastIn) continue;
       log(`running claude for conversation ${id}`);
-      const ok = await runClaude({ contactKey: item.contactKey, clientMessageId: clientMessageId(item.contactKey, lastIn.id) });
-      if (ok) {
-        tracker.succeeded(fingerprint);
-        continue;
-      }
-      const { attempts, givenUp } = tracker.failed(fingerprint);
-      log(givenUp ? `conversation ${id}: run failed ${attempts} times, giving up until the contact writes again`
-        : `conversation ${id}: run failed (${attempts}/${MAX_ATTEMPTS}), trying again later`);
+      track(fingerprint, id, await runClaude({ id, contactKey: item.contactKey, clientMessageId: clientMessageId(item.contactKey, lastIn.id) }));
     } catch (error) {
       if (endsThePass(error)) throw error;
       log(`conversation ${id}: ${error.message}`);
+    }
+  }
+  for (const task of dueTasks(list)) {
+    if (!insideWindow({ tz: TZ, hours, days })) return;
+    const fingerprint = taskFingerprint(task);
+    if (!tracker.shouldRun(fingerprint)) continue;
+    const id = logId(fingerprint);
+    try {
+      log(`running claude for task ${id} (${task.objective})`);
+      track(fingerprint, id, await runClaude({ id, contactKey: task.contactKey, clientMessageId: taskClientMessageId(task.id), task }));
+    } catch (error) {
+      log(`task ${id}: ${error.message}`);
     }
   }
 }

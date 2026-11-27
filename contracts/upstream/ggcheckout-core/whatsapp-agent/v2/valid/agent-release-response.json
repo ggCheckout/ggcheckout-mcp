@@ -1,0 +1,11 @@
+{
+  "def": "AgentReleaseResponse",
+  "body": {
+    "agentHeldAt": null,
+    "agentHeldReason": null,
+    "agentHeldNote": null,
+    "created": false,
+    "releasedAt": "2026-11-26T14:00:00.000Z",
+    "releasedCode": "refund"
+  }
+}

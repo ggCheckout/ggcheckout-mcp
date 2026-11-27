@@ -1,0 +1,7 @@
+{
+  "def": "AgentKeyExistsError",
+  "body": {
+    "error": "O assistente já está ligado nesta loja.",
+    "code": "AGENT_KEY_EXISTS"
+  }
+}

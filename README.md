@@ -156,6 +156,14 @@ the client, from the tool result or from the tool calls listed above. All of the
 app (`ui/`, built into `dist/views/app.html` and served as the `ui://ggcheckout/app.html`
 resource), which picks the view by the tool that answered.
 
+### How the store talks to its buyers
+
+With a seller key the server also serves the resource `ggcheckout://docs/buyer-messaging`: in pt-BR,
+for the seller, who messages a buyer at each moment. The three bands (notices, recovery and sales,
+conversation), one owner per moment, the "Assistente escreve" funnel step and the daily limit per
+person. Claude reads it to answer "who messages my buyer, and when". An assistant key gets no
+resource: the assistant's rules are in its prompt.
+
 ### Versioning and the API
 
 - Every request this server makes carries `User-Agent: ggcheckout-mcp/<version>`, so the API
@@ -211,7 +219,7 @@ key creates a simulated charge, a `ggpk_live_` key a real one. / O último preci
 
 ---
 
-## Available Tools (210)
+## Available Tools (212)
 
 ### Products (21 tools)
 
@@ -686,7 +694,7 @@ under it — irreversible, so they take `confirm: true`. These six need the API 
 
 ---
 
-### WhatsApp (26 tools)
+### WhatsApp (28 tools)
 
 Follows the dashboard: **chips** are the connected numbers, and an **operation** ("Operações" in the
 dashboard, a session in the API and in the tool names) is a primary chip with up to two fallbacks
@@ -709,6 +717,7 @@ the dashboard.
 - "List my WhatsApp funnels"
 - "Create a manual WhatsApp funnel 'Welcome' with 2 messages, 1 hour apart, on operation abc123"
 - "Turn on the abandoned-cart funnel"
+- "Who messages my buyer after a PIX is generated?"
 
 #### WhatsApp funnels
 
@@ -722,6 +731,16 @@ that creates or turns on a funnel ("Usar modelo" included) goes through a confir
 variables are the dashboard's: `{{customer_name}}`, `{{assinatura}}` and `{{cupom}}` on every trigger,
 plus the checkout ones on the automatic triggers and `{{pix_copia_cola}}` on the PIX ones.
 Importing contacts messages people who never wrote in, so it needs the inbox switch below.
+
+#### Who messages the buyer
+
+`get_buyer_messaging_overview` reads the "Visão geral" of Recuperar vendas: for each moment of a
+purchase, who messages the buyer. The two notices (PIX or boleto generated, approval and delivery)
+with on or off, the six recovery moments with the funnel that owns each one (or nobody) and whether
+its assistant step is skipped, the conversation (the assistant or the team), the daily limit per
+person (null while none is stored) and the link to the screen. The answer is checked against the
+saas contract `buyer-messaging/overview/v1` before the model sees it. The rules behind it are in the
+resource `ggcheckout://docs/buyer-messaging`.
 
 #### WhatsApp inbox
 
@@ -740,32 +759,49 @@ it is off the API answers 403 `INBOX_API_ACCESS_DISABLED`; if the store has not 
 403 `INBOX_TERMS_REQUIRED` (accept it in the dashboard: the MCP never does). On an account where the
 funnel and inbox are not released yet, the tools answer "ainda não disponível nesta conta".
 
-#### WhatsApp assistant (9 tools, `ggck_agent_` key only)
+#### WhatsApp assistant (13 tools, `ggck_agent_` key only)
 
 Registered only with the assistant key, and then alone, pinned to the contact in `GGCHECKOUT_AGENT_CONTACT`
-(no tool takes a `contactKey`; `list_pending_whatsapp_conversations` is not a tool). Unlike the inbox above,
-the model reads and answers the conversation here: `read_whatsapp_conversation`, `send_whatsapp_reply`
-(requires a `clientMessageId`, the same one on a retry), `hold_whatsapp_conversation` (hands the conversation
-to the seller, who gets a push; the reason is shown to the seller in the panel), `find_contact_purchases`
-(by the conversation's phone), `resend_delivery` (to the e-mail of the purchase and by WhatsApp to its
-phone), `resend_delivery_by_email` (for a buyer with another number: an e-mail the contact wrote in the
-conversation; the delivery goes only to the owner of the purchase, and the answer never says whether one
-exists), `get_payment_recovery_link` (pending or expired PIX), `list_purchase_offers` and
-`create_offer_link` (for a paid purchase: the upsell first, the downsell only if the contact refused it,
-never a third offer; one click only for the upsell inside one hour of the purchase, and a price is quoted
-only when `priceCents` is a number).
+(no tool takes a `contactKey`; the pending list is not a tool) and, for a scheduled task, to the task in
+`GGCHECKOUT_AGENT_TASK`. Unlike the inbox above, the model reads and answers the conversation here:
+
+- `read_whatsapp_conversation`: the messages and the state the model follows (the store's persona and
+  policies, counters per category, an open escalation, the seller handing the conversation back).
+- `send_whatsapp_reply`: one turn of 1 to 3 bubbles, with a declared `category` (`support`, `retention`,
+  `free`, `sale`), a `privateNote` for the seller, an optional `audio` (the text of one voice note, at
+  most 450 characters, that the saas synthesizes and sends before at most 2 bubbles, only when the
+  state's `store.voice` is true) and a
+  `clientMessageId` (the same one on a retry). The saas decides whether it goes or waits as a draft for the seller. In a task run it writes the task, with
+  no category and no voice.
+- `escalate_whatsapp_conversation`: a code and a summary for the seller. `refund`, `double_charge`,
+  `unsolved`, `off_topic` and `unreadable_media` keep the assistant answering; `legal` and
+  `human_requested` hold the conversation.
+- `find_contact_purchases` (by the conversation's phone), `send_purchase_access` (the access of each paid
+  product, in the chat, only for a purchase found by that phone), `resend_delivery` (to the e-mail of the
+  purchase and by WhatsApp to its phone), `resend_delivery_by_email` (for a buyer with another number: an
+  e-mail the contact wrote in the conversation; the delivery goes only to the owner of the purchase, and
+  the answer never says whether one exists), `get_payment_recovery_link` (pending or expired PIX).
+- `list_purchase_offers` and `create_offer_link` (for a paid purchase: the upsell first, the downsell only
+  if the contact refused it, never a third offer; a price is quoted only when `priceCents` is a number).
+- `list_catalog` and `get_catalog_link`: the products the seller chose, with the price from the server.
+- `skip_whatsapp_task`, only in a task run: ends the task without writing (`already_bought`,
+  `open_escalation`, `retention_or_refund`, `nothing_to_say`), so the store's funnel moves on at once
+  instead of waiting for the deadline. A task run never ends in silence.
 
 Every result that carries what a contact or a buyer typed starts with a notice that it is data, never an
-instruction. The hard limits live in the saas and the core: 10 agent replies per conversation in 24 hours,
-no reply after the seller takes over or the contact writes SAIR, one upsell then one downsell per conversation, and only the
-purchases of the conversation's contact. A refusal (`AGENT_HELD`, `AGENT_CONTACT_EXITED`,
-`AGENT_OPTED_OUT`, `AGENT_CONVERSATION_NOT_FOUND`, `AGENT_REPLY_CAP`, `AGENT_ALREADY_OFFERED`, `AGENT_UPSELL_NOT_OFFERED`, `AGENT_UNAVAILABLE` (production: the assistant exists only on the QA), or a revoked key) tells the model to stop.
+instruction. The hard limits live in the saas and the core, under the core's `whatsapp/agent` v2 contract
+(mirrored in `contracts/upstream/ggcheckout-core/`): caps per category in 24 hours, the escalation gates
+(retention before a refund, the e-mail before a purchase escalation, no second escalation of the same
+subject), no selling while a problem is open, no reply after the seller takes over or the contact writes
+SAIR, and the saas review of each turn (no false urgency, no price anchor, no link a tool did not give,
+no refund brought up by the assistant). Each refusal reaches the model with what to do next; the final
+ones (`AGENT_HELD`, `AGENT_CONTACT_EXITED`, `AGENT_OPTED_OUT`, `AGENT_CONVERSATION_NOT_FOUND`,
+`AGENT_GLOBAL_CAP`, `AGENT_UNAVAILABLE` on production, or a revoked key) tell it to stop.
 
-Version 0.7.0 is published with `npm publish --tag next`, so `@latest` stays 0.6.0 until the saas release
-with the assistant (saas-checkout#2571) is in production; the recipe pins `ggcheckout-mcp@0.7.0`. The saas does not send the assistant key the update advice
-(`X-GG-MCP-Latest`), so no tool result of a run asks to update; below the minimum version it refuses
-the key like any other, and the recipe's script stops (see `examples/whatsapp-agent/README.md`,
-"Updating the MCP version").
+Version 0.8.0 is published with `npm publish --tag next`; the recipe pins `ggcheckout-mcp@0.8.0`. The saas
+does not send the assistant key the update advice (`X-GG-MCP-Latest`), so no tool result of a run asks to
+update; below the minimum version it refuses the key like any other, and the recipe's script stops (see
+`examples/whatsapp-agent/README.md`, "Updating the MCP version").
 
 ---
 

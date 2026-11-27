@@ -1,0 +1,8 @@
+{
+  "def": "AgentVoiceLookupBody",
+  "body": {
+    "provider": "waha",
+    "sessionId": null,
+    "metaNumberId": null
+  }
+}

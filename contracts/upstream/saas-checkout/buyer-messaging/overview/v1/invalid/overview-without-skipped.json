@@ -1,0 +1,54 @@
+{
+  "def": "BuyerMessagingOverview",
+  "body": {
+    "url": "https://app.ggcheckout.com/settings/buyer-messaging",
+    "dailyCap": 1,
+    "rows": [
+      {
+        "lane": "notices",
+        "moment": "pending",
+        "on": true
+      },
+      {
+        "lane": "notices",
+        "moment": "approved",
+        "on": true
+      },
+      {
+        "lane": "recovery",
+        "moment": "pix_unpaid",
+        "owner": null
+      },
+      {
+        "lane": "recovery",
+        "moment": "pix_expired",
+        "owner": null
+      },
+      {
+        "lane": "recovery",
+        "moment": "card_refused",
+        "owner": null
+      },
+      {
+        "lane": "recovery",
+        "moment": "card_cancelled",
+        "owner": null
+      },
+      {
+        "lane": "recovery",
+        "moment": "abandoned_cart",
+        "owner": null
+      },
+      {
+        "lane": "recovery",
+        "moment": "purchase_approved",
+        "owner": null
+      },
+      {
+        "lane": "conversation",
+        "moment": "buyer_replied",
+        "owner": "team"
+      }
+    ]
+  }
+}

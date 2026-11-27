@@ -1,0 +1,19 @@
+{
+  "def": "AgentReplyBody",
+  "body": {
+    "bubbles": [
+      "Achei sua compra!",
+      "O acesso foi pro seu e-mail"
+    ],
+    "clientMessageId": "t-1",
+    "category": "access",
+    "categoryProven": true,
+    "mode": "send",
+    "privateNote": "achei a compra paga pelo telefone",
+    "audio": {
+      "url": "http://media.example/v.ogg",
+      "mimeType": "audio/ogg",
+      "durationSeconds": 18
+    }
+  }
+}

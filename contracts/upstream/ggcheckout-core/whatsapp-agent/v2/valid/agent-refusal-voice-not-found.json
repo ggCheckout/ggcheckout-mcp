@@ -1,0 +1,6 @@
+{
+  "def": "AgentRefusalError",
+  "body": {
+    "error": "AGENT_VOICE_NOT_FOUND"
+  }
+}

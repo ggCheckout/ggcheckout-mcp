@@ -1,0 +1,33 @@
+{
+  "def": "AgentSettings",
+  "body": {
+    "policies": {
+      "guaranteeDays": null,
+      "deliveryText": null,
+      "refundText": null,
+      "teamHoursText": null,
+      "noticesText": null
+    },
+    "persona": {
+      "agentName": null,
+      "storeName": null,
+      "tone": "neutral",
+      "grammaticalGender": "neutral",
+      "emoji": "few"
+    },
+    "limits": {
+      "global": 10,
+      "sale": 4,
+      "recovery": 2,
+      "free": 2,
+      "retentionAttempts": 2
+    },
+    "catalog": [],
+    "voice": {
+      "configured": false,
+      "last4": null,
+      "voiceId": null
+    },
+    "updatedAt": null
+  }
+}

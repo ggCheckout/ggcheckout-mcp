@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.ggcheckout.internal/buyer-messaging/overview/v1/buyer-messaging-overview.json",
+  "x-contractName": "buyer-messaging.overview",
+  "x-contractVersion": "v1",
+  "x-owner": "saas-checkout",
+  "x-consumers": "ggcheckout-mcp",
+  "x-source": "specs/comunicacao-comprador.md (R1, R6, 4.6)",
+  "description": "GET /api/whatsapp/buyer-messaging: who speaks to the buyer at each moment (Recuperar vendas > Visao geral), read by the personal MCP's get_buyer_messaging_overview with a ggck_live_ key or by the session. Three lanes: notices always go out and the seller may turn one off; recovery and sale have one owner per moment (the active funnel of the trigger) inside the daily limit per person; the conversation is the assistant or the team.",
+  "x-limits": {
+    "dailyCapMin": 1,
+    "dailyCapMax": 3,
+    "ownerIdMaxLength": 128,
+    "ownerNameMaxCodePoints": 80,
+    "rowCount": 9
+  },
+  "$defs": {
+    "BuyerMessagingOverview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "dailyCap", "rows"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "The screen to open: the overview once the new Recuperar vendas ships, the WhatsApp Funis screen until then."
+        },
+        "dailyCap": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "maximum": 3,
+          "description": "Recovery or sale messages per person per day, summing every funnel. null: the core keeps no limit per person yet (spec 4.3), so none applies."
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9,
+          "items": false,
+          "description": "Always nine, in this order: the two notices, the six recovery moments, the conversation.",
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/NoticeRow",
+              "properties": {
+                "moment": {
+                  "const": "pending"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/NoticeRow",
+              "properties": {
+                "moment": {
+                  "const": "approved"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/RecoveryRow",
+              "properties": {
+                "moment": {
+                  "const": "pix_unpaid"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/RecoveryRow",
+              "properties": {
+                "moment": {
+                  "const": "pix_expired"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/RecoveryRow",
+              "properties": {
+                "moment": {
+                  "const": "card_refused"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/RecoveryRow",
+              "properties": {
+                "moment": {
+                  "const": "card_cancelled"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/RecoveryRow",
+              "properties": {
+                "moment": {
+                  "const": "abandoned_cart"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/RecoveryRow",
+              "properties": {
+                "moment": {
+                  "const": "purchase_approved"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/ConversationRow"
+            }
+          ]
+        }
+      }
+    },
+    "NoticeRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "moment", "on"],
+      "properties": {
+        "lane": {
+          "const": "notices"
+        },
+        "moment": {
+          "enum": ["pending", "approved"]
+        },
+        "on": {
+          "type": "boolean",
+          "description": "An enabled template of the notice exists: pending covers PIX/boleto generated (also upsell/downsell); approved covers the approval and the delivery."
+        }
+      }
+    },
+    "RecoveryRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "moment", "owner", "assistantSkipped"],
+      "properties": {
+        "lane": {
+          "const": "recovery"
+        },
+        "moment": {
+          "enum": [
+            "pix_unpaid",
+            "pix_expired",
+            "card_refused",
+            "card_cancelled",
+            "abandoned_cart",
+            "purchase_approved"
+          ]
+        },
+        "owner": {
+          "description": "The enabled funnel of this trigger; null: nobody sends a message at this moment.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["journeyId", "name"],
+              "properties": {
+                "journeyId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 80
+                }
+              }
+            }
+          ]
+        },
+        "assistantSkipped": {
+          "type": "boolean",
+          "description": "The owner has an assistant block and the assistant is off: the block is skipped."
+        }
+      }
+    },
+    "ConversationRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "moment", "owner"],
+      "properties": {
+        "lane": {
+          "const": "conversation"
+        },
+        "moment": {
+          "const": "buyer_replied"
+        },
+        "owner": {
+          "enum": ["assistant", "team"]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "def": "ConversationPage",
+  "body": {
+    "items": [
+      {
+        "id": "1763990000000-1",
+        "messageId": "m-1",
+        "dir": "in",
+        "auto": false,
+        "chipId": "0192a000-0000-4000-8000-000000000001",
+        "type": "text",
+        "text": "I want to talk to someone",
+        "at": "2026-11-24T13:51:00+00:00",
+        "by": null,
+        "privateNote": null
+      }
+    ],
+    "nextBefore": null,
+    "exitRequestedAt": null,
+    "optedOut": false,
+    "agentHeldAt": "2026-11-24T14:00:00.000Z",
+    "agentHeldReason": "agent",
+    "agentHeldNote": "Wants to negotiate the price",
+    "agentUpsellOfferedAt": null,
+    "agentDownsellOfferedAt": null,
+    "agentRepliesToday": 0
+  }
+}

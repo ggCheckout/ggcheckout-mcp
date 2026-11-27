@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WhatsAppAgentApiAdapter } from './whatsapp-agent.api.js';
 import type { HttpClient } from './http-client.js';
+import type { AgentTaskSkipReason } from '../../core/types/whatsapp-agent.js';
 import {
   ApiError, AuthenticationError, FeatureUnavailableError, RateLimitError, WhatsAppAgentRefusalError,
 } from '../../shared/errors.js';
@@ -11,6 +13,8 @@ function createMockHttp(): HttpClient {
 
 const KEY = '553199998888';
 const BASE = '/api/whatsapp/agent/conversations';
+const TASK = '0192a000-0000-4000-8000-000000000020';
+const TURN = { bubbles: ['Oi', 'Achei sua compra'], clientMessageId: 'c1', category: 'support' as const, privateNote: null };
 
 describe('WhatsAppAgentApiAdapter', () => {
   let adapter: WhatsAppAgentApiAdapter;
@@ -28,11 +32,33 @@ describe('WhatsAppAgentApiAdapter', () => {
     expect(http.get).toHaveBeenLastCalledWith(`${BASE}/lid%3Aabc%40lid/messages`, { limit: '30', before: '12-3' });
   });
 
-  it('replies and holds with the bodies of the contract', async () => {
-    await adapter.sendReply(KEY, { text: 'Oi', clientMessageId: 'c1' });
-    expect(http.post).toHaveBeenCalledWith(`${BASE}/${KEY}/reply`, { text: 'Oi', clientMessageId: 'c1' });
-    await adapter.hold(KEY, 'mandou áudio');
-    expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/hold`, { reason: 'mandou áudio' });
+  it('reads the state, replies, writes a task and escalates with the bodies of the contract', async () => {
+    await adapter.readState(KEY);
+    expect(http.get).toHaveBeenLastCalledWith(`${BASE}/${KEY}/state`);
+    await adapter.sendReply(KEY, TURN);
+    expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/reply`, TURN);
+    await adapter.sendReply(KEY, { ...TURN, audio: '[warmly] Oi, Ana!' });
+    expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/reply`, { ...TURN, audio: '[warmly] Oi, Ana!' });
+    await adapter.sendTaskReply(KEY, TASK, { bubbles: ['Oi, Ana!'], clientMessageId: 't1', privateNote: null });
+    expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/tasks/${TASK}/messages`, { bubbles: ['Oi, Ana!'], clientMessageId: 't1', privateNote: null });
+    await adapter.escalate(KEY, { code: 'unreadable_media', summary: 'mandou áudio' });
+    expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/escalate`, { code: 'unreadable_media', summary: 'mandou áudio' });
+  });
+
+  it('skips a task with the core\'s skip body, its contactKey taken from the path', async () => {
+    const fixture = new URL('../../../contracts/upstream/ggcheckout-core/whatsapp-agent/v2/valid/agent-task-skip-body.json', import.meta.url);
+    const { body: { contactKey, ...body } } = JSON.parse(readFileSync(fixture, 'utf-8')) as { body: { contactKey: string; reason: AgentTaskSkipReason } };
+    await adapter.skipTask(contactKey, TASK, body.reason);
+    expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${contactKey}/tasks/${TASK}/skip`, body);
+  });
+
+  it('gets the access of a purchase and the catalog of the conversation', async () => {
+    await adapter.sendPurchaseAccess(KEY, 'p1');
+    expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/purchases/p1/access`);
+    await adapter.listCatalog(KEY);
+    expect(http.get).toHaveBeenLastCalledWith(`${BASE}/${KEY}/catalog`);
+    await adapter.createCatalogLink(KEY, 'prod/../x');
+    expect(http.post).toHaveBeenLastCalledWith(`${BASE}/${KEY}/catalog/prod%2F..%2Fx/link`);
   });
 
   it('finds purchases by the conversation phone alone: no query', async () => {
@@ -76,18 +102,70 @@ describe('WhatsAppAgentApiAdapter', () => {
     ['AGENT_CONTACT_EXITED', new ApiError(409, 'Contato pediu para sair (AGENT_CONTACT_EXITED; detail)')],
     ['AGENT_OPTED_OUT', new ApiError(409, 'Contato saiu da lista (AGENT_OPTED_OUT)')],
     ['AGENT_CONVERSATION_NOT_FOUND', new ApiError(404, 'Conversa não encontrada (AGENT_CONVERSATION_NOT_FOUND)')],
-    ['AGENT_REPLY_CAP', new RateLimitError('Teto atingido (AGENT_REPLY_CAP). Retry after 3600 seconds.')],
+    ['AGENT_GLOBAL_CAP', new RateLimitError('Teto atingido (AGENT_GLOBAL_CAP). Retry after 3600 seconds.')],
+    ['AGENT_CATEGORY_CAP', new RateLimitError('Teto da categoria (AGENT_CATEGORY_CAP; sale)')],
+    ['AGENT_OPEN_PROBLEM', new ApiError(409, 'Problema aberto (AGENT_OPEN_PROBLEM)')],
+    ['AGENT_REVIEW_FALSE_URGENCY', new ApiError(422, 'Revisão recusou (AGENT_REVIEW_FALSE_URGENCY)')],
+    ['AGENT_TASK_EXPIRED', new ApiError(409, 'Tarefa vencida (AGENT_TASK_EXPIRED)')],
     ['AGENT_ALREADY_OFFERED', new ApiError(409, 'Oferta já feita (AGENT_ALREADY_OFFERED)')],
     ['AGENT_UPSELL_NOT_OFFERED', new ApiError(409, 'Downsell antes do upsell (AGENT_UPSELL_NOT_OFFERED)')],
+    ['AGENT_CATALOG_NOT_FOUND', new ApiError(409, 'Este produto não está no catálogo do assistente. (AGENT_CATALOG_NOT_FOUND)')],
+    ['AGENT_CATALOG_UNAVAILABLE', new ApiError(409, 'O checkout deste produto não está publicado. (AGENT_CATALOG_UNAVAILABLE)')],
     // The saas answer outside the QA (saas-checkout#2586): 404 with a body, which is not a missing route.
     ['AGENT_UNAVAILABLE', new ApiError(404, 'O assistente não está disponível. (AGENT_UNAVAILABLE)')],
     ['AGENT_KEY_REFUSED', new AuthenticationError('Chave inválida')],
   ])('turns %s into a refusal that tells the model to stop', async (code, error) => {
     vi.mocked(http.post).mockRejectedValue(error);
-    const failure = await adapter.sendReply(KEY, { text: 'Oi', clientMessageId: 'c1' }).catch((e) => e);
+    const failure = await adapter.sendReply(KEY, TURN).catch((e) => e);
     expect(failure).toBeInstanceOf(WhatsAppAgentRefusalError);
     expect(failure.code).toBe(code);
     expect(failure.message).toContain(`(${code})`);
+  });
+
+  describe('a task already decided (409 AGENT_TASK_EXPIRED of the core contract)', () => {
+    const schema = JSON.parse(readFileSync(new URL('../../../contracts/upstream/ggcheckout-core/whatsapp-agent/v2/schema.json', import.meta.url), 'utf-8')) as {
+      'x-routes': { path: string; responses: Record<string, string> }[];
+      $defs: { AgentRefusalError: { properties: { error: { enum: string[] } } } };
+    };
+    const conflictOf = (path: string): string | undefined => schema['x-routes'].find((route) => route.path === path)?.responses['409'];
+
+    it.each([
+      ['/internal/whatsapp-inbox/agent/tasks/{taskId}/messages', () => adapter.sendTaskReply(KEY, TASK, { bubbles: ['Oi, Ana!'], clientMessageId: 't1', privateNote: null })],
+      ['/internal/whatsapp-inbox/agent/tasks/{taskId}/skip', () => adapter.skipTask(KEY, TASK, 'nothing_to_say')],
+    ])('on %s tells the model the task is over: no retry, no skip', async (path, call) => {
+      expect(conflictOf(path)).toContain('AGENT_TASK_EXPIRED');
+      expect(schema.$defs.AgentRefusalError.properties.error.enum).toContain('AGENT_TASK_EXPIRED');
+      // The saas passes the core's `{ error: code }` on as `{ error: message, code }`, which the HTTP client reads as "message (code)".
+      vi.mocked(http.post).mockRejectedValue(new ApiError(409, 'O prazo desta tarefa passou. Não mande a mensagem. (AGENT_TASK_EXPIRED)'));
+      const failure = await call().catch((e) => e);
+      expect(failure).toBeInstanceOf(WhatsAppAgentRefusalError);
+      expect(failure.code).toBe('AGENT_TASK_EXPIRED');
+      expect(failure.message).toMatch(/a send already decided it/);
+      expect(failure.message).toMatch(/do not retry/);
+      expect(failure.message).toMatch(/skip_whatsapp_task included/);
+    });
+  });
+
+  it.each([
+    ['AGENT_ALREADY_ESCALATED', 409],
+    ['AGENT_RETENTION_GATE', 409],
+    ['AGENT_ASK_EMAIL_FIRST', 409],
+  ])('an escalation refused with %s tells the model what to do instead', async (code, status) => {
+    vi.mocked(http.post).mockRejectedValue(new ApiError(status, `Recusado (${code})`));
+    const failure = await adapter.escalate(KEY, { code: 'refund', summary: 'pediu reembolso' }).catch((e) => e);
+    expect(failure).toBeInstanceOf(WhatsAppAgentRefusalError);
+    expect(failure.code).toBe(code);
+  });
+
+  it('a review refusal gives the model every check that failed, each with its instruction', async () => {
+    vi.mocked(http.post).mockRejectedValue(new ApiError(422,
+      'A revisão recusou a resposta. (AGENT_REVIEW_FALSE_URGENCY; AGENT_REVIEW_FALSE_URGENCY, AGENT_REVIEW_PRICE_ANCHOR)'));
+    const failure = await adapter.sendReply(KEY, TURN).catch((e) => e);
+    expect(failure).toBeInstanceOf(WhatsAppAgentRefusalError);
+    expect(failure.code).toBe('AGENT_REVIEW_FALSE_URGENCY');
+    expect(failure.message).toContain('(AGENT_REVIEW_FALSE_URGENCY)');
+    expect(failure.message).toContain('(AGENT_REVIEW_PRICE_ANCHOR)');
+    expect(failure.message).not.toContain('(AGENT_REVIEW_SHAPE)');
   });
 
   it('keeps an ordinary rate limit and other API errors as they are', async () => {

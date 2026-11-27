@@ -1,0 +1,16 @@
+{
+  "def": "PendingPage",
+  "body": {
+    "items": [
+      {
+        "contactKey": "lid:abc123",
+        "name": null,
+        "pendingSince": "2026-11-24T14:00:00.000Z",
+        "lastText": null,
+        "lastType": null,
+        "agentRepliesToday": 0
+      }
+    ],
+    "tasks": []
+  }
+}

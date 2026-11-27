@@ -1,0 +1,41 @@
+{
+  "def": "AgentReplyResponse",
+  "body": {
+    "status": "sent",
+    "messages": [
+      {
+        "messageId": "reply:t-1-0",
+        "deliveryId": "0192a000-0000-4000-8000-000000000002",
+        "contactKey": "5511912345678",
+        "chipId": "0192a000-0000-4000-8000-000000000001",
+        "text": "Achei sua compra!",
+        "at": "2026-11-26T14:00:00.123456789Z",
+        "chipSwitch": null,
+        "duplicate": false
+      }
+    ],
+    "category": "access",
+    "counters": {
+      "global": {
+        "used": 1,
+        "limit": 10
+      },
+      "sale": {
+        "used": 0,
+        "limit": 4
+      },
+      "recovery": {
+        "used": 0,
+        "limit": 2
+      },
+      "free": {
+        "used": 0,
+        "limit": 2
+      },
+      "retentionSent": 0
+    },
+    "held": false,
+    "agentHeldAt": null,
+    "audioMessage": null
+  }
+}

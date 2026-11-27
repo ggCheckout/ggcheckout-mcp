@@ -1,0 +1,9 @@
+{
+  "def": "AgentHoldResponse",
+  "body": {
+    "agentHeldAt": "2026-11-24T10:15:30.123456789+00:00",
+    "agentHeldReason": "agent",
+    "agentHeldNote": "x",
+    "created": true
+  }
+}

@@ -119,10 +119,109 @@ export function fillMcpConfig(template, values) {
   return fill(template);
 }
 
-/** The prompt of one run: only the contact key and the reply id, never what the buyer wrote. */
-export function buildTask({ contactKey, clientMessageId: id }) {
-  return 'Answer the pending WhatsApp conversation of this run, under your rules. Read it first.\n'
-    + `contactKey: ${contactKey}, clientMessageId: ${id}`;
+/**
+ * The prompt of one run: the contact key and the reply id, and for a scheduled task its objective, the
+ * ids it is about and, for `free`, the seller's instruction. Never what the buyer wrote. The instruction
+ * is the store's text, labeled as the seller's and JSON-quoted so a line break or a quote in it cannot
+ * pass for another line of this prompt.
+ */
+export function buildTask({ contactKey, clientMessageId: id, task = null }) {
+  if (!task) {
+    return 'Answer the pending WhatsApp conversation of this run, under your rules. Read it first.\n'
+      + `contactKey: ${contactKey}, clientMessageId: ${id}`;
+  }
+  return 'Write the scheduled message of this run, under your rules for scheduled tasks. Read the conversation first.\n'
+    + `contactKey: ${contactKey}, clientMessageId: ${id}, task: ${task.objective}, `
+    + `paymentId: ${task.paymentId ?? 'none'}, productId: ${task.productId ?? 'none'}`
+    + (typeof task.instruction !== 'string' ? '' : `\nThe store's instruction for this step (the seller's text): ${JSON.stringify(task.instruction)}`);
+}
+
+/** What a journey block asks the assistant to write (`AgentTask.objective` in the core's whatsapp/agent v2 contract). */
+export const TASK_OBJECTIVES = Object.freeze(['pix_reminder', 'welcome', 'offer', 'free']);
+
+/** The seller's instruction of a `free` task: up to `taskInstructionMaxCodePoints` code points, never blank. */
+export const TASK_INSTRUCTION_MAX_CODE_POINTS = 500;
+
+const TASK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const TASK_CONTACT = /^[1-9][0-9]{7,14}$/;
+/** A payment or product id goes into the run's prompt: only id characters, as the agent tools accept them. */
+const TASK_REF = /^[A-Za-z0-9_-]{1,128}$/;
+
+const isInstruction = (text) => typeof text === 'string' && /\S/.test(text)
+  && Array.from(text).length <= TASK_INSTRUCTION_MAX_CODE_POINTS;
+
+/** Every key of `AgentTask`, none other (the contract closes it): a task with a key it does not know is skipped. */
+export const TASK_KEYS = Object.freeze(['id', 'objective', 'instruction', 'contactKey', 'paymentId', 'productId', 'dueAt', 'deadlineAt']);
+
+const hasTaskKeys = (task) => Object.keys(task).length === TASK_KEYS.length && TASK_KEYS.every((key) => Object.hasOwn(task, key));
+
+const isRunnableTask = (task) => Boolean(task) && typeof task === 'object' && hasTaskKeys(task)
+  && TASK_ID.test(task.id) && TASK_OBJECTIVES.includes(task.objective) && TASK_CONTACT.test(task.contactKey)
+  && (task.objective === 'free' ? isInstruction(task.instruction) : task.instruction === null)
+  && (task.paymentId === null || TASK_REF.test(task.paymentId))
+  && (task.productId === null || TASK_REF.test(task.productId));
+
+/** The tasks of a pending page that can start a run; one in an unknown shape is skipped, never run. */
+export function dueTasks(page) {
+  return Array.isArray(page?.tasks) ? page.tasks.filter(isRunnableTask) : [];
+}
+
+/** A task runs until it ends well or is given up: its id is its whole state. */
+export function taskFingerprint(task) {
+  return `task|${task.id}`;
+}
+
+/** Same task, same id: a rerun after a crash or a timeout never sends the task's message twice. */
+export function taskClientMessageId(taskId) {
+  return createHash('sha256').update(`task:${taskId}`).digest('hex').slice(0, 40);
+}
+
+/**
+ * The tools a run may call: the whole agent tool list of the pinned ggcheckout-mcp (its
+ * `WHATSAPP_AGENT_TOOLS`, then `WHATSAPP_AGENT_TASK_TOOLS`, which the server registers only in a task's
+ * run; compared in the tests). The pending list is not one of them.
+ */
+export const AGENT_TOOLS = Object.freeze([
+  'read_whatsapp_conversation', 'send_whatsapp_reply', 'escalate_whatsapp_conversation', 'find_contact_purchases',
+  'send_purchase_access', 'resend_delivery', 'resend_delivery_by_email', 'get_payment_recovery_link', 'list_purchase_offers',
+  'create_offer_link', 'list_catalog', 'get_catalog_link', 'skip_whatsapp_task',
+]);
+
+/**
+ * The stdio of a run: stdout and stderr piped to the script, never inherited, so nothing the run prints
+ * (the model's answer, a tool input) reaches the seller's terminal or log.
+ */
+export const RUN_STDIO = Object.freeze(['ignore', 'pipe', 'pipe']);
+
+const TOKEN_FIELDS = [
+  ['in', 'input_tokens'], ['out', 'output_tokens'], ['cacheRead', 'cache_read_input_tokens'], ['cacheWrite', 'cache_creation_input_tokens'],
+];
+
+/**
+ * One log line from the `--output-format json` result of a run: outcome, counts, duration and cost.
+ * The result carries the model's final text and `permission_denials` carries tool inputs, both with
+ * what the buyer wrote: only their size or count goes to the log, never their content.
+ */
+export function summarizeRun(stdout) {
+  let result;
+  try {
+    result = JSON.parse(stdout);
+  } catch {
+    return `output not JSON (${Buffer.byteLength(stdout)} bytes)`;
+  }
+  if (!result || typeof result !== 'object' || result.type !== 'result') return `unexpected output (${Buffer.byteLength(stdout)} bytes)`;
+  const number = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : '?');
+  const usage = result.usage && typeof result.usage === 'object' ? result.usage : {};
+  const parts = [
+    `outcome=${typeof result.subtype === 'string' && /^[a-z_]{1,40}$/.test(result.subtype) ? result.subtype : '?'}`,
+    `error=${result.is_error === true}`,
+    `turns=${number(result.num_turns)}`,
+    `durationMs=${number(result.duration_ms)}`,
+    ...TOKEN_FIELDS.map(([label, field]) => `${label}=${number(usage[field])}`),
+    `costUsd=${typeof result.total_cost_usd === 'number' ? result.total_cost_usd.toFixed(4) : '?'}`,
+    `denials=${Array.isArray(result.permission_denials) ? result.permission_denials.length : 0}`,
+  ];
+  return parts.join(' ');
 }
 
 /**
@@ -142,6 +241,6 @@ export function buildClaudeArgs({ task, rules, mcpConfigPath, serverName, toolNa
     '--setting-sources', '',
     '--disable-slash-commands',
     '--no-session-persistence',
-    '--output-format', 'text',
+    '--output-format', 'json',
   ];
 }

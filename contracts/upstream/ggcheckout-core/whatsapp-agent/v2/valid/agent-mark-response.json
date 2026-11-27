@@ -1,0 +1,7 @@
+{
+  "def": "AgentMarkResponse",
+  "body": {
+    "mark": "email_lookup",
+    "at": "2026-11-26T14:00:00.000Z"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "def": "ConversationPage",
+  "body": {
+    "items": [
+      {
+        "id": "1763990000000-1",
+        "messageId": "m-1",
+        "dir": "in",
+        "auto": false,
+        "chipId": "0192a000-0000-4000-8000-000000000001",
+        "type": "text",
+        "text": "hi",
+        "at": "2026-11-24T13:51:00+00:00",
+        "by": null,
+        "privateNote": null
+      },
+      {
+        "id": "1763990000000-2",
+        "messageId": "m-2",
+        "dir": "out",
+        "auto": false,
+        "chipId": "0192a000-0000-4000-8000-000000000001",
+        "type": "text",
+        "text": "Hello!",
+        "at": "2026-11-24T13:52:00+00:00",
+        "by": "agent",
+        "privateNote": null
+      }
+    ],
+    "nextBefore": null,
+    "exitRequestedAt": null,
+    "optedOut": false,
+    "agentHeldAt": null,
+    "agentHeldReason": null,
+    "agentHeldNote": null,
+    "agentUpsellOfferedAt": null,
+    "agentDownsellOfferedAt": null,
+    "agentRepliesToday": 1
+  }
+}

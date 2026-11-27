@@ -2,11 +2,12 @@
   "mcpServers": {
     "ggcheckout": {
       "command": "npx",
-      "args": ["-y", "ggcheckout-mcp@0.7.0"],
+      "args": ["-y", "ggcheckout-mcp@0.8.0"],
       "env": {
         "GGCHECKOUT_API_KEY": "${GGCHECKOUT_AGENT_KEY}",
         "GGCHECKOUT_API_URL": "${GGCHECKOUT_API_URL}",
-        "GGCHECKOUT_AGENT_CONTACT": "${GGCHECKOUT_AGENT_CONTACT}"
+        "GGCHECKOUT_AGENT_CONTACT": "${GGCHECKOUT_AGENT_CONTACT}",
+        "GGCHECKOUT_AGENT_TASK": "${GGCHECKOUT_AGENT_TASK}"
       }
     }
   }

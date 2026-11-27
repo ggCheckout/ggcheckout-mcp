@@ -146,9 +146,24 @@ export const AGENT_REFUSALS = {
   AGENT_CONTACT_EXITED: 'The contact asked to stop receiving messages (SAIR): do not reply and do not call any other tool for this conversation.',
   AGENT_OPTED_OUT: 'The contact opted out of messages from this store: do not reply and do not call any other tool for this conversation.',
   AGENT_CONVERSATION_NOT_FOUND: 'This conversation no longer exists in the inbox (it expired or was removed): do not reply and do not call any other tool for it.',
-  AGENT_REPLY_CAP: 'This conversation reached 10 agent replies in 24 hours and was handed to the seller: do not reply again.',
+  AGENT_GLOBAL_CAP: 'This conversation reached the most replies of the day and was handed to the seller: do not reply again.',
+  AGENT_CATEGORY_CAP: 'The store\'s limit of the day for the category of this turn is reached: send nothing more of that kind today, keep helping in the others.',
   AGENT_ALREADY_OFFERED: 'This offer kind was already made in this conversation (the upsell, or the downsell after it): never offer again here, keep to support.',
   AGENT_UPSELL_NOT_OFFERED: 'A downsell comes only after the upsell was offered and refused in this conversation: do not offer again here, keep to support.',
+  AGENT_ALREADY_ESCALATED: 'This subject is already with the seller, or the seller handed it back less than 24 hours ago: do not escalate it again and do not repeat that someone will answer; keep helping with anything else, without selling.',
+  AGENT_OPEN_PROBLEM: 'A problem of this contact is still open with the seller: no selling until it is solved; keep to support.',
+  AGENT_RETENTION_GATE: 'A refund goes to the seller only after your retention replies were sent: ask what happened and try to solve it first, then escalate if the contact asks again.',
+  AGENT_ASK_EMAIL_FIRST: 'No purchase was found by this phone and you did not ask for the e-mail yet: ask for the e-mail used at checkout before escalating.',
+  AGENT_CATALOG_NOT_FOUND: 'This product is not in the catalog the store gave you: send no link for it and offer only what list_catalog lists.',
+  AGENT_CATALOG_UNAVAILABLE: 'This product cannot be bought right now (its checkout is not published): do not offer it and do not promise a link.',
+  AGENT_TASK_NOT_FOUND: 'This scheduled task no longer exists or is not for this contact: send nothing and call no other tool.',
+  AGENT_TASK_EXPIRED: 'This scheduled task is over (a send already decided it, or its deadline passed): send nothing, do not retry, and call no other tool, skip_whatsapp_task included. Stop here.',
+  AGENT_DAILY_CAP: 'This contact already got the store\'s daily number of recovery or sale messages: send nothing for this task and call no other tool (it waits for another day inside its deadline).',
+  AGENT_REVIEW_FALSE_URGENCY: 'Refused: false urgency ("só hoje", "última chance", "últimas vagas", "hoje" next to a price). Rewrite without it and send again with the same clientMessageId.',
+  AGENT_REVIEW_PRICE_ANCHOR: 'Refused: a "de R$ X por R$ Y" or crossed-out price. Never compare prices; rewrite and send again with the same clientMessageId.',
+  AGENT_REVIEW_FOREIGN_LINK: 'Refused: a link no tool gave you in this conversation. Use only links from the tools; rewrite and send again with the same clientMessageId.',
+  AGENT_REVIEW_REFUND_MENTION: 'Refused: you brought up refund, chargeback, guarantee or giving up to someone who bought. Only the contact brings it up; rewrite and send again with the same clientMessageId.',
+  AGENT_REVIEW_SHAPE: 'Refused: the turn is not in the expected shape (at most 3 bubbles, or 2 with audio; audio with no link, at most 450 characters). Rewrite and send again with the same clientMessageId.',
   AGENT_UNAVAILABLE: 'The assistant is not available in this environment (it runs only on the QA environment for now): stop now and do not try any other tool.',
   AGENT_KEY_REFUSED: 'The agent key was refused: the seller turned the assistant off or revoked the key. Stop now and call no other tool.',
 } as const;
@@ -156,8 +171,13 @@ export const AGENT_REFUSALS = {
 export type AgentRefusalCode = keyof typeof AGENT_REFUSALS;
 
 export class WhatsAppAgentRefusalError extends AppError {
-  constructor(code: AgentRefusalCode, statusCode: number | undefined, cause?: Error) {
-    super(`${AGENT_REFUSALS[code]} (${code})`, code, statusCode, cause);
+  /**
+   * `also`: the other refusals of the same answer (the saas review names every check that failed),
+   * each with its own instruction, so the model fixes them all in one rewrite.
+   */
+  constructor(code: AgentRefusalCode, statusCode: number | undefined, cause?: Error, also: AgentRefusalCode[] = []) {
+    const codes = [code, ...also.filter((other) => other !== code)];
+    super(codes.map((each) => `${AGENT_REFUSALS[each]} (${each})`).join(' '), code, statusCode, cause);
     this.name = 'WhatsAppAgentRefusalError';
   }
 }

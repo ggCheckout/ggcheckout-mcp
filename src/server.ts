@@ -15,6 +15,7 @@ import { MembersAreaApiAdapter } from './adapters/outbound/members-area.api.js';
 import { DiscountApiAdapter } from './adapters/outbound/discount.api.js';
 import { WhatsAppApiAdapter } from './adapters/outbound/whatsapp.api.js';
 import { WhatsAppFunnelApiAdapter } from './adapters/outbound/whatsapp-funnel.api.js';
+import { BuyerMessagingApiAdapter } from './adapters/outbound/buyer-messaging.api.js';
 import { WhatsAppInboxApiAdapter } from './adapters/outbound/whatsapp-inbox.api.js';
 import { BillingApiAdapter } from './adapters/outbound/billing.api.js';
 import { ShippingApiAdapter } from './adapters/outbound/shipping.api.js';
@@ -40,6 +41,7 @@ import { MembersAreaService } from './core/services/members-area.service.js';
 import { DiscountService } from './core/services/discount.service.js';
 import { WhatsAppService } from './core/services/whatsapp.service.js';
 import { WhatsAppFunnelService } from './core/services/whatsapp-funnel.service.js';
+import { BuyerMessagingService } from './core/services/buyer-messaging.service.js';
 import { WhatsAppInboxService } from './core/services/whatsapp-inbox.service.js';
 import { BillingService } from './core/services/billing.service.js';
 import { ShippingService } from './core/services/shipping.service.js';
@@ -67,6 +69,7 @@ import { registerMembersAreaTools } from './adapters/inbound/tools/members-area.
 import { registerDiscountTools } from './adapters/inbound/tools/discount.tools.js';
 import { registerWhatsAppTools } from './adapters/inbound/tools/whatsapp.tools.js';
 import { registerWhatsAppFunnelTools } from './adapters/inbound/tools/whatsapp-funnel.tools.js';
+import { registerBuyerMessagingTools } from './adapters/inbound/tools/buyer-messaging.tools.js';
 import { registerWhatsAppInboxTools } from './adapters/inbound/tools/whatsapp-inbox.tools.js';
 import { registerBillingTools } from './adapters/inbound/tools/billing.tools.js';
 import { registerShippingTools } from './adapters/inbound/tools/shipping.tools.js';
@@ -83,8 +86,9 @@ import { registerTrackingLinkTools } from './adapters/inbound/tools/tracking-lin
 import { WhatsAppAgentApiAdapter } from './adapters/outbound/whatsapp-agent.api.js';
 import { WhatsAppAgentService } from './core/services/whatsapp-agent.service.js';
 import { registerWhatsAppAgentTools } from './adapters/inbound/tools/whatsapp-agent.tools.js';
-import { contactKey } from './adapters/inbound/tools/whatsapp-schemas.js';
+import { contactKey, guid } from './adapters/inbound/tools/whatsapp-schemas.js';
 import { registerAppViews } from './adapters/inbound/apps/apps.js';
+import { registerBuyerMessagingDoc } from './adapters/inbound/docs/buyer-messaging.js';
 import { muteUpdateNotice } from './shared/update-notice.js';
 
 
@@ -107,7 +111,7 @@ export interface CreatedServer {
  * and the views; the WhatsApp assistant key (`ggck_agent_`) gets the agent tools and nothing else,
  * not even the payments API tools, so a model that reads customer messages has no other lever.
  * Throws on a malformed key, and on an agent key without a valid GGCHECKOUT_AGENT_CONTACT: the run
- * is pinned to that one conversation.
+ * is pinned to that one conversation (and to GGCHECKOUT_AGENT_TASK when it writes a scheduled task).
  */
 export function createServer({ apiKey, apiUrl, version, env }: ServerOptions): CreatedServer {
   const keyKind = apiKeyKind(apiKey);
@@ -116,7 +120,9 @@ export function createServer({ apiKey, apiUrl, version, env }: ServerOptions): C
 
   if (keyKind === 'agent') {
     muteUpdateNotice();
-    registerWhatsAppAgentTools(server, new WhatsAppAgentService(new WhatsAppAgentApiAdapter(httpClient)), agentContact(env));
+    registerWhatsAppAgentTools(server, new WhatsAppAgentService(new WhatsAppAgentApiAdapter(httpClient)), {
+      contact: agentContact(env), taskId: agentTask(env),
+    });
     return { server, keyKind };
   }
 
@@ -133,6 +139,14 @@ function agentContact(env: NodeJS.ProcessEnv): string {
       + '(the contact phone in digits with country code, a Brazilian mobile without the ninth digit, or a "lid:" WhatsApp id)');
   }
   return parsed.data;
+}
+
+/** The scheduled task an agent run writes, or null for a run that answers the conversation (unset or empty). */
+function agentTask(env: NodeJS.ProcessEnv): string | null {
+  const value = env.GGCHECKOUT_AGENT_TASK;
+  if (value === undefined || value === '') return null;
+  if (!guid().safeParse(value).success) throw new Error('GGCHECKOUT_AGENT_TASK must be the id of the scheduled task this run writes (a UUID), or empty');
+  return value;
 }
 
 function registerSellerTools(server: McpServer, httpClient: HttpClient, apiUrl: string, env: NodeJS.ProcessEnv): void {
@@ -204,6 +218,7 @@ function registerSellerTools(server: McpServer, httpClient: HttpClient, apiUrl: 
   registerDiscountTools(server, discountService);
   registerWhatsAppTools(server, whatsappService);
   registerWhatsAppFunnelTools(server, whatsappFunnelService);
+  registerBuyerMessagingTools(server, new BuyerMessagingService(new BuyerMessagingApiAdapter(httpClient)));
   registerWhatsAppInboxTools(server, whatsappInboxService);
   registerBillingTools(server, billingService);
   registerShippingTools(server, shippingService);
@@ -221,4 +236,5 @@ function registerSellerTools(server: McpServer, httpClient: HttpClient, apiUrl: 
     appOriginOf(apiUrl),
   );
   registerAppViews(server);
+  registerBuyerMessagingDoc(server);
 }

@@ -5,10 +5,82 @@ which is unpinned — a new version reaches every existing installation on its n
 Read this file before upgrading, and pin a version if a breaking change is not convenient
 right now.
 
+## 0.8.0
+
+Not published yet. Publish it with `npm publish --tag next` and check `npm dist-tag ls ggcheckout-mcp`
+afterwards: 0.7.0 went out as `latest` by mistake. The recipe pins `ggcheckout-mcp@0.8.0`.
+
+**Breaking for the WhatsApp assistant (`ggck_agent_` key only); a `ggck_live_` key is unchanged.** It
+follows the core's `whatsapp/agent` v2 contract (mirrored in `contracts/upstream/ggcheckout-core/`)
+and needs the saas release with the phase 2 assistant routes. Against an older saas the new tools
+answer that the assistant is not available here.
+
+### Release order
+
+1. The core with the v2 contract and the saas with the phase 2 assistant routes, in `developer`
+   (the assistant still runs only on the QA).
+2. `npm publish --tag next` of this version.
+3. The saas raises the minimum version of the assistant key to 0.8.0.
+
+### Changes
+
+- **`send_whatsapp_reply` sends a turn:** `bubbles` (1 to 3, a link alone in its bubble), `category`
+  (`support`, `retention`, `free` or `sale`; `recovery` and `access` are proven by the saas, never
+  declared), `privateNote` (one line for the seller, or null) and `clientMessageId` (at most 56
+  characters: the core derives one id per bubble and for the voice from it). The answer says
+  `sent` or `draft` (the seller approves a draft before it goes). `text` is gone.
+- **Voice:** `send_whatsapp_reply` takes an optional `audio`, the text of one voice note (at most 450
+  characters, no link, ElevenLabs v3 tone tags) that the saas synthesizes with the store's key and sends
+  before the bubbles; a turn with it has at most 2 bubbles, and only when the state's `store.voice` is
+  true. The answer's `audio` says `sent`, `failed` or `unavailable` (the last two: only the bubbles went
+  out); a draft drops it, and a task run has no voice.
+- **`escalate_whatsapp_conversation` replaces `hold_whatsapp_conversation`:** a `code` and a one line
+  `summary`. `refund`, `double_charge`, `unsolved`, `off_topic` and `unreadable_media` keep the
+  assistant answering; `legal` and `human_requested` hold the conversation.
+- **`read_whatsapp_conversation`** returns `messages` and `state` (the store's persona and policies,
+  the counters per category, an open escalation, when the seller handed the conversation back, the
+  retention replies sent).
+- New tools: `send_purchase_access` (the access of each paid product, to send in the chat, only for a
+  purchase found by the conversation's phone), `list_catalog` and `get_catalog_link` (the products the
+  seller chose, with the price from the server).
+- **Scheduled tasks.** With `GGCHECKOUT_AGENT_TASK` (a task id from the pending page), the run writes
+  that task: `send_whatsapp_reply` posts to the task's route and takes no `category`, and
+  `skip_whatsapp_task` (only in a task run) ends it without writing, with a reason of the core contract,
+  so the funnel moves on at once. Empty or unset: the run answers the conversation. A malformed value
+  refuses to start. A send or a skip refused with `409 AGENT_TASK_EXPIRED` (another send already
+  decided the task, or its deadline passed) tells the model to stop: no retry, no skip.
+- New refusals, each with what to do next: `AGENT_GLOBAL_CAP` (replaces `AGENT_REPLY_CAP`),
+  `AGENT_CATEGORY_CAP`, `AGENT_ALREADY_ESCALATED`, `AGENT_OPEN_PROBLEM`, `AGENT_RETENTION_GATE`,
+  `AGENT_ASK_EMAIL_FIRST`, `AGENT_TASK_NOT_FOUND`, `AGENT_TASK_EXPIRED`, `AGENT_DAILY_CAP`,
+  and the saas review: `AGENT_REVIEW_FALSE_URGENCY`, `AGENT_REVIEW_PRICE_ANCHOR`,
+  `AGENT_REVIEW_FOREIGN_LINK`, `AGENT_REVIEW_REFUND_MENTION`, `AGENT_REVIEW_SHAPE` (rewrite and send again
+  with the same `clientMessageId`), and the catalog link: `AGENT_CATALOG_NOT_FOUND`, `AGENT_CATALOG_UNAVAILABLE`.
+- The limits (bubbles, note, summary), the categories, the escalation codes and the refusals are
+  tested against the mirrored contract.
+- Recipe (`examples/whatsapp-agent/`):
+  - the run's output no longer reaches the terminal (`--output-format json`, piped stdio); each run
+    logs one line with outcome, turns, duration, tokens and cost, never the buyer's text;
+  - it runs the scheduled tasks of the pending page after the waiting conversations, by the task's
+    `objective` (`pix_reminder`, `welcome`, `offer`, `free`), with the seller's `instruction` of a `free`
+    task quoted in the run's prompt;
+  - `AGENT_SELLER_NAME` is gone: the store's name, persona and policies come from the API;
+  - the prompt follows phase 2 (problem first, retention before a refund, escalation in two kinds, ask
+    for the e-mail before escalating, catalog, scheduled tasks, when to speak with a voice note) and
+    how the store talks to the buyer: the three bands, and never repeating what `buyerTimeline` shows
+    as sent.
+- `read_whatsapp_conversation` points the model at `buyerTimeline` in the state (what the notices and
+  funnels sent the contact and what comes next).
+- Seller key: `get_buyer_messaging_overview` reads who messages a buyer at each moment (the "Visão
+  geral" of Recuperar vendas: the notices, the funnel that owns each recovery moment, the conversation,
+  the daily limit per person and the link to the screen), checked against the saas contract
+  `buyer-messaging/overview/v1` mirrored in `contracts/upstream/saas-checkout/`.
+- Seller key: the resource `ggcheckout://docs/buyer-messaging`, in pt-BR for the seller, explains who
+  messages a buyer at each moment (the three bands, one owner per moment, the daily limit per person).
+
 ## 0.7.0
 
-Not published yet. Publish it with `npm publish --tag next`, so `@latest` stays 0.6.0 and nobody gets
-the assistant by accident; the recipe pins `ggcheckout-mcp@0.7.0`.
+Published, and by mistake as `latest` (the plan was `npm publish --tag next`). Nothing reached a seller:
+the saas answers the assistant routes only on the QA. The recipe pinned `ggcheckout-mcp@0.7.0`.
 
 **Owner decision (2026-11-25, saas-checkout#2586): the assistant exists only on the QA environment
 (`https://qa.ggcheckout.app`).** In production, `GET/POST /api/whatsapp/inbox/agent-key` and every

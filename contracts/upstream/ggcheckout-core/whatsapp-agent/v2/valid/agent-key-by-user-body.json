@@ -1,0 +1,6 @@
+{
+  "def": "AgentKeyByUserBody",
+  "body": {
+    "userId": "seller-1"
+  }
+}

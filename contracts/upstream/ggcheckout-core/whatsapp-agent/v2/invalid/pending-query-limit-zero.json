@@ -1,0 +1,6 @@
+{
+  "def": "PendingQuery",
+  "body": {
+    "limit": 0
+  }
+}

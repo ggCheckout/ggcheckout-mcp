@@ -1,0 +1,14 @@
+{
+  "def": "AgentReplyBody",
+  "body": {
+    "bubbles": [
+      "Bom dia!"
+    ],
+    "clientMessageId": "t-1",
+    "category": "free",
+    "categoryProven": false,
+    "mode": "draft",
+    "privateNote": null,
+    "audio": null
+  }
+}
